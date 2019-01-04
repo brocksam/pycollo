@@ -15,6 +15,8 @@ install:
   - conda update -q conda
   - conda info -a
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
+  - conda search ipopt
+  - conda search cyipopt
   - conda install -q -y --file requirements.txt
   - source activate test-environment
   # - python setup.py install

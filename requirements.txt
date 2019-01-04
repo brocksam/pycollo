@@ -1,7 +1,7 @@
 numpy>=1.15
-scipy>=1.2
+scipy
 sympy>=1.3
 cython>=0.29.2
-cyipopt>=0.1.9
+cyipopt
 sphinx>=1.8
 pytest>=4.0

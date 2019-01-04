@@ -16,7 +16,7 @@ setup(
     install_requires=[numpy>=1.15,
         scipy>=1.2,
         sympy>=1.3,
-        cython>=0.29.2,
+        cython>=0.29,
         cyipopt>=0.1.9],
     extras_require={'docs': [sphinx>=1.8]},
     tests_require=[pytest>=4.0])

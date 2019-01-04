@@ -10,8 +10,7 @@ setup(
     packages=find_packages(),
     url='https://github.com/brocksam/opyt',
     license='All Rights Reserved',
-    description=('Tools for optimizing dynamic systems using direct '
-                 'collocation.'),
+    description=('General purpose optimal control package using collocation methods.'),
     long_description=open('README.rst').read(),
     python_requires='>=3.6',
     install_requires=[numpy>=1.15,

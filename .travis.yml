@@ -22,4 +22,4 @@ install:
 
 script:
   - pytest
-  - sphinx-build -nWT -b dummy source build
+  - sphinx-build -nWT -b dummy doc/source doc/build

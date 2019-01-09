@@ -22,5 +22,5 @@ install:
 
 script:
   - pytest
-  - cd doc; make clean; cd ..
+  - cd docs; make clean; cd ..
   - sphinx-build -nWT -b dummy docs/source docs/build

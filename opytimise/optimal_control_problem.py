@@ -46,15 +46,15 @@ class OptimalControlProblem():
 		self.auxiliary_data = auxiliary_data
 
 		# Initialise problem description
-		self._y_vars = np.array([])
-		self._u_vars = np.array([])
-		self._q_vars = np.array([])
-		self._t_vars = np.array([])
-		self._s_vars = np.array([])
-		self._y_eqns = np.array([])
+		self._y_vars = sym.Matrix.zeros(0, 1)
+		self._u_vars = sym.Matrix.zeros(0, 1)
+		self._q_vars = sym.Matrix.zeros(0, 1)
+		self._t_vars = sym.Matrix.zeros(0, 1)
+		self._s_vars = sym.Matrix.zeros(0, 1)
+		self._y_eqns = sym.Matrix.zeros(0, 1)
 
-		self._c_cons = np.array([])
-		self._b_cons = np.array([])
+		self._c_cons = sym.Matrix.zeros(0, 1)
+		self._b_cons = sym.Matrix.zeros(0, 1)
 
 		# Variables
 		self.state_variables = state_variables
@@ -87,14 +87,28 @@ class OptimalControlProblem():
 		self._mesh_iterations.append(initial_iteration)
 
 	@staticmethod
-	def _format_as_np_array(variables):
-		if variables is None:
-			variables = np.array([])
+	def _format_as_np_array(iterable):
+		if iterable is None:
+			iterable = np.array([])
 		try:
-			iter(variables)
+			iter(iterable)
 		except TypeError:
-			variables = (variables, )
-		return np.array(variables)
+			iterable = (iterable, )
+		return np.array(iterable)
+
+	@staticmethod
+	def _format_as_sym_matrix(iterable):
+		if not iterable:
+			iterable = sym.Matrix.zeros(0, 1)
+		try:
+			iter(iterable)
+		except TypeError:
+			iterable = (iterable, )
+		return sym.Matrix(iterable)
+
+	@staticmethod
+	def _check_sym_name_clash(syms):
+		pass
 
 	@property
 	def state_variables(self):
@@ -102,11 +116,12 @@ class OptimalControlProblem():
 
 	@state_variables.setter
 	def state_variables(self, y_vars):
-		self._y_vars = self._format_as_np_array(y_vars)
-		self._num_y_vars = len(self._y_vars)
+		# self._y_vars = self._format_as_np_array(y_vars)
+		self._y_vars = self._format_as_sym_matrix(y_vars)
+		self._num_y_vars = self._y_vars.shape[0]
 		self._update_vars()
-		self._y_t0 = [sym.symbols(str(y)[:-3] + '(t0)') for y in self._y_vars]
-		self._y_tF = [sym.symbols(str(y)[:-3] + '(tF)') for y in self._y_vars]
+		self._y_t0 = [sym.symbols(str(y)[:-3] + '(_t0)') for y in self._y_vars]
+		self._y_tF = [sym.symbols(str(y)[:-3] + '(_tF)') for y in self._y_vars]
 
 	@property
 	def initial_state(self):
@@ -126,8 +141,8 @@ class OptimalControlProblem():
 
 	@control_variables.setter
 	def control_variables(self, u_vars):
-		self._u_vars = self._format_as_np_array(u_vars)
-		self._num_u_vars = len(self._u_vars)
+		self._u_vars = self._format_as_sym_matrix(u_vars)
+		self._num_u_vars = self._u_vars.shape[0]
 		self._update_vars()
 
 	@property
@@ -141,20 +156,30 @@ class OptimalControlProblem():
 	@integrand_functions.setter
 	def integrand_functions(self, integrands):
 		integrands_dict = collections.OrderedDict()
-		if integrands:
-			integrand_functions = self._format_as_np_array(integrands)
-			for index, integrand in enumerate(integrand_functions):
-				symbol = sym.symbols("q_{}".format(index))
-				integrands_dict.update({symbol: integrand})
-			self._q_vars = np.array(list(integrands_dict.keys()))
-			self._q_funcs = np.array(list(integrands_dict.values()))
-			self._num_q_vars = len(self._q_vars)
-		else:
-			self._q_vars = np.array([])
-			self._q_funcs = np.array([])
-			self._num_q_vars = 0
-		self._q_func_map = integrands_dict
+		integrand_functions = self._format_as_sym_matrix(integrands)
+		for index, integrand in enumerate(integrand_functions):
+			symbol = sym.symbols("q_{}".format(index))
+			integrands_dict.update({symbol: integrand})
+		self._q_vars = sym.Matrix(list(integrands_dict.keys()))
+		self._q_funcs = sym.Matrix(list(integrands_dict.values()))
+		self._num_q_vars = self._q_vars.shape[0]
 		self._update_vars()
+
+		# integrands_dict = collections.OrderedDict()
+		# if integrands:
+		# 	integrand_functions = self._format_as_np_array(integrands)
+		# 	for index, integrand in enumerate(integrand_functions):
+		# 		symbol = sym.symbols("q_{}".format(index))
+		# 		integrands_dict.update({symbol: integrand})
+		# 	self._q_vars = np.array(list(integrands_dict.keys()))
+		# 	self._q_funcs = np.array(list(integrands_dict.values()))
+		# 	self._num_q_vars = len(self._q_vars)
+		# else:
+		# 	self._q_vars = np.array([])
+		# 	self._q_funcs = np.array([])
+		# 	self._num_q_vars = 0
+		# self._q_func_map = integrands_dict
+		# self._update_vars()
 
 	@property
 	def time_variables(self):
@@ -166,8 +191,8 @@ class OptimalControlProblem():
 
 	@parameter_variables.setter
 	def parameter_variables(self, s_vars):
-		self._s_vars = self._format_as_np_array(s_vars)
-		self._num_s_vars = len(self._s_vars)
+		self._s_vars = self._format_as_sym_matrix(s_vars)
+		self._num_s_vars = self._s_vars.shape[0]
 		self._update_vars()
 
 	@property
@@ -176,34 +201,37 @@ class OptimalControlProblem():
 
 	@property
 	def _num_vars(self):
-		return len(self._x_vars)
+		return self._x_vars
 
 	def _update_vars(self):
-		self._x_vars = np.concatenate((self._y_vars, self._u_vars, self._q_vars, self._t_vars, self._s_vars))
 
-		self._aux_data._y_map = dict()
-		for index, state in enumerate(self._y_vars):
-			self._aux_data._y_map.update({state: index})
+		# Variable index slices
+		self._x_vars = sym.Matrix([self._y_vars, self._u_vars, self._q_vars, self._t_vars, self._s_vars])
+		self._num_x_vars = self._x_vars.shape[0]
 
-		self._aux_data._u_map = dict()
-		for index, control in enumerate(self._u_vars):
-			self._aux_data._u_map.update({control: index})
+		# self._aux_data._y_map = dict()
+		# for index, state in enumerate(self._y_vars):
+		# 	self._aux_data._y_map.update({state: index})
 
-		self._aux_data._q_map = dict()
-		for index, integral in enumerate(self._q_vars):
-			self._aux_data._q_map.update({integral: index})
+		# self._aux_data._u_map = dict()
+		# for index, control in enumerate(self._u_vars):
+		# 	self._aux_data._u_map.update({control: index})
 
-		self._aux_data._t_map = dict()
-		for index, time in enumerate(self._t_vars):
-			self._aux_data._t_map.update({time: index})
+		# self._aux_data._q_map = dict()
+		# for index, integral in enumerate(self._q_vars):
+		# 	self._aux_data._q_map.update({integral: index})
 
-		self._aux_data._s_map = dict()
-		for index, parameter in enumerate(self._s_vars):
-			self._aux_data._s_map.update({parameter: index})
+		# self._aux_data._t_map = dict()
+		# for index, time in enumerate(self._t_vars):
+		# 	self._aux_data._t_map.update({time: index})
 
-		self._aux_data._x_map = dict()
-		for index, variable in enumerate(self._x_vars):
-			self._aux_data._x_map.update({variable: index})
+		# self._aux_data._s_map = dict()
+		# for index, parameter in enumerate(self._s_vars):
+		# 	self._aux_data._s_map.update({parameter: index})
+
+		# self._aux_data._x_map = dict()
+		# for index, variable in enumerate(self._x_vars):
+		# 	self._aux_data._x_map.update({variable: index})
 
 	@property
 	def state_equations(self):
@@ -211,9 +239,8 @@ class OptimalControlProblem():
 
 	@state_equations.setter
 	def state_equations(self, y_eqns):
-		self._y_eqns = self._format_as_np_array(y_eqns)
-		if self._y_eqns is not None:
-			self._num_y_eqns = len(self._y_eqns)
+		self._y_eqns = self._format_as_sym_matrix(y_eqns)
+		self._num_y_eqns = self._y_eqns.shape[0]
 
 	@property
 	def bounds(self):
@@ -261,8 +288,8 @@ class OptimalControlProblem():
 
 	@path_constraints.setter
 	def path_constraints(self, c_cons):
-		self._c_cons = self._format_as_np_array(c_cons)
-		self._num_c_cons = len(self._c_cons)
+		self._c_cons = self._format_as_sym_matrix(c_cons)
+		self._num_c_cons = self._c_cons.shape[0]
 	
 	@property
 	def boundary_constraints(self):
@@ -270,8 +297,8 @@ class OptimalControlProblem():
 
 	@boundary_constraints.setter
 	def boundary_constraints(self, b_cons):
-		self._b_cons = self._format_as_np_array(b_cons)
-		self._num_b_cons = len(self._b_cons)
+		self._b_cons = self._format_as_sym_matrix(b_cons)
+		self._num_b_cons = self._b_cons.shape[0]
 
 	@property
 	def settings(self):
@@ -304,7 +331,7 @@ class OptimalControlProblem():
 	@profile
 	def _generate_cons_and_derivs(self):
 
-		# Variable index slices
+		# Variables index slices
 		self._y_slice = slice(0, self._num_y_vars)
 		self._u_slice = slice(self._y_slice.stop, self._y_slice.stop + self._num_u_vars)
 		self._q_slice = slice(self._u_slice.stop, self._u_slice.stop + self._num_q_vars)
@@ -313,62 +340,28 @@ class OptimalControlProblem():
 		self._yu_slice = slice(self._y_slice.start, self._u_slice.stop)
 		self._qts_slice = slice(self._q_slice.start, self._s_slice.stop)
 
+		# # Objective derivatives
+		self._J_subbed = self._J.subs(self._aux_data._consts_vals)
+		self._dJ_dx = self._J_subbed.diff(self._x_vars)
+
+		# Constraints
+		self._c = sym.Matrix([self._y_eqns, self._c_cons, self._q_funcs, self._b_cons])
+		self._c_subbed = self._c.subs(self._aux_data._consts_vals)
+		self._num_c = self._c.shape[0]
+
 		# Constraints index slices
 		self._c_defect_slice = slice(0, self._num_y_vars)
 		self._c_path_slice = slice(self._c_defect_slice.stop, self._c_defect_slice.stop + self._num_c_cons)
 		self._c_integral_slice = slice(self._c_path_slice.stop, self._c_path_slice.stop + self._num_q_vars)
 		self._c_boundary_slice = slice(self._c_integral_slice.stop, self._c_integral_slice.stop + self._num_b_cons)
+		self._c_continuous_slice = slice(0, self._num_c - self._num_b_cons)
 
-		# Substitute constants into functions
-		self._J_subbed = self._J.subs(self._aux_data._consts_vals)
-		sym_subs_vectorised = np.vectorize(lambda sym: sym.subs(self._aux_data._consts_vals))
-		self._y_eqns_subbed = sym_subs_vectorised(self._y_eqns)
-		if self._c_cons.any():
-			self._c_cons_subbed = sym_subs_vectorised(self._c_cons)
-		else:
-			self._c_cons_subbed = self._c_cons
-		if self._q_funcs.any():
-			self._q_funcs_subbed = sym_subs_vectorised(self._q_funcs)
-		else:
-			self._q_funcs_subbed = self._q_funcs
-		if self._b_cons.any():
-			self._b_cons_subbed = sym_subs_vectorised(self._b_cons)
-		else:
-			self._b_cons_subbed = self._b_cons
+		# # Constraints derivatives Jacobian
+		self._dc_dx = self._c[self._c_continuous_slice, :].jacobian(self._x_vars)
 
-		# Constraints
-		self._c = np.concatenate((self._y_eqns_subbed, self._c_cons_subbed, self._q_funcs_subbed, self._b_cons_subbed))
-		self._num_c = len(self._c)
-
-		# Objective derivatives
-		self._dJ_dx = np.array(self._J_subbed.diff(self._x_vars))
-
-		# Constraints derivatives Jacobian
-		self._dc_dx = np.vectorize(lambda c: c.diff(self._x_vars).tolist())(self._c).tolist()
-		self._dc_dx = np.array(self._dc_dx)
-
-		c = sym.Matrix(self._c)
-
-		print(type(c))
-		print(c.shape)
-
-		G = c.jacobian(self._x_vars)
-
-		print(G)
-
-
-		# Initial time boundary derivatives
-		self._G_dbdy0 = np.empty((self._num_b_cons, self._num_y_vars), dtype=object)
-		for row_i, c in enumerate(self._b_cons):
-			for col_i, y in enumerate(self._y_t0):
-				self._G_dbdy0[row_i, col_i] = c.diff(y)
-
-		# Final time boundary derivatives
-		self._G_dbdyF = np.empty((self._num_b_cons, self._num_y_vars), dtype=object)
-		for row_i, c in enumerate(self._b_cons):
-			for col_i, y in enumerate(self._y_tF):
-				self._G_dbdyF[row_i, col_i] = c.diff(y)
-
+		# Initial and final time boundary derivatives
+		self._db_dy0 = self._b_cons.jacobian(self._y_t0)
+		self._db_dyF = self._b_cons.jacobian(self._y_tF)
 
 	def solve(self):
 
@@ -382,39 +375,45 @@ class OptimalControlProblem():
 		# Time variables
 		t_vars = []
 		if self._bounds._t0_l != self._bounds._t0_u:
-			t_vars.append(sym.symbols('t0'))
+			t_vars.append(sym.symbols('_t0'))
 		if self._bounds._tF_l != self._bounds._tF_u:
-			t_vars.append(sym.symbols('tF'))
-		self._t_vars = self._format_as_np_array(t_vars)
-		self._num_t_vars = len(self._t_vars)
-		self._update_vars
+			t_vars.append(sym.symbols('_tF'))
+		self._t_vars = self._format_as_sym_matrix(t_vars)
+		self._num_t_vars = self._t_vars.shape[0]
+		self._update_vars()
 
 		# Constraints and derivatives
 		self._generate_cons_and_derivs()
 
+		def print_formatted(name, arg):
+			try:
+				print("\n{}: {} {}".format(name, type(arg), arg.shape), arg, sep='\n')
+			except AttributeError:
+				print("\n{}: {}".format(name, type(arg)), arg, sep='\n')
+
 		# Problem setup
-		# print("\nVariables:\n", self._x_vars)
-		# print("\nState Equations:\n", self._y_eqns)
+		if False:
+			print_formatted('State Variables', self._y_vars)
+			print_formatted('Control Variables', self._u_vars)
+			print_formatted('Integral Variables', self._q_vars)
+			print_formatted('Time Variables', self._t_vars)
+			print_formatted('Parameter Variables', self._s_vars)
+			print_formatted('Variables', self._x_vars)
 
-		# print("\nDefect Constraints:\n", self._y_eqns)
-		# print("\nPath Constraints:\n", self._c_cons)
-		# print("\nIntegral Constraints:\n", self._q_funcs)
-		# print("\nBoundary Constraints:\n", self._b_cons)
-		# print("\nConstraints:\n", self._c)
+			print_formatted('State Equations', self._y_eqns)
+			
+			print_formatted('Defect Constraints', self._y_eqns)
+			print_formatted('Path Constraints', self._c_cons)
+			print_formatted('Integral Constraints', self._q_funcs)
+			print_formatted('Boundary Constraints', self._b_cons)
+			print_formatted('Constraints', self._c)
 
-		# print("\nObjective Function:\n", self._J)
-		# print("\nObjective Gradient wrt y:\n", self._g_dJdy)
-		# print("\nObjective Gradient wrt u:\n", self._g_dJdu)
-		# print("\nObjective Gradient wrt q:\n", self._g_dJdq)
-		# print("\nObjective Gradient wrt t:\n", self._g_dJdt)
-		# print("\nObjective Gradient wrt s:\n", self._g_dJds)
+			print_formatted('Objective Function', self._J_subbed)
+			print_formatted('Objective Gradient', self._dJ_dx)
 
-		# print("\nDefect Jacobian wrt y:\n", self._G_dddy)
-		# print("\nDefect Jacobian wrt u:\n", self._G_dddu)
-		# print("\nDefect Jacobian wrt q:\n", self._G_dddq)
-		# print("\nDefect Jacobian wrt t:\n", self._G_dddt)
-		# print("\nDefect Jacobian wrt s:\n", self._G_ddds)
-		# print("\n\n\n\n")
+			print_formatted('Continuous Jacobian', self._dc_dx)
+			print_formatted('Boundary Jacobian Initial', self._db_dy0)
+			print_formatted('Boundary Jacobian Initial', self._db_dyF)
 
 		# Initial iteration setup
 		# self._mesh_iterations[0]._initialise_iteration(self.initial_guess)

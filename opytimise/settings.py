@@ -1,6 +1,6 @@
 class Settings():
 
-	def __init__(self, *, optimal_control_problem=None, collocation_matrix_form='integral', nlp_solver='ipopt', linear_solver='mumps', tolerance=10e-7, max_iterations=2000, quadrature_method='lobatto', mesh_refinement_method=None, collocation_points_min=2, collocation_points_max=5):
+	def __init__(self, *, optimal_control_problem=None, collocation_matrix_form='integral', nlp_solver='ipopt', linear_solver='mumps', tolerance=10e-7, max_iterations=2000, quadrature_method='lobatto', mesh_refinement_method=None, collocation_points_min=2, collocation_points_max=7):
 
 		# Optimal Control Problem
 		self._ocp = optimal_control_problem
@@ -117,6 +117,12 @@ class Settings():
 	def collocation_points_min(self, points_min):
 		points_min = int(points_min)
 		self._col_points_min = points_min
+		if points_min < 2:
+			msg = ("The minimum number of collocation points must be great than 2.")
+			raise ValueError(msg)
+		if points_min > 3:
+			msg = ("It is recommended that a minimum of 2 or 3 collocation points is used per mesh section to allow for efficient computation.")
+			raise ValueError(msg)
 
 	@property
 	def collocation_points_max(self):
@@ -128,8 +134,8 @@ class Settings():
 		if points_max < self._col_points_min:
 			msg = ("The maximum number of collocation points must be greater than or equal to {}, the minimum number of collocation points.")
 			raise ValueError(msg.format(self._col_points_min))
-		if points_max >= 20:
-			msg = ("The maximum number of collocation points recommended in a single mesh sections is 20 due to the numerical instabilty of Lagrange polynomial interpolation above this threshold.")
+		if points_max > 10:
+			msg = ("The maximum number of collocation points recommended in a single mesh sections is 10 due to the numerical instabilty of Lagrange polynomial interpolation above this threshold.")
 			raise ValueError(msg)
 		self._col_points_max = points_max
 

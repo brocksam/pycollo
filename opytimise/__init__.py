@@ -12,4 +12,4 @@ from .optimal_control_problem import OptimalControlProblem
 
 from .settings import Settings
 
-from .utils import quadrature_points, D_matricies
+# from .utils import quadrature_points

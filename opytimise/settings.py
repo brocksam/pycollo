@@ -19,10 +19,6 @@ class Settings():
 		self.collocation_points_min = collocation_points_min
 		self.collocation_points_max = collocation_points_max
 
-	# @property
-	# def optimal_control_problem(self):
-	# 	return self._optimal_control_problem
-
 	@property
 	def collocation_matrix_form(self):
 		return self._col_mat_form

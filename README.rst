@@ -1,7 +1,7 @@
-opyt
-====
+pycollo
+=======
 
-opyt, a combination of 'Python' and 'optimisation', is a Python package for solving general purpose, single phase optimal control problems using direct collocation and the NLP solver IPOPT.
+pycollo, a combination of 'Python' and 'collocation', is a Python package for solving general purpose, single phase optimal control problems using direct orthogonal collocation and the NLP solver IPOPT.
 
 Getting Started:
 ----------------
@@ -21,12 +21,12 @@ About:
 Contributing:
 -------------
 
-opyt is currently under development and as such contributions are not accepted.
+pycollo is currently under development and as such contributions are not accepted.
 
 Versioning:
 -----------
 
-opyt is currently under development and as such version 0.0.0 is work in progress.
+pycollo is currently under development and as such version 0.0.0 is work in progress.
 
 Authors:
 --------

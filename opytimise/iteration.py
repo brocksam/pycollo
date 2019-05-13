@@ -4,12 +4,13 @@ import ipopt
 import matplotlib.pyplot as plt
 import numba as nb
 import numpy as np
+import scipy.integrate as integrate
 import scipy.interpolate as interpolate
 import scipy.sparse as sparse
 import sympy as sym
 
 from opytimise.guess import Guess
-from opytimise.utils import numbafy
+from opytimise.utils import (numbafy, romberg)
 
 class Iteration:
 
@@ -80,9 +81,11 @@ class Iteration:
 			return new_guess
 
 		# Mesh
-		t0 = prev_guess._t[0]
-		tF = prev_guess._t[-1]
-		self._mesh._generate_mesh(t0, tF)
+		t_0 = prev_guess._t[0]
+		t_F = prev_guess._t[-1]
+		self._mesh._strech = 2/(t_F + t_0)
+		self._mesh._shift = (t_F + t_0)/(t_F - t_0)
+		self._mesh._generate_mesh(t_0, t_F)
 
 		# Guess
 		if self._ocp._num_y_vars:
@@ -96,12 +99,13 @@ class Iteration:
 			new_u = np.array([])
 
 		self._guess = Guess(
-			optimal_control_problem=self._ocp,
-			time=self._mesh._t,
-			state=new_y,
-			control=new_u,
-			integral=prev_guess._q,
-			parameter=prev_guess._s)
+			optimal_control_problem=self._ocp)
+		self._guess._t = self._mesh._t
+		self._guess._y = new_y
+		self._guess._u = new_u
+		self._guess._q = prev_guess._q
+		# self._guess._t = prev_guess._t
+		self._guess._s = prev_guess._s
 
 		# Variables
 		self._num_y = self._ocp._num_y_vars * self._mesh._N
@@ -227,11 +231,10 @@ class Iteration:
 			x_tuple = self._ocp._x_reshape_lambda(x, num_yu, yu_qts_split)
 			return x_tuple
 
+		self._reshape_x = reshape_x
+
 		def reshape_x_point(x):
-			num_yu = self._ocp._num_y_vars + self._ocp._num_u_vars
-			yu_qts_split = self._q_slice.start
-			x_tuple = self._ocp._x_reshape_lambda_point(x, num_yu, yu_qts_split)
-			return x_tuple
+			return self._ocp._x_reshape_lambda_point(x, self._ocp._num_y_vars, self._y_slice.stop, self._q_slice.start)
 
 		# Generate objective function lambda
 		def objective(x):
@@ -346,22 +349,19 @@ class Iteration:
 			raise NotImplementedError
 
 	def _solve(self):
+
 		nlp_solution, nlp_solution_info = self._nlp_problem.solve(self._guess._x)
 		self._solution = Solution(self, nlp_solution, nlp_solution_info)
-		
-		# solution = np.array(solution)
-		# y = solution[self._y_slice].reshape(self._ocp._num_y_vars, -1)
-		# u = solution[self._u_slice].reshape(self._ocp._num_u_vars, -1)
-		# q = solution[self._q_slice]
-		# print(y)
+		self._solution._calculate_discretisation_mesh_error()
+		# solution = np.array(nlp_solution)
+		# y = nlp_solution[self._y_slice].reshape(self._ocp._num_y_vars, -1)
+		# u = nlp_solution[self._u_slice].reshape(self._ocp._num_u_vars, -1)
+		# q = nlp_solution[self._q_slice]
 
 		# plt.plot(self._mesh._t, y[0, :], 'b', self._mesh._t, u[0, :], 'r')
 		# plt.show()
 		# print(info)
 		# pass
-
-	def _calculate_discretisation_mesh_error(self):
-		pass
 
 	def _refine_new_mesh(self):
 		pass
@@ -372,10 +372,14 @@ class Solution:
 	def __init__(self, iteration, nlp_solution, nlp_solution_info):
 		self._it = iteration
 		self._ocp = iteration._ocp
-		self._nlp_solution = np.array(nlp_solution)
+		self._mesh = iteration._mesh
+		self._nlp_solution = nlp_solution
 		self._nlp_solution_info = nlp_solution_info
+		self._x = np.array(nlp_solution)
 		if self._ocp._settings._nlp_solver == 'ipopt':
 			self._process_solution = self._process_ipopt_solution
+		else:
+			raise NotImplementedError
 		self._process_solution()
 
 	@property
@@ -399,19 +403,71 @@ class Solution:
 		return self._s
 
 	def _process_ipopt_solution(self):
-		self._y = self._nlp_solution[self._it._y_slice].reshape(self._ocp._num_y_vars, -1)
-		self._u = self._nlp_solution[self._it._u_slice].reshape(self._ocp._num_u_vars, -1)
-		self._q = self._nlp_solution[self._it._q_slice]
-		self._t = self._it._mesh._t
-		self._s = self._nlp_solution[self._it._s_slice]
-
-	def _interpolate_solution(self):
-		for mesh_sec in self._it._mesh._
-
-		print(self.state)
+		self._y = self._x[self._it._y_slice].reshape(self._ocp._num_y_vars, -1)
+		self._dy = self._ocp._dy_lambda(*self._it._reshape_x(self._x))
+		self._u = self._x[self._it._u_slice].reshape(self._ocp._num_u_vars, -1)
+		self._q = self._x[self._it._q_slice]
+		self._t = self._x[self._it._t_slice]
+		self._s = self._x[self._it._s_slice]
+		self._interpolate_solution()
 
 	def _process_snopt_solution(self, solution):
 		raise NotImplementedError
+
+	def _interpolate_solution(self):
+		self._y_polys = np.empty((self._ocp._num_y_vars, self._mesh._K), dtype=object)
+		self._dy_polys = np.empty((self._ocp._num_y_vars, self._mesh._K), dtype=object)
+		self._u_polys = np.empty((self._ocp._num_u_vars, self._mesh._K), dtype=object)
+
+		for i_y, state_deriv in enumerate(self._dy):
+			for i_k, (i_start, i_stop) in enumerate(zip(self._mesh._mesh_index_boundaries[:-1], self._mesh._mesh_index_boundaries[1:])):
+				t_k = self._mesh._t[i_start:i_stop+1]
+				dy_k = state_deriv[i_start:i_stop+1]
+				dy_poly = np.polynomial.Polynomial.fit(t_k, dy_k, deg=self._mesh._mesh_col_points[i_k]-1, window=[0, 1])
+				y_poly = dy_poly.integ(k=self._y[i_y, i_start])
+				self._y_polys[i_y, i_k] = y_poly
+				self._dy_polys[i_y, i_k] = dy_poly
+
+		for i_u, control in enumerate(self._u):
+			for i_k, (i_start, i_stop) in enumerate(zip(self._mesh._mesh_index_boundaries[:-1], self._mesh._mesh_index_boundaries[1:])):
+				t_k = self._mesh._t[i_start:i_stop+1]
+				u_k = control[i_start:i_stop+1]
+				u_poly = np.polynomial.Polynomial.fit(t_k, u_k, deg=self._mesh._mesh_col_points[i_k]-1, window=[0, 1])
+				self._u_polys[i_u, i_k] = u_poly
+
+	def _calculate_discretisation_mesh_error(self):
+
+		def eval_poly(t, polys):
+			return np.array([poly(t) for poly in polys])
+
+		def error_calc(t, i_y, y_polys, dy_polys, u_polys):
+			y_vars = eval_poly(t, y_polys).tolist()
+			u_vars = eval_poly(t, u_polys).tolist()
+			q_vars = self._q.tolist()
+			t_vars = self._t.tolist()
+			s_vars = self._s.tolist()
+			x = ([np.array([val]) for val in y_vars + u_vars] + q_vars + t_vars + s_vars)
+			dy = self._ocp._dy_lambda(*x)
+			epsilon = eval_poly(t, dy_polys)[i_y] - dy[i_y]
+			return np.abs(epsilon)
+
+		mesh_error = np.empty((self._ocp._num_y_vars, self._mesh._K))
+		t_knots = (self._mesh._t[self._mesh._mesh_index_boundaries])
+		for i_k, (t_knot_start, t_knot_end) in enumerate(zip(t_knots[:-1], t_knots[1:])):
+			for i_y in range(self._ocp._num_y_vars):
+				y_polys = self._y_polys[:, i_k]
+				dy_polys = self._dy_polys[:, i_k]
+				u_polys = self._u_polys[:, i_k] 
+
+				mesh_error[i_y, i_k] = romberg(error_calc, t_knot_start, t_knot_end, args=(i_y, y_polys, dy_polys, u_polys), divmax=25)
+
+		print(mesh_error)
+
+		print(np.amax(mesh_error, axis=0))
+
+	def _patterson_discreisation_mesh_error(self):
+		pass
+
 
 
 class IPOPTProblem:

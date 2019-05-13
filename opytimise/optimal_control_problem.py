@@ -1,14 +1,15 @@
-import collections
-
+import numba as nb
 import numpy as np
 import sympy as sym
+import sympy.physics.mechanics as me
 
-from opytimise.auxiliary_data import AuxiliaryData
 from opytimise.bounds import Bounds
 from opytimise.guess import Guess
 from opytimise.iteration import Iteration
 from opytimise.mesh import Mesh
+from opytimise.quadrature import Quadrature
 from opytimise.settings import Settings
+from opytimise.utils import numbafy
 
 """
 Parameters are definied in accordance with Betts, JT (2010). Practical Methods for Optimal Control and Estimiation Using Nonlinear Programming (Second Edition).
@@ -25,6 +26,9 @@ Parameters:
 	c: vector of path constraint equations (equal to zero).
 	s: free parameters.
 	q: vector of integral constraints.
+	delta: defect constraints.
+	rho: integral constraints.
+	beta: boundary constraints.
 
 	N: number of temporal nodes in collocation.
 
@@ -37,38 +41,38 @@ Notes:
 
 class OptimalControlProblem():
 
-	def __init__(self, state_variables=None, control_variables=None, parameter_variables=[], state_equations=None, *, bounds=None, initial_guess=None, initial_mesh=None, path_constraints=None, integrand_functions=None, objective_function=None, boundary_constraints=None, settings=None, auxiliary_data=None):
+	def __init__(self, state_variables=None, control_variables=None, parameter_variables=None, state_equations=None, *, bounds=None, initial_guess=None, initial_mesh=None, path_constraints=None, integrand_functions=None, objective_function=None, boundary_constraints=None, settings=None, auxiliary_data=None):
 
 		# Set settings
 		self.settings = settings
 
-		# Auxiliary data
-		self.auxiliary_data = auxiliary_data
-
 		# Initialise problem description
-		self._y_vars = sym.Matrix.zeros(0, 1)
-		self._u_vars = sym.Matrix.zeros(0, 1)
-		self._q_vars = sym.Matrix.zeros(0, 1)
-		self._t_vars = sym.Matrix.zeros(0, 1)
-		self._s_vars = sym.Matrix.zeros(0, 1)
-		self._y_eqns = sym.Matrix.zeros(0, 1)
+		self._t0_user = sym.Symbol('t0')
+		self._tF_user = sym.Symbol('tF')
+		self._y_vars_user = ()
+		self._u_vars_user = ()
+		self._q_vars_user = ()
+		self._t_vars_user = (self._t0_user, self._tF_user)
+		self._s_vars_user = ()
 
-		self._c_cons = sym.Matrix.zeros(0, 1)
-		self._b_cons = sym.Matrix.zeros(0, 1)
-
-		# Variables
+		self._y_eqns_user = ()
+		self._c_cons_user = ()
+		self._q_funcs_user = ()
+		self._b_cons_user = ()
+		
+		# Variables, constraints and functions
 		self.state_variables = state_variables
 		self.control_variables = control_variables
 		self.parameter_variables = parameter_variables
+
 		self.state_equations = state_equations
-
-		# Continuous constraints and functions
-		self.integrand_functions = integrand_functions
 		self.path_constraints = path_constraints
-
-		# Endpoint constraints and functions
-		self.objective_function = objective_function
+		self.integrand_functions = integrand_functions
 		self.boundary_constraints = boundary_constraints
+
+		self.objective_function = objective_function
+
+		self.auxiliary_data = dict(auxiliary_data) if auxiliary_data else {}
 
 		# Set bounds
 		self.bounds = bounds
@@ -87,160 +91,149 @@ class OptimalControlProblem():
 		self._mesh_iterations.append(initial_iteration)
 
 	@staticmethod
-	def _format_as_np_array(iterable):
-		if iterable is None:
-			iterable = np.array([])
-		try:
-			iter(iterable)
-		except TypeError:
-			iterable = (iterable, )
-		return np.array(iterable)
-
-	@staticmethod
-	def _format_as_sym_matrix(iterable):
+	def _format_as_tuple(iterable):
 		if not iterable:
-			iterable = sym.Matrix.zeros(0, 1)
+			return ()
 		try:
 			iter(iterable)
 		except TypeError:
 			iterable = (iterable, )
-		return sym.Matrix(iterable)
+		iterable_tuple = tuple(sym.sympify(symbol) for symbol in iterable)
+		return iterable_tuple
 
-	@staticmethod
-	def _check_sym_name_clash(syms):
-		pass
+	def _check_sym_name_clash(self, syms):
+		for sym in syms:
+			if str(sym)[0] == '_':
+				msg = (f"The user defined symbol {sym} is invalid as its leading character, '_' is reserved for use by `pycollo`. Please rename this symbol.")
+				raise ValueError(msg)
+			elif str(sym)[-4:] == '(t0)':
+				msg = (f"The user defined symbol {sym} is invalid as it is named with the suffix '_t0' which is reserved for use by `pycollo`. Please rename this symbol.")
+				raise ValueError(msg)
+			elif str(sym)[-4:] == '(tF)':
+				msg = (f"The user defined symbol {sym} is invalid as it is named with the suffix '_tF' which is reserved for use by `pycollo`. Please rename this symbol.")
+				raise ValueError(msg)
+
+		if (len(set(syms)) != len(syms)) or (len(self._x_vars_user) != (len(self._y_vars_user) + len(self._u_vars_user) + len(self._q_vars_user) + len(self._t_vars_user) + len(self._s_vars_user))):
+			msg = (f"All user defined symbols must have unique names.")
+			raise ValueError(msg)
 
 	@property
-	def state_variables(self):
-		return self._y_vars
+	def initial_time(self):
+		return self._t0_user
 
-	@state_variables.setter
-	def state_variables(self, y_vars):
-		# self._y_vars = self._format_as_np_array(y_vars)
-		self._y_vars = self._format_as_sym_matrix(y_vars)
-		self._num_y_vars = self._y_vars.shape[0]
-		self._update_vars()
-		self._y_t0 = [sym.symbols(str(y)[:-3] + '(_t0)') for y in self._y_vars]
-		self._y_tF = [sym.symbols(str(y)[:-3] + '(_tF)') for y in self._y_vars]
+	@property
+	def final_time(self):
+		return self._tF_user
 
 	@property
 	def initial_state(self):
-		return self._y_t0
-		# y_t0 = [sym.symbols(str(y)[:-3] + '(t0)') for y in self._y_vars]
-		# return np.array(y_t0)
+		return self._y_t0_user
 	
 	@property
 	def final_state(self):
-		return self._y_tF
-		# y_tF = [sym.symbols(str(y)[:-3] + '(tF)') for y in self._y_vars]
-		# return np.array(y_tF)
+		return self._y_tF_user
+
+	@property
+	def state_variables(self):
+		return self._y_vars_user
+
+	@state_variables.setter
+	def state_variables(self, y_vars):
+		self._y_vars_user = self._format_as_tuple(y_vars)
+		self._y_t0_user = tuple(sym.symbols(f'{y}(t0)') for y in self._y_vars_user)
+		self._y_tF_user = tuple(sym.symbols(f'{y}(tF)') for y in self._y_vars_user)
+		self._update_vars()
+		self._check_sym_name_clash(self._y_vars_user)
 	
 	@property
 	def control_variables(self):
-		return self._u_vars
+		return self._u_vars_user
 
 	@control_variables.setter
 	def control_variables(self, u_vars):
-		self._u_vars = self._format_as_sym_matrix(u_vars)
-		self._num_u_vars = self._u_vars.shape[0]
+		self._u_vars_user = self._format_as_tuple(u_vars)
 		self._update_vars()
+		self._check_sym_name_clash(self._u_vars_user)
 
 	@property
 	def integral_variables(self):
-		return self._q_vars
-
-	@property
-	def integrand_functions(self):
-		return self._q_funcs
-
-	@integrand_functions.setter
-	def integrand_functions(self, integrands):
-		integrands_dict = collections.OrderedDict()
-		integrand_functions = self._format_as_sym_matrix(integrands)
-		for index, integrand in enumerate(integrand_functions):
-			symbol = sym.symbols("q_{}".format(index))
-			integrands_dict.update({symbol: integrand})
-		self._q_vars = sym.Matrix(list(integrands_dict.keys()))
-		self._q_funcs = sym.Matrix(list(integrands_dict.values()))
-		self._num_q_vars = self._q_vars.shape[0]
-		self._update_vars()
-
-		# integrands_dict = collections.OrderedDict()
-		# if integrands:
-		# 	integrand_functions = self._format_as_np_array(integrands)
-		# 	for index, integrand in enumerate(integrand_functions):
-		# 		symbol = sym.symbols("q_{}".format(index))
-		# 		integrands_dict.update({symbol: integrand})
-		# 	self._q_vars = np.array(list(integrands_dict.keys()))
-		# 	self._q_funcs = np.array(list(integrands_dict.values()))
-		# 	self._num_q_vars = len(self._q_vars)
-		# else:
-		# 	self._q_vars = np.array([])
-		# 	self._q_funcs = np.array([])
-		# 	self._num_q_vars = 0
-		# self._q_func_map = integrands_dict
-		# self._update_vars()
+		return self._q_vars_user
 
 	@property
 	def time_variables(self):
-		return self._t_vars
+		return self._t_vars_user
 	
 	@property
 	def parameter_variables(self):
-		return self._s_vars
+		return self._s_vars_user
 
 	@parameter_variables.setter
 	def parameter_variables(self, s_vars):
-		self._s_vars = self._format_as_sym_matrix(s_vars)
-		self._num_s_vars = self._s_vars.shape[0]
+		s_vars = self._format_as_tuple(s_vars)
+		self._s_vars_user = tuple(s_vars)
 		self._update_vars()
+		self._check_sym_name_clash(self._s_vars_user)
 
 	@property
 	def variables(self):
-		return self._x_vars
-
-	@property
-	def _num_vars(self):
-		return self._x_vars
+		return self._x_vars_user
 
 	def _update_vars(self):
-
-		# Variable index slices
-		self._x_vars = sym.Matrix([self._y_vars, self._u_vars, self._q_vars, self._t_vars, self._s_vars])
-		self._num_x_vars = self._x_vars.shape[0]
-
-		# self._aux_data._y_map = dict()
-		# for index, state in enumerate(self._y_vars):
-		# 	self._aux_data._y_map.update({state: index})
-
-		# self._aux_data._u_map = dict()
-		# for index, control in enumerate(self._u_vars):
-		# 	self._aux_data._u_map.update({control: index})
-
-		# self._aux_data._q_map = dict()
-		# for index, integral in enumerate(self._q_vars):
-		# 	self._aux_data._q_map.update({integral: index})
-
-		# self._aux_data._t_map = dict()
-		# for index, time in enumerate(self._t_vars):
-		# 	self._aux_data._t_map.update({time: index})
-
-		# self._aux_data._s_map = dict()
-		# for index, parameter in enumerate(self._s_vars):
-		# 	self._aux_data._s_map.update({parameter: index})
-
-		# self._aux_data._x_map = dict()
-		# for index, variable in enumerate(self._x_vars):
-		# 	self._aux_data._x_map.update({variable: index})
+		self._x_vars_user = tuple(self._y_vars_user + self._u_vars_user + self._q_vars_user + self._t_vars_user + self._s_vars_user)
+		self._x_b_vars_user = tuple(self._y_t0_user + self._y_tF_user + self._q_vars_user + self._t_vars_user + self._s_vars_user)
 
 	@property
 	def state_equations(self):
-		return self._y_eqns
+		return self._y_eqns_user
 
 	@state_equations.setter
 	def state_equations(self, y_eqns):
-		self._y_eqns = self._format_as_sym_matrix(y_eqns)
-		self._num_y_eqns = self._y_eqns.shape[0]
+		y_eqns = self._format_as_tuple(y_eqns)
+		self._y_eqns_user = tuple(y_eqns)
+
+	@property
+	def path_constraints(self):
+		return self._c_cons_user
+
+	@path_constraints.setter
+	def path_constraints(self, c_cons):
+		c_cons = self._format_as_tuple(c_cons)
+		self._c_cons_user = tuple(c_cons)
+
+	@property
+	def integrand_functions(self):
+		return self._q_funcs_user
+
+	@integrand_functions.setter
+	def integrand_functions(self, integrands):
+		self._q_funcs_user = self._format_as_tuple(integrands)
+		self._q_vars_user = tuple(sym.symbols(f'_q{i_q}') for i_q, _ in enumerate(self._q_funcs_user))
+		self._update_vars()
+
+	@property
+	def boundary_constraints(self):
+		return self._b_cons_user
+
+	@boundary_constraints.setter
+	def boundary_constraints(self, b_cons):
+		b_cons = self._format_as_tuple(b_cons)
+		self._b_cons_user = tuple(b_cons)
+
+	@property
+	def objective_function(self):
+		return self._J_user
+
+	@objective_function.setter
+	def objective_function(self, J):
+		self._J_user = sym.sympify(J)
+
+	@property
+	def auxiliary_data(self):
+		return self._aux_data_user
+	
+	@auxiliary_data.setter
+	def auxiliary_data(self, aux_data):
+		self._aux_data_user = dict(aux_data)
 
 	@property
 	def bounds(self):
@@ -275,32 +268,6 @@ class OptimalControlProblem():
 		return len(self._mesh_iterations)
 
 	@property
-	def objective_function(self):
-		return self._J
-	
-	@objective_function.setter
-	def objective_function(self, J):
-		self._J = J
-
-	@property
-	def path_constraints(self):
-		return self._c_cons
-
-	@path_constraints.setter
-	def path_constraints(self, c_cons):
-		self._c_cons = self._format_as_sym_matrix(c_cons)
-		self._num_c_cons = self._c_cons.shape[0]
-	
-	@property
-	def boundary_constraints(self):
-		return self._b_cons
-
-	@boundary_constraints.setter
-	def boundary_constraints(self, b_cons):
-		self._b_cons = self._format_as_sym_matrix(b_cons)
-		self._num_b_cons = self._b_cons.shape[0]
-
-	@property
 	def settings(self):
 		return self._settings
 	
@@ -312,25 +279,336 @@ class OptimalControlProblem():
 			self._settings = settings
 			self._settings._ocp = self
 
-	@property
-	def auxiliary_data(self):
-		return self._aux_data
-	
-	@auxiliary_data.setter
-	def auxiliary_data(self, aux_data):
-		if aux_data is None:
-			self._aux_data = AuxiliaryData(optimal_control_problem=self)
+	def _compile_numba_functions(self):
+
+		def reshape_x(x, num_yu, yu_qts_split):
+			x = np.array(x)
+			yu = x[:yu_qts_split].reshape(num_yu, -1)
+			qts = x[yu_qts_split:].reshape(len(x) - yu_qts_split, )
+			x_tuple = (*yu, *qts)
+			return x_tuple
+
+		def reshape_x_point(x, num_y, y_u_split, u_q_split):
+			x = np.array(x)
+			yu_t0 = x[:y_u_split].reshape(num_y, -1)[:, 0]
+			yu_tF = x[:y_u_split].reshape(num_y, -1)[:, -1]
+			qts = x[u_q_split:].reshape(len(x) - u_q_split,)
+			x_tuple = (*yu_t0, *yu_tF, *qts)
+			return x_tuple
+
+		self._x_reshape_lambda = reshape_x
+		self._x_reshape_lambda_point = reshape_x_point
+
+		self._J_lambda = numbafy(expression=self._J, parameters=self._x_vars, constants=self._aux_data, return_dims=0)
+
+		self._g_yu_lambda = numbafy(expression=self._dJ_dx[self._yu_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2, return_flat=True)
+
+		self._g_qts_lambda = numbafy(expression=self._dJ_dx[self._qts_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=1)
+
+		def g_lambda(x_tuple, num_x, yu_slice, qts_slice):
+			g = np.empty(num_x)
+			g[yu_slice] = self._g_yu_lambda(*x_tuple)
+			g[qts_slice] = self._g_qts_lambda(*x_tuple)
+			return g
+
+		self._g_lambda = g_lambda
+
+		self._dy_lambda = numbafy(expression=self._y_eqns, parameters=self._x_vars, constants=self._aux_data, return_dims=2)
+
+		def c_defect_lambda(x_tuple, ocp_y_slice, A, D):
+			y = np.vstack(x_tuple[ocp_y_slice])
+			dy = self._dy_lambda(*x_tuple)
+			return (np.matmul(D, y.T) + np.matmul(A, dy.T)).flatten(order='F')
+
+		self._c_defect_lambda = c_defect_lambda
+
+		def c_path_lambda(x_tuple):
+			return 0
+
+		self._c_path_lambda = c_path_lambda
+
+		rho_lambda = numbafy(expression=self._q_funcs, parameters=self._x_vars, constants=self._aux_data, return_dims=2)
+
+		def c_integral_lambda(x_tuple, q_slice, W):
+			q = np.array(x_tuple[q_slice])
+			g = rho_lambda(*x_tuple)
+			return q - np.matmul(g, W)
+
+		self._c_integral_lambda = c_integral_lambda
+
+		beta_lambda = numbafy(expression=self._b_cons, parameters=self._x_b_vars, constants=self._aux_data, return_dims=1)
+
+		def c_boundary_lambda(x_tuple_point):
+			return beta_lambda(*x_tuple_point)
+
+		self._c_boundary_lambda = c_boundary_lambda
+
+		def c_lambda(x_tuple, x_tuple_point, ocp_y_slice, ocp_q_slice, num_c, defect_slice, path_slice, integral_slice, boundary_slice, A, D, W):
+			c = np.empty(num_c)
+			c[defect_slice] = self._c_defect_lambda(x_tuple, ocp_y_slice, A, D)
+			c[path_slice] = self._c_path_lambda(x_tuple)
+			c[integral_slice] = self._c_integral_lambda(x_tuple, ocp_q_slice, W)
+			c[boundary_slice] = self._c_boundary_lambda(x_tuple_point)
+			return c
+
+		self._c_lambda = c_lambda
+
+		print(self._dc_dx)
+		print(self._x_b_vars)
+		print('\n\n\n')
+
+		ddy_dy_lambda = numbafy(expression=self._dc_dx[self._c_defect_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2)
+
+		ddy_du_lambda = numbafy(expression=self._dc_dx[self._c_defect_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2)
+
+		drho_dy_lambda = numbafy(expression=self._dc_dx[self._c_integral_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2)
+
+		drho_du_lambda = numbafy(expression=self._dc_dx[self._c_integral_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2)
+
+		dbeta_dy0_lambda = numbafy(expression=self._db_dy0, parameters=self._x_b_vars, constants=self._aux_data, return_dims=1)
+
+		dbeta_dyF_lambda = numbafy(expression=self._db_dyF, parameters=self._x_b_vars, constants=self._aux_data, return_dims=1)
+
+		def G_dzeta_dy_lambda(x_tuple, A, D, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice):
+			ddy_dy = ddy_dy_lambda(*x_tuple)
+			G_dzeta_dy = np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_dy))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
+			G_dzeta_dy[dzeta_dy_D_nonzero] += (D[np.nonzero(D)] * np.ones((2,1))).flatten()
+			return G_dzeta_dy
+
+		def G_dzeta_du_lambda(x_tuple, A, A_row_col_array):
+			ddy_du = ddy_du_lambda(*x_tuple)
+			G_dzeta_du = np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_du))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
+			return G_dzeta_du
+
+		def G_dzeta_dt_lambda(x_tuple):
+			return np.zeros((0,))
+
+		def G_dzeta_ds_lambda(x_tuple):
+			return np.zeros((0,))
+
+		def G_dgamma_dy_lambda(x_tuple):
+			return np.zeros((0,))
+
+		def G_dgamma_du_lambda(x_tuple):
+			return np.zeros((0,))
+
+		def G_dgamma_dt_lambda(x_tuple):
+			return np.zeros((0,))
+
+		def G_dgamma_ds_lambda(x_tuple):
+			return np.zeros((0,))
+
+		def G_drho_dy_lambda(x_tuple, W):
+			return (- W * drho_dy_lambda(*x_tuple)).flatten()
+
+		def G_drho_du_lambda(x_tuple, W):
+			return (- W * drho_du_lambda(*x_tuple)).flatten()
+
+		def G_drho_dt_lambda(x_tuple):
+			return np.zeros((0,))
+
+		def G_drho_ds_lambda(x_tuple):
+			return np.zeros((0,))
+
+		def G_dbeta_dy0_lambda(x_tuple_point):
+			return dbeta_dy0_lambda(*x_tuple_point)
+
+		def G_dbeta_dyF_lambda(x_tuple_point):
+			return dbeta_dyF_lambda(*x_tuple_point)
+
+		def G_dbeta_dq_lambda(x_tuple):
+			return None
+
+		def G_dbeta_dt_lambda(x_tuple):
+			return None
+
+		def G_dbeta_ds_lambda(x_tuple):
+			return None
+
+		def G_lambda(x_tuple, x_tuple_point, num_G_nonzero, N, A, D, W, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dy0_slice, dbeta_dyF_slice, dbeta_dq_slice, dbeta_dt_slice, dbeta_ds_slice):
+			G = np.empty(num_G_nonzero)
+
+			G[dzeta_dy_slice] = G_dzeta_dy_lambda(x_tuple, A, D,A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice)
+			G[dzeta_du_slice] = G_dzeta_du_lambda(x_tuple, A, A_row_col_array)
+			# G[dzeta_dt_slice] = G_dzeta_dt_lambda(x_tuple)
+			# G[dzeta_ds_slice] = G_dzeta_ds_lambda(x_tuple)
+
+			G[dgamma_dy_slice] = G_dgamma_dy_lambda(x_tuple)
+			G[dgamma_du_slice] = G_dgamma_du_lambda(x_tuple)
+			# G[dgamma_dt_slice] = G_dgamma_dt_lambda(x_tuple)
+			# G[dgamma_ds_slice] = G_dgamma_ds_lambda(x_tuple)
+
+			G[drho_dy_slice] = G_drho_dy_lambda(x_tuple, W)
+			G[drho_du_slice] = G_drho_du_lambda(x_tuple, W)
+			G[drho_dq_slice] = 1
+			# G[drho_dt_slice] = G_drho_dt_lambda(x_tuple)
+			# G[drho_ds_slice] = G_drho_ds_lambda(x_tuple)
+
+			G[dbeta_dy0_slice] = G_dbeta_dy0_lambda(x_tuple_point)
+			G[dbeta_dyF_slice] = G_dbeta_dyF_lambda(x_tuple_point)
+			G[dbeta_dq_slice] = G_dbeta_dq_lambda(x_tuple_point)
+			# G[dbeta_dt_slice] = G_dbeta_dt_lambda(x_tuple_point)
+			# G[dbeta_ds_slice] = G_dbeta_ds_lambda(x_tuple_point)
+
+			return G
+
+		self._G_lambda = G_lambda
+
+	def solve(self):
+
+		# Check user-supplied bounds
+		self._bounds._bounds_check()
+
+		# User-defined symbols allowed in continuous and endpoint functions
+		self._allowed_endpoint_set = set.union(set(self._x_b_vars_user), set(self._aux_data_user.keys()))
+		self._allowed_continuous_set = set.union(set(self._y_vars_user), set(self._u_vars_user), {sym.Symbol('t')}, set(self._s_vars_user), set(self._aux_data_user.keys()))
+		
+		# Check auxiliary data
+		var_syms = set.union(set(self._x_vars_user), set(self._x_b_vars_user))
+		disallowed_syms_set = set(self._aux_data_user.keys()).intersection(set(var_syms))
+		if disallowed_syms_set:
+			disallowed_syms = ', '.join(f'{symbol}' for symbol in disallowed_syms_set)
+			msg = (f"Numerical values for {disallowed_syms} cannot be supplied as auxiliary data as these are variables in the optimal control problem.")
+			raise ValueError(msg)
+
+		# Check state equations
+		if len(self._y_eqns_user) != len(self._y_vars_user):
+			msg = (f"A differential state equation must be supplied for each state variable. {len(self._y_eqns_user)} differential equations were supplied for {len(self._y_vars_user)} state variables.")
+			raise ValueError(msg)
+		for i_y, eqn in enumerate(self._y_eqns_user):
+			eqn_syms = set.union(me.find_dynamicsymbols(eqn), eqn.free_symbols)
+			if not eqn_syms.issubset(self._allowed_continuous_set):
+				disallowed_syms = ', '.join(f'{symbol}' for symbol in eqn_syms.difference(self._allowed_continuous_set))
+				msg = (f"State equation #{i_y+1}: {eqn}, cannot be a function of {disallowed_syms}.")
+				raise ValueError(msg)
+
+		# Check path constraints
+		for i_c, con in enumerate(self._c_cons_user):
+			con_syms = set.union(me.find_dynamicsymbols(con), con.free_symbols)
+			if not con_syms.issubset(self._allowed_continuous_set):
+				disallowed_syms = ', '.join(f'{symbol}' for symbol in con_syms.difference(self._allowed_continuous_set))
+				msg = (f"Path constraint #{i_c+1}: {con}, cannot be a function of {disallowed_syms}.")
+				raise ValueError(msg)
+
+		# Check integrand functions
+		for i_q, func in enumerate(self._q_funcs_user):
+			func_syms = set.union(me.find_dynamicsymbols(func), func.free_symbols)
+			if not func_syms.issubset(self._allowed_continuous_set):
+				disallowed_syms = ', '.join(f'{symbol}' for symbol in func_syms.difference(self._allowed_continuous_set))
+				msg = (f"Integrand function #{i_q+1}: {func}, cannot be a function of {disallowed_syms}.")
+				raise ValueError(msg)
+
+		# Check endpoint constraints
+		for i_b, con in enumerate(self._b_cons_user):
+			con_syms = set.union(me.find_dynamicsymbols(con), con.free_symbols)
+			if not con_syms.issubset(self._allowed_endpoint_set):
+				disallowed_syms = ', '.join(f'{symbol}' for symbol in con_syms.difference(self._allowed_endpoint_set))
+				msg = (f"Boundary constraint #{i_c+1}: {con}, cannot be a function of {disallowed_syms}.")
+				raise ValueError(msg)
+
+		# Check objective function
+		if self._J_user is not None:
+			if not self._J_user.free_symbols:
+				msg = (f"The declared objective function {J} is invalid as it doesn't contain any Mayer terms (functions of the initial and final times and states) or any Lagrange terms (integrals of functions of the state and control variables with respect to time between the limits '_t0' and '_tF').")
+				raise ValueError(msg)
+			if isinstance(self._J_user, sym.Add):
+				bolza_set = set(self._J_user.args)
+			else:
+				bolza_set = {self._J_user}
+			for term in bolza_set:
+				term_syms = set.union(me.find_dynamicsymbols(term), term.free_symbols)
+				if not term_syms.issubset(self._allowed_endpoint_set):
+					disallowed_syms = ', '.join(f'{symbol}' for symbol in term_syms.difference(self._allowed_endpoint_set))
+					msg = (f"The objective function cannot be a function of {disallowed_syms}.")
+					raise ValueError(msg)
 		else:
-			self._aux_data = aux_data
-			self._aux_data._optimal_control_problem = self
+			allowed_syms = ', '.join(f'{symbol}' for symbol in self._x_b_vars_user)
+			msg = (f"User must supply an objective function as a function of {allowed_syms}.")
+			raise ValueError(msg)
 
-	@property
-	def nlp_problem(self):
-		return self._nlp
+		# Generate pycollo symbols and functions
+		self._aux_data = {sym.Symbol(f'_a{i_a}'): value for i_a, (_, value) in enumerate(self._aux_data_user.items())}
+		a_subs_dict = dict(zip(self._aux_data_user.keys(), self._aux_data.keys()))
 
-	@profile
-	def _generate_cons_and_derivs(self):
+		# State variables
+		y_vars = [sym.Symbol(f'_y{i_y}') for i_y, _ in enumerate(self._y_vars_user)]
+		self._y_vars = sym.Matrix([y for y, y_needed in zip(y_vars, self._bounds._y_needed) if y_needed])
+		if not self._y_vars:
+			self._y_vars = sym.Matrix.zeros(0, 1)
+		self._num_y_vars = self._y_vars.shape[0]
+		self._y_t0 = sym.Matrix([sym.Symbol(f'{y}_t0') for y in self._y_vars])
+		self._y_tF = sym.Matrix([sym.Symbol(f'{y}_tF') for y in self._y_vars])
+		self._aux_data.update({y: value for y, y_needed, value in zip(y_vars, self._bounds._y_needed, self._bounds._y_l) if not y_needed})
+		y_subs_dict = dict(zip(self._y_vars_user, y_vars))
+		y_endpoint_subs_dict = {**dict(zip(self._y_t0_user, self._y_t0)), ** dict(zip(self._y_tF_user, self._y_tF))}
 
+		# Control variables
+		u_vars = [sym.Symbol(f'_u{i_u}') for i_u, _ in enumerate(self._u_vars_user)]
+		self._u_vars = sym.Matrix([u for u, u_needed in zip(u_vars, self._bounds._u_needed) if u_needed])
+		if not self._u_vars:
+			self._u_vars = sym.Matrix.zeros(0, 1)
+		self._num_u_vars = self._u_vars.shape[0]
+		self._aux_data.update({u: value for u, u_needed, value in zip(u_vars, self._bounds._u_needed, self._bounds._u_l) if not u_needed})
+		u_subs_dict = dict(zip(self._u_vars_user, u_vars))
+
+		# Integral variables
+		q_vars = sym.Matrix(self._q_vars_user)
+		self._q_vars = sym.Matrix([q for q, q_needed in zip(q_vars, self._bounds._q_needed) if q_needed])
+		if not self._q_vars:
+			self._q_vars = sym.Matrix.zeros(0, 1)
+		self._num_q_vars = self._q_vars.shape[0]
+		self._aux_data.update({q: value for q, q_needed, value in zip(q_vars, self._bounds._q_needed, self._bounds._q_l) if not q_needed})
+
+		# Time variables
+		self._t0 = sym.Symbol('_t0')
+		self._tF = sym.Symbol('_tF')
+		t_vars = [self._t0, self._tF]
+		self._t_vars = sym.Matrix([t for t, t_needed in zip(t_vars, self._bounds._t_needed) if t_needed])
+		if not self._t_vars:
+			self._t_vars = sym.Matrix.zeros(0, 1)
+		self._num_t_vars = self._t_vars.shape[0]
+		if not self._bounds._t_needed[0]:
+			self._aux_data.update({self._t0: self._bounds._t0_l})
+		if not self._bounds._t_needed[1]:
+			self._aux_data.update({self._tF: self._bounds._tF_l})
+		t_subs_dict = dict(zip(self._t_vars_user, t_vars))
+
+		# Parameter variables
+		s_vars = [sym.Symbol(f'_s{i_s}') for i_s, _ in enumerate(self._s_vars_user)]
+		self._s_vars = sym.Matrix([s for s, s_needed in zip(s_vars, self._bounds._s_needed) if s_needed])
+		if not self._s_vars:
+			self._s_vars = sym.Matrix.zeros(0, 1)
+		self._num_s_vars = self._s_vars.shape[0]
+		self._aux_data.update({s: value for s, s_needed, value in zip(s_vars, self._bounds._s_needed, self._bounds._s_l) if not s_needed})
+		s_subs_dict = dict(zip(self._s_vars_user, s_vars))
+
+		# Variables set
+		self._x_vars = sym.Matrix([self._y_vars, self._u_vars, self._q_vars, self._t_vars, self._s_vars])
+		self._num_vars = self._x_vars.shape[0]
+		self._x_b_vars = sym.Matrix([self._y_t0, self._y_tF, self._q_vars, self._t_vars, self._s_vars])
+		self._user_subs_dict = {**y_subs_dict, **y_endpoint_subs_dict, **u_subs_dict, **t_subs_dict, **s_subs_dict, **a_subs_dict}
+
+		# State equations
+		self._y_eqns = sym.Matrix(self._y_eqns_user).subs(self._user_subs_dict) if self._y_eqns_user else sym.Matrix.zeros(0, 1)
+
+		# Path constraints
+		self._c_cons = sym.Matrix(self._c_cons_user).subs(self._user_subs_dict) if self._c_cons_user else sym.Matrix.zeros(0, 1)
+		self._num_c_cons = self._c_cons.shape[0]
+
+		# Integrand functions
+		self._q_funcs = sym.Matrix(self._q_funcs_user).subs(self._user_subs_dict) if self._q_funcs_user else sym.Matrix.zeros(0, 1)
+
+		# Boundary constraints
+		self._b_cons = sym.Matrix(self._b_cons_user).subs(self._user_subs_dict) if self._b_cons_user else sym.Matrix.zeros(0, 1)
+		self._num_b_cons = self._b_cons.shape[0]
+
+		# Objective function
+		self._J = self._J_user.subs(self._user_subs_dict)
+
+		# Check user-defined initial guess
+		self._initial_guess._guess_check()
+
+		# Generate constraint and derivative functions
 		# Variables index slices
 		self._y_slice = slice(0, self._num_y_vars)
 		self._u_slice = slice(self._y_slice.stop, self._y_slice.stop + self._num_u_vars)
@@ -340,13 +618,11 @@ class OptimalControlProblem():
 		self._yu_slice = slice(self._y_slice.start, self._u_slice.stop)
 		self._qts_slice = slice(self._q_slice.start, self._s_slice.stop)
 
-		# # Objective derivatives
-		self._J_subbed = self._J.subs(self._aux_data._consts_vals)
-		self._dJ_dx = self._J_subbed.diff(self._x_vars)
+		# Objective derivatives
+		self._dJ_dx = self._J.diff(self._x_vars)
 
 		# Constraints
 		self._c = sym.Matrix([self._y_eqns, self._c_cons, self._q_funcs, self._b_cons])
-		self._c_subbed = self._c.subs(self._aux_data._consts_vals)
 		self._num_c = self._c.shape[0]
 
 		# Constraints index slices
@@ -363,79 +639,14 @@ class OptimalControlProblem():
 		self._db_dy0 = self._b_cons.jacobian(self._y_t0)
 		self._db_dyF = self._b_cons.jacobian(self._y_tF)
 
-	def solve(self):
+		# Quadrature computations
+		self._quadrature = Quadrature(optimal_control_problem=self)
 
-		# Error checking
-		if self._num_y_eqns != self._num_y_vars:
-			msg = ("A differential equation must be supplied for each state variable. {1} differential equations were supplied for {0} state variables.")
-			raise ValueError(msg.format(self._num_y_vars, self._num_y_eqns))
-		self.bounds._bounds_check()
-		self.initial_guess._guess_check()
+		# Compile numba numerical functions
+		self._compile_numba_functions()
 
-		# Time variables
-		t_vars = []
-		if self._bounds._t0_l != self._bounds._t0_u:
-			t_vars.append(sym.symbols('_t0'))
-		if self._bounds._tF_l != self._bounds._tF_u:
-			t_vars.append(sym.symbols('_tF'))
-		self._t_vars = self._format_as_sym_matrix(t_vars)
-		self._num_t_vars = self._t_vars.shape[0]
-		self._update_vars()
+		# Initialise the initial mesh iterations
+		self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
 
-		# Constraints and derivatives
-		self._generate_cons_and_derivs()
-
-		def print_formatted(name, arg):
-			try:
-				print("\n{}: {} {}".format(name, type(arg), arg.shape), arg, sep='\n')
-			except AttributeError:
-				print("\n{}: {}".format(name, type(arg)), arg, sep='\n')
-
-		# Problem setup
-		if False:
-			print_formatted('State Variables', self._y_vars)
-			print_formatted('Control Variables', self._u_vars)
-			print_formatted('Integral Variables', self._q_vars)
-			print_formatted('Time Variables', self._t_vars)
-			print_formatted('Parameter Variables', self._s_vars)
-			print_formatted('Variables', self._x_vars)
-
-			print_formatted('State Equations', self._y_eqns)
-			
-			print_formatted('Defect Constraints', self._y_eqns)
-			print_formatted('Path Constraints', self._c_cons)
-			print_formatted('Integral Constraints', self._q_funcs)
-			print_formatted('Boundary Constraints', self._b_cons)
-			print_formatted('Constraints', self._c)
-
-			print_formatted('Objective Function', self._J_subbed)
-			print_formatted('Objective Gradient', self._dJ_dx)
-
-			print_formatted('Continuous Jacobian', self._dc_dx)
-			print_formatted('Boundary Jacobian Initial', self._db_dy0)
-			print_formatted('Boundary Jacobian Initial', self._db_dyF)
-
-		# Initial iteration setup
-		# self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
-
-		# Display generated problem initialisation
-		# print("\nJ:")
-		# print(self.objective_function)
-		# print("\ng:")
-		# print(self.objective_gradient)
-		# print("\nc:")
-		# print(self.constraints)
-		# print("\nG:")
-		# print(self.constraints_jacobian)
-		# print('\n\n\n')
-		# print(self.mesh_iterations[0].mesh.N)
-		# print(self.mesh_iterations[0].mesh.t)
-		# print(self.mesh_iterations[0].mesh.h)
-		# print('\n\n\n')
-		# print("Completed successfully.")
-		# print('\n\n\n')
-
-		# raise NotImplementedError
-
-		# Solve
-		# self._mesh_iterations[0]._solve()
+		# Solve the transcribed NLP on the initial mesh
+		self._mesh_iterations[0]._solve()

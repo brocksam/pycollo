@@ -10,8 +10,9 @@ class Mesh():
 		
 	"""
 
-	TAU_0 = -1
-	TAU_F = 1
+	_TAU_0 = -1
+	_TAU_F = 1
+	_PERIOD = _TAU_F - _TAU_0
 
 	def __init__(self, *, optimal_control_problem=None, mesh_sections=10, mesh_section_fractions=None, mesh_collocation_points=2):
 
@@ -72,27 +73,6 @@ class Mesh():
 		return self._T
 
 	@property
-	def t(self):
-		return self._t
-
-	@t.setter
-	def t (self, t):
-		self._t = t
-		self._T = self._t[-1] - self._t[0]
-		self._h = np.diff(self._t)
-		self._N = len(self._t)
-		self._mesh_index_boundaries = np.insert(np.cumsum(self._mesh_col_points - 1), 0, 0)
-		self._hK = np.diff(self._t[self._mesh_index_boundaries])
-
-		self._tau = None
-		self._H = None#np.diff(self._tau)
-		self._stretch_sym = (self._ocp._tF - self._ocp._t0)/2
-		self._shift_sym = (self._ocp._t0 + self._ocp._tF)/2
-		self._stretch_num = None
-		self._shift_num = None
-
-
-	@property
 	def _quadrature(self):
 		return self._ocp._quadrature
 	
@@ -101,16 +81,17 @@ class Mesh():
 		# Check that the number of collocation points in each mesh sections is bounded by the minimum and maximum values set in settings.
 		for section, col_points in enumerate(self._mesh_col_points):
 			if col_points < self._ocp._settings._col_points_min:
-				msg = (f"The number of collocation points, {col_points}, in mesh section {section} must be greater than or equal to {self.ocp.settings.col_points_min}.")
+				msg = (f"The number of collocation points, {col_points}, in mesh section {section} must be greater than or equal to {self.ocp.settings._col_points_min}.")
 				raise ValueError(msg)
-			if col_points > self._ocp._settings.collocation_points_max:
-				msg = (f"The number of collocation points, {col_points}, in mesh section {section} must be less than or equal to {self._ocp._settings.col_points_max}.")
+			if col_points > self._ocp._settings._col_points_max:
+				msg = (f"The number of collocation points, {col_points}, in mesh section {section} must be less than or equal to {self._ocp._settings._col_points_max}.")
 				raise ValueError(msg)
 
 		# Generate the mesh based on using the quadrature method defined by the problem's `Settings` class.
-		section_boundaries = [t0]
+
+		section_boundaries = [self._TAU_0]
 		for index, fraction in enumerate(self._mesh_sec_fracs):
-			step = (tF - t0) * fraction
+			step = self._PERIOD * fraction
 			section_boundaries.append(section_boundaries[index] + step)
 		section_boundaries = np.array(section_boundaries)
 		section_lengths = np.diff(section_boundaries)
@@ -121,8 +102,21 @@ class Mesh():
 			if self._ocp._settings._quadrature_method == 'lobatto':
 				points = points[:-1]
 			mesh.extend(list(points))
-		mesh.append(tF)
-		self.t = np.array(mesh)
+		mesh.append(self._TAU_F)
+
+		self._tau = np.array(mesh)
+		self._H = np.diff(self._tau)
+		self._N = len(self._tau)
+		self._stretch_num = (tF - t0)/2
+		self._shift_num = (t0 + tF)/2
+
+		self._t = self._stretch_num * self._tau + self._shift_num
+		self._T = self._t[-1] - self._t[0]
+		self._h = np.diff(self._t)
+		
+		self._mesh_index_boundaries = np.insert(np.cumsum(self._mesh_col_points - 1), 0, 0)
+		self._H_K = np.diff(self._tau[self._mesh_index_boundaries])
+		self._hK = np.diff(self._t[self._mesh_index_boundaries])
 
 		block_starts = self._mesh_index_boundaries[:-1]
 		num_rows = self._mesh_index_boundaries[-1]
@@ -133,11 +127,11 @@ class Mesh():
 		self._A_matrix = np.zeros(matrix_dims)
 		self._W_matrix = np.zeros(num_cols)
 
-		for block_size, hK, block_start in zip(self._mesh_col_points, self._hK, block_starts):
+		for block_size, H_K, block_start in zip(self._mesh_col_points, self._H_K, block_starts):
 			row_slice = slice(block_start, block_start+block_size-1)
 			col_slice = slice(block_start, block_start+block_size)
-			self._A_matrix[row_slice, col_slice] = self._quadrature.A_matrix(block_size) * hK
+			self._A_matrix[row_slice, col_slice] = self._quadrature.A_matrix(block_size) * H_K
 			self._D_matrix[row_slice, col_slice] = self._quadrature.D_matrix(block_size)
-			self._W_matrix[col_slice] += self._quadrature.quadrature_weight(block_size) * hK
+			self._W_matrix[col_slice] += self._quadrature.quadrature_weight(block_size) * H_K
 		self._num_c_boundary_per_y = self._D_matrix.shape[0]
 

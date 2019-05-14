@@ -340,7 +340,8 @@ class OptimalControlProblem():
 			y = np.vstack(x_tuple[ocp_y_slice])
 			dy = self._dy_lambda(*x_tuple)
 			stretch = self._t_strech_lambda(*x_tuple)
-			return (np.matmul(D, y.T) + stretch*np.matmul(A, dy.T)).flatten(order='F')
+			c_zeta = (np.matmul(D, y.T) + stretch*np.matmul(A, dy.T)).flatten(order='F')
+			return c_zeta
 
 		self._c_defect_lambda = c_defect_lambda
 
@@ -355,7 +356,8 @@ class OptimalControlProblem():
 			q = np.array(x_tuple[q_slice])
 			g = rho_lambda(*x_tuple)
 			stretch = self._t_strech_lambda(*x_tuple)
-			return q - stretch*np.matmul(g, W)
+			c_integral = q - stretch*np.matmul(g, W)
+			return c_integral
 
 		self._c_integral_lambda = c_integral_lambda
 
@@ -367,11 +369,11 @@ class OptimalControlProblem():
 		self._c_boundary_lambda = c_boundary_lambda
 
 		def c_lambda(x_tuple, x_tuple_point, ocp_y_slice, ocp_q_slice, num_c, defect_slice, path_slice, integral_slice, boundary_slice, A, D, W):
-			c = np.zeros(num_c)
-			# c[defect_slice] = self._c_defect_lambda(x_tuple, ocp_y_slice, A, D)
-			# c[path_slice] = self._c_path_lambda(x_tuple)
+			c = np.empty(num_c)
+			c[defect_slice] = self._c_defect_lambda(x_tuple, ocp_y_slice, A, D)
+			c[path_slice] = self._c_path_lambda(x_tuple)
 			c[integral_slice] = self._c_integral_lambda(x_tuple, ocp_q_slice, W)
-			# c[boundary_slice] = self._c_boundary_lambda(x_tuple_point)
+			c[boundary_slice] = self._c_boundary_lambda(x_tuple_point)
 			return c
 
 		self._c_lambda = c_lambda

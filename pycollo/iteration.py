@@ -161,7 +161,7 @@ class Iteration:
 		for i_c in range(self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y):
 			for i_t in range(self._ocp._num_t_vars):
 				row_offset = i_c
-				col_offset = (self._ocp._num_y_vars + self._ocp._num_t_vars) * self._mesh._N + i_t
+				col_offset = (self._ocp._num_y_vars + self._ocp._num_t_vars) * self._mesh._N + self._ocp._num_q_vars + i_t
 				G_nonzero_row.append(row_offset)
 				G_nonzero_col.append(col_offset)
 		dzeta_dt_slice = slice(dzeta_du_slice.stop, len(G_nonzero_row))
@@ -307,30 +307,34 @@ class Iteration:
 		self._x_bnd_l, self._x_bnd_u = self._generate_x_bounds()
 		self._c_bnd_l, self._c_bnd_u = self._generate_c_bounds()
 
-		print('\n\n\n')
+		# print('\n\n\n')
 
-		print('x:')
-		x_data = np.ones(self._num_x)
-		print(x_data, '\n')
+		# print('x:')
+		# x_data = 2*np.ones(self._num_x)
+		# print(x_data, '\n')
 
-		print('J:')
-		J = self._objective_lambda(x_data)
-		print(J, '\n')
+		# print('J:')
+		# J = self._objective_lambda(x_data)
+		# print(J, '\n')
 
-		print('g:')
-		g = self._gradient_lambda(x_data)
-		print(g, '\n')
+		# print('g:')
+		# g = self._gradient_lambda(x_data)
+		# print(g, '\n')
 
-		print('c:')
-		c = self._constraint_lambda(x_data)
-		print(c, '\n')
+		# print('c:')
+		# c = self._constraint_lambda(x_data)
+		# print(c, '\n')
 
-		print('G:')
-		G = self._jacobian_lambda(x_data)
-		print(G, '\n')
+		# print('G:')
+		# G = self._jacobian_lambda(x_data)
+		# print(G, '\n')
+
+		# print('G Structure:')
+		# G_struct = self._jacobian_structure_lambda()
+		# print(G_struct, '\n')
 		
-		print('\n\n\n')
-		raise NotImplementedError
+		# print('\n\n\n')
+		# raise NotImplementedError
 
 		# Initialise the NLP problem
 		self._initialise_nlp()

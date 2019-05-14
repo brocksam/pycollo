@@ -148,22 +148,39 @@ class Bounds():
 		self._y_l, self._y_u = parse_bounds_input(self.state, self.state_lower, self.state_upper, self._ocp._y_vars_user, 'state')
 		self._y_needed = compare_lower_and_upper(self._y_l, self._y_u, 'state')
 
+		self._y_l_needed = self._y_l[self._y_needed.astype(bool)]
+		self._y_u_needed = self._y_u[self._y_needed.astype(bool)]
+
 		# Control
 		self._u_l, self._u_u = parse_bounds_input(self.control, self.control_lower, self.control_upper, self._ocp._u_vars_user, 'control')
 		self._u_needed = compare_lower_and_upper(self._u_l, self._u_u, 'control')
+
+		self._u_l_needed = self._u_l[self._u_needed.astype(bool)]
+		self._u_u_needed = self._u_u[self._u_needed.astype(bool)]
 
 		# Integral
 		self._q_l, self._q_u = parse_bounds_input(self.integral, self.integral_lower, self.integral_upper, self._ocp._q_vars_user, 'integral')
 		self._q_needed = compare_lower_and_upper(self._q_l, self._q_u, 'integral')
 
+		self._q_l_needed = self._q_l[self._q_needed.astype(bool)]
+		self._q_u_needed = self._q_u[self._q_needed.astype(bool)]
+
 		# Time
-		self._t0_l, self._t0_u = parse_bounds_input(self.initial_time, self.initial_time_lower, self.initial_time_upper, [self._ocp._t0_user], 'initial time')
-		self._tF_l, self._tF_u = parse_bounds_input(self.final_time, self.final_time_lower, self.final_time_upper, [self._ocp._tF_user], 'final time')
+		self._t0_l, self._t0_u = parse_bounds_input(self.initial_time, self.initial_time_lower, self.initial_time_upper, [self._ocp._t0_USER], 'initial time')
+		self._tF_l, self._tF_u = parse_bounds_input(self.final_time, self.final_time_lower, self.final_time_upper, [self._ocp._tF_USER], 'final time')
+		self._t_l = np.array([self._t0_l, self._tF_l]).flatten()
+		self._t_u = np.array([self._t0_u, self._tF_u]).flatten()
 		self._t_needed = compare_lower_and_upper([self._t0_l, self._tF_l], [self._t0_u, self._tF_u], 'time')
+
+		self._t_l_needed = self._t_l[self._t_needed.astype(bool)]
+		self._t_u_needed = self._t_u[self._t_needed.astype(bool)]
 
 		# Parameter
 		self._s_l, self._s_u = parse_bounds_input(self.parameter, self.parameter_lower, self.parameter_upper, self._ocp._s_vars_user, 'parameter')
 		self._s_needed = compare_lower_and_upper(self._s_l, self._s_u, 'parameter')
+
+		self._s_l_needed = self._s_l[self._s_needed.astype(bool)]
+		self._s_u_needed = self._s_u[self._s_needed.astype(bool)]
 
 		# Path
 		self._c_l, self._c_u = parse_bounds_input(self.path, self.path_lower, self.path_upper, self._ocp._c_cons_user, 'path constraint')
@@ -172,5 +189,4 @@ class Bounds():
 		# Boundary
 		self._b_l, self._b_u = parse_bounds_input(self.boundary, self.boundary_lower, self.boundary_upper, self._ocp._b_cons_user, 'boundary constraint')
 		self._b_needed = compare_lower_and_upper(self._b_l, self._b_u, 'boundary constraint')
-
 		

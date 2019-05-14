@@ -16,9 +16,8 @@ class Guess():
 
 	@property
 	def _x(self):
-		t = np.array([t for t, t_needed in zip([self._t[0], self._t[-1]], self._ocp._bounds._t_needed) if t_needed])
+		t = np.array([t for t, t_needed in zip([self._time[0], self._time[-1]], self._ocp._bounds._t_needed) if t_needed])
 		x = np.hstack([self._y.flatten(), self._u.flatten(), self._q, t, self._s])
-		print(x)
 		return x
 
 	@property
@@ -50,6 +49,7 @@ class Guess():
 			if val < lower or val > upper:
 				msg = (f"The current guess lies outside of the bounds for the variable supplied by the user.")
 				raise ValueError(msg)
+			return val
 
 		def check_shape(guess, num_vars, name):
 			if guess.ndim == 1:
@@ -94,14 +94,14 @@ class Guess():
 		bounds = self._ocp._bounds
 
 		# Time
-		check_is_within_bounds(self._t_user[0], bounds._t0_l, bounds._t0_u)
-		check_is_within_bounds(self._t_user[-1], bounds._tF_l, bounds._tF_u)
-		t_prev = self._t_user[0]
+		self._t0 = check_is_within_bounds(self._t_user[0], bounds._t0_l, bounds._t0_u)
+		self._tF = check_is_within_bounds(self._t_user[-1], bounds._tF_l, bounds._tF_u)
+		t_prev = self._t0
 		for t in self._t_user[1:]:
 			if t <= t_prev:
 				msg = (f"Guesses must be supplied in chronological order.")
 				raise ValueError(msg)
-		self._t = self._t_user
+		self._time = np.array(self._t_user)
 
 		# State
 		y_user = parse_guess_input(self.state, self._ocp._y_vars_user, 'state', t_func=True)
@@ -117,6 +117,11 @@ class Guess():
 		q_user = parse_guess_input(self.integral, self._ocp._q_vars_user, 'integral')
 		self._q = np.array([q for q, q_needed in zip(q_user, self._ocp._bounds._q_needed) if q_needed])
 		check_shape(self._q, self._ocp._num_q_vars, 'integral')
+
+		# Time
+		t_user = np.array([self._t0, self._tF])
+		self._t = np.array([t for t, t_needed in zip(t_user, self._ocp._bounds._t_needed) if t_needed])
+		check_shape(self._t, self._ocp._num_t_vars, 'time')
 
 		# Parameter
 		s_user = parse_guess_input(self.parameter, self._ocp._s_vars_user, 'parameter')

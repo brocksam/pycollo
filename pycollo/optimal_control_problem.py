@@ -3,13 +3,13 @@ import numpy as np
 import sympy as sym
 import sympy.physics.mechanics as me
 
-from opytimise.bounds import Bounds
-from opytimise.guess import Guess
-from opytimise.iteration import Iteration
-from opytimise.mesh import Mesh
-from opytimise.quadrature import Quadrature
-from opytimise.settings import Settings
-from opytimise.utils import numbafy
+from pycollo.bounds import Bounds
+from pycollo.guess import Guess
+from pycollo.iteration import Iteration
+from pycollo.mesh import Mesh
+from pycollo.quadrature import Quadrature
+from pycollo.settings import Settings
+from pycollo.utils import numbafy
 
 """
 Parameters are definied in accordance with Betts, JT (2010). Practical Methods for Optimal Control and Estimiation Using Nonlinear Programming (Second Edition).
@@ -41,18 +41,25 @@ Notes:
 
 class OptimalControlProblem():
 
+	_t0_USER = sym.Symbol('t0')
+	_tF_USER = sym.Symbol('tF')
+	_t0 = sym.Symbol('_t0')
+	_tF = sym.Symbol('_tF')
+
+	_STRETCH = (_tF - _t0)/2
+	_SHIFT = (_t0 + _tF)/2
+
 	def __init__(self, state_variables=None, control_variables=None, parameter_variables=None, state_equations=None, *, bounds=None, initial_guess=None, initial_mesh=None, path_constraints=None, integrand_functions=None, objective_function=None, boundary_constraints=None, settings=None, auxiliary_data=None):
 
 		# Set settings
 		self.settings = settings
 
 		# Initialise problem description
-		self._t0_user = sym.Symbol('t0')
-		self._tF_user = sym.Symbol('tF')
+		
 		self._y_vars_user = ()
 		self._u_vars_user = ()
 		self._q_vars_user = ()
-		self._t_vars_user = (self._t0_user, self._tF_user)
+		self._t_vars_user = (self._t0_USER, self._tF_USER)
 		self._s_vars_user = ()
 
 		self._y_eqns_user = ()
@@ -313,12 +320,15 @@ class OptimalControlProblem():
 
 		self._g_lambda = g_lambda
 
+		self._t_strech_lambda = numbafy(expression=self._STRETCH, parameters=self._x_vars, constants=self._aux_data, return_dims=0)
+
 		self._dy_lambda = numbafy(expression=self._y_eqns, parameters=self._x_vars, constants=self._aux_data, return_dims=2)
 
 		def c_defect_lambda(x_tuple, ocp_y_slice, A, D):
 			y = np.vstack(x_tuple[ocp_y_slice])
 			dy = self._dy_lambda(*x_tuple)
-			return (np.matmul(D, y.T) + np.matmul(A, dy.T)).flatten(order='F')
+			stretch = self._t_strech_lambda(*x_tuple)
+			return (np.matmul(D, y.T) + stretch*np.matmul(A, dy.T)).flatten(order='F')
 
 		self._c_defect_lambda = c_defect_lambda
 
@@ -332,7 +342,8 @@ class OptimalControlProblem():
 		def c_integral_lambda(x_tuple, q_slice, W):
 			q = np.array(x_tuple[q_slice])
 			g = rho_lambda(*x_tuple)
-			return q - np.matmul(g, W)
+			stretch = self._t_strech_lambda(*x_tuple)
+			return q - stretch*np.matmul(g, W)
 
 		self._c_integral_lambda = c_integral_lambda
 
@@ -353,10 +364,6 @@ class OptimalControlProblem():
 
 		self._c_lambda = c_lambda
 
-		print(self._dc_dx)
-		print(self._x_b_vars)
-		print('\n\n\n')
-
 		ddy_dy_lambda = numbafy(expression=self._dc_dx[self._c_defect_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2)
 
 		ddy_du_lambda = numbafy(expression=self._dc_dx[self._c_defect_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2)
@@ -371,13 +378,15 @@ class OptimalControlProblem():
 
 		def G_dzeta_dy_lambda(x_tuple, A, D, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice):
 			ddy_dy = ddy_dy_lambda(*x_tuple)
-			G_dzeta_dy = np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_dy))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
+			stretch = self._t_strech_lambda(*x_tuple)
+			G_dzeta_dy = stretch*np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_dy))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
 			G_dzeta_dy[dzeta_dy_D_nonzero] += (D[np.nonzero(D)] * np.ones((2,1))).flatten()
 			return G_dzeta_dy
 
 		def G_dzeta_du_lambda(x_tuple, A, A_row_col_array):
 			ddy_du = ddy_du_lambda(*x_tuple)
-			G_dzeta_du = np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_du))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
+			stretch = self._t_strech_lambda(*x_tuple)
+			G_dzeta_du = stretch*np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_du))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
 			return G_dzeta_du
 
 		def G_dzeta_dt_lambda(x_tuple):
@@ -399,10 +408,12 @@ class OptimalControlProblem():
 			return np.zeros((0,))
 
 		def G_drho_dy_lambda(x_tuple, W):
-			return (- W * drho_dy_lambda(*x_tuple)).flatten()
+			stretch = self._t_strech_lambda(*x_tuple)
+			return (- stretch * W * drho_dy_lambda(*x_tuple)).flatten()
 
 		def G_drho_du_lambda(x_tuple, W):
-			return (- W * drho_du_lambda(*x_tuple)).flatten()
+			stretch = self._t_strech_lambda(*x_tuple)
+			return (- stretch * W * drho_du_lambda(*x_tuple)).flatten()
 
 		def G_drho_dt_lambda(x_tuple):
 			return np.zeros((0,))
@@ -560,17 +571,15 @@ class OptimalControlProblem():
 		self._aux_data.update({q: value for q, q_needed, value in zip(q_vars, self._bounds._q_needed, self._bounds._q_l) if not q_needed})
 
 		# Time variables
-		self._t0 = sym.Symbol('_t0')
-		self._tF = sym.Symbol('_tF')
 		t_vars = [self._t0, self._tF]
 		self._t_vars = sym.Matrix([t for t, t_needed in zip(t_vars, self._bounds._t_needed) if t_needed])
 		if not self._t_vars:
 			self._t_vars = sym.Matrix.zeros(0, 1)
 		self._num_t_vars = self._t_vars.shape[0]
 		if not self._bounds._t_needed[0]:
-			self._aux_data.update({self._t0: self._bounds._t0_l})
+			self._aux_data.update({self._t0: self._bounds._t0_l[0]})
 		if not self._bounds._t_needed[1]:
-			self._aux_data.update({self._tF: self._bounds._tF_l})
+			self._aux_data.update({self._tF: self._bounds._tF_l[0]})
 		t_subs_dict = dict(zip(self._t_vars_user, t_vars))
 
 		# Parameter variables

@@ -9,8 +9,8 @@ import scipy.interpolate as interpolate
 import scipy.sparse as sparse
 import sympy as sym
 
-from opytimise.guess import Guess
-from opytimise.utils import (numbafy, romberg)
+from pycollo.guess import Guess
+from pycollo.utils import (numbafy, romberg)
 
 class Iteration:
 
@@ -76,35 +76,22 @@ class Iteration:
 		def interpolate_to_new_mesh(num_vars, prev):
 			new_guess = np.empty((num_vars, self._mesh._N))
 			for index, row in enumerate(prev):
-				interp_func = interpolate.interp1d(prev_guess._t, row)
+				interp_func = interpolate.interp1d(prev_guess._time, row)
 				new_guess[index, :] = interp_func(self._mesh._t)
 			return new_guess
 
 		# Mesh
-		t_0 = prev_guess._t[0]
-		t_F = prev_guess._t[-1]
-		self._mesh._strech = 2/(t_F + t_0)
-		self._mesh._shift = (t_F + t_0)/(t_F - t_0)
-		self._mesh._generate_mesh(t_0, t_F)
+		self._mesh._generate_mesh(prev_guess._t0, prev_guess._tF)
 
 		# Guess
-		if self._ocp._num_y_vars:
-			new_y = interpolate_to_new_mesh(self._ocp._num_y_vars, prev_guess._y)
-		else:
-			new_y = np.array([])
-
-		if self._ocp._num_u_vars:
-			new_u = interpolate_to_new_mesh(self._ocp._num_u_vars, prev_guess._u)
-		else:
-			new_u = np.array([])
-
 		self._guess = Guess(
 			optimal_control_problem=self._ocp)
-		self._guess._t = self._mesh._t
-		self._guess._y = new_y
-		self._guess._u = new_u
+		self._guess._tau = self._mesh._tau
+		self._guess._time = self._mesh._t
+		self._guess._y = interpolate_to_new_mesh(self._ocp._num_y_vars, prev_guess._y) if self._ocp._num_y_vars else np.array([])
+		self._guess._u = interpolate_to_new_mesh(self._ocp._num_u_vars, prev_guess._u) if self._ocp._num_u_vars else np.array([])
 		self._guess._q = prev_guess._q
-		# self._guess._t = prev_guess._t
+		self._guess._t = prev_guess._t
 		self._guess._s = prev_guess._s
 
 		# Variables
@@ -287,25 +274,27 @@ class Iteration:
 		bnd_u = np.empty((self._num_x, ))
 
 		# y bounds
-		bnd_l[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_l.reshape(1, -1)).flatten('F').squeeze()
-		bnd_u[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_u.reshape(1, -1)).flatten('F').squeeze()
+		bnd_l[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_l_needed.reshape(1, -1)).flatten('F').squeeze()
+		bnd_u[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_u_needed.reshape(1, -1)).flatten('F').squeeze()
 
 		# u bounds
-		bnd_l[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_l.reshape(1, -1)).flatten('F').squeeze()
-		bnd_u[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_u.reshape(1, -1)).flatten('F').squeeze()
+		bnd_l[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_l_needed.reshape(1, -1)).flatten('F').squeeze()
+		bnd_u[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_u_needed.reshape(1, -1)).flatten('F').squeeze()
 
 		# q bounds
-		bnd_l[self._q_slice] = self._ocp._bounds._q_l
-		bnd_u[self._q_slice] = self._ocp._bounds._q_u
+		bnd_l[self._q_slice] = self._ocp._bounds._q_l_needed
+		bnd_u[self._q_slice] = self._ocp._bounds._q_u_needed
 
 		# t bounds
-		if self._ocp._num_t_vars:
-			print(self._ocp._t_vars)
-			raise NotImplementedError
+		bnd_l[self._t_slice] = self._ocp._bounds._t_l_needed
+		bnd_u[self._t_slice] = self._ocp._bounds._t_u_needed
+		# if self._ocp._num_t_vars:
+		# 	print(self._ocp._t_vars)
+		# 	raise NotImplementedError
 
 		# s bounds
-		bnd_l[self._s_slice] = self._ocp._bounds._s_l
-		bnd_u[self._s_slice] = self._ocp._bounds._s_u
+		bnd_l[self._s_slice] = self._ocp._bounds._s_l_needed
+		bnd_u[self._s_slice] = self._ocp._bounds._s_u_needed
 
 		return bnd_l, bnd_u
 

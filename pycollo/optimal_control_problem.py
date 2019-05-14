@@ -46,8 +46,10 @@ class OptimalControlProblem():
 	_t0 = sym.Symbol('_t0')
 	_tF = sym.Symbol('_tF')
 
-	_STRETCH = (_tF - _t0)/2
-	_SHIFT = (_t0 + _tF)/2
+	_STRETCH = 0.5 * (_tF - _t0)
+	_SHIFT = 0.5 * (_t0 + _tF)
+
+	_dSTRETCH_dt = np.array([-0.5, 0.5])
 
 	def __init__(self, state_variables=None, control_variables=None, parameter_variables=None, state_equations=None, *, bounds=None, initial_guess=None, initial_mesh=None, path_constraints=None, integrand_functions=None, objective_function=None, boundary_constraints=None, settings=None, auxiliary_data=None):
 
@@ -321,8 +323,18 @@ class OptimalControlProblem():
 		self._g_lambda = g_lambda
 
 		self._t_strech_lambda = numbafy(expression=self._STRETCH, parameters=self._x_vars, constants=self._aux_data, return_dims=0)
+		self._dstretch_dt = [val for val, t_needed in zip(self._dSTRETCH_dt, self._bounds._t_needed) if t_needed]
 
 		self._dy_lambda = numbafy(expression=self._y_eqns, parameters=self._x_vars, constants=self._aux_data, return_dims=2)
+
+		# print('\n\n\n')
+
+		# print('dJ/dx:')
+		# print(self._dJ_dx[self._yu_slice], '\n')
+		# print(self._dJ_dx[self._qts_slice], '\n')
+		
+		# print('\n\n\n')
+		# raise NotImplementedError
 
 		def c_defect_lambda(x_tuple, ocp_y_slice, A, D):
 			y = np.vstack(x_tuple[ocp_y_slice])
@@ -355,11 +367,11 @@ class OptimalControlProblem():
 		self._c_boundary_lambda = c_boundary_lambda
 
 		def c_lambda(x_tuple, x_tuple_point, ocp_y_slice, ocp_q_slice, num_c, defect_slice, path_slice, integral_slice, boundary_slice, A, D, W):
-			c = np.empty(num_c)
-			c[defect_slice] = self._c_defect_lambda(x_tuple, ocp_y_slice, A, D)
-			c[path_slice] = self._c_path_lambda(x_tuple)
+			c = np.zeros(num_c)
+			# c[defect_slice] = self._c_defect_lambda(x_tuple, ocp_y_slice, A, D)
+			# c[path_slice] = self._c_path_lambda(x_tuple)
 			c[integral_slice] = self._c_integral_lambda(x_tuple, ocp_q_slice, W)
-			c[boundary_slice] = self._c_boundary_lambda(x_tuple_point)
+			# c[boundary_slice] = self._c_boundary_lambda(x_tuple_point)
 			return c
 
 		self._c_lambda = c_lambda
@@ -389,8 +401,10 @@ class OptimalControlProblem():
 			G_dzeta_du = stretch*np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_du))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
 			return G_dzeta_du
 
-		def G_dzeta_dt_lambda(x_tuple):
-			return np.zeros((0,))
+		def G_dzeta_dt_lambda(x_tuple, A):
+			dy = self._dy_lambda(*x_tuple)	
+			G_dzeta_dt = np.outer(self._dstretch_dt, (np.matmul(A, dy.T).flatten(order='F'))).flatten(order='F')
+			return G_dzeta_dt
 
 		def G_dzeta_ds_lambda(x_tuple):
 			return np.zeros((0,))
@@ -415,8 +429,9 @@ class OptimalControlProblem():
 			stretch = self._t_strech_lambda(*x_tuple)
 			return (- stretch * W * drho_du_lambda(*x_tuple)).flatten()
 
-		def G_drho_dt_lambda(x_tuple):
-			return np.zeros((0,))
+		def G_drho_dt_lambda(x_tuple, W):
+			g = rho_lambda(*x_tuple)
+			return - np.outer(self._dstretch_dt, np.matmul(g, W)).flatten(order='F')
 
 		def G_drho_ds_lambda(x_tuple):
 			return np.zeros((0,))
@@ -441,7 +456,7 @@ class OptimalControlProblem():
 
 			G[dzeta_dy_slice] = G_dzeta_dy_lambda(x_tuple, A, D,A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice)
 			G[dzeta_du_slice] = G_dzeta_du_lambda(x_tuple, A, A_row_col_array)
-			# G[dzeta_dt_slice] = G_dzeta_dt_lambda(x_tuple)
+			G[dzeta_dt_slice] = G_dzeta_dt_lambda(x_tuple, A)
 			# G[dzeta_ds_slice] = G_dzeta_ds_lambda(x_tuple)
 
 			G[dgamma_dy_slice] = G_dgamma_dy_lambda(x_tuple)
@@ -452,7 +467,7 @@ class OptimalControlProblem():
 			G[drho_dy_slice] = G_drho_dy_lambda(x_tuple, W)
 			G[drho_du_slice] = G_drho_du_lambda(x_tuple, W)
 			G[drho_dq_slice] = 1
-			# G[drho_dt_slice] = G_drho_dt_lambda(x_tuple)
+			G[drho_dt_slice] = G_drho_dt_lambda(x_tuple, W)
 			# G[drho_ds_slice] = G_drho_ds_lambda(x_tuple)
 
 			G[dbeta_dy0_slice] = G_dbeta_dy0_lambda(x_tuple_point)
@@ -464,6 +479,17 @@ class OptimalControlProblem():
 			return G
 
 		self._G_lambda = G_lambda
+
+		# print('\n\n\n')
+
+		# print(self._x_vars)
+
+		# print(self._dstretch_dt)
+
+
+
+		# print('\n\n\n')
+		# raise NotImplementedError
 
 	def solve(self):
 

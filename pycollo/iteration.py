@@ -136,6 +136,7 @@ class Iteration:
 		num_A_nonzero = A_ind_array.shape[0]
 		num_D_nonzero = D_ind_array.shape[0]
 
+		# Defect constraints by state variables
 		for i_c in range(self._ocp._num_y_vars):
 			for i_y in range(self._ocp._num_y_vars):
 				row_offset = i_c * self._mesh._num_c_boundary_per_y
@@ -145,9 +146,9 @@ class Iteration:
 				G_nonzero_col.extend(list(A_row_col_array[1] + col_offset))
 				if i_c == i_y:
 					dzeta_dy_D_nonzero.extend(list(D_ind_array + ind_offset))
-
 		dzeta_dy_slice = slice(0, len(G_nonzero_row))
 
+		# Defect constraints by control variables
 		for i_c in range(self._ocp._num_y_vars):
 			for i_u in range(self._ocp._num_u_vars):
 				row_offset = i_c * self._mesh._num_c_boundary_per_y
@@ -155,14 +156,35 @@ class Iteration:
 				G_nonzero_row.extend(list(A_row_col_array[0] + row_offset))
 				G_nonzero_col.extend(list(A_row_col_array[1] + col_offset))
 		dzeta_du_slice = slice(dzeta_dy_slice.stop, len(G_nonzero_row))
+
+		# Defect constraints by time variables
+		for i_c in range(self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y):
+			for i_t in range(self._ocp._num_t_vars):
+				row_offset = i_c
+				col_offset = (self._ocp._num_y_vars + self._ocp._num_t_vars) * self._mesh._N + i_t
+				G_nonzero_row.append(row_offset)
+				G_nonzero_col.append(col_offset)
 		dzeta_dt_slice = slice(dzeta_du_slice.stop, len(G_nonzero_row))
+
+		# Defect constraint by parameter variables
+		if self._ocp._num_s_vars:
+			msg = (f"Jacobian not correctly calculating yet for problems with static parameter variables.")
+			raise NotImplementedError(msg)
 		dzeta_ds_slice = slice(dzeta_dt_slice.stop, len(G_nonzero_row))
 
+		# Path constraints by state variables
 		dgamma_dy_slice = slice(dzeta_ds_slice.stop, len(G_nonzero_row))
+
+		# Path constraints by control variables
 		dgamma_du_slice = slice(dgamma_dy_slice.stop, len(G_nonzero_row))
+
+		# Path constraints by time variables
 		dgamma_dt_slice = slice(dgamma_du_slice.stop, len(G_nonzero_row))
+
+		# Path constraints by parameter variables
 		dgamma_ds_slice = slice(dgamma_dt_slice.stop, len(G_nonzero_row))
 
+		# Integral constraints by state variables
 		for i_c in range(self._ocp._num_q_vars):
 			for i_y in range(self._ocp._num_y_vars):
 				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
@@ -171,6 +193,7 @@ class Iteration:
 				G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
 		drho_dy_slice = slice(dgamma_ds_slice.stop, len(G_nonzero_row))
 
+		# Integral constraints by control variables
 		for i_c in range(self._ocp._num_q_vars):
 			for i_u in range(self._ocp._num_u_vars):
 				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
@@ -179,15 +202,27 @@ class Iteration:
 				G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
 		drho_du_slice = slice(drho_dy_slice.stop, len(G_nonzero_row))
 
+		# Integral constraints by integral variables
 		for i_c in range(self._ocp._num_q_vars):
 			row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
-			col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars + i_c) * self._mesh._N
+			col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N  + i_c
 			G_nonzero_row.extend(list(row_offset*np.ones(self._ocp._num_q_vars, dtype=int)))
 			G_nonzero_col.extend(list(range(col_offset, self._ocp._num_q_vars + col_offset)))
 		drho_dq_slice = slice(drho_du_slice.stop, len(G_nonzero_row))
+
+		# Integral constraints by time variables
+		for i_c in range(self._ocp._num_q_vars):
+			for i_t in range(self._ocp._num_t_vars):
+				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
+				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + i_t
+				G_nonzero_row.append(row_offset)
+				G_nonzero_col.append(col_offset)
 		drho_dt_slice = slice(drho_dq_slice.stop, len(G_nonzero_row))
+
+		# Integral constraints by parameter variables
 		drho_ds_slice = slice(drho_dt_slice.stop, len(G_nonzero_row))
 
+		# Boundary constraints by state variables at t0
 		for i_c in range(self._ocp._num_b_cons):
 			for i_y in range(self._ocp._num_y_vars):
 				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c
@@ -196,6 +231,7 @@ class Iteration:
 				G_nonzero_col.extend([col_offset])
 		dbeta_dy0_slice = slice(drho_dt_slice.stop, len(G_nonzero_row))
 
+		# Boundary constraints by state variables at tF
 		for i_c in range(self._ocp._num_b_cons):
 			for i_y in range(self._ocp._num_y_vars):
 				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c
@@ -203,8 +239,14 @@ class Iteration:
 				G_nonzero_row.extend([row_offset])
 				G_nonzero_col.extend([col_offset])
 		dbeta_dyF_slice = slice(dbeta_dy0_slice.stop, len(G_nonzero_row))
+
+		# Boundary constraints by integral variables
 		dbeta_dq_slice = slice(dbeta_dyF_slice.stop, len(G_nonzero_row))
+
+		# Boundary constraints by time variables
 		dbeta_dt_slice = slice(dbeta_dq_slice.stop, len(G_nonzero_row))
+
+		# Boundary constraints by parameter variables
 		dbeta_ds_slice = slice(dbeta_dt_slice.stop, len(G_nonzero_row))
 
 		self._G_nonzero_row = G_nonzero_row
@@ -265,6 +307,31 @@ class Iteration:
 		self._x_bnd_l, self._x_bnd_u = self._generate_x_bounds()
 		self._c_bnd_l, self._c_bnd_u = self._generate_c_bounds()
 
+		print('\n\n\n')
+
+		print('x:')
+		x_data = np.ones(self._num_x)
+		print(x_data, '\n')
+
+		print('J:')
+		J = self._objective_lambda(x_data)
+		print(J, '\n')
+
+		print('g:')
+		g = self._gradient_lambda(x_data)
+		print(g, '\n')
+
+		print('c:')
+		c = self._constraint_lambda(x_data)
+		print(c, '\n')
+
+		print('G:')
+		G = self._jacobian_lambda(x_data)
+		print(G, '\n')
+		
+		print('\n\n\n')
+		raise NotImplementedError
+
 		# Initialise the NLP problem
 		self._initialise_nlp()
 
@@ -288,9 +355,6 @@ class Iteration:
 		# t bounds
 		bnd_l[self._t_slice] = self._ocp._bounds._t_l_needed
 		bnd_u[self._t_slice] = self._ocp._bounds._t_u_needed
-		# if self._ocp._num_t_vars:
-		# 	print(self._ocp._t_vars)
-		# 	raise NotImplementedError
 
 		# s bounds
 		bnd_l[self._s_slice] = self._ocp._bounds._s_l_needed

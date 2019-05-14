@@ -3,13 +3,13 @@ import numpy as np
 import sympy as sym
 import sympy.physics.mechanics as me
 
-from opytimise.bounds import Bounds
-from opytimise.guess import Guess
-from opytimise.iteration import Iteration
-from opytimise.mesh import Mesh
-from opytimise.quadrature import Quadrature
-from opytimise.settings import Settings
-from opytimise.utils import numbafy
+from pycollo.bounds import Bounds
+from pycollo.guess import Guess
+from pycollo.iteration import Iteration
+from pycollo.mesh import Mesh
+from pycollo.quadrature import Quadrature
+from pycollo.settings import Settings
+from pycollo.utils import numbafy
 
 """
 Parameters are definied in accordance with Betts, JT (2010). Practical Methods for Optimal Control and Estimiation Using Nonlinear Programming (Second Edition).

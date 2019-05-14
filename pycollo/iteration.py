@@ -9,8 +9,8 @@ import scipy.interpolate as interpolate
 import scipy.sparse as sparse
 import sympy as sym
 
-from opytimise.guess import Guess
-from opytimise.utils import (numbafy, romberg)
+from pycollo.guess import Guess
+from pycollo.utils import (numbafy, romberg)
 
 class Iteration:
 

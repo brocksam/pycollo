@@ -10,6 +10,9 @@ class Mesh():
 		
 	"""
 
+	TAU_0 = -1
+	TAU_F = 1
+
 	def __init__(self, *, optimal_control_problem=None, mesh_sections=10, mesh_section_fractions=None, mesh_collocation_points=2):
 
 		# Optimal Control Problem
@@ -20,21 +23,17 @@ class Mesh():
 		self.mesh_section_fractions = mesh_section_fractions
 		self.mesh_collocation_points = mesh_collocation_points
 
+		self._stretch = None
+		self._shift = None
+
 	@property
 	def mesh_sections(self):
-		return self._mesh_secs
+		return self._K
 	
 	@mesh_sections.setter
 	def mesh_sections(self, mesh_sections):
-		self._mesh_secs = int(mesh_sections)
-
-	@property
-	def _K(self):
-		return self._mesh_secs
-
-	@property
-	def _Kplus1(self):
-		return self._mesh_secs + 1
+		self._K = int(mesh_sections)
+		self._Kplus1 = self._K + 1
 
 	@property
 	def mesh_section_fractions(self):
@@ -43,10 +42,10 @@ class Mesh():
 	@mesh_section_fractions.setter
 	def mesh_section_fractions(self, fracs):
 		if fracs is None:
-			fracs = np.ones(self._mesh_secs) / self._mesh_secs
-		if len(fracs) != self._mesh_secs:
-			msg = ("Mesh section fractions must be an iterable of length {} (i.e. matching the number of mesh sections).")
-			raise ValueError(msg.format(self._mesh_secs))
+			fracs = np.ones(self._K) / self._K
+		if len(fracs) != self._K:
+			msg = (f"Mesh section fractions must be an iterable of length {self._mesh_secs} (i.e. matching the number of mesh sections).")
+			raise ValueError(msg)
 		fracs = np.array(fracs)
 		fracs = fracs / fracs.sum()
 		self._mesh_sec_fracs = fracs
@@ -62,10 +61,10 @@ class Mesh():
 		except TypeError:
 			col_points = np.array([int(val) for val in col_points], dtype=int)
 		else:
-			col_points = np.ones(self._mesh_secs, dtype=int) * col_points
-		if len(col_points) != self._mesh_secs:
-			msg = ("Mesh collocation points must be an iterable of length {} (i.e. matching the number of mesh sections).")
-			raise ValueError(msg.format(self._mesh_secs))
+			col_points = np.ones(self._K, dtype=int) * col_points
+		if len(col_points) != self._K:
+			msg = (f"Mesh collocation points must be an iterable of length {self._mesh_secs} (i.e. matching the number of mesh sections).")
+			raise ValueError(msg)
 		self._mesh_col_points = col_points
 
 	@property
@@ -85,6 +84,14 @@ class Mesh():
 		self._mesh_index_boundaries = np.insert(np.cumsum(self._mesh_col_points - 1), 0, 0)
 		self._hK = np.diff(self._t[self._mesh_index_boundaries])
 
+		self._tau = None
+		self._H = None#np.diff(self._tau)
+		self._stretch_sym = (self._ocp._tF - self._ocp._t0)/2
+		self._shift_sym = (self._ocp._t0 + self._ocp._tF)/2
+		self._stretch_num = None
+		self._shift_num = None
+
+
 	@property
 	def _quadrature(self):
 		return self._ocp._quadrature
@@ -94,11 +101,11 @@ class Mesh():
 		# Check that the number of collocation points in each mesh sections is bounded by the minimum and maximum values set in settings.
 		for section, col_points in enumerate(self._mesh_col_points):
 			if col_points < self._ocp._settings._col_points_min:
-				msg = ("The number of collocation points, {0}, in mesh section {1} must be greater than or equal to {2}.")
-				raise ValueError(msg.format(col_points, section, self.ocp.settings.col_points_min))
+				msg = (f"The number of collocation points, {col_points}, in mesh section {section} must be greater than or equal to {self.ocp.settings.col_points_min}.")
+				raise ValueError(msg)
 			if col_points > self._ocp._settings.collocation_points_max:
-				msg = ("The number of collocation points, {0}, in mesh section {1} must be less than or equal to {2}.")
-				raise ValueError(msg.format(col_points, section, self._ocp._settings.col_points_max))
+				msg = (f"The number of collocation points, {col_points}, in mesh section {section} must be less than or equal to {self._ocp._settings.col_points_max}.")
+				raise ValueError(msg)
 
 		# Generate the mesh based on using the quadrature method defined by the problem's `Settings` class.
 		section_boundaries = [t0]

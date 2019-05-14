@@ -37,8 +37,12 @@ def numbafy(expression, parameters=None, constants=None, return_dims=None, retur
     # print(expression, '\n')
 
     def factor_cse(expression):
+        # print('Expression:')
+        # print(expression, '\n')
         expressions = sym.cse(expression)
-        expressions_factored = expressions[1][0]
+        expressions_factored = expressions[1]
+        # print('CSE Before:')
+        # print(expressions, '\n')
         cse_list = []
         cse_str = ''
         if expressions_factored:
@@ -46,13 +50,23 @@ def numbafy(expression, parameters=None, constants=None, return_dims=None, retur
                 k, v = e
                 cse_list.append(f'{k} = {v}')
             cse_str = '\n    '.join(cse_list)
-            
-            try:
-                iter(expressions_factored)
-            except TypeError:
-                expressions_factored = [expressions_factored]
+
+            expressions_factored_list = []
+            for factored_expression in expressions_factored:
+                if isinstance(factored_expression, sym.Matrix):
+                    for entry in factored_expression:
+                        expressions_factored_list.append(entry)
+                else:
+                    expressions_factored_list.append(factored_expression)
+            expressions_factored = expressions_factored_list
         else:
             expressions_factored = expression
+
+        # print('Factored Expressions:')
+        # print(expressions_factored, '\n')
+        # print('Common Sub-Expressions:')
+        # print(cse_str, '\n')
+
         return expressions_factored, cse_str
         
     if return_dims == 0:

@@ -161,15 +161,18 @@ class Iteration:
 		for i_c in range(self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y):
 			for i_t in range(self._ocp._num_t_vars):
 				row_offset = i_c
-				col_offset = (self._ocp._num_y_vars + self._ocp._num_t_vars) * self._mesh._N + self._ocp._num_q_vars + i_t
+				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + i_t
 				G_nonzero_row.append(row_offset)
 				G_nonzero_col.append(col_offset)
 		dzeta_dt_slice = slice(dzeta_du_slice.stop, len(G_nonzero_row))
 
 		# Defect constraint by parameter variables
-		if self._ocp._num_s_vars:
-			msg = (f"Jacobian not correctly calculating yet for problems with static parameter variables.")
-			raise NotImplementedError(msg)
+		for i_c in range(self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y):
+			for i_s in range(self._ocp._num_s_vars):
+				row_offset = i_c
+				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars + i_s
+				G_nonzero_row.append(row_offset)
+				G_nonzero_col.append(col_offset)
 		dzeta_ds_slice = slice(dzeta_dt_slice.stop, len(G_nonzero_row))
 
 		# Path constraints by state variables
@@ -220,6 +223,12 @@ class Iteration:
 		drho_dt_slice = slice(drho_dq_slice.stop, len(G_nonzero_row))
 
 		# Integral constraints by parameter variables
+		for i_c in range(self._ocp._num_q_vars):
+			for i_s in range(self._ocp._num_s_vars):
+				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
+				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars + i_s
+				G_nonzero_row.append(row_offset)
+				G_nonzero_col.append(col_offset)
 		drho_ds_slice = slice(drho_dt_slice.stop, len(G_nonzero_row))
 
 		# Boundary constraints by state variables at t0
@@ -229,7 +238,7 @@ class Iteration:
 				col_offset = i_y * self._mesh._N
 				G_nonzero_row.extend([row_offset])
 				G_nonzero_col.extend([col_offset])
-		dbeta_dy0_slice = slice(drho_dt_slice.stop, len(G_nonzero_row))
+		dbeta_dy0_slice = slice(drho_ds_slice.stop, len(G_nonzero_row))
 
 		# Boundary constraints by state variables at tF
 		for i_c in range(self._ocp._num_b_cons):
@@ -240,14 +249,14 @@ class Iteration:
 				G_nonzero_col.extend([col_offset])
 		dbeta_dyF_slice = slice(dbeta_dy0_slice.stop, len(G_nonzero_row))
 
-		# Boundary constraints by integral variables
-		dbeta_dq_slice = slice(dbeta_dyF_slice.stop, len(G_nonzero_row))
-
-		# Boundary constraints by time variables
-		dbeta_dt_slice = slice(dbeta_dq_slice.stop, len(G_nonzero_row))
-
-		# Boundary constraints by parameter variables
-		dbeta_ds_slice = slice(dbeta_dt_slice.stop, len(G_nonzero_row))
+		# Boundary constraints by integral, time, and parameter variables
+		for i_c in range(self._ocp._num_b_cons):
+			for i_qts in range(self._ocp._num_q_vars + self._ocp._num_t_vars + self._ocp._num_s_vars):
+				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c
+				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + i_qts
+				G_nonzero_row.append(row_offset)
+				G_nonzero_col.append(col_offset)
+		dbeta_dqts_slice = slice(dbeta_dyF_slice.stop, len(G_nonzero_row))
 
 		self._G_nonzero_row = G_nonzero_row
 		self._G_nonzero_col = G_nonzero_col
@@ -266,6 +275,7 @@ class Iteration:
 			return self._ocp._x_reshape_lambda_point(x, self._ocp._num_y_vars, self._y_slice.stop, self._q_slice.start)
 
 		# Generate objective function lambda
+		# @profile
 		def objective(x):
 			x_tuple = reshape_x(x)
 			J = self._ocp._J_lambda(*x_tuple)
@@ -274,6 +284,7 @@ class Iteration:
 		self._objective_lambda = objective
 
 		# Generate objective function gradient lambda
+		# @profile
 		def gradient(x):
 			x_tuple = reshape_x(x)
 			g = self._ocp._g_lambda(x_tuple, self._num_x, self._yu_slice, self._qts_slice)
@@ -282,6 +293,7 @@ class Iteration:
 		self._gradient_lambda = gradient
 
 		# Generate constraint lambdas
+		# @profile
 		def constraint(x):
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
@@ -290,14 +302,19 @@ class Iteration:
 
 		self._constraint_lambda = constraint
 
+		OCPNumX = collections.namedtuple('OCPNumX', ['y', 'u', 'q', 't', 's'])
+		ocp_num_x = OCPNumX(y=self._ocp._num_y_vars, u=self._ocp._num_u_vars, q=self._ocp._num_q_vars, t=self._ocp._num_t_vars, s=self._ocp._num_s_vars)
+
+		# @profile
 		def jacobian(x):
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
-			G = self._ocp._G_lambda(x_tuple, x_tuple_point, self._num_G_nonzero, self._mesh._N, self._mesh._A_matrix, self._mesh._D_matrix, self._mesh._W_matrix, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dy0_slice, dbeta_dyF_slice, dbeta_dq_slice, dbeta_dt_slice, dbeta_ds_slice)
+			G = self._ocp._G_lambda(x_tuple, x_tuple_point, self._num_G_nonzero, ocp_num_x, self._mesh._N, self._mesh._A_matrix, self._mesh._D_matrix, self._mesh._W_matrix, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dy0_slice, dbeta_dyF_slice, dbeta_dqts_slice)
 			return G
 
 		self._jacobian_lambda = jacobian
 
+		# @profile
 		def jacobian_structure():
 			return (self._G_nonzero_row, self._G_nonzero_col)
 
@@ -307,10 +324,14 @@ class Iteration:
 		self._x_bnd_l, self._x_bnd_u = self._generate_x_bounds()
 		self._c_bnd_l, self._c_bnd_u = self._generate_c_bounds()
 
+		# ========================================================
+		# JACOBIAN CHECK
+		# ========================================================
 		# print('\n\n\n')
 
 		# print('x:')
-		# x_data = 2*np.ones(self._num_x)
+		# x_data = np.array(range(self._num_x))
+		# # x_data = 2*np.ones(self._num_x)
 		# print(x_data, '\n')
 
 		# print('J:')
@@ -335,6 +356,26 @@ class Iteration:
 		
 		# print('\n\n\n')
 		# raise NotImplementedError
+
+		# ========================================================
+		# PROFILE
+		# ========================================================
+		print('\n\n\n')
+
+		num_loops = 10
+
+		for i in range(num_loops):
+			x_data = np.random.rand(self._num_x)
+			J = self._objective_lambda(x_data)
+			g = self._gradient_lambda(x_data)
+			c = self._constraint_lambda(x_data)
+			G = self._jacobian_lambda(x_data)
+			G_struct = self._jacobian_structure_lambda()
+			
+		
+		print('\n\n\n')
+
+		# ========================================================
 
 		# Initialise the NLP problem
 		self._initialise_nlp()
@@ -410,6 +451,27 @@ class Iteration:
 		nlp_solution, nlp_solution_info = self._nlp_problem.solve(self._guess._x)
 		self._solution = Solution(self, nlp_solution, nlp_solution_info)
 		self._solution._calculate_discretisation_mesh_error()
+
+		print('\n')
+		print('Solution:\n=========')
+		print('State:\n------')
+		print(self._solution._y, '\n')
+		print('Control:\n--------')
+		print(self._solution._u, '\n')
+		print('Integral:\n---------')
+		print(self._solution._q, '\n')
+		print('Time:\n-----')
+		print(self._solution._t, '\n')
+		print('Parameter:\n----------')
+		print(self._solution._s, '\n')
+
+
+		print('Local Mesh Error:\n=================')
+		print(self._solution._mesh_error, '\n')
+
+		print('Global Mesh Error:\n==================')
+		print(np.amax(self._solution._mesh_error, axis=0), '\n')
+
 		# solution = np.array(nlp_solution)
 		# y = nlp_solution[self._y_slice].reshape(self._ocp._num_y_vars, -1)
 		# u = nlp_solution[self._u_slice].reshape(self._ocp._num_u_vars, -1)
@@ -518,9 +580,7 @@ class Solution:
 
 				mesh_error[i_y, i_k] = romberg(error_calc, t_knot_start, t_knot_end, args=(i_y, y_polys, dy_polys, u_polys), divmax=25)
 
-		print(mesh_error)
-
-		print(np.amax(mesh_error, axis=0))
+		self._mesh_error = mesh_error
 
 	def _patterson_discreisation_mesh_error(self):
 		pass

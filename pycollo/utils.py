@@ -81,7 +81,8 @@ def numbafy(expression, parameters=None, constants=None, return_dims=None, retur
         expressions_factored, code_cse = factor_cse(expression)
         parameter_set = set(parameters[:ocp_yu_qts_split])
         expression_list = []
-        for e in expressions_factored[:ocp_yu_qts_split]:
+        # for e in expressions_factored[:ocp_yu_qts_split]:
+        for e in expressions_factored:
             if e.free_symbols.intersection(parameter_set):
                 expression_list.append(e)
             else:
@@ -128,8 +129,9 @@ def numbafy(expression, parameters=None, constants=None, return_dims=None, retur
 #     {code_cse}
 #     return {code_expression}"""
 
-    # print(function_string)
-    # print('\n\n\n')
+    # if return_dims == 2:
+    #     print(function_string)
+    #     print('\n\n\n')
     
     exec(function_string)
        

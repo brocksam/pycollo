@@ -310,70 +310,55 @@ class OptimalControlProblem():
 
 		self._J_lambda = numbafy(expression=self._J, parameters=self._x_vars, constants=self._aux_data, return_dims=0)
 
-		self._g_yu_lambda = numbafy(expression=self._dJ_dx[self._yu_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2, return_flat=True)
+		g_yu_lambda = numbafy(expression=self._dJ_dx[self._yu_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2, return_flat=True)
 
-		self._g_qts_lambda = numbafy(expression=self._dJ_dx[self._qts_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=1)
+		g_qts_lambda = numbafy(expression=self._dJ_dx[self._qts_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=1)
 
 		def g_lambda(x_tuple, num_x, yu_slice, qts_slice):
 			g = np.empty(num_x)
-			g[yu_slice] = self._g_yu_lambda(*x_tuple)
-			g[qts_slice] = self._g_qts_lambda(*x_tuple)
+			g[yu_slice] = g_yu_lambda(*x_tuple)
+			g[qts_slice] = g_qts_lambda(*x_tuple)
 			return g
 
 		self._g_lambda = g_lambda
 
-		self._t_strech_lambda = numbafy(expression=self._STRETCH, parameters=self._x_vars, constants=self._aux_data, return_dims=0)
+		t_stretch_lambda = numbafy(expression=self._STRETCH, parameters=self._x_vars, constants=self._aux_data, return_dims=0)
 		self._dstretch_dt = [val for val, t_needed in zip(self._dSTRETCH_dt, self._bounds._t_needed) if t_needed]
 
-		self._dy_lambda = numbafy(expression=self._y_eqns, parameters=self._x_vars, constants=self._aux_data, return_dims=2)
+		dy_lambda = numbafy(expression=self._y_eqns, parameters=self._x_vars, constants=self._aux_data, return_dims=2)
 
-		# print('\n\n\n')
-
-		# print('dJ/dx:')
-		# print(self._dJ_dx[self._yu_slice], '\n')
-		# print(self._dJ_dx[self._qts_slice], '\n')
-		
-		# print('\n\n\n')
-		# raise NotImplementedError
+		self._dy_lambda = dy_lambda
 
 		def c_defect_lambda(x_tuple, ocp_y_slice, A, D):
 			y = np.vstack(x_tuple[ocp_y_slice])
-			dy = self._dy_lambda(*x_tuple)
-			stretch = self._t_strech_lambda(*x_tuple)
+			dy = dy_lambda(*x_tuple)
+			stretch = t_stretch_lambda(*x_tuple)
 			c_zeta = (np.matmul(D, y.T) + stretch*np.matmul(A, dy.T)).flatten(order='F')
 			return c_zeta
 
-		self._c_defect_lambda = c_defect_lambda
-
 		def c_path_lambda(x_tuple):
 			return 0
-
-		self._c_path_lambda = c_path_lambda
 
 		rho_lambda = numbafy(expression=self._q_funcs, parameters=self._x_vars, constants=self._aux_data, return_dims=2)
 
 		def c_integral_lambda(x_tuple, q_slice, W):
 			q = np.array(x_tuple[q_slice])
 			g = rho_lambda(*x_tuple)
-			stretch = self._t_strech_lambda(*x_tuple)
+			stretch = t_stretch_lambda(*x_tuple)
 			c_integral = q - stretch*np.matmul(g, W)
 			return c_integral
-
-		self._c_integral_lambda = c_integral_lambda
 
 		beta_lambda = numbafy(expression=self._b_cons, parameters=self._x_b_vars, constants=self._aux_data, return_dims=1)
 
 		def c_boundary_lambda(x_tuple_point):
 			return beta_lambda(*x_tuple_point)
 
-		self._c_boundary_lambda = c_boundary_lambda
-
 		def c_lambda(x_tuple, x_tuple_point, ocp_y_slice, ocp_q_slice, num_c, defect_slice, path_slice, integral_slice, boundary_slice, A, D, W):
 			c = np.empty(num_c)
-			c[defect_slice] = self._c_defect_lambda(x_tuple, ocp_y_slice, A, D)
-			c[path_slice] = self._c_path_lambda(x_tuple)
-			c[integral_slice] = self._c_integral_lambda(x_tuple, ocp_q_slice, W)
-			c[boundary_slice] = self._c_boundary_lambda(x_tuple_point)
+			c[defect_slice] = c_defect_lambda(x_tuple, ocp_y_slice, A, D)
+			c[path_slice] = c_path_lambda(x_tuple)
+			c[integral_slice] = c_integral_lambda(x_tuple, ocp_q_slice, W)
+			c[boundary_slice] = c_boundary_lambda(x_tuple_point)
 			return c
 
 		self._c_lambda = c_lambda
@@ -382,34 +367,47 @@ class OptimalControlProblem():
 
 		ddy_du_lambda = numbafy(expression=self._dc_dx[self._c_defect_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2)
 
-		drho_dy_lambda = numbafy(expression=self._dc_dx[self._c_integral_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2)
+		ddy_ds_lambda = numbafy(expression=self._dc_dx[self._c_defect_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2)
 
-		drho_du_lambda = numbafy(expression=self._dc_dx[self._c_integral_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2)
+		drho_dy_lambda = numbafy(expression=self._dc_dx[self._c_integral_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2, ocp_yu_qts_split=self._yu_qts_split)
+
+		drho_du_lambda = numbafy(expression=self._dc_dx[self._c_integral_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2, ocp_yu_qts_split=self._yu_qts_split)
+
+		drho_ds_lambda = numbafy(expression=self._dc_dx[self._c_integral_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, return_dims=2, ocp_yu_qts_split=self._yu_qts_split)
 
 		dbeta_dy0_lambda = numbafy(expression=self._db_dy0, parameters=self._x_b_vars, constants=self._aux_data, return_dims=1)
 
 		dbeta_dyF_lambda = numbafy(expression=self._db_dyF, parameters=self._x_b_vars, constants=self._aux_data, return_dims=1)
 
+		dbeta_dqts_lambda = numbafy(expression=self._db_dqts, parameters=self._x_b_vars, constants=self._aux_data, return_dims=1)
+
+		@profile
 		def G_dzeta_dy_lambda(x_tuple, A, D, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice):
 			ddy_dy = ddy_dy_lambda(*x_tuple)
-			stretch = self._t_strech_lambda(*x_tuple)
+			stretch = t_stretch_lambda(*x_tuple)
 			G_dzeta_dy = stretch*np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_dy))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
-			G_dzeta_dy[dzeta_dy_D_nonzero] += (D[np.nonzero(D)] * np.ones((2,1))).flatten()
+			G_dzeta_dy[dzeta_dy_D_nonzero] += (D[np.nonzero(D)] * np.ones((self._num_y_vars, 1))).flatten()
 			return G_dzeta_dy
 
+		# @profile
 		def G_dzeta_du_lambda(x_tuple, A, A_row_col_array):
 			ddy_du = ddy_du_lambda(*x_tuple)
-			stretch = self._t_strech_lambda(*x_tuple)
+			stretch = t_stretch_lambda(*x_tuple)
 			G_dzeta_du = stretch*np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_du))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
 			return G_dzeta_du
 
+		# @profile
 		def G_dzeta_dt_lambda(x_tuple, A):
-			dy = self._dy_lambda(*x_tuple)	
+			dy = dy_lambda(*x_tuple)	
 			G_dzeta_dt = np.outer(self._dstretch_dt, (np.matmul(A, dy.T).flatten(order='F'))).flatten(order='F')
 			return G_dzeta_dt
 
-		def G_dzeta_ds_lambda(x_tuple):
-			return np.zeros((0,))
+		# @profile
+		def G_dzeta_ds_lambda(x_tuple, A):
+			ddy_ds = ddy_ds_lambda(*x_tuple)
+			stretch = t_stretch_lambda(*x_tuple)
+			G_dzeta_ds = stretch*np.matmul(A, ddy_ds.T).flatten(order='F')
+			return G_dzeta_ds
 
 		def G_dgamma_dy_lambda(x_tuple):
 			return np.zeros((0,))
@@ -424,19 +422,26 @@ class OptimalControlProblem():
 			return np.zeros((0,))
 
 		def G_drho_dy_lambda(x_tuple, W):
-			stretch = self._t_strech_lambda(*x_tuple)
-			return (- stretch * W * drho_dy_lambda(*x_tuple)).flatten()
+			drho_dy = drho_dy_lambda(*x_tuple)
+			stretch = t_stretch_lambda(*x_tuple)
+			G_drho_dy = (- stretch * drho_dy * W).flatten()
+			return G_drho_dy
 
 		def G_drho_du_lambda(x_tuple, W):
-			stretch = self._t_strech_lambda(*x_tuple)
-			return (- stretch * W * drho_du_lambda(*x_tuple)).flatten()
+			drho_du = drho_du_lambda(*x_tuple)
+			stretch = t_stretch_lambda(*x_tuple)
+			G_drho_du = (- stretch * drho_du * W).flatten()
+			return G_drho_du
 
 		def G_drho_dt_lambda(x_tuple, W):
 			g = rho_lambda(*x_tuple)
 			return - np.outer(self._dstretch_dt, np.matmul(g, W)).flatten(order='F')
 
-		def G_drho_ds_lambda(x_tuple):
-			return np.zeros((0,))
+		def G_drho_ds_lambda(x_tuple, W):
+			drho_ds = drho_ds_lambda(*x_tuple)
+			stretch = t_stretch_lambda(*x_tuple)
+			G_drho_ds = (- stretch * np.matmul(drho_ds, W))
+			return G_drho_ds
 
 		def G_dbeta_dy0_lambda(x_tuple_point):
 			return dbeta_dy0_lambda(*x_tuple_point)
@@ -444,54 +449,43 @@ class OptimalControlProblem():
 		def G_dbeta_dyF_lambda(x_tuple_point):
 			return dbeta_dyF_lambda(*x_tuple_point)
 
-		def G_dbeta_dq_lambda(x_tuple):
-			return None
+		def G_dbeta_dqts_lambda(x_tuple_point):
+			return dbeta_dqts_lambda(*x_tuple_point)
 
-		def G_dbeta_dt_lambda(x_tuple):
-			return None
-
-		def G_dbeta_ds_lambda(x_tuple):
-			return None
-
-		def G_lambda(x_tuple, x_tuple_point, num_G_nonzero, N, A, D, W, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dy0_slice, dbeta_dyF_slice, dbeta_dq_slice, dbeta_dt_slice, dbeta_ds_slice):
+		def G_lambda(x_tuple, x_tuple_point, num_G_nonzero, num_x_ocp, N, A, D, W, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dy0_slice, dbeta_dyF_slice, dbeta_dqts_slice):
 			G = np.empty(num_G_nonzero)
 
-			G[dzeta_dy_slice] = G_dzeta_dy_lambda(x_tuple, A, D,A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice)
-			G[dzeta_du_slice] = G_dzeta_du_lambda(x_tuple, A, A_row_col_array)
-			G[dzeta_dt_slice] = G_dzeta_dt_lambda(x_tuple, A)
-			# G[dzeta_ds_slice] = G_dzeta_ds_lambda(x_tuple)
+			if num_x_ocp.y:
+				G[dzeta_dy_slice] = G_dzeta_dy_lambda(x_tuple, A, D,A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice)
+				G[dgamma_dy_slice] = G_dgamma_dy_lambda(x_tuple)
+				G[drho_dy_slice] = G_drho_dy_lambda(x_tuple, W)
+				G[dbeta_dy0_slice] = G_dbeta_dy0_lambda(x_tuple_point)
+				G[dbeta_dyF_slice] = G_dbeta_dyF_lambda(x_tuple_point)
 
-			G[dgamma_dy_slice] = G_dgamma_dy_lambda(x_tuple)
-			G[dgamma_du_slice] = G_dgamma_du_lambda(x_tuple)
-			# G[dgamma_dt_slice] = G_dgamma_dt_lambda(x_tuple)
-			# G[dgamma_ds_slice] = G_dgamma_ds_lambda(x_tuple)
+			if num_x_ocp.u:
+				G[dzeta_du_slice] = G_dzeta_du_lambda(x_tuple, A, A_row_col_array)
+				G[dgamma_du_slice] = G_dgamma_du_lambda(x_tuple)
+				G[drho_du_slice] = G_drho_du_lambda(x_tuple, W)
 
-			G[drho_dy_slice] = G_drho_dy_lambda(x_tuple, W)
-			G[drho_du_slice] = G_drho_du_lambda(x_tuple, W)
-			G[drho_dq_slice] = 1
-			G[drho_dt_slice] = G_drho_dt_lambda(x_tuple, W)
-			# G[drho_ds_slice] = G_drho_ds_lambda(x_tuple)
+			if num_x_ocp.q:
+				G[drho_dq_slice] = 1
 
-			G[dbeta_dy0_slice] = G_dbeta_dy0_lambda(x_tuple_point)
-			G[dbeta_dyF_slice] = G_dbeta_dyF_lambda(x_tuple_point)
-			G[dbeta_dq_slice] = G_dbeta_dq_lambda(x_tuple_point)
-			# G[dbeta_dt_slice] = G_dbeta_dt_lambda(x_tuple_point)
-			# G[dbeta_ds_slice] = G_dbeta_ds_lambda(x_tuple_point)
+			if num_x_ocp.t:
+				G[dzeta_dt_slice] = G_dzeta_dt_lambda(x_tuple, A)
+				# G[dgamma_dt_slice] = G_dgamma_dt_lambda(x_tuple)
+				G[drho_dt_slice] = G_drho_dt_lambda(x_tuple, W)
+
+			if num_x_ocp.s:
+				G[dzeta_ds_slice] = G_dzeta_ds_lambda(x_tuple, A)
+				# G[dgamma_ds_slice] = G_dgamma_ds_lambda(x_tuple)
+				G[drho_ds_slice] = G_drho_ds_lambda(x_tuple, W)
+
+			if sum(num_x_ocp[2:]):
+				G[dbeta_dqts_slice] = G_dbeta_dqts_lambda(x_tuple_point)
 
 			return G
 
 		self._G_lambda = G_lambda
-
-		# print('\n\n\n')
-
-		# print(self._x_vars)
-
-		# print(self._dstretch_dt)
-
-
-
-		# print('\n\n\n')
-		# raise NotImplementedError
 
 	def solve(self):
 
@@ -654,6 +648,7 @@ class OptimalControlProblem():
 		self._s_slice = slice(self._t_slice.stop, self._num_vars)
 		self._yu_slice = slice(self._y_slice.start, self._u_slice.stop)
 		self._qts_slice = slice(self._q_slice.start, self._s_slice.stop)
+		self._yu_qts_split = self._yu_slice.stop
 
 		# Objective derivatives
 		self._dJ_dx = self._J.diff(self._x_vars)
@@ -675,6 +670,7 @@ class OptimalControlProblem():
 		# Initial and final time boundary derivatives
 		self._db_dy0 = self._b_cons.jacobian(self._y_t0)
 		self._db_dyF = self._b_cons.jacobian(self._y_tF)
+		self._db_dqts = self._b_cons.jacobian(self._x_vars[self._qts_slice])
 
 		# Quadrature computations
 		self._quadrature = Quadrature(optimal_control_problem=self)
@@ -686,4 +682,4 @@ class OptimalControlProblem():
 		self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
 
 		# Solve the transcribed NLP on the initial mesh
-		self._mesh_iterations[0]._solve()
+		# self._mesh_iterations[0]._solve()

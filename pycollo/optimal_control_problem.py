@@ -381,7 +381,7 @@ class OptimalControlProblem():
 
 		dbeta_dqts_lambda = numbafy(expression=self._db_dqts, parameters=self._x_b_vars, constants=self._aux_data, return_dims=1)
 
-		@profile
+		# @profile
 		def G_dzeta_dy_lambda(x_tuple, A, D, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice):
 			ddy_dy = ddy_dy_lambda(*x_tuple)
 			stretch = t_stretch_lambda(*x_tuple)
@@ -682,4 +682,4 @@ class OptimalControlProblem():
 		self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
 
 		# Solve the transcribed NLP on the initial mesh
-		# self._mesh_iterations[0]._solve()
+		self._mesh_iterations[0]._solve()

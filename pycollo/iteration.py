@@ -360,20 +360,18 @@ class Iteration:
 		# ========================================================
 		# PROFILE
 		# ========================================================
-		print('\n\n\n')
 
-		num_loops = 10
-
-		for i in range(num_loops):
-			x_data = np.random.rand(self._num_x)
-			J = self._objective_lambda(x_data)
-			g = self._gradient_lambda(x_data)
-			c = self._constraint_lambda(x_data)
-			G = self._jacobian_lambda(x_data)
-			G_struct = self._jacobian_structure_lambda()
-			
-		
-		print('\n\n\n')
+		if False:
+			print('\n\n\n')
+			num_loops = 10
+			for i in range(num_loops):
+				x_data = np.random.rand(self._num_x)
+				J = self._objective_lambda(x_data)
+				g = self._gradient_lambda(x_data)
+				c = self._constraint_lambda(x_data)
+				G = self._jacobian_lambda(x_data)
+				G_struct = self._jacobian_structure_lambda()
+			print('\n\n\n')
 
 		# ========================================================
 

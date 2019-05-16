@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as sparse
 
 class Mesh():
 	"""
@@ -76,6 +77,7 @@ class Mesh():
 	def _quadrature(self):
 		return self._ocp._quadrature
 	
+	# @profile
 	def _generate_mesh(self, t0, tF):
 
 		# Check that the number of collocation points in each mesh sections is bounded by the minimum and maximum values set in settings.
@@ -88,7 +90,6 @@ class Mesh():
 				raise ValueError(msg)
 
 		# Generate the mesh based on using the quadrature method defined by the problem's `Settings` class.
-
 		section_boundaries = [self._TAU_0]
 		for index, fraction in enumerate(self._mesh_sec_fracs):
 			step = self._PERIOD * fraction
@@ -119,19 +120,55 @@ class Mesh():
 		self._hK = np.diff(self._t[self._mesh_index_boundaries])
 
 		block_starts = self._mesh_index_boundaries[:-1]
-		num_rows = self._mesh_index_boundaries[-1]
+		self._num_c_boundary_per_y = int(self._mesh_index_boundaries[-1])
 		num_cols = self._mesh_index_boundaries[-1] + 1
-		matrix_dims = (num_rows, num_cols)
+		matrix_dims = (self._num_c_boundary_per_y, num_cols)
 
-		self._D_matrix = np.zeros(matrix_dims)
-		self._A_matrix = np.zeros(matrix_dims)
 		self._W_matrix = np.zeros(num_cols)
+
+		A_vals = []
+		A_row_inds = []
+		A_col_inds = []
+
+		D_vals = []
+		D_row_inds = []
+		D_col_inds = []
+
+		A_index_array = []
+		D_index_array = []
+
+		num_A_nonzero = 0
 
 		for block_size, H_K, block_start in zip(self._mesh_col_points, self._H_K, block_starts):
 			row_slice = slice(block_start, block_start+block_size-1)
 			col_slice = slice(block_start, block_start+block_size)
-			self._A_matrix[row_slice, col_slice] = self._quadrature.A_matrix(block_size) * H_K
-			self._D_matrix[row_slice, col_slice] = self._quadrature.D_matrix(block_size)
+			A_block = self._quadrature.A_matrix(block_size) * H_K
+			A_vals_entry = A_block.flatten().tolist()
+			A_row_inds_entry = np.repeat(np.array(range(block_start, block_start+block_size-1)), block_size)
+			A_col_inds_entry = np.tile(np.array(range(block_start, block_start+block_size)), block_size-1)
+			A_vals.extend(A_vals_entry)
+			A_row_inds.extend(A_row_inds_entry)
+			A_col_inds.extend(A_col_inds_entry)
+			A_indicies = self._quadrature.A_index_array(block_size)
+			A_index_array.extend(A_indicies + num_A_nonzero)
+
+			D_block = self._quadrature.D_matrix(block_size)
+			nonzero = np.flatnonzero(D_block)
+			D_vals_entry = D_block.flatten()[nonzero].tolist()
+			D_row_inds_entry = np.repeat(np.array(range(block_start, block_start+block_size-1)), block_size)[nonzero]
+			D_col_inds_entry = np.tile(np.array(range(block_start, block_start+block_size)), block_size-1)[nonzero]
+			D_vals.extend(D_vals_entry)
+			D_row_inds.extend(D_row_inds_entry)
+			D_col_inds.extend(D_col_inds_entry)
+			D_index_array.extend(self._quadrature.D_index_array(block_size) + num_A_nonzero)
+
 			self._W_matrix[col_slice] += self._quadrature.quadrature_weight(block_size) * H_K
-		self._num_c_boundary_per_y = self._D_matrix.shape[0]
+
+			num_A_nonzero = len(A_index_array)
+
+		self._sA_matrix = sparse.coo_matrix((A_vals, (A_row_inds, A_col_inds)), shape=matrix_dims).tocsr()
+		self._sD_matrix = sparse.coo_matrix((D_vals, (D_row_inds, D_col_inds)), shape=matrix_dims).tocsr()
+
+		self._A_index_array = np.array(A_index_array)
+		self._D_index_array = np.array(D_index_array)
 

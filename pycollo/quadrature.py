@@ -14,6 +14,8 @@ class Quadrature:
 		self._D_matrices = {}
 		self._A_matrices = {}
 		self._W_matrices = {}
+		self._D_index_arrays = {}
+		self._A_index_arrays = {}
 
 	@property
 	def _settings(self):
@@ -45,12 +47,13 @@ class Quadrature:
 		return self._retrive_or_generate_dict_value(self._polynomials, order)
 
 	def quadrature_point(self, order, *, domain=None):
+		points = self._retrive_or_generate_dict_value(self._quadrature_points, order)
 		if domain:
-			poly = self.polynomials(order).copy()
-			poly.domain = np.array(domain)
-			return self._lobatto_point_generator(poly)
+			stretch = 0.5*(domain[1] - domain[0])
+			scale = 0.5*(domain[0] + domain[1])
+			return stretch*points + scale
 		else:
-			return self._retrive_or_generate_dict_value(self._quadrature_points, order)
+			return points
 
 	def quadrature_weight(self, order):
 		return self._retrive_or_generate_dict_value(self._quadrature_weights, order)
@@ -67,12 +70,11 @@ class Quadrature:
 	def W_matrix(self, order):
 		return self._retrive_or_generate_dict_value(self._W_matrices, order)
 
-	@staticmethod
-	def _lobatto_point_generator(poly):
-		lobatto_points = poly.deriv().roots()
-		lobatto_points = np.insert(lobatto_points, 0, poly.domain[0], axis=0)
-		lobatto_points = np.append(lobatto_points, poly.domain[1])
-		return lobatto_points
+	def D_index_array(self, order):
+		return self._retrive_or_generate_dict_value(self._D_index_arrays, order)
+
+	def A_index_array(self, order):
+		return self._retrive_or_generate_dict_value(self._A_index_arrays, order)
 	
 	def _lobatto_generator(self, order):
 		num_interior_points = order - 1
@@ -124,5 +126,18 @@ class Quadrature:
 
 		# W_matrix = np.diagflat(self.quadrature_weight(order))
 		# self._W_matrices.update({order: W_matrix})
+
+		A_index_array = np.array(range(A_matrix.size), dtype=int)
+		self._A_index_arrays.update({order: A_index_array})
+
+		D_num_row, D_num_col = D_matrix.shape
+		D_rows = np.array(range(D_num_row), dtype=int)
+		D_left = D_rows * D_num_col
+		D_right = D_rows * (D_num_col + 1) + 1
+		D_index_array = np.concatenate((D_left, D_right))
+		D_index_array.sort()
+		self._D_index_arrays.update({order: D_index_array})
+
+		
 
 

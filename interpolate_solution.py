@@ -90,12 +90,12 @@ u_datas = np.array(u_datas)
 
 print(dy_datas)
 
-if False:
+if True:
 	for i_y, y_data in enumerate(y_datas):
 		plt.plot(t_data, y_data)
 		plt.plot(t, y[i_y], marker='x', markersize=7, linestyle='')
 
-if True:
+if False:
 	for i_y, dy_data in enumerate(dy_datas):
 		plt.plot(t_data, dy_data)
 		plt.plot(t, dy[i_y], marker='x', markersize=7, linestyle='')

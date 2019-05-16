@@ -5,7 +5,21 @@ import pycollo as col
 
 y, u = sym.symbols('y u')
 
-mesh = col.Mesh(mesh_sections=20, mesh_section_fractions=None, mesh_collocation_points=7)
+mesh_secs = 100
+mesh_sec_fracs = np.zeros(mesh_secs)
+mesh_sec_fracs[round(0.0*mesh_secs):round(0.1*mesh_secs)] = 1
+mesh_sec_fracs[round(0.1*mesh_secs):round(0.2*mesh_secs)] = 10
+mesh_sec_fracs[round(0.2*mesh_secs):round(0.3*mesh_secs)] = 100
+mesh_sec_fracs[round(0.3*mesh_secs):round(0.4*mesh_secs)] = 1000
+mesh_sec_fracs[round(0.4*mesh_secs):round(0.5*mesh_secs)] = 10000
+mesh_sec_fracs[round(0.5*mesh_secs):round(0.6*mesh_secs)] = 10000
+mesh_sec_fracs[round(0.6*mesh_secs):round(0.7*mesh_secs)] = 1000
+mesh_sec_fracs[round(0.7*mesh_secs):round(0.8*mesh_secs)] = 100
+mesh_sec_fracs[round(0.8*mesh_secs):round(0.9*mesh_secs)] = 10
+mesh_sec_fracs[round(0.9*mesh_secs):round(1.0*mesh_secs)] = 1
+
+# mesh = col.Mesh(mesh_sections=mesh_secs, mesh_section_fractions=mesh_sec_fracs, mesh_collocation_points=7)
+mesh = col.Mesh(mesh_sections=10, mesh_section_fractions=None, mesh_collocation_points=4)
 problem = col.OptimalControlProblem(state_variables=y, control_variables=u, initial_mesh=mesh)
 
 problem.state_equations = [-y**3 + u]

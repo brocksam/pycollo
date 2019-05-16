@@ -1,6 +1,6 @@
 class Settings():
 
-	def __init__(self, *, optimal_control_problem=None, collocation_matrix_form='integral', nlp_solver='ipopt', linear_solver='mumps', tolerance=10e-7, max_iterations=2000, quadrature_method='lobatto', mesh_refinement_method=None, collocation_points_min=2, collocation_points_max=7):
+	def __init__(self, *, optimal_control_problem=None, collocation_matrix_form='integral', nlp_solver='ipopt', linear_solver='mumps', tolerance=10e-7, max_iterations=2000, quadrature_method='lobatto', mesh_refinement_method=None, collocation_points_min=2, collocation_points_max=10):
 
 		# Optimal Control Problem
 		self._ocp = optimal_control_problem

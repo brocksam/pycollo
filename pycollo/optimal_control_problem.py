@@ -1,5 +1,6 @@
 import numba as nb
 import numpy as np
+import scipy.sparse as sparse
 import sympy as sym
 import sympy.physics.mechanics as me
 
@@ -333,7 +334,7 @@ class OptimalControlProblem():
 			y = np.vstack(x_tuple[ocp_y_slice])
 			dy = dy_lambda(*x_tuple)
 			stretch = t_stretch_lambda(*x_tuple)
-			c_zeta = (np.matmul(D, y.T) + stretch*np.matmul(A, dy.T)).flatten(order='F')
+			c_zeta = (D.dot(y.T) + stretch*A.dot(dy.T)).flatten(order='F')
 			return c_zeta
 
 		def c_path_lambda(x_tuple):
@@ -353,6 +354,7 @@ class OptimalControlProblem():
 		def c_boundary_lambda(x_tuple_point):
 			return beta_lambda(*x_tuple_point)
 
+		# @profile
 		def c_lambda(x_tuple, x_tuple_point, ocp_y_slice, ocp_q_slice, num_c, defect_slice, path_slice, integral_slice, boundary_slice, A, D, W):
 			c = np.empty(num_c)
 			c[defect_slice] = c_defect_lambda(x_tuple, ocp_y_slice, A, D)
@@ -381,32 +383,45 @@ class OptimalControlProblem():
 
 		dbeta_dqts_lambda = numbafy(expression=self._db_dqts, parameters=self._x_b_vars, constants=self._aux_data, return_dims=1)
 
+		def A_x_dot_sparse(A_sparse, ddy_dx, num_y, num_nz, stretch, return_array):
+			for i, row in enumerate(ddy_dx):
+				start = i*num_nz
+				stop = start + num_nz
+				entries = stretch*A_sparse.multiply(row).data
+				return_array[start:stop] = entries
+			return return_array
+
 		# @profile
-		def G_dzeta_dy_lambda(x_tuple, A, D, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice):
+		def G_dzeta_dy_lambda(x_tuple, A, D, A_row_col_array, num_y, dzeta_dy_D_nonzero, dzeta_dy_slice):
 			ddy_dy = ddy_dy_lambda(*x_tuple)
 			stretch = t_stretch_lambda(*x_tuple)
-			G_dzeta_dy = stretch*np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_dy))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
-			G_dzeta_dy[dzeta_dy_D_nonzero] += (D[np.nonzero(D)] * np.ones((self._num_y_vars, 1))).flatten()
+			num_nz = A_row_col_array.shape[1]
+			return_array = np.empty(num_y**2 * num_nz)
+			G_dzeta_dy = A_x_dot_sparse(A, ddy_dy, num_y, num_nz, stretch, return_array)
+			D_data = (D.data * np.ones((num_y, 1))).flatten()
+			G_dzeta_dy[dzeta_dy_D_nonzero] += D_data
 			return G_dzeta_dy
 
 		# @profile
-		def G_dzeta_du_lambda(x_tuple, A, A_row_col_array):
+		def G_dzeta_du_lambda(x_tuple, A, A_row_col_array, num_y, num_u):
 			ddy_du = ddy_du_lambda(*x_tuple)
 			stretch = t_stretch_lambda(*x_tuple)
-			G_dzeta_du = stretch*np.matmul(A, np.apply_along_axis(np.diag, -1, ddy_du))[:, A_row_col_array[0], A_row_col_array[1]].flatten()
+			num_nz = A_row_col_array.shape[1]
+			return_array = np.empty(num_u*num_y*num_nz)
+			G_dzeta_du = A_x_dot_sparse(A, ddy_du, num_u, num_nz, stretch, return_array)
 			return G_dzeta_du
 
 		# @profile
 		def G_dzeta_dt_lambda(x_tuple, A):
-			dy = dy_lambda(*x_tuple)	
-			G_dzeta_dt = np.outer(self._dstretch_dt, (np.matmul(A, dy.T).flatten(order='F'))).flatten(order='F')
+			dy = dy_lambda(*x_tuple)
+			G_dzeta_dt = np.outer(self._dstretch_dt, (A.dot(dy.T).flatten(order='F'))).flatten(order='F')
 			return G_dzeta_dt
 
 		# @profile
 		def G_dzeta_ds_lambda(x_tuple, A):
 			ddy_ds = ddy_ds_lambda(*x_tuple)
 			stretch = t_stretch_lambda(*x_tuple)
-			G_dzeta_ds = stretch*np.matmul(A, ddy_ds.T).flatten(order='F')
+			G_dzeta_ds = stretch*A.dot(ddy_ds.T).flatten(order='F')
 			return G_dzeta_ds
 
 		def G_dgamma_dy_lambda(x_tuple):
@@ -452,18 +467,19 @@ class OptimalControlProblem():
 		def G_dbeta_dqts_lambda(x_tuple_point):
 			return dbeta_dqts_lambda(*x_tuple_point)
 
+		# @profile
 		def G_lambda(x_tuple, x_tuple_point, num_G_nonzero, num_x_ocp, N, A, D, W, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dy0_slice, dbeta_dyF_slice, dbeta_dqts_slice):
 			G = np.empty(num_G_nonzero)
 
 			if num_x_ocp.y:
-				G[dzeta_dy_slice] = G_dzeta_dy_lambda(x_tuple, A, D,A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice)
+				G[dzeta_dy_slice] = G_dzeta_dy_lambda(x_tuple, A, D, A_row_col_array, num_x_ocp.y, dzeta_dy_D_nonzero, dzeta_dy_slice)
 				G[dgamma_dy_slice] = G_dgamma_dy_lambda(x_tuple)
 				G[drho_dy_slice] = G_drho_dy_lambda(x_tuple, W)
 				G[dbeta_dy0_slice] = G_dbeta_dy0_lambda(x_tuple_point)
 				G[dbeta_dyF_slice] = G_dbeta_dyF_lambda(x_tuple_point)
 
 			if num_x_ocp.u:
-				G[dzeta_du_slice] = G_dzeta_du_lambda(x_tuple, A, A_row_col_array)
+				G[dzeta_du_slice] = G_dzeta_du_lambda(x_tuple, A,  A_row_col_array, num_x_ocp.y, num_x_ocp.u)
 				G[dgamma_du_slice] = G_dgamma_du_lambda(x_tuple)
 				G[drho_du_slice] = G_drho_du_lambda(x_tuple, W)
 

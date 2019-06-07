@@ -8,18 +8,20 @@ import pycollo as col
 q = me.dynamicsymbols('q')
 u = me.dynamicsymbols('u')
 T = sym.symbols('T')
-m, l, I, g = sym.symbols('m l I g')
+m, l, I, g, k = sym.symbols('m l I g k')
+ml, mgl, sinq, mglsinq = sym.symbols('ml mgl sinq mglsinq')
 
 # Optimal Control Problem
-# mesh = col.Mesh(mesh_sections=5, mesh_section_fractions=[0.1, 0.2, 0.4, 0.2, 0.1], mesh_collocation_points=[3,4,5,4,3])
+# mesh = col.Mesh(mesh_sections=6, mesh_section_fractions=[0.1, 0.2, 0.2, 0.2, 0.2, 0.1], mesh_collocation_points=[5,7,7,6,6,5])
 # mesh = col.Mesh(mesh_sections=3, mesh_section_fractions=[0.2,0.5,0.3], mesh_collocation_points=[2,4,3])
-mesh = col.Mesh(mesh_sections=5, mesh_section_fractions=None, mesh_collocation_points=6)
+mesh = col.Mesh(mesh_sections=4, mesh_section_fractions=None, mesh_collocation_points=8)
 problem = col.OptimalControlProblem(state_variables=[q, u], control_variables=T, initial_mesh=mesh)
 
-problem.parameter_variables = [m, l]
+# problem.parameter_variables = [m, l]
 
 # State equations
 problem.state_equations = [u, (m*g*l*sym.sin(q) - T)/I]
+# problem.state_equations = [u, (m*g*l*sym.sin(q) - T)/I]
 
 # Integrand functions
 problem.integrand_functions = [T**2]
@@ -34,15 +36,14 @@ problem.boundary_constraints = [problem.initial_state[0],
 	problem.final_state[1]]
 
 # Bounds
-t_max = 1.0
-
-problem.bounds = col.Bounds(initial_time_lower=0.0, initial_time_upper=0.0, final_time_lower=t_max, final_time_upper=t_max, state=[[-4, 4], [-15, 15]], control_lower='-inf', control_upper='inf', integral_lower=[0], integral_upper=['inf'], parameter=[[1.0, 2.0], [1.0, 2.0]], boundary_lower=[0, 0, np.pi, 0], boundary_upper=[0, 0, np.pi, 0])
+problem.bounds = col.Bounds(initial_time_lower=0.0, initial_time_upper=0.0, final_time_lower=1.0, final_time_upper=2.0, state=[[-4, 4], [-15, 15]], control_lower='-inf', control_upper='inf', integral_lower=[0], integral_upper=['inf'], parameter=[[1.0, 2.0], [1.0, 2.0]], boundary_lower=[0, 0, np.pi, 0], boundary_upper=[0, 0, np.pi, 0])
 
 # Guess
-problem.initial_guess = col.Guess(time=np.array([0.0, t_max]), state=np.array([[0.0, np.pi], [0.0, 0.0]]), control=np.array([[0.0, 0.0]]), integral=[1000], parameter=[1.5, 1.5])
+problem.initial_guess = col.Guess(time=np.array([0.0, 1.5]), state=np.array([[0.0, np.pi], [0.0, 0.0]]), control=np.array([[0.0, 0.0]]), integral=[1000])#, parameter=[1.5, 1.5])
 
 # Auxiliary data
-problem.auxiliary_data = dict({I: 1.0, g: -9.81})
+problem.auxiliary_data = dict({m: 1.0, l: 1.0, I: m*(l**2+k**2), k: 1/12, g: -9.81, ml: m*l, mgl: ml*g, sinq: sym.sin(q), mglsinq: mgl*sinq})
+# problem.auxiliary_data = dict({I: 1.0, g: -9.81})
 
 # Solve
 problem.solve()

@@ -1,6 +1,6 @@
 class Settings():
 
-	def __init__(self, *, optimal_control_problem=None, collocation_matrix_form='integral', nlp_solver='ipopt', linear_solver='mumps', tolerance=10e-7, max_iterations=2000, quadrature_method='lobatto', mesh_refinement_method=None, collocation_points_min=2, collocation_points_max=10):
+	def __init__(self, *, optimal_control_problem=None, collocation_matrix_form='integral', nlp_solver='ipopt', linear_solver='mumps', nlp_tolerance=1e-7, max_iterations=2000, quadrature_method='lobatto', mesh_refinement_method=None, mesh_tolerance=1e-7, collocation_points_min=2, collocation_points_max=10):
 
 		# Optimal Control Problem
 		self._ocp = optimal_control_problem
@@ -8,7 +8,7 @@ class Settings():
 		# NLP solver
 		self.nlp_solver = nlp_solver
 		self.linear_solver = linear_solver
-		self.tolerance = tolerance
+		self.nlp_tolerance = nlp_tolerance
 		self.max_iterations = max_iterations
 
 		# Collocation and quadrature
@@ -16,6 +16,7 @@ class Settings():
 
 		# Mesh refinement
 		# self.mesh_refinement_method = mesh_refinement_method
+		self.mesh_tolerance = mesh_tolerance
 		self.collocation_points_min = collocation_points_min
 		self.collocation_points_max = collocation_points_max
 
@@ -60,15 +61,15 @@ class Settings():
 			raise NotImplementedError(msg)
 
 	@property
-	def tolerance(self):
-		return self._tolerance
+	def nlp_tolerance(self):
+		return self._nlp_tolerance
 	
-	@tolerance.setter
-	def tolerance(self, tolerance):
+	@nlp_tolerance.setter
+	def nlp_tolerance(self, tolerance):
 		if tolerance <= 0:
-			msg = ("Tolerance must be a postive real number. {} is invalid.")
+			msg = ("Tolerance for the NLP must be a postive real number. {} is invalid.")
 			raise ValueError(msg.format(tolerance))
-		self._tolerance = tolerance
+		self._nlp_tolerance = tolerance
 
 	@property
 	def max_iterations(self):
@@ -104,6 +105,17 @@ class Settings():
 			msg = ("The mesh refinement method of '{}' is not a valid argument string.")
 			raise ValueError(msg.format(method))
 		self._mesh_refinement_method = method
+
+	@property
+	def mesh_tolerance(self):
+		return self._mesh_tolerance
+	
+	@mesh_tolerance.setter
+	def mesh_tolerance(self, tolerance):
+		if tolerance <= 0:
+			msg = ("Tolerance for the mesh must be a postive real number. {} is invalid.")
+			raise ValueError(msg.format(tolerance))
+		self._mesh_tolerance = tolerance
 
 	@property
 	def collocation_points_min(self):

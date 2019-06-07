@@ -15,10 +15,14 @@ class Mesh():
 	_TAU_F = 1
 	_PERIOD = _TAU_F - _TAU_0
 
-	def __init__(self, *, optimal_control_problem=None, mesh_sections=10, mesh_section_fractions=None, mesh_collocation_points=2):
+	def __init__(self, *, optimal_control_problem=None, mesh_sections=10, mesh_section_fractions=None, mesh_collocation_points=4):
 
 		# Optimal Control Problem
 		self._ocp = optimal_control_problem
+		self._iteration = None
+		self._guess = None
+
+		self._mesh_sec_fracs = None
 
 		# Mesh settings
 		self.mesh_sections = mesh_sections
@@ -36,6 +40,9 @@ class Mesh():
 	def mesh_sections(self, mesh_sections):
 		self._K = int(mesh_sections)
 		self._Kplus1 = self._K + 1
+
+		if self._mesh_sec_fracs is not None and len(self._mesh_sec_fracs) != self._K:
+			self.mesh_section_fractions = None
 
 	@property
 	def mesh_section_fractions(self):
@@ -78,7 +85,7 @@ class Mesh():
 		return self._ocp._quadrature
 	
 	# @profile
-	def _generate_mesh(self, t0, tF):
+	def _generate_mesh(self):#, t0, tF):
 
 		# Check that the number of collocation points in each mesh sections is bounded by the minimum and maximum values set in settings.
 		for section, col_points in enumerate(self._mesh_col_points):
@@ -106,18 +113,11 @@ class Mesh():
 		mesh.append(self._TAU_F)
 
 		self._tau = np.array(mesh)
-		self._H = np.diff(self._tau)
+		self._h = np.diff(self._tau)
 		self._N = len(self._tau)
-		self._stretch_num = (tF - t0)/2
-		self._shift_num = (t0 + tF)/2
-
-		self._t = self._stretch_num * self._tau + self._shift_num
-		self._T = self._t[-1] - self._t[0]
-		self._h = np.diff(self._t)
 		
 		self._mesh_index_boundaries = np.insert(np.cumsum(self._mesh_col_points - 1), 0, 0)
-		self._H_K = np.diff(self._tau[self._mesh_index_boundaries])
-		self._hK = np.diff(self._t[self._mesh_index_boundaries])
+		self._h_K = np.diff(self._tau[self._mesh_index_boundaries])
 
 		block_starts = self._mesh_index_boundaries[:-1]
 		self._num_c_boundary_per_y = int(self._mesh_index_boundaries[-1])
@@ -139,10 +139,10 @@ class Mesh():
 
 		num_A_nonzero = 0
 
-		for block_size, H_K, block_start in zip(self._mesh_col_points, self._H_K, block_starts):
+		for block_size, h_K, block_start in zip(self._mesh_col_points, self._h_K, block_starts):
 			row_slice = slice(block_start, block_start+block_size-1)
 			col_slice = slice(block_start, block_start+block_size)
-			A_block = self._quadrature.A_matrix(block_size) * H_K
+			A_block = self._quadrature.A_matrix(block_size) * h_K
 			A_vals_entry = A_block.flatten().tolist()
 			A_row_inds_entry = np.repeat(np.array(range(block_start, block_start+block_size-1)), block_size)
 			A_col_inds_entry = np.tile(np.array(range(block_start, block_start+block_size)), block_size-1)
@@ -162,7 +162,7 @@ class Mesh():
 			D_col_inds.extend(D_col_inds_entry)
 			D_index_array.extend(self._quadrature.D_index_array(block_size) + num_A_nonzero)
 
-			self._W_matrix[col_slice] += self._quadrature.quadrature_weight(block_size) * H_K
+			self._W_matrix[col_slice] += self._quadrature.quadrature_weight(block_size) * h_K
 
 			num_A_nonzero = len(A_index_array)
 

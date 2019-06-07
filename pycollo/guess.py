@@ -6,6 +6,8 @@ class Guess():
 
 		# Set optimal control problem
 		self._ocp = optimal_control_problem
+		self._iteration = None
+		self._mesh = None
 
 		# Guess
 		self.time = time
@@ -96,6 +98,8 @@ class Guess():
 		# Time
 		self._t0 = check_is_within_bounds(self._t_user[0], bounds._t0_l, bounds._t0_u)
 		self._tF = check_is_within_bounds(self._t_user[-1], bounds._tF_l, bounds._tF_u)
+		self._stretch = (self._tF - self._t0)/2
+		self._shift = (self._t0 + self._tF)/2
 		t_prev = self._t0
 		for t in self._t_user[1:]:
 			if t <= t_prev:

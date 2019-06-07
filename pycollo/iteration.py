@@ -11,7 +11,6 @@ import sympy as sym
 
 from pycollo.guess import Guess
 from pycollo.mesh import Mesh
-from pycollo.utils import (numbafy, romberg)
 
 class Iteration:
 
@@ -25,6 +24,7 @@ class Iteration:
 
 		# Mesh
 		self._mesh = mesh
+		self._mesh._iteration = self
 
 		# Guess
 		self._guess = guess
@@ -79,17 +79,24 @@ class Iteration:
 			new_guess = np.empty((num_vars, self._mesh._N))
 			for index, row in enumerate(prev):
 				interp_func = interpolate.interp1d(prev_guess._time, row)
-				new_guess[index, :] = interp_func(self._mesh._t)
+				new_guess[index, :] = interp_func(self._guess._time)
 			return new_guess
 
 		# Mesh
-		self._mesh._generate_mesh(prev_guess._t0, prev_guess._tF)
+		self._mesh._generate_mesh()#prev_guess._t0, prev_guess._tF)
 
 		# Guess
 		self._guess = Guess(
 			optimal_control_problem=self._ocp)
+		self._guess._iteration = self
+		self._guess._mesh = self._mesh
+		self._mesh._guess = self._guess
 		self._guess._tau = self._mesh._tau
-		self._guess._time = self._mesh._t
+		self._guess._t0 = prev_guess._t0
+		self._guess._tF = prev_guess._tF
+		self._guess._stretch = (self._guess._tF - self._guess._t0)/2
+		self._guess._shift = (self._guess._t0 + self._guess._tF)/2
+		self._guess._time = (self._mesh._tau * self._guess._stretch) + self._guess._shift
 		self._guess._y = interpolate_to_new_mesh(self._ocp._num_y_vars, prev_guess._y) if self._ocp._num_y_vars else np.array([])
 		self._guess._u = interpolate_to_new_mesh(self._ocp._num_u_vars, prev_guess._u) if self._ocp._num_u_vars else np.array([])
 		self._guess._q = prev_guess._q
@@ -231,32 +238,20 @@ class Iteration:
 				G_nonzero_col.append(col_offset)
 		drho_ds_slice = slice(drho_dt_slice.stop, len(G_nonzero_row))
 
-		# Boundary constraints by state variables at t0
+
+		# Boundary constraints
 		for i_c in range(self._ocp._num_b_cons):
 			for i_y in range(self._ocp._num_y_vars):
-				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c
-				col_offset = i_y * self._mesh._N
-				G_nonzero_row.extend([row_offset])
-				G_nonzero_col.extend([col_offset])
-		dbeta_dy0_slice = slice(drho_ds_slice.stop, len(G_nonzero_row))
-
-		# Boundary constraints by state variables at tF
-		for i_c in range(self._ocp._num_b_cons):
-			for i_y in range(self._ocp._num_y_vars):
-				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c
-				col_offset = (i_y + 1) * self._mesh._N - 1
-				G_nonzero_row.extend([row_offset])
-				G_nonzero_col.extend([col_offset])
-		dbeta_dyF_slice = slice(dbeta_dy0_slice.stop, len(G_nonzero_row))
-
-		# Boundary constraints by integral, time, and parameter variables
-		for i_c in range(self._ocp._num_b_cons):
+				row_offset = [(self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c]*2
+				col_offset = [i_y * self._mesh._N, (i_y+1) * self._mesh._N - 1]
+				G_nonzero_row.extend(row_offset)
+				G_nonzero_col.extend(col_offset)
 			for i_qts in range(self._ocp._num_q_vars + self._ocp._num_t_vars + self._ocp._num_s_vars):
 				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c
 				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + i_qts
 				G_nonzero_row.append(row_offset)
 				G_nonzero_col.append(col_offset)
-		dbeta_dqts_slice = slice(dbeta_dyF_slice.stop, len(G_nonzero_row))
+		dbeta_dxb_slice = slice(drho_ds_slice.stop, len(G_nonzero_row))
 
 		self._G_nonzero_row = G_nonzero_row
 		self._G_nonzero_col = G_nonzero_col
@@ -271,14 +266,21 @@ class Iteration:
 
 		self._reshape_x = reshape_x
 
+		self._x_endpoint_indices = []
+		N = self._mesh._N
+		for i in range(self._ocp._num_y_vars):
+			self._x_endpoint_indices.append(i*N)
+			self._x_endpoint_indices.append((i+1)*N - 1)
+		self._x_endpoint_indices.extend(list(range(self._q_slice.start, self._s_slice.stop)))
+
 		def reshape_x_point(x):
-			return self._ocp._x_reshape_lambda_point(x, self._ocp._num_y_vars, self._y_slice.stop, self._q_slice.start)
+			return self._ocp._x_reshape_lambda_point(x, self._x_endpoint_indices)
 
 		# Generate objective function lambda
 		# @profile
 		def objective(x):
-			x_tuple = reshape_x(x)
-			J = self._ocp._J_lambda(*x_tuple)
+			x_tuple_point = reshape_x_point(x)
+			J = self._ocp._J_lambda(*x_tuple_point)
 			return J
 
 		self._objective_lambda = objective
@@ -286,8 +288,8 @@ class Iteration:
 		# Generate objective function gradient lambda
 		# @profile
 		def gradient(x):
-			x_tuple = reshape_x(x)
-			g = self._ocp._g_lambda(x_tuple, self._num_x, self._yu_slice, self._qts_slice)
+			x_tuple_point = reshape_x_point(x)
+			g = self._ocp._g_lambda(x_tuple_point, self._mesh._N)
 			return g
 
 		self._gradient_lambda = gradient
@@ -297,7 +299,7 @@ class Iteration:
 		def constraint(x):
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
-			c = self._ocp._c_lambda(x_tuple, x_tuple_point, self._ocp._y_slice, self._ocp._q_slice, self._num_c, self._c_defect_slice, self._c_path_slice, self._c_integral_slice, self._c_boundary_slice, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix)
+			c = self._ocp._c_lambda(x_tuple, x_tuple_point, self._mesh._N, self._ocp._y_slice, self._ocp._q_slice, self._num_c, self._c_defect_slice, self._c_path_slice, self._c_integral_slice, self._c_boundary_slice, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix)
 			return c
 
 		self._constraint_lambda = constraint
@@ -309,7 +311,7 @@ class Iteration:
 		def jacobian(x):
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
-			G = self._ocp._G_lambda(x_tuple, x_tuple_point, self._num_G_nonzero, ocp_num_x, self._mesh._N, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dy0_slice, dbeta_dyF_slice, dbeta_dqts_slice)
+			G = self._ocp._G_lambda(x_tuple, x_tuple_point, self._mesh._N, self._num_G_nonzero, ocp_num_x, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dxb_slice)
 			return G
 
 		self._jacobian_lambda = jacobian
@@ -448,15 +450,17 @@ class Iteration:
 
 		nlp_solution, nlp_solution_info = self._nlp_problem.solve(self._guess._x)
 		self._solution = Solution(self, nlp_solution, nlp_solution_info)
-		# self._solution._plot_interpolated_solution(plot_y=True)
-		# self._solution._calculate_discretisation_mesh_error()
-		self._solution._patterson_discretisation_mesh_error()
+		self._solution._plot_interpolated_solution(plot_y=True, plot_dy=False, plot_u=False)
+		self._refine_new_mesh()
 
-		if False:
+		if True:
 			print('\n')
 			print('Solution:\n=========')
-			print('Temporal Grid:\n---------')
-			print(self._solution._tau)
+			print('\n')
+			print('Objective:\n----------')
+			print(self._solution._J, '\n')
+			print('Temporal Grid:\n--------------')
+			print(self._solution._tau, '\n')
 			print('State:\n------')
 			print(self._solution._y, '\n')
 			print('Control:\n--------')
@@ -468,25 +472,18 @@ class Iteration:
 			print('Parameter:\n----------')
 			print(self._solution._s, '\n')
 
-
-			# print('Local Mesh Error:\n=================')
-			# print(self._solution._mesh_error, '\n')
-
-			# print('Global Mesh Error:\n==================')
-			# print(np.amax(self._solution._mesh_error, axis=0), '\n')
-
-		# solution = np.array(nlp_solution)
-		# y = nlp_solution[self._y_slice].reshape(self._ocp._num_y_vars, -1)
-		# u = nlp_solution[self._u_slice].reshape(self._ocp._num_u_vars, -1)
-		# q = nlp_solution[self._q_slice]
-
-		# plt.plot(self._mesh._t, y[0, :], 'b', self._mesh._t, u[0, :], 'r')
-		# plt.show()
-		# print(info)
-		# pass
-
 	def _refine_new_mesh(self):
-		pass
+		self._solution._patterson_discretisation_mesh_error()
+		
+		if True:
+			print('\n')
+			if False:
+				print('Absolute Mesh Error:\n===============')
+				print(self._solution._absolute_mesh_error, '\n')
+				print('Relative Mesh Error:\n===============')
+				print(self._solution._relative_mesh_error, '\n')
+			print('Maximum Relative Mesh Error:\n============================')
+			print(self._solution._maximum_relative_error, '\n')
 
 
 class Solution:
@@ -495,12 +492,11 @@ class Solution:
 		self._it = iteration
 		self._ocp = iteration._ocp
 		self._mesh = iteration._mesh
-		self._time = self._mesh._t
-		self._t0 = self._time[0]
-		self._tF = self._time[-1]
 		self._tau = self._mesh._tau
+		
 		self._nlp_solution = nlp_solution
 		self._nlp_solution_info = nlp_solution_info
+		self._J = self._nlp_solution_info['obj_val']
 		self._x = np.array(nlp_solution)
 		if self._ocp._settings._nlp_solver == 'ipopt':
 			self._process_solution = self._process_ipopt_solution
@@ -538,11 +534,19 @@ class Solution:
 
 	def _process_ipopt_solution(self):
 		self._y = self._x[self._it._y_slice].reshape(self._ocp._num_y_vars, -1)
-		self._dy = self._ocp._dy_lambda(*self._it._reshape_x(self._x))
+		self._dy = self._ocp._dy_lambda(*self._it._reshape_x(self._x), self._mesh._N)
 		self._u = self._x[self._it._u_slice].reshape(self._ocp._num_u_vars, -1)
 		self._q = self._x[self._it._q_slice]
 		self._t = self._x[self._it._t_slice]
 		self._s = self._x[self._it._s_slice]
+
+		self._t0 = self._t[0] if self._ocp._bounds._t_needed[0] else self._it._guess._t0
+		self._tF = self._t[sum(self._ocp._bounds._t_needed) - 1] if self._ocp._bounds._t_needed[1] else self._it._guess._tF
+		self._T = self._tF - self._t0
+		self._stretch = (self._T)/2
+		self._shift = (self._t0 + self._tF)/2
+		self._time = self._tau * self._stretch + self._shift
+
 		self._interpolate_solution()
 
 	def _process_snopt_solution(self, solution):
@@ -558,7 +562,7 @@ class Solution:
 				t_k = self._mesh._tau[i_start:i_stop+1]
 				dy_k = state_deriv[i_start:i_stop+1]
 				dy_poly = np.polynomial.Polynomial.fit(t_k, dy_k, deg=self._mesh._mesh_col_points[i_k]-1, window=[0, 1])
-				scale_factor = self._mesh._PERIOD/self._mesh._T
+				scale_factor = self._mesh._PERIOD/self._T
 				y_poly = dy_poly.integ(k=scale_factor*self._y[i_y, i_start])
 				y_poly = np.polynomial.Polynomial(coef=y_poly.coef/scale_factor, window=y_poly.window, domain=y_poly.domain)
 				self._y_polys[i_y, i_k] = y_poly
@@ -641,33 +645,33 @@ class Solution:
 
 		plt.show()
 
-	def _calculate_discretisation_mesh_error(self):
+	# def _calculate_discretisation_mesh_error(self):
 
-		def eval_poly(t, polys):
-			return np.array([poly(t) for poly in polys])
+	# 	def eval_poly(t, polys):
+	# 		return np.array([poly(t) for poly in polys])
 
-		def error_calc(t, i_y, y_polys, dy_polys, u_polys):
-			y_vars = eval_poly(t, y_polys).tolist()
-			u_vars = eval_poly(t, u_polys).tolist()
-			q_vars = self._q.tolist()
-			t_vars = self._t.tolist()
-			s_vars = self._s.tolist()
-			x = ([np.array([val]) for val in y_vars + u_vars] + q_vars + t_vars + s_vars)
-			dy = self._ocp._dy_lambda(*x)
-			epsilon = eval_poly(t, dy_polys)[i_y] - dy[i_y]
-			return np.abs(epsilon)
+	# 	def error_calc(t, i_y, y_polys, dy_polys, u_polys):
+	# 		y_vars = eval_poly(t, y_polys).tolist()
+	# 		u_vars = eval_poly(t, u_polys).tolist()
+	# 		q_vars = self._q.tolist()
+	# 		t_vars = self._t.tolist()
+	# 		s_vars = self._s.tolist()
+	# 		x = ([np.array([val]) for val in y_vars + u_vars] + q_vars + t_vars + s_vars)
+	# 		dy = self._ocp._dy_lambda(*x)
+	# 		epsilon = eval_poly(t, dy_polys)[i_y] - dy[i_y]
+	# 		return np.abs(epsilon)
 
-		mesh_error = np.empty((self._ocp._num_y_vars, self._mesh._K))
-		t_knots = (self._mesh._t[self._mesh._mesh_index_boundaries])
-		for i_k, (t_knot_start, t_knot_end) in enumerate(zip(t_knots[:-1], t_knots[1:])):
-			for i_y in range(self._ocp._num_y_vars):
-				y_polys = self._y_polys[:, i_k]
-				dy_polys = self._dy_polys[:, i_k]
-				u_polys = self._u_polys[:, i_k] 
+	# 	mesh_error = np.empty((self._ocp._num_y_vars, self._mesh._K))
+	# 	t_knots = (self._mesh._t[self._mesh._mesh_index_boundaries])
+	# 	for i_k, (t_knot_start, t_knot_end) in enumerate(zip(t_knots[:-1], t_knots[1:])):
+	# 		for i_y in range(self._ocp._num_y_vars):
+	# 			y_polys = self._y_polys[:, i_k]
+	# 			dy_polys = self._dy_polys[:, i_k]
+	# 			u_polys = self._u_polys[:, i_k] 
 
-				mesh_error[i_y, i_k] = romberg(error_calc, t_knot_start, t_knot_end, args=(i_y, y_polys, dy_polys, u_polys), divmax=25)
+	# 			mesh_error[i_y, i_k] = romberg(error_calc, t_knot_start, t_knot_end, args=(i_y, y_polys, dy_polys, u_polys), divmax=25)
 
-		self._mesh_error = mesh_error
+	# 	self._mesh_error = mesh_error
 
 	def _patterson_discretisation_mesh_error(self):
 
@@ -683,7 +687,7 @@ class Solution:
 			mesh_sections=self._mesh._K,
 			mesh_section_fractions=self._mesh._mesh_sec_fracs,
 			mesh_collocation_points=(self._mesh._mesh_col_points+1))
-		ph_mesh._generate_mesh(self._t0, self._tF)
+		ph_mesh._generate_mesh()
 
 		y_tilde = np.zeros((self._ocp._num_y_vars, ph_mesh._N))
 		y_tilde[:, ph_mesh._mesh_index_boundaries] = self._y[:, self._mesh._mesh_index_boundaries]
@@ -693,7 +697,7 @@ class Solution:
 		u_tilde[:, ph_mesh._mesh_index_boundaries] = self._u[:, self._mesh._mesh_index_boundaries]
 		u_tilde = eval_polynomials(self._u_polys, ph_mesh, u_tilde)
 
-		dy_tilde = self._ocp._dy_lambda(*y_tilde, *u_tilde, *self._q, *self._t, *self._s)
+		dy_tilde = self._ocp._dy_lambda(*y_tilde, *u_tilde, *self._q, *self._t, *self._s, ph_mesh._N)
 
 		stretch = 0.5 * (self._tF - self._t0)
 		A_dy_tilde = stretch*ph_mesh._sA_matrix.dot(dy_tilde.T)
@@ -737,16 +741,11 @@ class Solution:
 
 		self._maximum_relative_error = max_relative_error
 
+		# P_q = np.empty_like(max_relative_error)
+		# for i_k, (e, m) in enumerate(zip(self._maximum_relative_error, self._mesh._mesh_col_points)):
+		# 	P_q[i_k] = np.ceil(np.divide(np.log(e/self._ocp._settings._mesh_tolerance), np.log(m+2)))
 
-		print('\n\n')
-		print('Absolute Mesh Error:')
-		print(self._absolute_mesh_error, '\n')
-
-		print('Relative Mesh Error:')
-		print(self._relative_mesh_error, '\n')
-
-		print('Maximum Relative Mesh Error:')
-		print(self._maximum_relative_error, '\n')
+		# print(P_q)
 
 
 class IPOPTProblem:

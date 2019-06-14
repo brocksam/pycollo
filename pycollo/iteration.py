@@ -78,8 +78,8 @@ class Iteration:
 		def interpolate_to_new_mesh(num_vars, prev):
 			new_guess = np.empty((num_vars, self._mesh._N))
 			for index, row in enumerate(prev):
-				interp_func = interpolate.interp1d(prev_guess._time, row)
-				new_guess[index, :] = interp_func(self._guess._time)
+				interp_func = interpolate.interp1d(prev_guess._tau, row)
+				new_guess[index, :] = interp_func(self._guess._tau)
 			return new_guess
 
 		# Mesh
@@ -94,8 +94,8 @@ class Iteration:
 		self._guess._tau = self._mesh._tau
 		self._guess._t0 = prev_guess._t0
 		self._guess._tF = prev_guess._tF
-		self._guess._stretch = (self._guess._tF - self._guess._t0)/2
-		self._guess._shift = (self._guess._t0 + self._guess._tF)/2
+		self._guess._stretch = 0.5 * (self._guess._tF - self._guess._t0)
+		self._guess._shift = 0.5 * (self._guess._t0 + self._guess._tF)
 		self._guess._time = (self._mesh._tau * self._guess._stretch) + self._guess._shift
 		self._guess._y = interpolate_to_new_mesh(self._ocp._num_y_vars, prev_guess._y) if self._ocp._num_y_vars else np.array([])
 		self._guess._u = interpolate_to_new_mesh(self._ocp._num_u_vars, prev_guess._u) if self._ocp._num_u_vars else np.array([])
@@ -418,8 +418,8 @@ class Iteration:
 			raise NotImplementedError
 
 		# Boundary constrants bounds
-		bnd_l[self._c_boundary_slice] = self._ocp._bounds._b_l
-		bnd_u[self._c_boundary_slice] = self._ocp._bounds._b_u
+		bnd_l[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_l, self._ocp._bounds._b_l))
+		bnd_u[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_u, self._ocp._bounds._b_u))
 
 		return bnd_l, bnd_u
 

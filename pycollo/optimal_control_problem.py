@@ -12,7 +12,7 @@ from pycollo.iteration import Iteration
 from pycollo.mesh import Mesh
 from pycollo.quadrature import Quadrature
 from pycollo.settings import Settings
-from pycollo.utils import numbafy
+import pycollo.utils as pu
 
 """
 Parameters are definied in accordance with Betts, JT (2010). Practical Methods for Optimal Control and Estimiation Using Nonlinear Programming (Second Edition).
@@ -54,7 +54,7 @@ class OptimalControlProblem():
 
 	_dSTRETCH_dt = np.array([-0.5, 0.5])
 
-	def __init__(self, state_variables=None, control_variables=None, parameter_variables=None, state_equations=None, *, bounds=None, initial_guess=None, initial_mesh=None, path_constraints=None, integrand_functions=None, objective_function=None, boundary_constraints=None, settings=None, auxiliary_data=None):
+	def __init__(self, state_variables=None, control_variables=None, parameter_variables=None, state_equations=None, *, bounds=None, initial_guess=None, initial_mesh=None, path_constraints=None, integrand_functions=None, state_endpoint_constraints=None, boundary_constraints=None, objective_function=None, settings=None, auxiliary_data=None):
 
 		# Set settings
 		self.settings = settings
@@ -70,6 +70,7 @@ class OptimalControlProblem():
 		self._y_eqns_user = ()
 		self._c_cons_user = ()
 		self._q_funcs_user = ()
+		self._y_b_cons_user = ()
 		self._b_cons_user = ()
 		
 		# Variables, constraints and functions
@@ -80,6 +81,7 @@ class OptimalControlProblem():
 		self.state_equations = state_equations
 		self.path_constraints = path_constraints
 		self.integrand_functions = integrand_functions
+		self.state_endpoint_constraints = state_endpoint_constraints
 		self.boundary_constraints = boundary_constraints
 
 		self.objective_function = objective_function
@@ -105,33 +107,6 @@ class OptimalControlProblem():
 		# Initialistion flag
 		self._initialised = False
 
-	@staticmethod
-	def _format_as_tuple(iterable):
-		if not iterable:
-			return ()
-		try:
-			iter(iterable)
-		except TypeError:
-			iterable = (iterable, )
-		iterable_tuple = tuple(sym.sympify(symbol) for symbol in iterable)
-		return iterable_tuple
-
-	def _check_sym_name_clash(self, syms):
-		for sym in syms:
-			if str(sym)[0] == '_':
-				msg = (f"The user defined symbol {sym} is invalid as its leading character, '_' is reserved for use by `pycollo`. Please rename this symbol.")
-				raise ValueError(msg)
-			elif str(sym)[-4:] == '(t0)':
-				msg = (f"The user defined symbol {sym} is invalid as it is named with the suffix '_t0' which is reserved for use by `pycollo`. Please rename this symbol.")
-				raise ValueError(msg)
-			elif str(sym)[-4:] == '(tF)':
-				msg = (f"The user defined symbol {sym} is invalid as it is named with the suffix '_tF' which is reserved for use by `pycollo`. Please rename this symbol.")
-				raise ValueError(msg)
-
-		if (len(set(syms)) != len(syms)) or (len(self._x_vars_user) != (len(self._y_vars_user) + len(self._u_vars_user) + len(self._q_vars_user) + len(self._t_vars_user) + len(self._s_vars_user))):
-			msg = (f"All user defined symbols must have unique names.")
-			raise ValueError(msg)
-
 	@property
 	def initial_time(self):
 		return self._t0_user
@@ -149,17 +124,25 @@ class OptimalControlProblem():
 		return self._y_tF_user
 
 	@property
+	def state_endpoint(self):
+		return self._y_t0_user + self._y_tF_user
+
+	@property
 	def state_variables(self):
 		return self._y_vars_user
 
 	@state_variables.setter
 	def state_variables(self, y_vars):
 		self._initialised = False
-		self._y_vars_user = self._format_as_tuple(y_vars)
+		self._y_vars_user = pu.format_as_tuple(y_vars)
 		self._y_t0_user = tuple(sym.symbols(f'{y}(t0)') for y in self._y_vars_user)
 		self._y_tF_user = tuple(sym.symbols(f'{y}(tF)') for y in self._y_vars_user)
-		self._update_vars()
-		self._check_sym_name_clash(self._y_vars_user)
+		_ = self._update_vars()
+		_ = pu.check_sym_name_clash(self._y_vars_user)
+
+	@property
+	def number_state_variables(self):
+		return len(self._y_vars_user)
 	
 	@property
 	def control_variables(self):
@@ -168,17 +151,29 @@ class OptimalControlProblem():
 	@control_variables.setter
 	def control_variables(self, u_vars):
 		self._initialised = False
-		self._u_vars_user = self._format_as_tuple(u_vars)
-		self._update_vars()
-		self._check_sym_name_clash(self._u_vars_user)
+		self._u_vars_user = pu.format_as_tuple(u_vars)
+		_ = self._update_vars()
+		_ = pu.check_sym_name_clash(self._u_vars_user)
+
+	@property
+	def number_control_variables(self):
+		return len(self._u_vars_user)
 
 	@property
 	def integral_variables(self):
 		return self._q_vars_user
 
 	@property
+	def number_integral_variables(self):
+		return len(self._q_vars_user)
+
+	@property
 	def time_variables(self):
 		return self._t_vars_user
+
+	@property
+	def number_time_variables(self):
+		return len(self._t_vars_user)
 	
 	@property
 	def parameter_variables(self):
@@ -187,18 +182,27 @@ class OptimalControlProblem():
 	@parameter_variables.setter
 	def parameter_variables(self, s_vars):
 		self._initialised = False
-		s_vars = self._format_as_tuple(s_vars)
+		s_vars = pu.format_as_tuple(s_vars)
 		self._s_vars_user = tuple(s_vars)
-		self._update_vars()
-		self._check_sym_name_clash(self._s_vars_user)
+		_ = self._update_vars()
+		_ = pu.check_sym_name_clash(self._s_vars_user)
+
+	@property
+	def number_parameter_variables(self):
+		return len(self._s_vars_user)
 
 	@property
 	def variables(self):
 		return self._x_vars_user
 
+	@property
+	def number_variables(self):
+		return len(self._x_vars_user)
+
 	def _update_vars(self):
 		self._x_vars_user = tuple(self._y_vars_user + self._u_vars_user + self._q_vars_user + self._t_vars_user + self._s_vars_user)
 		self._x_b_vars_user = tuple(self._y_t0_user + self._y_tF_user + self._q_vars_user + self._t_vars_user + self._s_vars_user)
+		return None
 
 	@property
 	def state_equations(self):
@@ -207,7 +211,7 @@ class OptimalControlProblem():
 	@state_equations.setter
 	def state_equations(self, y_eqns):
 		self._initialised = False
-		y_eqns = self._format_as_tuple(y_eqns)
+		y_eqns = pu.format_as_tuple(y_eqns)
 		self._y_eqns_user = tuple(y_eqns)
 
 	@property
@@ -217,7 +221,7 @@ class OptimalControlProblem():
 	@path_constraints.setter
 	def path_constraints(self, c_cons):
 		self._initialised = False
-		c_cons = self._format_as_tuple(c_cons)
+		c_cons = pu.format_as_tuple(c_cons)
 		self._c_cons_user = tuple(c_cons)
 
 	@property
@@ -227,9 +231,19 @@ class OptimalControlProblem():
 	@integrand_functions.setter
 	def integrand_functions(self, integrands):
 		self._initialised = False
-		self._q_funcs_user = self._format_as_tuple(integrands)
+		self._q_funcs_user = pu.format_as_tuple(integrands)
 		self._q_vars_user = tuple(sym.symbols(f'_q{i_q}') for i_q, _ in enumerate(self._q_funcs_user))
-		self._update_vars()
+		_ = self._update_vars()
+
+	@property
+	def state_endpoint_constraints(self):
+		return self._y_b_cons_user
+
+	@state_endpoint_constraints.setter
+	def state_endpoint_constraints(self, y_b_cons):
+		self._initialised = False
+		y_b_cons = pu.format_as_tuple(y_b_cons)
+		self._y_b_cons_user = tuple(y_b_cons)
 
 	@property
 	def boundary_constraints(self):
@@ -238,7 +252,7 @@ class OptimalControlProblem():
 	@boundary_constraints.setter
 	def boundary_constraints(self, b_cons):
 		self._initialised = False
-		b_cons = self._format_as_tuple(b_cons)
+		b_cons = pu.format_as_tuple(b_cons)
 		self._b_cons_user = tuple(b_cons)
 
 	@property
@@ -331,9 +345,9 @@ class OptimalControlProblem():
 		self._x_reshape_lambda = reshape_x
 		self._x_reshape_lambda_point = reshape_x_point
 
-		self._J_lambda = numbafy(expression=self._J, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=0)
+		self._J_lambda = pu.numbafy(expression=self._J, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=0)
 
-		dJ_dxb_lambda = numbafy(expression=self._dJ_dxb_chain, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, endpoint=True, ocp_num_vars=self._num_vars_tuple)
+		dJ_dxb_lambda = pu.numbafy(expression=self._dJ_dxb_chain, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, endpoint=True, ocp_num_vars=self._num_vars_tuple)
 
 		def g_lambda(x_tuple_point, N):
 			g = dJ_dxb_lambda(*x_tuple_point, N)
@@ -341,10 +355,10 @@ class OptimalControlProblem():
 
 		self._g_lambda = g_lambda
 
-		t_stretch_lambda = numbafy(expression=self._STRETCH, parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=0)
+		t_stretch_lambda = pu.numbafy(expression=self._STRETCH, parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=0)
 		self._dstretch_dt = [val for val, t_needed in zip(self._dSTRETCH_dt, self._bounds._t_needed) if t_needed]
 
-		dy_lambda = numbafy(expression=self._y_eqns, parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		dy_lambda = pu.numbafy(expression=self._y_eqns, parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
 		self._dy_lambda = dy_lambda
 
@@ -358,7 +372,7 @@ class OptimalControlProblem():
 		def c_path_lambda(x_tuple, N):
 			return 0
 
-		rho_lambda = numbafy(expression=self._q_funcs, parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		rho_lambda = pu.numbafy(expression=self._q_funcs, parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
 		def c_integral_lambda(x_tuple, N, q_slice, W):
 			q = np.array(x_tuple[q_slice])
@@ -369,7 +383,7 @@ class OptimalControlProblem():
 			else:
 				return q
 
-		beta_lambda = numbafy(expression=self._b_cons, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		beta_lambda = pu.numbafy(expression=self._b_cons, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
 		def c_boundary_lambda(x_tuple_point, N):
 			c = beta_lambda(*x_tuple_point, N)
@@ -386,25 +400,25 @@ class OptimalControlProblem():
 
 		self._c_lambda = c_lambda
 
-		ddy_dy_lambda = numbafy(expression=self._dc_dx_chain[self._c_defect_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		ddy_dy_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_defect_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		ddy_du_lambda = numbafy(expression=self._dc_dx_chain[self._c_defect_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		ddy_du_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_defect_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		ddy_ds_lambda = numbafy(expression=self._dc_dx_chain[self._c_defect_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		ddy_ds_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_defect_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		drho_dy_lambda = numbafy(expression=self._dc_dx_chain[self._c_integral_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		drho_dy_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_integral_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		drho_du_lambda = numbafy(expression=self._dc_dx_chain[self._c_integral_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		drho_du_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_integral_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		drho_ds_lambda = numbafy(expression=self._dc_dx_chain[self._c_integral_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		drho_ds_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_integral_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		# dbeta_dy0_lambda = numbafy(expression=self._db_dy0, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		# dbeta_dy0_lambda = pu.numbafy(expression=self._db_dy0, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		# dbeta_dyF_lambda = numbafy(expression=self._db_dyF, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		# dbeta_dyF_lambda = pu.numbafy(expression=self._db_dyF, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		# dbeta_dqts_lambda = numbafy(expression=self._db_dqts, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		# dbeta_dqts_lambda = pu.numbafy(expression=self._db_dqts, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		dbeta_dxb_lambda = numbafy(expression=self._db_dxb, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		dbeta_dxb_lambda = pu.numbafy(expression=self._db_dxb, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
 		# print(self._db_dxb_chain)
 		# print('\n\n\n')
@@ -535,10 +549,9 @@ class OptimalControlProblem():
 
 		self._G_lambda = G_lambda
 
-	def initialise(self):
+		return None
 
-		# Check user-supplied bounds
-		self._bounds._bounds_check()
+	def initialise(self):
 
 		# User-defined symbols allowed in continuous and endpoint functions
 		user_var_syms_endpoint = set(self._x_b_vars_user)
@@ -614,8 +627,17 @@ class OptimalControlProblem():
 				msg = (f"Integrand function #{i_q+1}: {func}, cannot be a function of {disallowed_syms}.")
 				raise ValueError(msg)
 
+		# Check state endpoint constraints
+		for i_y_b, con in enumerate(self._y_b_cons_user):
+			if con not in self.state_endpoint:
+				msg = (f"State endpoint constraints #{i_y_b}: {con} should not be supplied as a state endpoint constraint as it more than a function of a single state endpoint variable. Please resupply this constraint as a boundary constraint using `OptimalControlProblem.boundary_constraints`.")
+				raise ValueError(msg)
+
 		# Check endpoint constraints
 		for i_b, con in enumerate(self._b_cons_user):
+			if con in self.state_endpoint:
+				msg = (f"Boundary constraint #{i_b}: {con} should not be supplied as a boundary constraint as it only contains a single state endpoint variable. Please resupply this constraint as a state endpoint constraint using `OptimalControlProblem.state_endpoint_constraints`.")
+				raise ValueError(msg)
 			con_syms = set.union(me.find_dynamicsymbols(con), con.free_symbols)
 			if not con_syms.issubset(self._allowed_endpoint_set):
 				disallowed_syms = ', '.join(f'{symbol}' for symbol in con_syms.difference(self._allowed_endpoint_set))
@@ -645,6 +667,9 @@ class OptimalControlProblem():
 		# Generate pycollo symbols and functions
 		self._aux_data = {sym.Symbol(f'_a{i_a}'): value for i_a, (_, value) in enumerate(aux_data_temp.items())}
 		a_subs_dict = dict(zip(aux_data_temp.keys(), self._aux_data.keys()))
+
+		# Check user-supplied bounds
+		self._bounds._bounds_check(aux_data=aux_data_temp, aux_subs=aux_subs_temp)
 
 		# State variables
 		y_vars = [sym.Symbol(f'_y{i_y}') for i_y, _ in enumerate(self._y_vars_user)]
@@ -683,9 +708,9 @@ class OptimalControlProblem():
 			self._t_vars = sym.Matrix.zeros(0, 1)
 		self._num_t_vars = self._t_vars.shape[0]
 		if not self._bounds._t_needed[0]:
-			self._aux_data.update({self._t0: self._bounds._t0_l[0]})
+			self._aux_data.update({self._t0: self._bounds._t0_l})
 		if not self._bounds._t_needed[1]:
-			self._aux_data.update({self._tF: self._bounds._tF_l[0]})
+			self._aux_data.update({self._tF: self._bounds._tF_l})
 		t_subs_dict = dict(zip(self._t_vars_user, t_vars))
 
 		# Parameter variables
@@ -720,7 +745,9 @@ class OptimalControlProblem():
 		self._q_funcs = sym.Matrix(self._q_funcs_user).subs(self._user_subs_dict) if self._q_funcs_user else sym.Matrix.zeros(0, 1)
 
 		# Boundary constraints
-		self._b_cons = sym.Matrix(self._b_cons_user).subs(self._user_subs_dict) if self._b_cons_user else sym.Matrix.zeros(0, 1)
+		self._y_b_cons = sym.Matrix(self._y_b_cons_user).subs(self._user_subs_dict) if self._y_b_cons_user else sym.Matrix.zeros(0, 1)
+		self._b_end_cons = sym.Matrix(self._b_cons_user).subs(self._user_subs_dict) if self._b_cons_user else sym.Matrix.zeros(0, 1)
+		self._b_cons = sym.Matrix([self._y_b_cons, self._b_end_cons])
 		self._num_b_cons = self._b_cons.shape[0]
 
 		# Auxiliary substitutions
@@ -786,18 +813,18 @@ class OptimalControlProblem():
 		self._quadrature = Quadrature(optimal_control_problem=self)
 
 		# Compile numba numerical functions
-		self._compile_numba_functions()
+		_ = self._compile_numba_functions()
 
 		# Initialise the initial mesh iterations
 		self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
 
 		# Set the initialisation flag
-		self._initialised = True
+		return True
 
 	def solve(self):
 		
 		if self._initialised == False:
-			self.initialise()
+			self._initialised = self.initialise()
 
 		# Solve the transcribed NLP on the initial mesh
 		self._mesh_iterations[0]._solve()

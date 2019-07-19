@@ -1,7 +1,9 @@
 import itertools
+from timeit import default_timer as timer
 
 import numba as nb
 import numpy as np
+from ordered_set import OrderedSet
 import scipy.sparse as sparse
 import sympy as sym
 import sympy.physics.mechanics as me
@@ -60,19 +62,18 @@ class OptimalControlProblem():
 		self.settings = settings
 
 		# Initialise problem description
+		_ = self._init_empty_tuples()
 		
-		self._y_vars_user = ()
-		self._u_vars_user = ()
-		self._q_vars_user = ()
-		self._t_vars_user = (self._t0_USER, self._tF_USER)
-		self._s_vars_user = ()
+		_ = self._init_user_options(state_variables, control_variables, parameter_variables, state_equations, path_constraints, integrand_functions, state_endpoint_constraints, boundary_constraints, objective_function, auxiliary_data, bounds, initial_guess)	
 
-		self._y_eqns_user = ()
-		self._c_cons_user = ()
-		self._q_funcs_user = ()
-		self._y_b_cons_user = ()
-		self._b_cons_user = ()
-		
+		_ = self._init_initial_mesh(initial_mesh)	
+
+		# Initialistion flag
+		self._initialised = False
+		self._forward_dynamics = False
+
+	def _init_user_options(self, state_variables, control_variables, parameter_variables, state_equations, path_constraints, integrand_functions, state_endpoint_constraints, boundary_constraints, objective_function, auxiliary_data, bounds, initial_guess):
+
 		# Variables, constraints and functions
 		self.state_variables = state_variables
 		self.control_variables = control_variables
@@ -94,6 +95,24 @@ class OptimalControlProblem():
 		# Set initial guess
 		self.initial_guess = initial_guess
 
+		return None
+
+	def _init_empty_tuples(self):
+		self._y_vars_user = ()
+		self._u_vars_user = ()
+		self._q_vars_user = ()
+		self._t_vars_user = (self._t0_USER, self._tF_USER)
+		self._s_vars_user = ()
+
+		self._y_eqns_user = ()
+		self._c_cons_user = ()
+		self._q_funcs_user = ()
+		self._y_b_cons_user = ()
+		self._b_cons_user = ()
+		return None
+
+	def _init_initial_mesh(self, initial_mesh):
+
 		# Set initial mesh
 		self._mesh_iterations = []
 		if initial_mesh is None:
@@ -104,8 +123,12 @@ class OptimalControlProblem():
 		self._mesh_iterations
 		self._mesh_iterations.append(initial_iteration)
 
-		# Initialistion flag
-		self._initialised = False
+		return None
+
+	@property
+	def time_symbol(self):
+		msg = (f"pycollo do not currently support dynamic, path or integral constraints that are explicit functions of continuous time.")
+		raise NotImplementedError
 
 	@property
 	def initial_time(self):
@@ -125,7 +148,7 @@ class OptimalControlProblem():
 
 	@property
 	def state_endpoint(self):
-		return self._y_t0_user + self._y_tF_user
+		return self.initial_state + self.final_state
 
 	@property
 	def state_variables(self):
@@ -201,7 +224,7 @@ class OptimalControlProblem():
 
 	def _update_vars(self):
 		self._x_vars_user = tuple(self._y_vars_user + self._u_vars_user + self._q_vars_user + self._t_vars_user + self._s_vars_user)
-		self._x_b_vars_user = tuple(self._y_t0_user + self._y_tF_user + self._q_vars_user + self._t_vars_user + self._s_vars_user)
+		self._x_b_vars_user = tuple(self.initial_state + self.final_state + self._q_vars_user + self._t_vars_user + self._s_vars_user)
 		return None
 
 	@property
@@ -263,6 +286,7 @@ class OptimalControlProblem():
 	def objective_function(self, J):
 		self._initialised = False
 		self._J_user = sym.sympify(J)
+		self._forward_dynamics = True if self._J_user == 1 else False
 
 	@property
 	def auxiliary_data(self):
@@ -324,6 +348,10 @@ class OptimalControlProblem():
 			self._settings = settings
 			self._settings._ocp = self
 
+	@property
+	def solution(self):
+		return self._mesh_iterations[-1].solution
+
 	def _compile_numba_functions(self):
 
 		def reshape_x(x, num_yu, yu_qts_split):
@@ -333,12 +361,8 @@ class OptimalControlProblem():
 			x_tuple = (*yu, *qts)
 			return x_tuple
 
-		def reshape_x_point(x, x_endpoint_indices):#num_y, y_u_split, u_q_split):
+		def reshape_x_point(x, x_endpoint_indices):
 			x = np.array(x)
-			# yu_t0 = x[:y_u_split].reshape(num_y, -1)[:, 0]
-			# yu_tF = x[:y_u_split].reshape(num_y, -1)[:, -1]
-			# qts = x[u_q_split:].reshape(len(x) - u_q_split,)
-			# x_tuple = (*yu_t0, *yu_tF, *qts)
 			x_tuple = x[x_endpoint_indices]
 			return x_tuple
 
@@ -378,10 +402,8 @@ class OptimalControlProblem():
 			q = np.array(x_tuple[q_slice])
 			g = rho_lambda(*x_tuple, N)
 			stretch = t_stretch_lambda(*x_tuple)
-			if g.size:
-				return q - stretch*np.matmul(g, W)
-			else:
-				return q
+			c = q - stretch*np.matmul(g, W) if g.size else q
+			return c
 
 		beta_lambda = pu.numbafy(expression=self._b_cons, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
@@ -389,7 +411,6 @@ class OptimalControlProblem():
 			c = beta_lambda(*x_tuple_point, N)
 			return c
 
-		# @profile
 		def c_lambda(x_tuple, x_tuple_point, N, ocp_y_slice, ocp_q_slice, num_c, defect_slice, path_slice, integral_slice, boundary_slice, A, D, W):
 			c = np.empty(num_c)
 			c[defect_slice] = c_defect_lambda(x_tuple, N, ocp_y_slice, A, D)
@@ -412,17 +433,7 @@ class OptimalControlProblem():
 
 		drho_ds_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_integral_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		# dbeta_dy0_lambda = pu.numbafy(expression=self._db_dy0, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
-
-		# dbeta_dyF_lambda = pu.numbafy(expression=self._db_dyF, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
-
-		# dbeta_dqts_lambda = pu.numbafy(expression=self._db_dqts, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
-
 		dbeta_dxb_lambda = pu.numbafy(expression=self._db_dxb, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
-
-		# print(self._db_dxb_chain)
-		# print('\n\n\n')
-		# raise NotImplementedError
 
 		def A_x_dot_sparse(A_sparse, ddy_dx, num_y, num_nz, stretch, return_array):
 			for i, row in enumerate(ddy_dx):
@@ -432,7 +443,6 @@ class OptimalControlProblem():
 				return_array[start:stop] = entries
 			return return_array
 
-		# @profile
 		def G_dzeta_dy_lambda(x_tuple, N, A, D, A_row_col_array, num_y, dzeta_dy_D_nonzero, dzeta_dy_slice):
 			ddy_dy = ddy_dy_lambda(*x_tuple, N)
 			stretch = t_stretch_lambda(*x_tuple)
@@ -443,7 +453,6 @@ class OptimalControlProblem():
 			G_dzeta_dy[dzeta_dy_D_nonzero] += D_data
 			return G_dzeta_dy
 
-		# @profile
 		def G_dzeta_du_lambda(x_tuple, N, A, A_row_col_array, num_y, num_u):
 			ddy_du = ddy_du_lambda(*x_tuple, N)
 			stretch = t_stretch_lambda(*x_tuple)
@@ -532,26 +541,96 @@ class OptimalControlProblem():
 
 			if num_x_ocp.t:
 				G[dzeta_dt_slice] = G_dzeta_dt_lambda(x_tuple, N, A)
-				# G[dgamma_dt_slice] = G_dgamma_dt_lambda(x_tuple)
 				G[drho_dt_slice] = G_drho_dt_lambda(x_tuple, N, W)
 
 			if num_x_ocp.s:
 				G[dzeta_ds_slice] = G_dzeta_ds_lambda(x_tuple, N, A)
-				# G[dgamma_ds_slice] = G_dgamma_ds_lambda(x_tuple)
 				G[drho_ds_slice] = G_drho_ds_lambda(x_tuple, N, W)
 
 			G[dbeta_dxb_slice] = G_dbeta_dxb_lambda(x_tuple_point, N)
-
-			# if sum(num_x_ocp[2:]):
-			# 	G[dbeta_dqts_slice] = G_dbeta_dqts_lambda(x_tuple_point)
 
 			return G
 
 		self._G_lambda = G_lambda
 
+		lagrange_syms_defect = self._lagrange_syms[self._c_defect_slice]
+		lagrange_syms_defect_matrix = lagrange_syms_defect if isinstance(lagrange_syms_defect, sym.Matrix) else sym.Matrix([lagrange_syms_defect])
+		lagrange_syms_defect_set = OrderedSet(lagrange_syms_defect)
+		H_defect_parameters = sym.Matrix([self._x_vars, lagrange_syms_defect_matrix.T])
+
+		ddL_dxdx_defect = self._ddL_dxdx_zeta_chain.values()
+		ddL_dxdx_defect_lambda = pu.numbafy(expression=ddL_dxdx_defect, parameters=H_defect_parameters, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, hessian='defect', hessian_sym_set=lagrange_syms_defect_set, ocp_num_vars=self._num_vars_tuple)
+
+		def H_defect_lambda(x_tuple, lagrange, N, A, sum_flag):
+			ddL_dxdx = ddL_dxdx_defect_lambda(*x_tuple, *lagrange, N)
+			H = np.array([])
+			for matrix, flag in zip(ddL_dxdx, sum_flag):
+				if flag:
+					vals = A.multiply(matrix).sum().flatten()
+				else:
+					vals = np.array(A.multiply(matrix).sum(axis=0)).flatten()
+				H = np.concatenate([H, vals])
+			return H
+
+		def H_path_lambda(x_tuple, lagrange, N):
+			H = np.empty(num_nonzero)
+			return H
+
+		lagrange_syms_integral = self._lagrange_syms[self._c_integral_slice]
+		lagrange_syms_integral_matrix = lagrange_syms_integral if isinstance(lagrange_syms_integral, sym.Matrix) else sym.Matrix([lagrange_syms_integral])
+		lagrange_syms_integral_set = OrderedSet(lagrange_syms_integral)
+		H_integral_parameters = sym.Matrix([self._x_vars, lagrange_syms_integral_matrix.T])
+
+		ddL_dxdx_integral = self._ddL_dxdx_rho_chain.values()
+		ddL_dxdx_integral_lambda = pu.numbafy(expression=ddL_dxdx_integral, parameters=H_integral_parameters, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, hessian='integral', hessian_sym_set=lagrange_syms_integral_set, ocp_num_vars=self._num_vars_tuple)
+
+		def H_integral_lambda(x_tuple, lagrange, N, W, sum_flag):
+			ddL_dxdx = ddL_dxdx_integral_lambda(*x_tuple, *lagrange, N)
+			H = np.array([])
+			for row, flag in zip(ddL_dxdx, sum_flag):
+				if flag:
+					vals = np.array([-np.dot(W, row)])
+				else:
+					vals = -np.multiply(W, row)
+				H = np.concatenate([H, vals])
+			return H
+
+
+
+			# stretch = t_stretch_lambda(*x_tuple)
+			# if g.size:
+			# 	return q - stretch*np.matmul(g, W)
+			# else:
+			# 	return q
+
+		def H_endpoint_lambda(x_tuple, lagrange, N):
+			H = np.empty(num_nonzero)
+			return H
+
+		def H_objective_lambda(x_tuple, sigma, N):
+			H = np.empty(num_nonzero)
+			return H
+
+		def H_lambda(x_tuple, x_tuple_point, sigma, lagrange_defect, lagrange_path, lagrange_integral, lagrange_endpoint, N, num_nonzero, defect_index, path_index, integral_index, endpoint_index, objective_index, A, W, defect_sum_flag, integral_sum_flag):
+			H = np.zeros(num_nonzero)
+
+			H[defect_index] = H_defect_lambda(x_tuple, lagrange_defect, N, A, defect_sum_flag)
+			# H[path_index] += H_path_lambda(x_tuple, lagrange_path)
+			H[integral_index] += H_integral_lambda(x_tuple, lagrange_integral, N, W, integral_sum_flag)
+			# H[endpoint_index] += H_endpoint_lambda(x_tuple_point, lagrange_endpoint)
+			# H[objective_index] += H_objective_lambda(x_tuple_point, sigma)
+
+
+			
+			return H
+
+		self._H_lambda = H_lambda
+
 		return None
 
 	def initialise(self):
+
+		ocp_initialisation_time_start = timer()
 
 		# User-defined symbols allowed in continuous and endpoint functions
 		user_var_syms_endpoint = set(self._x_b_vars_user)
@@ -645,7 +724,9 @@ class OptimalControlProblem():
 				raise ValueError(msg)
 
 		# Check objective function
-		if self._J_user is not None:
+		if self._forward_dynamics:
+			pass
+		elif self._J_user is not None:
 			if not self._J_user.free_symbols:
 				msg = (f"The declared objective function {J} is invalid as it doesn't contain any Mayer terms (functions of the initial and final times and states) or any Lagrange terms (integrals of functions of the state and control variables with respect to time between the limits '_t0' and '_tF').")
 				raise ValueError(msg)
@@ -682,7 +763,7 @@ class OptimalControlProblem():
 		self._y_b_vars = sym.Matrix(list(itertools.chain.from_iterable(y for y in zip(self._y_t0, self._y_tF))))
 		self._aux_data.update({y: value for y, y_needed, value in zip(y_vars, self._bounds._y_needed, self._bounds._y_l) if not y_needed})
 		y_subs_dict = dict(zip(self._y_vars_user, y_vars))
-		y_endpoint_subs_dict = {**dict(zip(self._y_t0_user, self._y_t0)), ** dict(zip(self._y_tF_user, self._y_tF))}
+		y_endpoint_subs_dict = {**dict(zip(self.initial_state, self._y_t0)), ** dict(zip(self.final_state, self._y_tF))}
 
 		# Control variables
 		u_vars = [sym.Symbol(f'_u{i_u}') for i_u, _ in enumerate(self._u_vars_user)]
@@ -727,6 +808,7 @@ class OptimalControlProblem():
 		self._num_vars = self._x_vars.shape[0]
 		self._num_vars_tuple = (self._num_y_vars, self._num_u_vars, self._num_q_vars, self._num_t_vars, self._num_s_vars)
 		self._x_b_vars = sym.Matrix([self._y_b_vars, self._q_vars, self._t_vars, self._s_vars])
+		self._num_point_vars = self._x_b_vars.shape[0]
 		self._user_subs_dict = {**y_subs_dict, **y_endpoint_subs_dict, **u_subs_dict, **t_subs_dict, **s_subs_dict, **a_subs_dict}
 
 		# Substitutions
@@ -772,6 +854,14 @@ class OptimalControlProblem():
 		self._qts_slice = slice(self._q_slice.start, self._s_slice.stop)
 		self._yu_qts_split = self._yu_slice.stop
 
+		self._y_b_slice = slice(0, self._num_y_vars*2)
+		self._u_b_slice = slice(self._y_b_slice.stop, self._y_b_slice.stop)
+		self._q_b_slice = slice(self._u_b_slice.stop, self._u_b_slice.stop + self._num_q_vars)
+		self._t_b_slice = slice(self._q_b_slice.stop, self._q_b_slice.stop + self._num_t_vars)
+		self._s_b_slice = slice(self._t_b_slice.stop, self._t_b_slice.stop + self._num_s_vars)
+		self._qts_b_slice = slice(self._q_b_slice.start, self._s_b_slice.stop)
+		self._y_b_qts_b_split = self._y_b_slice.stop
+
 		# Auxiliary substitutions derivatives
 		self._de_dx = self._e_subs.jacobian(self._x_vars) if self._e_subs else sym.Matrix.zeros(0, 1)
 		self._de_dxb = self._e_subs.jacobian(self._x_b_vars) if self._e_subs else sym.Matrix.zeros(0, 1)
@@ -798,16 +888,91 @@ class OptimalControlProblem():
 		# Initial and final time boundary derivatives
 		self._db_dxb = self._b_cons.jacobian(self._x_b_vars)
 		self._db_de = self._b_cons.jacobian(self._e_syms)
-		
+
+		# Hessian
+		self._sigma = sym.symbols('_sigma')
+		self._lagrange_syms = [sym.symbols(f'_lambda_{n}') for n in range(self._num_c)]
+
+		lagrangian_objective = self._sigma*self._J
+		lagrangian_defect = sum((self._STRETCH*l*c for l, c in zip(self._lagrange_syms[self._c_defect_slice], self._c[self._c_defect_slice])), sym.sympify(0))
+		lagrangian_path = sum((self._STRETCH*l*c for l, c in zip(self._lagrange_syms[self._c_path_slice], self._c[self._c_path_slice])), sym.sympify(0))
+		lagrangian_integral = sum((self._STRETCH*l*c for l, c in zip(self._lagrange_syms[self._c_integral_slice], self._c[self._c_integral_slice])), sym.sympify(0))
+		lagrangian_endpoint = sum((l*b for l, b in zip(self._lagrange_syms[self._c_boundary_slice], self._c[self._c_boundary_slice])), sym.sympify(0))
+
+		# lagrangian_endpoint = sum((l*b for l, b in zip(self._lambda_syms[self._c_boundary_slice], self._b_cons)), self._sigma*self._J)
+
+		# lagrangian_continuous = sum((self._STRETCH*l*c for l, c in zip(self._lambda_syms[self._c_continuous_slice], self._c[self._c_continuous_slice])), sym.sympify(0))
 
 		if self._num_e_subs:
 			self._dJ_dxb_chain = self._dJ_dxb + self._de_dxb.T*self._dJ_de
 			self._dc_dx_chain = self._dc_dx + self._dc_de*self._de_dx
 			self._db_dxb_chain = self._db_dxb + self._db_de*self._de_dxb
+
+			# Objective
+			dL_dxb_J = lagrangian_objective.diff(self._x_b_vars)
+			dL_de_J = lagrangian_objective.diff(self._e_syms)
+			dL_dxb_J_chain = dL_dxb_J + self._de_dxb.T * dL_de_J
+			ddL_dxbdxb_J = dL_dxb_J_chain.jacobian(self._x_b_vars)
+			ddL_dedxb_J = dL_dxb_J_chain.jacobian(self._e_syms)
+			ddL_dxbdxb_J_chain = ddL_dxbdxb_J + ddL_dedxb_J*self._de_dxb
+
+			# Defect
+			dL_dx_zeta = lagrangian_defect.diff(self._x_vars)
+			dL_de_zeta = lagrangian_defect.diff(self._e_syms)
+			dL_dx_zeta_chain = dL_dx_zeta + self._de_dx.T * dL_de_zeta
+			ddL_dxdx_zeta = dL_dx_zeta_chain.jacobian(self._x_vars)
+			ddL_dedx_zeta = dL_dx_zeta_chain.jacobian(self._e_syms)
+			ddL_dxdx_zeta_chain = ddL_dxdx_zeta + ddL_dedx_zeta*self._de_dx
+
+			# Path
+			dL_dx_c = lagrangian_path.diff(self._x_vars)
+			dL_de_c = lagrangian_path.diff(self._e_syms)
+			dL_dx_c_chain = dL_dx_c + self._de_dx.T * dL_de_c
+			ddL_dxdx_c = dL_dx_c_chain.jacobian(self._x_vars)
+			ddL_dedx_c = dL_dx_c_chain.jacobian(self._e_syms)
+			ddL_dxdx_c_chain = ddL_dxdx_c + ddL_dedx_c*self._de_dx
+
+			# Integral
+			dL_dx_rho = lagrangian_integral.diff(self._x_vars)
+			dL_de_rho = lagrangian_integral.diff(self._e_syms)
+			dL_dx_rho_chain = dL_dx_rho + self._de_dx.T * dL_de_rho
+			ddL_dxdx_rho = dL_dx_rho_chain.jacobian(self._x_vars)
+			ddL_dedx_rho = dL_dx_rho_chain.jacobian(self._e_syms)
+			ddL_dxdx_rho_chain = ddL_dxdx_rho + ddL_dedx_rho*self._de_dx
+
+			# Endpoint
+			dL_dxb_beta = lagrangian_endpoint.diff(self._x_b_vars)
+			dL_de_beta = lagrangian_endpoint.diff(self._e_syms)
+			dL_dxb_beta_chain = dL_dxb_beta + self._de_dxb.T * dL_de_beta
+			ddL_dxbdxb_beta = dL_dxb_beta_chain.jacobian(self._x_b_vars)
+			ddL_dedxb_beta = dL_dxb_beta_chain.jacobian(self._e_syms)
+			ddL_dxbdxb_beta_chain = ddL_dxbdxb_beta + ddL_dedxb_beta*self._de_dxb
 		else:
 			self._dJ_dxb_chain = self._dJ_dxb
 			self._dc_dx_chain = self._dc_dx
-			self._db_dxb_chain = self._db_dxb 
+			self._db_dxb_chain = self._db_dxb
+
+			# Objective
+			ddL_dxbdxb_J_chain = sym.hessian(lagrangian_objective, self._x_b_vars)
+
+			# Defect
+			ddL_dxdx_zeta_chain = sym.hessian(lagrangian_defect, self._x_vars)
+
+			# Path
+			ddL_dxdx_c_chain = sym.hessian(lagrangian_path, self._x_vars)
+
+			# Integral
+			ddL_dxdx_rho_chain = sym.hessian(lagrangian_integral, self._x_vars)
+
+			# Defect
+			ddL_dxbdxb_beta_chain = sym.hessian(lagrangian_endpoint, self._x_b_vars)
+
+		# Make Hessian matrices lower triangular
+		self._ddL_dxbdxb_J_chain = sym.Matrix(np.tril(np.array(ddL_dxbdxb_J_chain)))
+		self._ddL_dxdx_zeta_chain = sym.Matrix(np.tril(np.array(ddL_dxdx_zeta_chain)))
+		self._ddL_dxdx_c_chain = sym.Matrix(np.tril(np.array(ddL_dxdx_c_chain)))
+		self._ddL_dxdx_rho_chain = sym.Matrix(np.tril(np.array(ddL_dxdx_rho_chain)))
+		self._ddL_dxbdxb_beta_chain = sym.Matrix(np.tril(np.array(ddL_dxbdxb_beta_chain)))
 
 		# Quadrature computations
 		self._quadrature = Quadrature(optimal_control_problem=self)
@@ -818,6 +983,10 @@ class OptimalControlProblem():
 		# Initialise the initial mesh iterations
 		self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
 
+		ocp_initialisation_time_stop = timer()
+
+		self._ocp_initialisation_time = ocp_initialisation_time_stop - ocp_initialisation_time_start
+
 		# Set the initialisation flag
 		return True
 
@@ -827,5 +996,68 @@ class OptimalControlProblem():
 			self._initialised = self.initialise()
 
 		# Solve the transcribed NLP on the initial mesh
-		self._mesh_iterations[0]._solve()
+		new_iteration_mesh, new_iteration_guess = self._mesh_iterations[0]._solve()
+
+		mesh_iterations_met = self._settings.max_mesh_iterations == 1
+		mesh_tolerance_met = False
+
+		while not mesh_iterations_met and not mesh_tolerance_met:
+			new_iteration = Iteration(optimal_control_problem=self, iteration_number=self.num_mesh_iterations+1, mesh=new_iteration_mesh)
+			self._mesh_iterations.append(new_iteration)
+			self._mesh_iterations[-1]._initialise_iteration(new_iteration_guess)
+			new_iteration_mesh, new_iteration_guess = self._mesh_iterations[-1]._solve()
+			if new_iteration_mesh is None:
+				mesh_tolerance_met = True
+				print(f'Mesh tolerance met in mesh iteration {len(self._mesh_iterations)}.\n')
+			elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
+				mesh_iterations_met = True
+				print(f'Maximum number of mesh iterations reached. pycollo exiting before mesh tolerance met.\n')
+	
+		_ = self._final_output()
+
+	def _final_output(self):
+
+		solved_msg = ('\n\n===========================================\nOptimal control problem sucessfully solved.\n===========================================\n')
+		print(solved_msg)
+
+		ocp_init_time_msg = (f'Total OCP Initialisation Time:       {self._ocp_initialisation_time:.4f} s')
+		print(ocp_init_time_msg)
+
+		self._iteration_initialisation_time = np.sum(np.array([iteration._initialisation_time for iteration in self._mesh_iterations]))
+
+		iter_init_time_msg = (f'Total Iteration Initialisation Time: {self._iteration_initialisation_time:.4f} s')
+		print(iter_init_time_msg)
+
+		self._nlp_time = np.sum(np.array([iteration._nlp_time for iteration in self._mesh_iterations]))
+
+		nlp_time_msg = (f'Total NLP Solver Time:               {self._nlp_time:.4f} s')
+		print(nlp_time_msg)	
+
+		self._process_results_time = np.sum(np.array([iteration._process_results_time for iteration in self._mesh_iterations]))
+
+		process_results_time_msg = (f'Total Mesh Refinement Time:          {self._process_results_time:.4f} s')
+		print(process_results_time_msg)
+
+		total_time_msg = (f'\nTotal Time:                          {self._ocp_initialisation_time + self._iteration_initialisation_time + self._nlp_time + self._process_results_time:.4f} s')
+
+		print(total_time_msg)
+		
+		print('\n\n')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

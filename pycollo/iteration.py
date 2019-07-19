@@ -1,4 +1,7 @@
 import collections
+import itertools
+from timeit import default_timer as timer
+import time
 
 import ipopt
 import matplotlib.pyplot as plt
@@ -31,6 +34,11 @@ class Iteration:
 		
 		# Result
 		self._result = None
+
+		_ = self._display_mesh_iteration()
+
+	def _display_mesh_iteration(self):
+		print(f'\n\n\n==========================\nSolving Mesh Iteration {self.iteration_number}:\n==========================\n')
 
 	@property
 	def iteration_number(self):
@@ -72,8 +80,14 @@ class Iteration:
 	def _s(self):
 		return self._x[self._s_slice, :]
 
+	@property
+	def solution(self):
+		return self._solution
+
 	# @profile
 	def _initialise_iteration(self, prev_guess):
+
+		initialisation_time_start = timer()
 
 		def interpolate_to_new_mesh(num_vars, prev):
 			new_guess = np.empty((num_vars, self._mesh._N))
@@ -83,7 +97,7 @@ class Iteration:
 			return new_guess
 
 		# Mesh
-		self._mesh._generate_mesh()#prev_guess._t0, prev_guess._tF)
+		self._mesh._generate_mesh()
 
 		# Guess
 		self._guess = Guess(
@@ -102,6 +116,11 @@ class Iteration:
 		self._guess._q = prev_guess._q
 		self._guess._t = prev_guess._t
 		self._guess._s = prev_guess._s
+
+		# plt.plot(self._guess._time, self._guess._y[2, :])
+		# plt.plot(self._guess._time, self._guess._y[3, :])
+		# plt.show()
+		# raise ValueError
 
 		# Variables
 		self._num_y = self._ocp._num_y_vars * self._mesh._N
@@ -123,6 +142,9 @@ class Iteration:
 		# Constraints
 		self._num_c_defect = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
 		self._num_c_path = self._ocp._num_c_cons
+		if self._num_c_path != 0:
+			# Will also need to check the lagrange_reshape() function
+			raise NotImplementedError
 		self._num_c_integral = self._ocp._num_q_vars
 		self._num_c_boundary = self._ocp._num_b_cons
 		self._num_c = self._num_c_defect + self._num_c_path + self._num_c_integral + self._num_c_boundary
@@ -173,7 +195,7 @@ class Iteration:
 		dzeta_dt_slice = slice(dzeta_du_slice.stop, len(G_nonzero_row))
 
 		# Defect constraint by parameter variables
-		num_rows = self._ocp._num_s_vars * self._mesh._num_c_boundary_per_y
+		num_rows = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
 		num_cols = self._ocp._num_s_vars
 		col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars
 		row_indices = list(range(num_rows))
@@ -215,7 +237,7 @@ class Iteration:
 		# Integral constraints by integral variables
 		for i_c in range(self._ocp._num_q_vars):
 			row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
-			col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N  + i_c
+			col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + i_c
 			G_nonzero_row.extend(list(row_offset*np.ones(self._ocp._num_q_vars, dtype=int)))
 			G_nonzero_col.extend(list(range(col_offset, self._ocp._num_q_vars + col_offset)))
 		drho_dq_slice = slice(drho_du_slice.stop, len(G_nonzero_row))
@@ -238,7 +260,6 @@ class Iteration:
 				G_nonzero_col.append(col_offset)
 		drho_ds_slice = slice(drho_dt_slice.stop, len(G_nonzero_row))
 
-
 		# Boundary constraints
 		for i_c in range(self._ocp._num_b_cons):
 			for i_y in range(self._ocp._num_y_vars):
@@ -253,9 +274,144 @@ class Iteration:
 				G_nonzero_col.append(col_offset)
 		dbeta_dxb_slice = slice(drho_ds_slice.stop, len(G_nonzero_row))
 
-		self._G_nonzero_row = G_nonzero_row
-		self._G_nonzero_col = G_nonzero_col
+		self._G_nonzero_row = tuple(G_nonzero_row)
+		self._G_nonzero_col = tuple(G_nonzero_col)
 		self._num_G_nonzero = len(G_nonzero_row)
+
+		# Hessian defect
+		H_defect_nonzero_row = []
+		H_defect_nonzero_col = []
+		H_defect_sum_flag = []
+		
+		for i_row in range(self._ocp._num_vars):
+			row = self._ocp._ddL_dxdx_zeta_chain[i_row, :i_row+1]
+			if i_row < self._ocp._yu_qts_split:
+				row_offset = i_row * self._mesh._N
+				row_numbers = list(range(row_offset, row_offset + self._mesh._N))
+			else:
+				row_offset = self._ocp._yu_qts_split * (self._mesh._N - 1) + i_row
+				row_numbers = [row_offset]*self._mesh._N
+			for i_col, entry in enumerate(row):
+				if entry != 0:
+					if i_col < self._ocp._yu_qts_split:
+						col_offset = i_col * self._mesh._N
+						col_numbers = list(range(col_offset, col_offset + self._mesh._N))
+						H_defect_sum_flag.append(False)
+					else:
+						col_offset = self._ocp._yu_qts_split* (self._mesh._N - 1) + i_col
+						row_numbers = [row_offset]
+						col_numbers = [col_offset]
+						H_defect_sum_flag.append(True)
+					H_defect_nonzero_row.extend(row_numbers)
+					H_defect_nonzero_col.extend(col_numbers)
+
+		num_H_defect_nonzero = len(H_defect_nonzero_row)
+		sH_defect_matrix = sparse.coo_matrix(([1]*num_H_defect_nonzero, (H_defect_nonzero_row, H_defect_nonzero_col)), shape=(self._num_x, self._num_x))
+		sH_defect_indices = list(zip(sH_defect_matrix.row, sH_defect_matrix.col))
+
+		# Hessian path
+		H_path_indices = []
+		# print(self._ocp._ddL_dxdx_c_chain.values())
+
+
+		# Hessian integral
+		H_integral_nonzero_row = []
+		H_integral_nonzero_col = []
+		H_integral_sum_flag = []
+		
+		for i_row in range(self._ocp._num_vars):
+			row = self._ocp._ddL_dxdx_rho_chain[i_row, :i_row+1]
+			if i_row < self._ocp._yu_qts_split:
+				row_offset = i_row * self._mesh._N
+				row_numbers = list(range(row_offset, row_offset + self._mesh._N))
+			else:
+				row_offset = self._ocp._yu_qts_split * (self._mesh._N - 1) + i_row
+				row_numbers = [row_offset]*self._mesh._N
+			for i_col, entry in enumerate(row):
+				if entry != 0:
+					if i_col < self._ocp._yu_qts_split:
+						col_offset = i_col * self._mesh._N
+						col_numbers = list(range(col_offset, col_offset + self._mesh._N))
+						H_integral_sum_flag.append(False)
+					else:
+						col_offset = self._ocp._yu_qts_split* (self._mesh._N - 1) + i_col
+						row_numbers = [row_offset]
+						col_numbers = [col_offset]
+						H_integral_sum_flag.append(True)
+					H_integral_nonzero_row.extend(row_numbers)
+					H_integral_nonzero_col.extend(col_numbers)
+
+		num_H_integral_nonzero = len(H_integral_nonzero_row)
+		sH_integral_matrix = sparse.coo_matrix(([1]*num_H_integral_nonzero, (H_integral_nonzero_row, H_integral_nonzero_col)), shape=(self._num_x, self._num_x))
+		sH_integral_indices = list(zip(sH_integral_matrix.row, sH_integral_matrix.col))
+
+		# Hessian endpoint
+		H_endpoint_nonzero_row = []
+		H_endpoint_nonzero_col = []
+		col_numbers = []
+
+		# YY
+		for i_yb in range(self._ocp._num_y_vars):
+			row_number = self._mesh._N * i_yb
+			H_endpoint_nonzero_row.extend([row_number]*(2*i_yb+1))
+			col_numbers.append(row_number)
+			H_endpoint_nonzero_col.extend(col_numbers)
+			row_number = self._mesh._N * (i_yb + 1) - 1
+			H_endpoint_nonzero_row.extend([row_number]*(2*i_yb+2))
+			col_numbers.append(row_number)
+			H_endpoint_nonzero_col.extend(col_numbers)
+
+		# QY, QQ, TY, TQ, TT, SY, SQ, ST, SS
+		for i_qts in range(self._ocp._num_q_vars + self._ocp._num_t_vars + self._ocp._num_s_vars):
+			row_number = self._num_y + self._num_u + i_qts
+			col_numbers.append(row_number)
+			H_endpoint_nonzero_row.extend([row_number]*len(col_numbers))
+			H_endpoint_nonzero_col.extend(col_numbers)
+
+		H_endpoint_indices = []
+		# print(self._ocp._ddL_dxbdxb_beta_chain.values())
+
+		# Hessian objective
+
+
+		H_objective_indices = []
+		# print(self._ocp._ddL_dxbdxb_J_chain.values())
+
+
+
+
+
+		# num_H_endpoint_nonzero = len(H_endpoint_nonzero_row)
+
+		# sH_endpoint_matrix = sparse.coo_matrix(([1]*num_H_endpoint_nonzero, (H_endpoint_nonzero_row, H_endpoint_nonzero_col)), shape=(self._num_x, self._num_x))
+		sH_matrix = (sH_defect_matrix + sH_integral_matrix).tocoo()
+
+		
+		# sH_endpoint_indices = list(zip(sH_endpoint_matrix.row, sH_endpoint_matrix.col))
+		sH_indices = list(zip(sH_matrix.row, sH_matrix.col))
+
+		H_defect_indices = []
+		H_integral_indices = []
+		for i, pair in enumerate(sH_indices):
+			if pair in sH_defect_indices:
+				H_defect_indices.append(i)
+			if pair in sH_integral_indices:
+				H_integral_indices.append(i)
+
+		self._H_nonzero_row = tuple(sH_matrix.row)
+		self._H_nonzero_col = tuple(sH_matrix.col)
+		self._num_H_nonzero = len(self._H_nonzero_row)
+
+
+
+
+
+
+
+
+
+
+
 
 		# Lambda to prepare x from IPOPT for numba funcs
 		def reshape_x(x):
@@ -277,7 +433,6 @@ class Iteration:
 			return self._ocp._x_reshape_lambda_point(x, self._x_endpoint_indices)
 
 		# Generate objective function lambda
-		# @profile
 		def objective(x):
 			x_tuple_point = reshape_x_point(x)
 			J = self._ocp._J_lambda(*x_tuple_point)
@@ -286,7 +441,6 @@ class Iteration:
 		self._objective_lambda = objective
 
 		# Generate objective function gradient lambda
-		# @profile
 		def gradient(x):
 			x_tuple_point = reshape_x_point(x)
 			g = self._ocp._g_lambda(x_tuple_point, self._mesh._N)
@@ -295,7 +449,6 @@ class Iteration:
 		self._gradient_lambda = gradient
 
 		# Generate constraint lambdas
-		# @profile
 		def constraint(x):
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
@@ -307,7 +460,6 @@ class Iteration:
 		OCPNumX = collections.namedtuple('OCPNumX', ['y', 'u', 'q', 't', 's'])
 		ocp_num_x = OCPNumX(y=self._ocp._num_y_vars, u=self._ocp._num_u_vars, q=self._ocp._num_q_vars, t=self._ocp._num_t_vars, s=self._ocp._num_s_vars)
 
-		# @profile
 		def jacobian(x):
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
@@ -316,11 +468,32 @@ class Iteration:
 
 		self._jacobian_lambda = jacobian
 
-		# @profile
 		def jacobian_structure():
 			return (self._G_nonzero_row, self._G_nonzero_col)
 
 		self._jacobian_structure_lambda = jacobian_structure
+
+		def reshape_lagrange(lagrange):
+			lagrange = np.array(lagrange)
+			delta_lagrange = lagrange[self._c_defect_slice].reshape((self._ocp._num_y_vars, self._mesh._num_c_boundary_per_y))
+			c_lagrange = lagrange[self._c_path_slice].reshape(-1, )
+			rho_lagrange = lagrange[self._c_integral_slice].reshape(-1, )
+			beta_lagrange = lagrange[self._c_boundary_slice].reshape(-1, )
+			return tuple([*delta_lagrange]), tuple([*c_lagrange]), tuple([*rho_lagrange]), tuple([*beta_lagrange])
+
+		def hessian(x, lagrange, obj_factor):
+			x_tuple = reshape_x(x)
+			x_tuple_point = reshape_x_point(x)
+			lagrange_defect, lagrange_path, lagrange_integral, lagrange_endpoint = reshape_lagrange(lagrange)
+			H = self._ocp._H_lambda(x_tuple, x_tuple_point, obj_factor, lagrange_defect, lagrange_path, lagrange_integral, lagrange_endpoint, self._mesh._N, self._num_H_nonzero,H_defect_indices, H_path_indices, H_integral_indices, H_endpoint_indices, H_objective_indices, self._mesh._sA_matrix, self._mesh._W_matrix, H_defect_sum_flag, H_integral_sum_flag)
+			return H
+
+		self._hessian_lambda = hessian
+
+		def hessian_structure():
+			return (self._H_nonzero_row, self._H_nonzero_col)
+
+		self._hessian_structure_lambda = hessian_structure
 
 		# Generate bounds
 		self._x_bnd_l, self._x_bnd_u = self._generate_x_bounds()
@@ -334,28 +507,40 @@ class Iteration:
 
 			print('x:')
 			x_data = np.array(range(self._num_x))
+			lagrange = np.array(range(self._num_c))
+			obj_factor = 2
 			# x_data = 2*np.ones(self._num_x)
+			print(self._ocp._x_vars)
 			print(x_data, '\n')
+			print(lagrange)
+			if False:
+				print('J:')
+				J = self._objective_lambda(x_data)
+				print(J, '\n')
 
-			print('J:')
-			J = self._objective_lambda(x_data)
-			print(J, '\n')
+				print('g:')
+				g = self._gradient_lambda(x_data)
+				print(g, '\n')
 
-			print('g:')
-			g = self._gradient_lambda(x_data)
-			print(g, '\n')
+				print('c:')
+				c = self._constraint_lambda(x_data)
+				print(c, '\n')
 
-			print('c:')
-			c = self._constraint_lambda(x_data)
-			print(c, '\n')
+				print('G Structure:')
+				G_struct = self._jacobian_structure_lambda()
+				print(G_struct, '\n')
 
-			print('G:')
-			G = self._jacobian_lambda(x_data)
-			print(G, '\n')
+				print('G:')
+				G = self._jacobian_lambda(x_data)
+				print(G, '\n')
 
-			print('G Structure:')
-			G_struct = self._jacobian_structure_lambda()
-			print(G_struct, '\n')
+			print('H Structure:')
+			H_struct = self._hessian_structure_lambda()
+			print(H_struct, '\n')
+
+			print('H:')
+			H = self._hessian_lambda(x_data, lagrange, obj_factor)
+			print(H, '\n')
 			
 			print('\n\n\n')
 			raise NotImplementedError
@@ -379,6 +564,10 @@ class Iteration:
 
 		# Initialise the NLP problem
 		self._initialise_nlp()
+
+		initialisation_time_stop = timer()
+
+		self._initialisation_time = initialisation_time_stop - initialisation_time_start
 
 	def _generate_x_bounds(self):
 
@@ -425,6 +614,10 @@ class Iteration:
 
 	def _initialise_nlp(self):
 
+		if self._ocp._settings.derivative_level == 1:
+			self._hessian_lambda = None
+			self._hessian_structure_lambda = None
+
 		if self._ocp._settings._nlp_solver == 'ipopt':
 
 			self._ipopt_problem = IPOPTProblem(
@@ -432,7 +625,9 @@ class Iteration:
 				self._gradient_lambda, 
 				self._constraint_lambda, 
 				self._jacobian_lambda, 
-				self._jacobian_structure_lambda)
+				self._jacobian_structure_lambda,
+				self._hessian_lambda,
+				self._hessian_structure_lambda)
 
 			self._nlp_problem = ipopt.problem(
 				n=self._num_x,
@@ -443,17 +638,49 @@ class Iteration:
 				cl=self._c_bnd_l,
 				cu=self._c_bnd_u)
 
+			self._nlp_problem.addOption('mu_strategy', 'adaptive')
+			self._nlp_problem.addOption('tol', self._ocp._settings.nlp_tolerance)
+			self._nlp_problem.addOption('max_iter', self._ocp._settings.max_nlp_iterations)
+			self._nlp_problem.addOption('print_level', 5)
+
 		else:
 			raise NotImplementedError
 
 	def _solve(self):
 
-		nlp_solution, nlp_solution_info = self._nlp_problem.solve(self._guess._x)
-		self._solution = Solution(self, nlp_solution, nlp_solution_info)
-		self._solution._plot_interpolated_solution(plot_y=True, plot_dy=False, plot_u=False)
-		self._refine_new_mesh()
+		time_start = time.time()
+		nlp_time_start = timer()
 
-		if True:
+		nlp_solution, nlp_solution_info = self._nlp_problem.solve(self._guess._x)
+
+		nlp_time_stop = timer()
+		time_stop = time.time()
+		self._nlp_time = nlp_time_stop - nlp_time_start
+
+		process_results_time_start = timer()
+
+		self._solution = Solution(self, nlp_solution, nlp_solution_info)
+		next_iter_mesh = self._refine_new_mesh()
+		next_iter_guess = Guess(optimal_control_problem=self._ocp, time=self._solution.time, state=self._solution.state, control=self._solution.control, integral=self._solution.integral, parameter=self._solution.parameter)
+		_ = next_iter_guess._mesh_refinement_bypass_init()
+		_ = self._display_mesh_iteration_info(next_iter_mesh)
+
+		process_results_time_stop = timer()
+
+		self._process_results_time = process_results_time_stop - process_results_time_start
+
+		return next_iter_mesh, next_iter_guess
+
+	def _display_mesh_iteration_info(self, next_iter_mesh):
+
+		print(f'\n\npycollo Analysis of Mesh Iteration {self.iteration_number}:\n======================================\n')
+
+		print(f'Objective Evaluation:       {self._solution._J}\n')
+		print(f'Max Relative Mesh Error:    {np.max(self._solution._maximum_relative_error)}\n')
+		if next_iter_mesh is not None:
+			print(f'Adjusting Collocation Mesh: {next_iter_mesh._K} mesh sections\n')
+
+		if self._ocp._settings.display_mesh_result_info:
 			print('\n')
 			print('Solution:\n=========')
 			print('\n')
@@ -472,18 +699,21 @@ class Iteration:
 			print('Parameter:\n----------')
 			print(self._solution._s, '\n')
 
-	def _refine_new_mesh(self):
-		self._solution._patterson_discretisation_mesh_error()
+		if self._ocp._settings.display_mesh_result_graph:
+			self._solution._plot_interpolated_solution(plot_y=True, plot_dy=False, plot_u=False)
+
+
+
 		
-		if True:
-			print('\n')
-			if False:
-				print('Absolute Mesh Error:\n===============')
-				print(self._solution._absolute_mesh_error, '\n')
-				print('Relative Mesh Error:\n===============')
-				print(self._solution._relative_mesh_error, '\n')
-			print('Maximum Relative Mesh Error:\n============================')
-			print(self._solution._maximum_relative_error, '\n')
+
+		
+
+	def _refine_new_mesh(self):
+		_ = self._solution._patterson_rao_discretisation_mesh_error()
+		next_iter_mesh = self._solution._patterson_rao_next_iteration_mesh()
+		return next_iter_mesh
+		
+
 
 
 class Solution:
@@ -526,16 +756,16 @@ class Solution:
 
 	@property
 	def time(self):
-		return self._t
+		return self._time
 	
 	@property
 	def parameter(self):
 		return self._s
 
 	def _process_ipopt_solution(self):
-		self._y = self._x[self._it._y_slice].reshape(self._ocp._num_y_vars, -1)
-		self._dy = self._ocp._dy_lambda(*self._it._reshape_x(self._x), self._mesh._N)
-		self._u = self._x[self._it._u_slice].reshape(self._ocp._num_u_vars, -1)
+		self._y = self._x[self._it._y_slice].reshape(self._ocp._num_y_vars, -1) if self._ocp._num_y_vars else []
+		self._dy = self._ocp._dy_lambda(*self._it._reshape_x(self._x), self._mesh._N) if self._ocp._num_y_vars else []
+		self._u = self._x[self._it._u_slice].reshape(self._ocp._num_u_vars, -1) if self._ocp._num_u_vars else []
 		self._q = self._x[self._it._q_slice]
 		self._t = self._x[self._it._t_slice]
 		self._s = self._x[self._it._s_slice]
@@ -645,35 +875,7 @@ class Solution:
 
 		plt.show()
 
-	# def _calculate_discretisation_mesh_error(self):
-
-	# 	def eval_poly(t, polys):
-	# 		return np.array([poly(t) for poly in polys])
-
-	# 	def error_calc(t, i_y, y_polys, dy_polys, u_polys):
-	# 		y_vars = eval_poly(t, y_polys).tolist()
-	# 		u_vars = eval_poly(t, u_polys).tolist()
-	# 		q_vars = self._q.tolist()
-	# 		t_vars = self._t.tolist()
-	# 		s_vars = self._s.tolist()
-	# 		x = ([np.array([val]) for val in y_vars + u_vars] + q_vars + t_vars + s_vars)
-	# 		dy = self._ocp._dy_lambda(*x)
-	# 		epsilon = eval_poly(t, dy_polys)[i_y] - dy[i_y]
-	# 		return np.abs(epsilon)
-
-	# 	mesh_error = np.empty((self._ocp._num_y_vars, self._mesh._K))
-	# 	t_knots = (self._mesh._t[self._mesh._mesh_index_boundaries])
-	# 	for i_k, (t_knot_start, t_knot_end) in enumerate(zip(t_knots[:-1], t_knots[1:])):
-	# 		for i_y in range(self._ocp._num_y_vars):
-	# 			y_polys = self._y_polys[:, i_k]
-	# 			dy_polys = self._dy_polys[:, i_k]
-	# 			u_polys = self._u_polys[:, i_k] 
-
-	# 			mesh_error[i_y, i_k] = romberg(error_calc, t_knot_start, t_knot_end, args=(i_y, y_polys, dy_polys, u_polys), divmax=25)
-
-	# 	self._mesh_error = mesh_error
-
-	def _patterson_discretisation_mesh_error(self):
+	def _patterson_rao_discretisation_mesh_error(self):
 
 		def eval_polynomials(polys, mesh, vals):
 			sec_bnd_inds = mesh._mesh_index_boundaries
@@ -693,9 +895,12 @@ class Solution:
 		y_tilde[:, ph_mesh._mesh_index_boundaries] = self._y[:, self._mesh._mesh_index_boundaries]
 		y_tilde = eval_polynomials(self._y_polys, ph_mesh, y_tilde)
 
-		u_tilde = np.zeros((self._ocp._num_u_vars, ph_mesh._N))
-		u_tilde[:, ph_mesh._mesh_index_boundaries] = self._u[:, self._mesh._mesh_index_boundaries]
-		u_tilde = eval_polynomials(self._u_polys, ph_mesh, u_tilde)
+		if self._ocp._num_u_vars:
+			u_tilde = np.zeros((self._ocp._num_u_vars, ph_mesh._N))
+			u_tilde[:, ph_mesh._mesh_index_boundaries] = self._u[:, self._mesh._mesh_index_boundaries]
+			u_tilde = eval_polynomials(self._u_polys, ph_mesh, u_tilde)
+		else:
+			u_tilde = np.array([])
 
 		dy_tilde = self._ocp._dy_lambda(*y_tilde, *u_tilde, *self._q, *self._t, *self._s, ph_mesh._N)
 
@@ -726,7 +931,7 @@ class Solution:
 
 		self._absolute_mesh_error = np.abs(mesh_error)
 
-		relative_mesh_error = np.empty_like(self._absolute_mesh_error)
+		relative_mesh_error = np.zeros_like(self._absolute_mesh_error)
 		for i_k in range(ph_mesh._K):
 			for i_y in range(self._ocp._num_y_vars):
 				for i_m in range(ph_mesh._mesh_col_points[i_k]-1):
@@ -735,27 +940,134 @@ class Solution:
 
 		self._relative_mesh_error = relative_mesh_error
 
-		max_relative_error = np.empty(self._mesh._K)
+		max_relative_error = np.zeros(self._mesh._K)
 		for i_k in range(ph_mesh._K):
 			max_relative_error[i_k] = np.max(self._relative_mesh_error[i_k, :, :])
 
 		self._maximum_relative_error = max_relative_error
 
-		# P_q = np.empty_like(max_relative_error)
-		# for i_k, (e, m) in enumerate(zip(self._maximum_relative_error, self._mesh._mesh_col_points)):
-		# 	P_q[i_k] = np.ceil(np.divide(np.log(e/self._ocp._settings._mesh_tolerance), np.log(m+2)))
+		return None
 
-		# print(P_q)
+	def _patterson_rao_next_iteration_mesh(self):
+
+		def merge_sections(new_mesh_sec_fracs, new_mesh_col_points, merge_group):
+			merge_group = np.array(merge_group)
+			P_q = merge_group[:, 0]
+			h_q = merge_group[:, 1]
+			p_q = merge_group[:, 2]
+
+			N = np.sum(p_q)
+			T = np.sum(h_q)
+
+			merge_ratio = p_q / (self._ocp._settings.collocation_points_min - P_q)
+			mesh_secs_needed = np.ceil(np.sum(merge_ratio)).astype(np.int)
+			if mesh_secs_needed == 1:
+				new_mesh_secs = np.array([T])
+			else:
+				required_reduction = np.divide(h_q, merge_ratio)
+				weighting_factor = np.reciprocal(np.sum(required_reduction))
+				reduction_factor = weighting_factor * required_reduction
+				knot_locations = np.cumsum(h_q) / T
+				current_density = np.cumsum(reduction_factor)
+
+				density_function = interpolate.interp1d(knot_locations, current_density, bounds_error=False, fill_value='extrapolate')
+				new_density = np.linspace(1/mesh_secs_needed, 1, mesh_secs_needed)
+				new_knots = density_function(new_density)
+
+				new_mesh_secs = T * np.diff(np.concatenate([np.array([0]), new_knots]))
+
+			new_mesh_sec_fracs.extend(new_mesh_secs.tolist())
+			new_mesh_col_points.extend([self._ocp._settings.collocation_points_min]*mesh_secs_needed)
+
+			return new_mesh_sec_fracs, new_mesh_col_points
+
+		def subdivide_sections(new_mesh_sec_fracs, new_mesh_col_points, subdivide_group, reduction_tolerance):
+			subdivide_group = np.array(subdivide_group)
+			subdivide_required = subdivide_group[:, 0].astype(np.bool)
+			subdivide_factor = subdivide_group[:, 1].astype(np.int)
+			P_q = subdivide_group[:, 2]
+			h_q = subdivide_group[:, 3]
+			p_q = subdivide_group[:, 4]
+
+			is_node_reduction = P_q <= 0
+
+			predicted_nodes = P_q + p_q
+			predicted_nodes[is_node_reduction] = np.ceil(P_q[is_node_reduction] * reduction_tolerance) + p_q[is_node_reduction]
+
+			next_mesh_nodes = np.ones_like(predicted_nodes, dtype=np.int) * self._ocp._settings.collocation_points_min
+			next_mesh_nodes[np.invert(subdivide_required)] = predicted_nodes[np.invert(subdivide_required)]
+			next_mesh_nodes_lower_than_min = next_mesh_nodes < self._ocp._settings.collocation_points_min
+			next_mesh_nodes[next_mesh_nodes_lower_than_min] = self._ocp._settings.collocation_points_min
+
+			for h, k, n in zip(h_q, subdivide_factor, next_mesh_nodes):
+				new_mesh_sec_fracs.extend([h/k]*k)
+				new_mesh_col_points.extend([n]*k)
+
+			return new_mesh_sec_fracs, new_mesh_col_points
+
+		if np.max(self._maximum_relative_error) > self._ocp._settings.mesh_tolerance:
+
+			P_q = np.ceil(np.divide(np.log(self._maximum_relative_error/self._ocp._settings._mesh_tolerance), np.log(self._mesh._mesh_col_points)))
+			P_q_zero = P_q == 0
+			P_q[P_q_zero] = 1
+			predicted_nodes = P_q + self._mesh._mesh_col_points
+
+			log_tolerance = np.log(self._ocp._settings.mesh_tolerance / np.max(self._maximum_relative_error))
+			merge_tolerance = 50 / log_tolerance
+			merge_required = predicted_nodes < merge_tolerance
+
+			reduction_tolerance = 1 - (-1 / log_tolerance)
+			if reduction_tolerance < 0:
+				reduction_tolerance = 0
+
+			subdivide_required = predicted_nodes >= self._ocp._settings.collocation_points_max
+			subdivide_level = np.ones_like(predicted_nodes)
+			subdivide_level[subdivide_required] = np.ceil(predicted_nodes[subdivide_required] / self._ocp._settings.collocation_points_min)
+
+			merge_group = []
+			subdivide_group = []
+			new_mesh_sec_fracs = []
+			new_mesh_col_points = []
+			for need_merge, need_subdivide, subdivide_factor, P, h, p in zip(merge_required, subdivide_required, subdivide_level, P_q, self._mesh._h_K, self._mesh._mesh_col_points):
+				if need_merge:
+					if subdivide_group != []:
+						new_mesh_sec_fracs, new_mesh_col_points = subdivide_sections(new_mesh_sec_fracs, new_mesh_col_points, subdivide_group, reduction_tolerance)
+						subdivide_group = []
+					merge_group.append([P, h, p])
+				else:
+					if merge_group != []:
+						new_mesh_sec_fracs, new_mesh_col_points = merge_sections(new_mesh_sec_fracs, new_mesh_col_points, merge_group)
+						merge_group = []
+					subdivide_group.append([need_subdivide, subdivide_factor, P, h, p])
+			else:
+				if merge_group != []:
+					new_mesh_sec_fracs, new_mesh_col_points = merge_sections(new_mesh_sec_fracs, new_mesh_col_points, merge_group)
+				elif subdivide_group != []:
+					new_mesh_sec_fracs, new_mesh_col_points = subdivide_sections(new_mesh_sec_fracs, new_mesh_col_points, subdivide_group, reduction_tolerance)
+
+			new_mesh_secs = len(new_mesh_sec_fracs)
+
+			new_mesh = Mesh(optimal_control_problem=self._ocp, mesh_sections=new_mesh_secs, mesh_section_fractions=new_mesh_sec_fracs, mesh_collocation_points=new_mesh_col_points)
+
+			return new_mesh
+
+		else:
+			return None
+
+
 
 
 class IPOPTProblem:
 
-	def __init__(self, J, g, c, G, G_struct):
+	def __init__(self, J, g, c, G, G_struct, H, H_struct):
 		self.objective = J
 		self.gradient = g
 		self.constraints = c
 		self.jacobian = G
 		self.jacobianstructure = G_struct
+		if H is not None and H_struct is not None:
+			self.hessian = H
+			self.hessianstructure = H_struct
 
 
 

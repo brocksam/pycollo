@@ -151,13 +151,13 @@ class Guess():
 			y_guess[row_ind, col_ind] = lower_upper_mean((lower, upper))
 
 		if self._y_user is None:
-			self._y_user = np.empty([self._ocp.number_integral_variables, self._N])
+			self._y_user = np.empty([self._ocp.number_state_variables, self._N])
 			self._y_user.fill(np.nan)
 		for i, (y_var, guess, lower, upper) in enumerate(zip(self._ocp._y_vars, self._y_user, self._ocp._bounds._y_l, self._ocp._bounds._y_u)):
 			for j, val in enumerate(guess):
 				_ = check_val(val, lower, upper)
 				if not np.isnan(y_guess[i, j]):
-					if self.state_endpoints_override:
+					if self.state_endpoints_override or np.isclose(y_guess[i, j], lower) or np.isclose(y_guess[i, j], upper):
 						pass
 					else:
 						if np.isnan(val):
@@ -170,7 +170,7 @@ class Guess():
 		self._y_user = y_guess
 
 		if self._u_user is None:
-			self._u_user = np.empty([self._ocp.number_integral_variables, self._N])
+			self._u_user = np.empty([self._ocp.number_control_variables, self._N])
 			self._u_user.fill(np.nan)
 		u_guess = np.empty((self._ocp.number_control_variables, self._N), dtype=np.float64)
 		for i, (u_var, guess, lower, upper) in enumerate(zip(self._ocp._u_vars, self._u_user, self._ocp._bounds._u_l, self._ocp._bounds._u_u)):
@@ -191,7 +191,9 @@ class Guess():
 			self._s_user.fill(np.nan)
 		self._s_user = np.array([parse_check_val(val, l, u) for val, l, u in zip(self._s_user, self._ocp._bounds._s_l, self._ocp._bounds._s_u)])
 
-		if True:
+		if False:
+			print('\nBoundary constraints:')
+			print(self._ocp.state_endpoint_constraints)
 			print('\nTime:')
 			print(self._time_user)
 			print('\nState variables:')
@@ -202,6 +204,7 @@ class Guess():
 			print(self._q_user)
 			print('\nTime variables:')
 			print(self._t_user)
+			print(self._ocp._bounds._t_needed)
 			print('\nParameter variables:')
 			print(self._s_user)
 
@@ -256,6 +259,21 @@ class Guess():
 				raise ValueError(msg)
 
 			return var
+
+		if False:
+			print('\nTime:')
+			print(self.time)
+			print('\nState variables:')
+			print(self.state)
+			print('\nControl variables:')
+			print(self.control)
+			print('\nIntegral variables:')
+			print(self.integral)
+			print('\nTime variables:')
+			print(self.initial_time, self.final_time)
+			print(self._ocp._bounds._t_needed)
+			print('\nParameter variables:')
+			print(self.parameter)
 
 		if self._N is None:
 			self._y_user = check_t_dep_is_none(self.state, 'state')
@@ -314,7 +332,8 @@ class Guess():
 		self._tF = check_is_within_bounds(self._time_user[-1], bounds._tF_l, bounds._tF_u)
 		self._stretch = 0.5 * (self._tF - self._t0)
 		self._shift = 0.5 * (self._t0 + self._tF)
-		self._tau = np.array(self._t_user - self._shift)/self._stretch
+		self._tau = np.array(self._time_user - self._shift)/self._stretch
+
 
 		# State
 		# y_user = parse_guess_input(self.state, self._ocp._y_vars_user, 'state', t_func=True)
@@ -340,5 +359,42 @@ class Guess():
 		# s_user = parse_guess_input(self.parameter, self._ocp._s_vars_user, 'parameter')
 		self._s = np.array([s for s, s_needed in zip(self._s_user, self._ocp._bounds._s_needed) if s_needed])
 		# check_shape(self._s, self._ocp._num_s_vars, 'parameter')
+
+		if False:
+			print('\nTime:')
+			print(self._tau)
+			print(self._t0, self._tF)
+			print('\nState variables:')
+			print(self._y)
+			print('\nControl variables:')
+			print(self._u)
+			print('\nIntegral variables:')
+			print(self._q)
+			print('\nTime variables:')
+			print(self._t)
+			print('\nParameter variables:')
+			print(self._s)
+
+
+	def _mesh_refinement_bypass_init(self):
+		self._t0 = self._time_user[0]
+		self._tF = self._time_user[-1]
+		self._stretch = 0.5 * (self._tF - self._t0)
+		self._shift = 0.5 * (self._t0 + self._tF)
+		self._tau = np.array(self._time_user - self._shift)/self._stretch
+
+		self._y = self.state
+		self._u = self.control
+		self._q = self.integral
+		self._t = np.array([t for t, t_needed in zip([self._t0, self._tF], self._ocp._bounds._t_needed) if t_needed])
+		self._s = self.parameter
+
+		return None
+
+
+
+
+
+
 
 		

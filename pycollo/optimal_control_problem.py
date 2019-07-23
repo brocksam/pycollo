@@ -1017,32 +1017,58 @@ class OptimalControlProblem():
 
 	def _final_output(self):
 
-		solved_msg = ('\n\n===========================================\nOptimal control problem sucessfully solved.\n===========================================\n')
-		print(solved_msg)
+		def header():
+			solved_msg = ('\n\n===========================================\nOptimal control problem sucessfully solved.\n===========================================\n')
+			print(solved_msg)
+			return None
 
-		ocp_init_time_msg = (f'Total OCP Initialisation Time:       {self._ocp_initialisation_time:.4f} s')
-		print(ocp_init_time_msg)
+		def solution_results():
+			J_msg = (f'Final Objective Function Evaluation: {self.mesh_iterations[-1]._solution._J:.4f}\n')
+			print(J_msg)
+			return None
 
-		self._iteration_initialisation_time = np.sum(np.array([iteration._initialisation_time for iteration in self._mesh_iterations]))
+		def mesh_results():
+			section_msg = (f'Final Number of Mesh Sections:       {self.mesh_iterations[-1]._mesh._K}')
+			node_msg = (f'Final Number of Collocation Nodes:   {self.mesh_iterations[-1]._mesh._N}\n')
+			print(section_msg)
+			print(node_msg)
+			return None
 
-		iter_init_time_msg = (f'Total Iteration Initialisation Time: {self._iteration_initialisation_time:.4f} s')
-		print(iter_init_time_msg)
+		def time_results():
+			ocp_init_time_msg = (f'Total OCP Initialisation Time:       {self._ocp_initialisation_time:.4f} s')
+			print(ocp_init_time_msg)
 
-		self._nlp_time = np.sum(np.array([iteration._nlp_time for iteration in self._mesh_iterations]))
+			self._iteration_initialisation_time = np.sum(np.array([iteration._initialisation_time for iteration in self._mesh_iterations]))
 
-		nlp_time_msg = (f'Total NLP Solver Time:               {self._nlp_time:.4f} s')
-		print(nlp_time_msg)	
+			iter_init_time_msg = (f'Total Iteration Initialisation Time: {self._iteration_initialisation_time:.4f} s')
+			print(iter_init_time_msg)
 
-		self._process_results_time = np.sum(np.array([iteration._process_results_time for iteration in self._mesh_iterations]))
+			self._nlp_time = np.sum(np.array([iteration._nlp_time for iteration in self._mesh_iterations]))
 
-		process_results_time_msg = (f'Total Mesh Refinement Time:          {self._process_results_time:.4f} s')
-		print(process_results_time_msg)
+			nlp_time_msg = (f'Total NLP Solver Time:               {self._nlp_time:.4f} s')
+			print(nlp_time_msg)	
 
-		total_time_msg = (f'\nTotal Time:                          {self._ocp_initialisation_time + self._iteration_initialisation_time + self._nlp_time + self._process_results_time:.4f} s')
+			self._process_results_time = np.sum(np.array([iteration._process_results_time for iteration in self._mesh_iterations]))
 
-		print(total_time_msg)
+			process_results_time_msg = (f'Total Mesh Refinement Time:          {self._process_results_time:.4f} s')
+			print(process_results_time_msg)
+
+			total_time_msg = (f'\nTotal Time:                          {self._ocp_initialisation_time + self._iteration_initialisation_time + self._nlp_time + self._process_results_time:.4f} s')
+
+			print(total_time_msg)
+			
+			print('\n\n')
+
+			return None
+
+		_ = header()
+		_ = solution_results()
+		_ = mesh_results()
+		_ = time_results()
+
+
+
 		
-		print('\n\n')
 
 
 

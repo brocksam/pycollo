@@ -663,9 +663,10 @@ class Iteration:
 		next_iter_mesh = self._refine_new_mesh()
 		next_iter_guess = Guess(optimal_control_problem=self._ocp, time=self._solution.time, state=self._solution.state, control=self._solution.control, integral=self._solution.integral, parameter=self._solution.parameter)
 		_ = next_iter_guess._mesh_refinement_bypass_init()
-		_ = self._display_mesh_iteration_info(next_iter_mesh)
 
 		process_results_time_stop = timer()
+
+		_ = self._display_mesh_iteration_info(next_iter_mesh)
 
 		self._process_results_time = process_results_time_stop - process_results_time_start
 

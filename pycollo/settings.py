@@ -1,6 +1,6 @@
 class Settings():
 
-	def __init__(self, *, optimal_control_problem=None, collocation_matrix_form='integral', nlp_solver='ipopt', linear_solver='mumps', nlp_tolerance=1e-7, max_iterations=2000, quadrature_method='lobatto', mesh_refinement_method=None, mesh_tolerance=1e-7, collocation_points_min=2, collocation_points_max=10):
+	def __init__(self, *, optimal_control_problem=None, collocation_matrix_form='integral', nlp_solver='ipopt', linear_solver='mumps', nlp_tolerance=1e-10, max_nlp_iterations=2000, quadrature_method='lobatto', derivative_level=2, max_mesh_iterations=10, mesh_tolerance=1e-8, collocation_points_min=4, collocation_points_max=10, display_mesh_refinement_info=True, display_mesh_result_info=False, display_mesh_result_graph=True):
 
 		# Optimal Control Problem
 		self._ocp = optimal_control_problem
@@ -9,16 +9,22 @@ class Settings():
 		self.nlp_solver = nlp_solver
 		self.linear_solver = linear_solver
 		self.nlp_tolerance = nlp_tolerance
-		self.max_iterations = max_iterations
+		self.max_nlp_iterations = max_nlp_iterations
 
 		# Collocation and quadrature
 		self.quadrature_method = quadrature_method
+		self.derivative_level = derivative_level
+		
 
 		# Mesh refinement
-		# self.mesh_refinement_method = mesh_refinement_method
-		self.mesh_tolerance = mesh_tolerance
 		self.collocation_points_min = collocation_points_min
 		self.collocation_points_max = collocation_points_max
+		self.mesh_tolerance = mesh_tolerance
+		self.max_mesh_iterations = max_mesh_iterations
+
+		self.display_mesh_refinement_info = display_mesh_refinement_info
+		self.display_mesh_result_info = display_mesh_result_info
+		self.display_mesh_result_graph = display_mesh_result_graph
 
 	@property
 	def collocation_matrix_form(self):
@@ -72,15 +78,15 @@ class Settings():
 		self._nlp_tolerance = tolerance
 
 	@property
-	def max_iterations(self):
-		return self._max_iterations
+	def max_nlp_iterations(self):
+		return self._max_nlp_iterations
 	
-	@max_iterations.setter
-	def max_iterations(self, max_iterations):
-		if max_iterations <= 0:
-			msg = ("Maximum number of iterations must be a positive integer. {} is invalid.")
-			raise ValueError(msg.format(max_iterations))
-		self._max_iterations = int(max_iterations)
+	@max_nlp_iterations.setter
+	def max_nlp_iterations(self, max_nlp_iterations):
+		if max_nlp_iterations <= 0:
+			msg = (f"Maximum number of NLP iterations must be a positive integer. {max_nlp_iterations} is invalid.")
+			raise ValueError(msg)
+		self._max_nlp_iterations = int(max_nlp_iterations)
 
 	@property
 	def quadrature_method(self):
@@ -95,16 +101,16 @@ class Settings():
 		self._quadrature_method = method
 
 	@property
-	def mesh_refinement_method(self):
-		return self._mesh_refinement_method
+	def derivative_level(self):
+		return self._derivative_level
 	
-	@mesh_refinement_method.setter
-	def mesh_refinement_method(self, method):
-		# method = method.casefold()
-		if method not in {None}:
-			msg = ("The mesh refinement method of '{}' is not a valid argument string.")
-			raise ValueError(msg.format(method))
-		self._mesh_refinement_method = method
+	@derivative_level.setter
+	def derivative_level(self, deriv_level):
+		deriv_level = int(deriv_level)
+		if deriv_level not in (1, 2):
+			msg = (f"Derivative level must be set to either 1 (which uses the gradient vector of the objective function and the Jacobian matrix of the constraints vector) or 2 (which also uses the Hessian matrix of the Lagrangian of the constraints).")
+			raise ValueError(msg)
+		self._derivative_level = deriv_level
 
 	@property
 	def mesh_tolerance(self):
@@ -118,6 +124,17 @@ class Settings():
 		self._mesh_tolerance = tolerance
 
 	@property
+	def max_mesh_iterations(self):
+		return self._max_mesh_iterations
+	
+	@max_mesh_iterations.setter
+	def max_mesh_iterations(self, max_mesh_iterations):
+		if max_mesh_iterations <= 0:
+			msg = (f"Maximum number of mesh iterations must be a positive integer. {max_mesh_iterations} is invalid.")
+			raise ValueError(msg)
+		self._max_mesh_iterations = int(max_mesh_iterations)
+
+	@property
 	def collocation_points_min(self):
 		return self._col_points_min
 	
@@ -128,8 +145,8 @@ class Settings():
 		if points_min < 2:
 			msg = ("The minimum number of collocation points must be great than 2.")
 			raise ValueError(msg)
-		if points_min > 3:
-			msg = ("It is recommended that a minimum of 2 or 3 collocation points is used per mesh section to allow for efficient computation.")
+		if points_min > 4:
+			msg = ("It is recommended that a minimum of 2, 3 or 4 collocation points is used per mesh section to allow for efficient computation.")
 			raise ValueError(msg)
 
 	@property
@@ -147,4 +164,28 @@ class Settings():
 			raise ValueError(msg)
 		self._col_points_max = points_max
 
-		
+	@property
+	def display_mesh_refinement_info(self):
+		return self._display_mesh_refinement_info
+	
+	@display_mesh_refinement_info.setter
+	def display_mesh_refinement_info(self, val):
+		self._display_mesh_refinement_info = bool(val)
+
+	@property
+	def display_mesh_result_info(self):
+		return self._display_mesh_result_info
+	
+	@display_mesh_result_info.setter
+	def display_mesh_result_info(self, val):
+		self._display_mesh_result_info = bool(val)
+
+	@property
+	def display_mesh_result_graph(self):
+		return self._display_mesh_result_graph
+	
+	@display_mesh_result_graph.setter
+	def display_mesh_result_graph(self, val):
+		self._display_mesh_result_graph = bool(val)
+
+

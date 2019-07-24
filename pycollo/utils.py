@@ -84,18 +84,26 @@ def numbafy(expression, parameters=None, constants=None, substitutions=None, ret
             code_parameters += ', _N'
 
     substitution_free_syms = set()
-    already_subbed = set()
     if substitutions:
         code_substitutions = []
+        code_substitutions_dict = {}
         max_substitutions_depth = 100
         for i in range(max_substitutions_depth):
-            code_substitutions_tier = []
             for k, v in substitutions.items():
-                if k in expression_free_syms.union(substitution_free_syms) and k not in already_subbed:
-                    code_substitutions_tier.append(f'{k} = {v}')
+                if k in expression_free_syms.union(substitution_free_syms) and k not in code_substitutions_dict.keys():
+                    code_substitutions_dict[k] = v
                     substitution_free_syms.update(v.free_symbols)
-                    already_subbed.add(k)
-            code_substitutions = code_substitutions_tier + code_substitutions
+
+        # Reorder substitutions
+        known_symbols = set(parameters).union(set(constants))
+        code_substitutions = []
+        for i in range(max_substitutions_depth):
+            for k, v in code_substitutions_dict.copy().items():
+                if not v.free_symbols.difference(known_symbols):
+                    code_substitutions.append(f'{k} = {v}')
+                    _ = code_substitutions_dict.pop(k, None)
+                    known_symbols.add(k)
+
         code_substitutions = '\n    '.join(code_substitutions)
 
     expr_subs_free_syms = set.union(expression_free_syms, substitution_free_syms)

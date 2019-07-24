@@ -284,7 +284,7 @@ class Iteration:
 		H_defect_sum_flag = []
 		
 		for i_row in range(self._ocp._num_vars):
-			row = self._ocp._ddL_dxdx_zeta_chain[i_row, :i_row+1]
+			row = self._ocp._ddL_dxdx_zeta[i_row, :i_row+1]
 			if i_row < self._ocp._yu_qts_split:
 				row_offset = i_row * self._mesh._N
 				row_numbers = list(range(row_offset, row_offset + self._mesh._N))
@@ -311,7 +311,7 @@ class Iteration:
 
 		# Hessian path
 		H_path_indices = []
-		# print(self._ocp._ddL_dxdx_c_chain.values())
+		# print(self._ocp._ddL_dxdx_c.values())
 
 
 		# Hessian integral
@@ -320,7 +320,7 @@ class Iteration:
 		H_integral_sum_flag = []
 		
 		for i_row in range(self._ocp._num_vars):
-			row = self._ocp._ddL_dxdx_rho_chain[i_row, :i_row+1]
+			row = self._ocp._ddL_dxdx_rho[i_row, :i_row+1]
 			if i_row < self._ocp._yu_qts_split:
 				row_offset = i_row * self._mesh._N
 				row_numbers = list(range(row_offset, row_offset + self._mesh._N))
@@ -369,13 +369,11 @@ class Iteration:
 			H_endpoint_nonzero_col.extend(col_numbers)
 
 		H_endpoint_indices = []
-		# print(self._ocp._ddL_dxbdxb_beta_chain.values())
 
 		# Hessian objective
 
 
 		H_objective_indices = []
-		# print(self._ocp._ddL_dxbdxb_J_chain.values())
 
 
 
@@ -663,9 +661,10 @@ class Iteration:
 		next_iter_mesh = self._refine_new_mesh()
 		next_iter_guess = Guess(optimal_control_problem=self._ocp, time=self._solution.time, state=self._solution.state, control=self._solution.control, integral=self._solution.integral, parameter=self._solution.parameter)
 		_ = next_iter_guess._mesh_refinement_bypass_init()
-		_ = self._display_mesh_iteration_info(next_iter_mesh)
 
 		process_results_time_stop = timer()
+
+		_ = self._display_mesh_iteration_info(next_iter_mesh)
 
 		self._process_results_time = process_results_time_stop - process_results_time_start
 

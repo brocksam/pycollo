@@ -371,7 +371,7 @@ class OptimalControlProblem():
 
 		self._J_lambda = pu.numbafy(expression=self._J, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=0)
 
-		dJ_dxb_lambda = pu.numbafy(expression=self._dJ_dxb_chain, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, endpoint=True, ocp_num_vars=self._num_vars_tuple)
+		dJ_dxb_lambda = pu.numbafy(expression=self._dJ_dxb, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, endpoint=True, ocp_num_vars=self._num_vars_tuple)
 
 		def g_lambda(x_tuple_point, N):
 			g = dJ_dxb_lambda(*x_tuple_point, N)
@@ -421,17 +421,17 @@ class OptimalControlProblem():
 
 		self._c_lambda = c_lambda
 
-		ddy_dy_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_defect_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		ddy_dy_lambda = pu.numbafy(expression=self._dc_dx[self._c_defect_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		ddy_du_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_defect_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		ddy_du_lambda = pu.numbafy(expression=self._dc_dx[self._c_defect_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		ddy_ds_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_defect_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		ddy_ds_lambda = pu.numbafy(expression=self._dc_dx[self._c_defect_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		drho_dy_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_integral_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		drho_dy_lambda = pu.numbafy(expression=self._dc_dx[self._c_integral_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		drho_du_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_integral_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		drho_du_lambda = pu.numbafy(expression=self._dc_dx[self._c_integral_slice, self._u_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
-		drho_ds_lambda = pu.numbafy(expression=self._dc_dx_chain[self._c_integral_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
+		drho_ds_lambda = pu.numbafy(expression=self._dc_dx[self._c_integral_slice, self._s_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
 		dbeta_dxb_lambda = pu.numbafy(expression=self._db_dxb, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
@@ -558,7 +558,7 @@ class OptimalControlProblem():
 		lagrange_syms_defect_set = OrderedSet(lagrange_syms_defect)
 		H_defect_parameters = sym.Matrix([self._x_vars, lagrange_syms_defect_matrix.T])
 
-		ddL_dxdx_defect = self._ddL_dxdx_zeta_chain.values()
+		ddL_dxdx_defect = self._ddL_dxdx_zeta.values()
 		ddL_dxdx_defect_lambda = pu.numbafy(expression=ddL_dxdx_defect, parameters=H_defect_parameters, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, hessian='defect', hessian_sym_set=lagrange_syms_defect_set, ocp_num_vars=self._num_vars_tuple)
 
 		def H_defect_lambda(x_tuple, lagrange, N, A, sum_flag):
@@ -581,7 +581,7 @@ class OptimalControlProblem():
 		lagrange_syms_integral_set = OrderedSet(lagrange_syms_integral)
 		H_integral_parameters = sym.Matrix([self._x_vars, lagrange_syms_integral_matrix.T])
 
-		ddL_dxdx_integral = self._ddL_dxdx_rho_chain.values()
+		ddL_dxdx_integral = self._ddL_dxdx_rho.values()
 		ddL_dxdx_integral_lambda = pu.numbafy(expression=ddL_dxdx_integral, parameters=H_integral_parameters, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, hessian='integral', hessian_sym_set=lagrange_syms_integral_set, ocp_num_vars=self._num_vars_tuple)
 
 		def H_integral_lambda(x_tuple, lagrange, N, W, sum_flag):
@@ -594,14 +594,6 @@ class OptimalControlProblem():
 					vals = -np.multiply(W, row)
 				H = np.concatenate([H, vals])
 			return H
-
-
-
-			# stretch = t_stretch_lambda(*x_tuple)
-			# if g.size:
-			# 	return q - stretch*np.matmul(g, W)
-			# else:
-			# 	return q
 
 		def H_endpoint_lambda(x_tuple, lagrange, N):
 			H = np.empty(num_nonzero)
@@ -620,8 +612,6 @@ class OptimalControlProblem():
 			# H[endpoint_index] += H_endpoint_lambda(x_tuple_point, lagrange_endpoint)
 			# H[objective_index] += H_objective_lambda(x_tuple_point, sigma)
 
-
-			
 			return H
 
 		self._H_lambda = H_lambda
@@ -648,6 +638,8 @@ class OptimalControlProblem():
 
 		aux_data_temp = {}
 		aux_subs_temp = {}
+		shallow_subs_temp = {}
+		deep_subs_temp = {}
 
 		for (k, v) in self._aux_data_user.items():
 			try:
@@ -655,29 +647,53 @@ class OptimalControlProblem():
 			except (ValueError, TypeError):
 				aux_subs_temp[k] = v
 
-		for k, v in aux_subs_temp.items():
-			v_free_syms = v.free_symbols
-			v_var_syms = v_free_syms.intersection(user_var_syms)
-			v_data_syms = v_free_syms.intersection(set(aux_data_temp.keys()))
-			v_subs_syms = v_free_syms.intersection(set(aux_subs_temp.keys()))
-			v_extra_syms = v_free_syms.difference(set.union(v_var_syms, v_data_syms, v_subs_syms))
-			if v_extra_syms:
-				disallowed_syms = ', '.join(f'{symbol}' for symbol in v_extra_syms)
-				msg = (f"Additional information for {k} cannot be provided as auxiliary data in its current form as it is a function of {disallowed_syms}. These symbols have not been defined elsewhere in the optimal control problem. Please supply numerical values for them as auxiliary data.")
-				raise ValueError(msg)
-			for i in range(100):
-				v_free_syms = v.free_symbols
-				v_subs_syms = v_free_syms.intersection(set(aux_subs_temp.keys()))
-				if v_subs_syms:
-					v = v.subs(aux_subs_temp)
-				else:
+		accounted_for_keys = set(aux_data_temp.keys())
+
+		user_subs_list_by_tier = []
+		next_check_subs_temp = aux_subs_temp.copy()
+
+		if len(next_check_subs_temp) > 0:
+			max_dependancy_depth = 20
+			for i in range(max_dependancy_depth):
+
+				for k, v in next_check_subs_temp.items():
+
+					v_free_syms = v.free_symbols
+					v_var_syms = v_free_syms.intersection(user_var_syms)
+					v_data_syms = v_free_syms.intersection(set(accounted_for_keys))
+					v_subs_syms = v_free_syms.intersection(set(aux_subs_temp.keys()))
+					v_extra_syms = v_free_syms.difference(set.union(v_var_syms, v_data_syms, v_subs_syms))
+
+					if v_extra_syms:
+						disallowed_syms = ', '.join(f'{symbol}' for symbol in v_extra_syms)
+						msg = (f"Additional information for {k} cannot be provided as auxiliary data in its current form as it is a function of {disallowed_syms}. These symbols have not been defined elsewhere in the optimal control problem. Please supply numerical values for them as auxiliary data.")
+						raise ValueError(msg)
+
+					difference = v_subs_syms.difference(v_data_syms)
+
+					if difference == set():
+						if v_free_syms:
+							shallow_subs_temp[k] = v
+						else:
+							aux_data_temp[k] = float(v)
+
+					else:
+						deep_subs_temp[k] = v
+
+				accounted_for_keys = accounted_for_keys.union(set(list(shallow_subs_temp.keys())))
+				user_subs_list_by_tier.append(shallow_subs_temp)
+				next_check_subs_temp = deep_subs_temp.copy()
+
+				deep_subs_temp = {}
+				shallow_subs_temp = {}
+
+				if len(next_check_subs_temp) == 0:
 					break
 			else:
-				msg = (f'Substitution dependency chain for {k} appears to be too deep.')
-			if v.free_symbols:
-				aux_subs_temp[k] = v
-			else:
-				aux_data_temp[k] = float(v)
+				msg = (f'Substitution dependency chain appears to be too deep: {max_dependancy_depth} levels.')
+				raise NotImplementedError(msg)
+		else:
+			pass
 
 		# Check state equations
 		if len(self._y_eqns_user) != len(self._y_vars_user):
@@ -811,34 +827,47 @@ class OptimalControlProblem():
 		self._num_point_vars = self._x_b_vars.shape[0]
 		self._user_subs_dict = {**y_subs_dict, **y_endpoint_subs_dict, **u_subs_dict, **t_subs_dict, **s_subs_dict, **a_subs_dict}
 
-		# Substitutions
-		self._aux_subs = {sym.Symbol(f'_e{i_e}'): value.subs(self._user_subs_dict) for i_e, (_, value) in enumerate(aux_subs_temp.items())}
-		e_subs_dict = dict(zip(aux_subs_temp.keys(), self._aux_subs.keys()))
-		self._user_subs_dict.update(e_subs_dict)
+		self._inverse_aux_subs = {}
+		self._e_vars = []
+		self._e_subs = []
+		self._tier_slices = []
+
+		for subs_dict in user_subs_list_by_tier:
+			tier_offset = len(self._e_vars)
+			e_vars_new = [sym.Symbol(f'_e{i_e + tier_offset}') for i_e, _ in enumerate(subs_dict)]
+			self._e_vars.extend(e_vars_new)
+			self._e_subs.extend(list(subs_dict.values()))
+			tier_slice = slice(tier_offset, len(self._e_vars))
+			self._tier_slices.append(tier_slice)
+
+			inverse_aux_subs = dict(zip(list(subs_dict.keys()), e_vars_new))
+			self._inverse_aux_subs.update(inverse_aux_subs)
+
+		self._pycollo_syms_subs_dict = {**self._user_subs_dict, **self._inverse_aux_subs}
+
+		self._e_vars = sym.Matrix(self._e_vars)
+		self._e_subs = sym.Matrix(self._e_subs).subs(self._pycollo_syms_subs_dict)
+		self._num_subs_tiers = len(self._tier_slices)
+		self._aux_subs = dict(zip(self._e_vars, self._e_subs))
 
 		# State equations
-		self._y_eqns = sym.Matrix(self._y_eqns_user).subs(self._user_subs_dict) if self._y_eqns_user else sym.Matrix.zeros(0, 1)
+		self._y_eqns = sym.Matrix(self._y_eqns_user).subs(self._pycollo_syms_subs_dict) if self._y_eqns_user else sym.Matrix.zeros(0, 1)
 
 		# Path constraints
-		self._c_cons = sym.Matrix(self._c_cons_user).subs(self._user_subs_dict) if self._c_cons_user else sym.Matrix.zeros(0, 1)
+		self._c_cons = sym.Matrix(self._c_cons_user).subs(self._pycollo_syms_subs_dict) if self._c_cons_user else sym.Matrix.zeros(0, 1)
 		self._num_c_cons = self._c_cons.shape[0]
 
 		# Integrand functions
-		self._q_funcs = sym.Matrix(self._q_funcs_user).subs(self._user_subs_dict) if self._q_funcs_user else sym.Matrix.zeros(0, 1)
+		self._q_funcs = sym.Matrix(self._q_funcs_user).subs(self._pycollo_syms_subs_dict) if self._q_funcs_user else sym.Matrix.zeros(0, 1)
 
 		# Boundary constraints
-		self._y_b_cons = sym.Matrix(self._y_b_cons_user).subs(self._user_subs_dict) if self._y_b_cons_user else sym.Matrix.zeros(0, 1)
-		self._b_end_cons = sym.Matrix(self._b_cons_user).subs(self._user_subs_dict) if self._b_cons_user else sym.Matrix.zeros(0, 1)
+		self._y_b_cons = sym.Matrix(self._y_b_cons_user).subs(self._pycollo_syms_subs_dict) if self._y_b_cons_user else sym.Matrix.zeros(0, 1)
+		self._b_end_cons = sym.Matrix(self._b_cons_user).subs(self._pycollo_syms_subs_dict) if self._b_cons_user else sym.Matrix.zeros(0, 1)
 		self._b_cons = sym.Matrix([self._y_b_cons, self._b_end_cons])
 		self._num_b_cons = self._b_cons.shape[0]
 
-		# Auxiliary substitutions
-		self._e_syms = sym.Matrix([eqn for eqn in self._aux_subs.keys()]) if self._aux_subs else sym.Matrix.zeros(0, 1)
-		self._e_subs = sym.Matrix([eqn for eqn in self._aux_subs.values()]) if self._aux_subs else sym.Matrix.zeros(0, 1)
-		self._num_e_subs = self._e_subs.shape[0]
-
 		# Objective function
-		self._J = self._J_user.subs(self._user_subs_dict)
+		self._J = self._J_user.subs(self._pycollo_syms_subs_dict)
 
 		# Check user-defined initial guess
 		self._initial_guess._guess_check()
@@ -862,14 +891,6 @@ class OptimalControlProblem():
 		self._qts_b_slice = slice(self._q_b_slice.start, self._s_b_slice.stop)
 		self._y_b_qts_b_split = self._y_b_slice.stop
 
-		# Auxiliary substitutions derivatives
-		self._de_dx = self._e_subs.jacobian(self._x_vars) if self._e_subs else sym.Matrix.zeros(0, 1)
-		self._de_dxb = self._e_subs.jacobian(self._x_b_vars) if self._e_subs else sym.Matrix.zeros(0, 1)
-
-		# Objective derivatives
-		self._dJ_de = self._J.diff(self._e_syms)
-		self._dJ_dxb = self._J.diff(self._x_b_vars)
-
 		# Constraints
 		self._c = sym.Matrix([self._y_eqns, self._c_cons, self._q_funcs, self._b_cons])
 		self._num_c = self._c.shape[0]
@@ -881,13 +902,54 @@ class OptimalControlProblem():
 		self._c_boundary_slice = slice(self._c_integral_slice.stop, self._c_integral_slice.stop + self._num_b_cons)
 		self._c_continuous_slice = slice(0, self._num_c - self._num_b_cons)
 
-		# # Constraints derivatives Jacobian
-		self._dc_dx = self._c[self._c_continuous_slice, :].jacobian(self._x_vars)
-		self._dc_de = self._c[self._c_continuous_slice, :].jacobian(self._e_syms)
+		def hybrid_symbolic_algorithmic_differentiation(target_func, tier_0_symbols, tier_symbols, tier_substitutions, tier_slices):
 
-		# Initial and final time boundary derivatives
-		self._db_dxb = self._b_cons.jacobian(self._x_b_vars)
-		self._db_de = self._b_cons.jacobian(self._e_syms)
+			def by_differentiation(function, wrt):
+				return function.diff(wrt).T
+
+			def by_jacobian(function, wrt):
+				return function.jacobian(wrt)
+
+			symbol_tiers = [tier_0_symbols] + [sym.Matrix(tier_symbols[slice_]) for slice_ in tier_slices]
+
+			num_e0 = tier_0_symbols.shape[0]
+			if isinstance(target_func, sym.Matrix):
+				differentiate = by_jacobian
+				num_f = target_func.shape[0]
+				transpose_before_return = False
+			else:
+				differentiate = by_differentiation
+				num_f = 1
+				transpose_before_return = True
+
+			df_de = [differentiate(target_func, symbol_tier) for symbol_tier in symbol_tiers]
+
+			delta_matrices = [1]
+
+			for i, slice_ in enumerate(tier_slices):
+				num_ei = slice_.stop - slice_.start
+				delta_matrix_i = sym.Matrix.zeros(num_ei, num_e0)
+				for j in range(i + 1):
+					delta_matrix_j = delta_matrices[j]
+					deriv_matrix = tier_substitutions[slice_, :].jacobian(symbol_tiers[j])
+					delta_matrix_i += deriv_matrix*delta_matrix_j
+				delta_matrices.append(delta_matrix_i)
+
+			derivative = sym.Matrix.zeros(num_f, num_e0)
+
+			for df_dei, delta_i in zip(df_de, delta_matrices):
+				derivative += df_dei*delta_i
+
+			if transpose_before_return:
+				return sym.Matrix(derivative).T
+			else:
+				return derivative
+
+		self._dJ_dxb = hybrid_symbolic_algorithmic_differentiation(self._J, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
+
+		self._dc_dx = hybrid_symbolic_algorithmic_differentiation(self._c[self._c_continuous_slice, :], self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+
+		self._db_dxb = hybrid_symbolic_algorithmic_differentiation(self._b_cons, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
 
 		# Hessian
 		self._sigma = sym.symbols('_sigma')
@@ -899,80 +961,27 @@ class OptimalControlProblem():
 		lagrangian_integral = sum((self._STRETCH*l*c for l, c in zip(self._lagrange_syms[self._c_integral_slice], self._c[self._c_integral_slice])), sym.sympify(0))
 		lagrangian_endpoint = sum((l*b for l, b in zip(self._lagrange_syms[self._c_boundary_slice], self._c[self._c_boundary_slice])), sym.sympify(0))
 
-		# lagrangian_endpoint = sum((l*b for l, b in zip(self._lambda_syms[self._c_boundary_slice], self._b_cons)), self._sigma*self._J)
+		dL_dxb_J = hybrid_symbolic_algorithmic_differentiation(lagrangian_objective, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
+		ddL_dxbdxb_J = hybrid_symbolic_algorithmic_differentiation(dL_dxb_J, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
 
-		# lagrangian_continuous = sum((self._STRETCH*l*c for l, c in zip(self._lambda_syms[self._c_continuous_slice], self._c[self._c_continuous_slice])), sym.sympify(0))
+		dL_dx_zeta = hybrid_symbolic_algorithmic_differentiation(lagrangian_defect, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+		ddL_dxdx_zeta = hybrid_symbolic_algorithmic_differentiation(dL_dx_zeta, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
 
-		if self._num_e_subs:
-			self._dJ_dxb_chain = self._dJ_dxb + self._de_dxb.T*self._dJ_de
-			self._dc_dx_chain = self._dc_dx + self._dc_de*self._de_dx
-			self._db_dxb_chain = self._db_dxb + self._db_de*self._de_dxb
+		dL_dx_gamma = hybrid_symbolic_algorithmic_differentiation(lagrangian_path, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+		ddL_dxdx_gamma = hybrid_symbolic_algorithmic_differentiation(dL_dx_gamma, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
 
-			# Objective
-			dL_dxb_J = lagrangian_objective.diff(self._x_b_vars)
-			dL_de_J = lagrangian_objective.diff(self._e_syms)
-			dL_dxb_J_chain = dL_dxb_J + self._de_dxb.T * dL_de_J
-			ddL_dxbdxb_J = dL_dxb_J_chain.jacobian(self._x_b_vars)
-			ddL_dedxb_J = dL_dxb_J_chain.jacobian(self._e_syms)
-			ddL_dxbdxb_J_chain = ddL_dxbdxb_J + ddL_dedxb_J*self._de_dxb
+		dL_dx_rho = hybrid_symbolic_algorithmic_differentiation(lagrangian_integral, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+		ddL_dxdx_rho = hybrid_symbolic_algorithmic_differentiation(dL_dx_rho, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
 
-			# Defect
-			dL_dx_zeta = lagrangian_defect.diff(self._x_vars)
-			dL_de_zeta = lagrangian_defect.diff(self._e_syms)
-			dL_dx_zeta_chain = dL_dx_zeta + self._de_dx.T * dL_de_zeta
-			ddL_dxdx_zeta = dL_dx_zeta_chain.jacobian(self._x_vars)
-			ddL_dedx_zeta = dL_dx_zeta_chain.jacobian(self._e_syms)
-			ddL_dxdx_zeta_chain = ddL_dxdx_zeta + ddL_dedx_zeta*self._de_dx
-
-			# Path
-			dL_dx_c = lagrangian_path.diff(self._x_vars)
-			dL_de_c = lagrangian_path.diff(self._e_syms)
-			dL_dx_c_chain = dL_dx_c + self._de_dx.T * dL_de_c
-			ddL_dxdx_c = dL_dx_c_chain.jacobian(self._x_vars)
-			ddL_dedx_c = dL_dx_c_chain.jacobian(self._e_syms)
-			ddL_dxdx_c_chain = ddL_dxdx_c + ddL_dedx_c*self._de_dx
-
-			# Integral
-			dL_dx_rho = lagrangian_integral.diff(self._x_vars)
-			dL_de_rho = lagrangian_integral.diff(self._e_syms)
-			dL_dx_rho_chain = dL_dx_rho + self._de_dx.T * dL_de_rho
-			ddL_dxdx_rho = dL_dx_rho_chain.jacobian(self._x_vars)
-			ddL_dedx_rho = dL_dx_rho_chain.jacobian(self._e_syms)
-			ddL_dxdx_rho_chain = ddL_dxdx_rho + ddL_dedx_rho*self._de_dx
-
-			# Endpoint
-			dL_dxb_beta = lagrangian_endpoint.diff(self._x_b_vars)
-			dL_de_beta = lagrangian_endpoint.diff(self._e_syms)
-			dL_dxb_beta_chain = dL_dxb_beta + self._de_dxb.T * dL_de_beta
-			ddL_dxbdxb_beta = dL_dxb_beta_chain.jacobian(self._x_b_vars)
-			ddL_dedxb_beta = dL_dxb_beta_chain.jacobian(self._e_syms)
-			ddL_dxbdxb_beta_chain = ddL_dxbdxb_beta + ddL_dedxb_beta*self._de_dxb
-		else:
-			self._dJ_dxb_chain = self._dJ_dxb
-			self._dc_dx_chain = self._dc_dx
-			self._db_dxb_chain = self._db_dxb
-
-			# Objective
-			ddL_dxbdxb_J_chain = sym.hessian(lagrangian_objective, self._x_b_vars)
-
-			# Defect
-			ddL_dxdx_zeta_chain = sym.hessian(lagrangian_defect, self._x_vars)
-
-			# Path
-			ddL_dxdx_c_chain = sym.hessian(lagrangian_path, self._x_vars)
-
-			# Integral
-			ddL_dxdx_rho_chain = sym.hessian(lagrangian_integral, self._x_vars)
-
-			# Defect
-			ddL_dxbdxb_beta_chain = sym.hessian(lagrangian_endpoint, self._x_b_vars)
+		dL_dxb_beta = hybrid_symbolic_algorithmic_differentiation(lagrangian_endpoint, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
+		ddL_dxbdxb_beta = hybrid_symbolic_algorithmic_differentiation(dL_dxb_beta, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
 
 		# Make Hessian matrices lower triangular
-		self._ddL_dxbdxb_J_chain = sym.Matrix(np.tril(np.array(ddL_dxbdxb_J_chain)))
-		self._ddL_dxdx_zeta_chain = sym.Matrix(np.tril(np.array(ddL_dxdx_zeta_chain)))
-		self._ddL_dxdx_c_chain = sym.Matrix(np.tril(np.array(ddL_dxdx_c_chain)))
-		self._ddL_dxdx_rho_chain = sym.Matrix(np.tril(np.array(ddL_dxdx_rho_chain)))
-		self._ddL_dxbdxb_beta_chain = sym.Matrix(np.tril(np.array(ddL_dxbdxb_beta_chain)))
+		self._ddL_dxbdxb_J = sym.Matrix(np.tril(np.array(ddL_dxbdxb_J)))
+		self._ddL_dxdx_zeta = sym.Matrix(np.tril(np.array(ddL_dxdx_zeta)))
+		self._ddL_dxdx_gamma = sym.Matrix(np.tril(np.array(ddL_dxdx_gamma)))
+		self._ddL_dxdx_rho = sym.Matrix(np.tril(np.array(ddL_dxdx_rho)))
+		self._ddL_dxbdxb_beta = sym.Matrix(np.tril(np.array(ddL_dxbdxb_beta)))
 
 		# Quadrature computations
 		self._quadrature = Quadrature(optimal_control_problem=self)

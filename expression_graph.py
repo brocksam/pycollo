@@ -1,3 +1,4 @@
+import abc
 import itertools
 import numbers
 from timeit import default_timer as timer
@@ -16,7 +17,7 @@ class ExpressionGraph:
 		self._intermediate_node_num = itertools.count()
 		self._number_node_num = itertools.count()
 		self._constant_node_num = itertools.count()
-		self._variable_node_num = itertools.count()
+		# self._variable_node_num = itertools.count()
 		self._variable_nodes = {}
 		self._constant_nodes = {}
 		self._number_nodes = {}
@@ -62,6 +63,10 @@ class ExpressionGraph:
 		for x in x_vars:
 			node = self.node_from_key(x)
 			self._variable_nodes[node.symbol] = node
+
+
+		print('\n\n\n')
+		raise ValueError
 		
 		return None
 
@@ -336,12 +341,27 @@ class Cached(type):
 			return obj
 
 
-class ExpressionNode(metaclass=Cached):
+class Node(metaclass=Cached):
 
 	def __init__(self, key, graph):
-		self.graph = graph
 		self.key = key
+		self.graph = graph
+		self._set_node_type_stateful_object()
+		
 		self._child_nodes = set()
+
+	def _set_node_type_stateful_object(self):
+		if key in self.graph._prob_vars_user:
+			self._type = VariableNode
+		elif key.is_Number:
+			self._type = NumberNode
+		elif key in self._aux_syms_user:
+			self._type = ConstantNode
+		else:
+			self._type = IntermediateNode
+
+	def _create_and_set_new_node_symbol(self):
+		self.symbol = self._type._create_or_get_new_node_symbol(self)
 
 	@property
 	def child_nodes(self):
@@ -350,182 +370,233 @@ class ExpressionNode(metaclass=Cached):
 	def new_child(self, child):
 		self._child_nodes.add(child)
 
-	def __str__(self):
-		return f"{self.symbol} = {self.key}"
-
-	def __repr__(self):
-		return f"{self.__class__.__name__}({self.key})"
-
-
-
-
-class IntermediateNode(ExpressionNode):
-	"""Symbol: _w_{}"""
-
-	def __init__(self, key, graph):
-		super().__init__(key, graph)
-		number = self.graph._intermediate_node_num.__next__()
-		self.symbol = sym.symbols(f'_w_{number}')
-		self._parent_nodes = []
-		# self._derivatives_as_symbol = {self.symbol: 1}
-		self._arguments = []
-		self._num_arguments = 0
-		# self._derivative_symbols = [1]
-		if self.is_precomputable:
-			self._derivatives_wrt = {}
-		else:
-			self._derivatives_wrt = {self: 1}
-
 	@property
 	def parent_nodes(self):
-		return self._parent_nodes
-	
+		return self._type._parent_nodes(self)
+
 	def new_parent(self, parent):
-		self._parent_nodes.append(parent)
-		self._arguments.append(parent.symbol)
-		self._num_arguments = len(self.arguments)
-		# new_derivative_symbol = sym.symbols(f'_d{str(self.symbol)[1:]}_d{str(parent.symbol)[1:]}')
-		# self._derivative_symbols.append(new_derivative_symbol)
-		# self._derivatives_as_symbol[parent.symbol] = new_derivative_symbol
-		# print(self)
-		# print(parent.symbol)
-		# if 
-		# derivative = self.value.diff(parent.symbol)
-		# derivative_node = self.graph.traverse_branch(derivative)
-		# self._derivatives[parent] = derivative_node
-
-	@property
-	def arguments(self):
-		return self._arguments
-
-	@cachedproperty
-	def num_arguments(self):
-		return self._num_arguments
-
-	@property
-	def is_root(self):
-		return False
-
-	@property
-	def is_precomputable(self):
-		return self._is_precomputable
-
-	def _assert_precomputability():
-		self._is_precomputable = all([parent.is_precomputable for parent in self.parent_nodes])
-
-	@cachedproperty
-	def tier(self):
-		if self.is_precomputable:
-			return 0
-		else:
-			return max([parent.tier for parent in self.parent_nodes]) + 1
-
-	@cachedproperty
-	def dependent_nodes(self):
-		return set.union(set([self]) if not self.is_precomputable else set(), *[parent.dependent_nodes for parent in self.parent_nodes])
-
-	@cachedproperty
-	def precomputable_nodes(self):
-		return set.union(set([self]) if self.is_precomputable else set(), *[parent.precomputable_nodes for parent in self.parent_nodes])
-
-	@cachedproperty
-	def value(self):
-		if self.is_precomputable:
-			return float(self.operation(*[parent.value for parent in self.parent_nodes]))
-		else:
-			return self.operation(*self.arguments)
-
-	def derivative(self, wrt):
-		return self._derivatives.get(wrt, 0)
-
-	def derivative_wrt(self, wrt):
-		return self._derivatives.get(wrt, 0)
-
-	def derivative_as_symbol(self, wrt):
-		return self._derivatives_as_symbol.get(wrt, 0)
-
-	# @cachedproperty
-	# def _derivatives(self):
-	# 	return {arg: self.value.diff(arg) for arg in self.arguments}
+		self._type.new_parent
 
 	def __str__(self):
-		return f"{self.symbol} = {self.key} = {self.value}"
+		return self._type.__str__(self)
+
+	def __repr__(self):
+		cls_name = self.__class__.__name__
+		return f"{cls_name}(key={key}, graph={graph})"
 
 
-class RootNode(ExpressionNode):
+
+class ExpressionNodeABC(abc.ABC):
+
+	@staticmethod
+	def _get_new_symbol_number(node_instance):
+		return _node_number_counter.__next__()
+
+	@staticmethod
+	@abc.abstract_method
+	def _node_number_counter(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstract_method
+	def _node_symbol_number(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstract_method
+	def _create_or_get_new_node_symbol(node_instance):
+		new_symbol_number = _get_new_symbol_number(node_instance)
+		new_symbol_name = f"_{_node_symbol_letter}_{_get_new_symbol_number}"
+		new_symbol = sym.symbols(new_symbol_name)
+		return new_symbol
+
+	@staticmethod
+	@abc.abstract_method
+	def parent_nodes(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstract_method
+	def new_parent(node_instance):
+		pass
+
+	@staticmethod
+	def __str__(node_instance):
+		return f"{node_instance.key} = {node_instance.value}"
+
+
+
+class RootNode(ExpressionNodeABC):
+
+	@staticmethod
+	@abc.abstract_method
+	def _create_or_get_new_node_symbol(node_instance):
+		new_symbol_number = _get_new_symbol_number(node_instance)
+		new_symbol_name = f"_{node_symbol_letter}_{new_symbol_number}"
+		return new_symbol
+
+
+
+
+
+# class IntermediateNode(ExpressionNode):
+# 	"""Symbol: _w_{}"""
+
+# 	def __init__(self, key, graph):
+# 		super().__init__(key, graph)
+# 		number = self.graph._intermediate_node_num.__next__()
+# 		self.symbol = sym.symbols(f'_w_{number}')
+# 		self._parent_nodes = []
+# 		# self._derivatives_as_symbol = {self.symbol: 1}
+# 		self._arguments = []
+# 		self._num_arguments = 0
+# 		# self._derivative_symbols = [1]
+# 		if self.is_precomputable:
+# 			self._derivatives_wrt = {}
+# 		else:
+# 			self._derivatives_wrt = {self: 1}
+
+# 	@property
+# 	def parent_nodes(self):
+# 		return self._parent_nodes
 	
-	@property
-	def is_root(self):
-		return True
+# 	def new_parent(self, parent):
+# 		self._parent_nodes.append(parent)
+# 		self._arguments.append(parent.symbol)
+# 		self._num_arguments = len(self.arguments)
 
-	@property
-	def is_precomputable(self):
-		return True
+# 	@property
+# 	def arguments(self):
+# 		return self._arguments
 
-	@property
-	def tier(self):
-		return 0
+# 	@cachedproperty
+# 	def num_arguments(self):
+# 		return self._num_arguments
 
-	@property
-	def dependent_nodes(self):
-		return set()
+# 	@property
+# 	def is_root(self):
+# 		return False
 
-	@property
-	def precomputable_nodes(self):
-		return set([self])
+# 	@property
+# 	def is_precomputable(self):
+# 		return self._is_precomputable
 
-	@property
-	def _derivatives_wrt(self):
-		return {}
+# 	def _assert_precomputability():
+# 		self._is_precomputable = all([parent.is_precomputable for parent in self.parent_nodes])
+
+# 	@cachedproperty
+# 	def tier(self):
+# 		if self.is_precomputable:
+# 			return 0
+# 		else:
+# 			return max([parent.tier for parent in self.parent_nodes]) + 1
+
+# 	@cachedproperty
+# 	def dependent_nodes(self):
+# 		return set.union(set([self]) if not self.is_precomputable else set(), *[parent.dependent_nodes for parent in self.parent_nodes])
+
+# 	@cachedproperty
+# 	def precomputable_nodes(self):
+# 		return set.union(set([self]) if self.is_precomputable else set(), *[parent.precomputable_nodes for parent in self.parent_nodes])
+
+# 	@cachedproperty
+# 	def value(self):
+# 		if self.is_precomputable:
+# 			return float(self.operation(*[parent.value for parent in self.parent_nodes]))
+# 		else:
+# 			return self.operation(*self.arguments)
+
+# 	def derivative(self, wrt):
+# 		return self._derivatives.get(wrt, 0)
+
+# 	def derivative_wrt(self, wrt):
+# 		return self._derivatives.get(wrt, 0)
+
+# 	def derivative_as_symbol(self, wrt):
+# 		return self._derivatives_as_symbol.get(wrt, 0)
+
+# 	# @cachedproperty
+# 	# def _derivatives(self):
+# 	# 	return {arg: self.value.diff(arg) for arg in self.arguments}
+
+# 	def __str__(self):
+# 		return f"{self.symbol} = {self.key} = {self.value}"
 
 
-class NumberNode(RootNode):
-	"""Symbol: _n_{}"""
+# class RootNode(ExpressionNode):
 	
-	def __init__(self, key, graph):
-		super().__init__(key, graph)
-		self.symbol = sym.symbols(f'_n_{self.graph._number_node_num.__next__()}')
+# 	@property
+# 	def is_root(self):
+# 		return True
 
-	@property
-	def value(self):
-		return float(self.key)
+# 	@property
+# 	def is_precomputable(self):
+# 		return True
+
+# 	@property
+# 	def tier(self):
+# 		return 0
+
+# 	@property
+# 	def dependent_nodes(self):
+# 		return set()
+
+# 	@property
+# 	def precomputable_nodes(self):
+# 		return set([self])
+
+# 	@property
+# 	def _derivatives_wrt(self):
+# 		return {}
 
 
-class ConstantNode(RootNode):
-	"""Symbol: _a_{}"""
+# class NumberNode(RootNode):
+# 	"""Symbol: _n_{}"""
 	
-	def __init__(self, key, graph):
-		super().__init__(key, graph)
-		self.symbol = sym.symbols(f'_a_{self.graph._constant_node_num.__next__()}')
-		self.value = None
+# 	def __init__(self, key, graph):
+# 		super().__init__(key, graph)
+# 		self.symbol = sym.symbols(f'_n_{self.graph._number_node_num.__next__()}')
 
-	def __str__(self):
-		return f"{self.symbol} = {self.key} = {self.value}"
+# 	@property
+# 	def value(self):
+# 		return float(self.key)
 
 
-class VariableNode(RootNode):
-	"""Symbol: _x_{}"""
+# class ConstantNode(RootNode):
+# 	"""Symbol: _a_{}"""
 	
-	def __init__(self, key, graph):
-		super().__init__(key, graph)
-		self.symbol = sym.symbols(f'_x_{self.graph._variable_node_num.__next__()}')
-		self.value = self.symbol
+# 	def __init__(self, key, graph):
+# 		super().__init__(key, graph)
+# 		self.symbol = sym.symbols(f'_a_{self.graph._constant_node_num.__next__()}')
+# 		self.value = None
 
-	@property
-	def is_precomputable(self):
-		return False
+# 	def __str__(self):
+# 		return f"{self.symbol} = {self.key} = {self.value}"
 
-	@property
-	def dependent_nodes(self):
-		return set([self])
 
-	@property
-	def precomputable_nodes(self):
-		return set()
+# class VariableNode(RootNode):
+# 	"""Symbol: _x_{}"""
+	
+# 	def __init__(self, key, graph):
+# 		super().__init__(key, graph)
+# 		self.symbol = sym.symbols(f'_x_{self.graph._variable_node_num.__next__()}')
+# 		self.value = self.symbol
 
-	@property
-	def _derivatives_wrt(self):
-		return {self: 1}
+# 	@property
+# 	def is_precomputable(self):
+# 		return False
+
+# 	@property
+# 	def dependent_nodes(self):
+# 		return set([self])
+
+# 	@property
+# 	def precomputable_nodes(self):
+# 		return set()
+
+# 	@property
+# 	def _derivatives_wrt(self):
+# 		return {self: 1}
 
 
 def build_expression_graph(problem_variables, auxiliary_information, objective_function, constraints, hessian_lagrangian):

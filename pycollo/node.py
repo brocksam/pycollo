@@ -1,0 +1,360 @@
+import abc
+import itertools
+import numbers
+from timeit import default_timer as timer
+import weakref
+
+import numpy as np
+import sympy as sym
+
+
+
+class cachedproperty:
+
+	def __init__(self, func):
+		self.func = func
+
+	def __get__(self, instance, cls):
+		if instance is None:
+			return self
+		else:
+			value = self.func(instance)
+			setattr(instance, self.func.__name__, value)
+			return value
+
+
+class Cached(type):
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.__cache = weakref.WeakValueDictionary()
+
+	def __call__(self, *args):
+		if args in self.__cache:
+			return self.__cache[args]
+		else:
+			obj = super().__call__(*args)
+			self.__cache[args] = obj
+			return obj
+	
+
+class Node(metaclass=Cached):
+
+	def __init__(self, key, graph):
+		self.key = sym.sympify(key)
+		self.graph = graph
+		self._operation = None
+		self._set_node_type_stateful_object()
+		self._associate_new_node_with_graph()
+		self._child_nodes = set()
+		self._parent_nodes = []
+		self._inspect_parents()
+
+	def _set_node_type_stateful_object(self):
+		if self.graph.user_to_pycollo_problem_variables_mapping_in_order.get(self.key) is not None:
+			self._type = VariableNode
+		elif self.key.is_Number:
+			self._type = NumberNode
+		elif self.key in self.graph._user_constants:
+			self._type = ConstantNode
+		else:
+			self._type = IntermediateNode
+
+	def _associate_new_node_with_graph(self):
+		self.symbol = self._type._create_or_get_new_node_symbol(self)
+		self._type._graph_node_group(self)[self.symbol] = self
+
+	def _inspect_parents(self):
+		self._type._inspect_parents(self)
+
+	@property
+	def child_nodes(self):
+		return self._child_nodes
+
+	def new_child(self, child):
+		self._child_nodes.add(child)
+
+	@property
+	def parent_nodes(self):
+		return self._type.parent_nodes(self)
+
+	def new_parent(self, parent):
+		self._type.new_parent(self, parent)
+
+	@property
+	def arguments(self):
+		return self._type.arguments(self)
+
+	@property
+	def operation(self):
+		return self._operation
+
+	@property
+	def value(self):
+		try:
+			value = self._type.value(self)
+		except AttributeError:
+			value = None
+		return value
+
+	@cachedproperty
+	def is_root(self):
+		return self._type.is_root()
+
+	@cachedproperty
+	def is_precomputable(self):
+		is_precomputable = self._type.is_precomputable(self)
+		if is_precomputable:
+			self.graph._precomputable_nodes.update({self.symbol: self})
+		return is_precomputable
+
+	@cachedproperty
+	def tier(self):
+		return self._type.tier(self)
+
+	def __str__(self):
+		if hasattr(self, 'value'):
+			return f"{self.symbol} = {self.key} = {self.value}"
+		else:
+			return f"{self.symbol} = {self.key}"
+
+	def __repr__(self):
+		cls_name = self.__class__.__name__
+		return f"{cls_name}({self.key})"
+
+
+
+class ExpressionNodeABC(abc.ABC):
+
+	@staticmethod
+	@abc.abstractmethod
+	def _graph_node_group(node_instance):
+		pass
+
+	@staticmethod
+	def _get_new_symbol_number(node_instance):
+		return node_instance._type._node_number_counter(node_instance).__next__()
+
+	@staticmethod
+	@abc.abstractmethod
+	def _node_number_counter(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstractmethod
+	def _create_or_get_new_node_symbol(node_instance):
+		new_symbol_number = node_instance._type._get_new_symbol_number(node_instance)
+		node_symbol_letter = node_instance._type._node_symbol_letter(node_instance)
+		new_symbol_name = f"_{node_symbol_letter}{new_symbol_number}"
+		new_symbol = sym.symbols(new_symbol_name)
+		return new_symbol
+
+	@staticmethod
+	@abc.abstractmethod
+	def _inspect_parents(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstractmethod
+	def parent_nodes(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstractmethod
+	def new_parent(node_instance, parent):
+		pass
+
+	@staticmethod
+	@abc.abstractmethod
+	def arguments(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstractmethod
+	def tier(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstractmethod
+	def is_root(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstractmethod
+	def is_precomputable(node_instance):
+		pass
+
+
+
+class RootNode(ExpressionNodeABC):
+
+	_parent_nodes_not_allowed_error_message = (f"Object of type RootNode do not have parent nodes.")
+	_parent_nodes_not_allowed_error = AttributeError(_parent_nodes_not_allowed_error_message)
+
+	@staticmethod
+	def _inspect_parents(node_instance):
+		pass
+
+	@staticmethod
+	def parent_nodes(node_instance):
+		raise _parent_nodes_not_allowed_error
+
+	@staticmethod
+	def new_parent(node_instance, parent):
+		raise _parent_nodes_not_allowed_error
+
+	@staticmethod
+	def arguments(node_instance):
+		raise _parent_nodes_not_allowed_error
+
+	@staticmethod
+	def tier(node_instance):
+		return 0
+
+	@staticmethod
+	def is_root():
+		return True
+
+	@staticmethod
+	def is_precomputable(node_instance):
+		return True
+
+
+class VariableNode(RootNode):
+
+	@staticmethod
+	def _graph_node_group(node_instance):
+		return node_instance.graph._variable_nodes
+
+	@staticmethod
+	def _node_number_counter(node_instance):
+		raise AttributeError
+
+	@staticmethod
+	def _node_symbol_number(node_instance):
+		raise AttributeError
+
+	@staticmethod
+	def _create_or_get_new_node_symbol(node_instance):
+		symbol = node_instance.graph.user_to_pycollo_problem_variables_mapping_in_order[node_instance.key]
+		return symbol
+
+	@staticmethod
+	def is_precomputable(node_instance):
+		return False
+
+
+class ConstantNode(RootNode):
+
+	@staticmethod
+	def _graph_node_group(node_instance):
+		return node_instance.graph._constant_nodes
+
+	@staticmethod
+	def _node_number_counter(node_instance):
+		return node_instance.graph._constant_node_num_counter
+
+	@staticmethod
+	def _node_symbol_letter(node_instance):
+		return 'a'
+
+	@staticmethod
+	def _create_or_get_new_node_symbol(node_instance):
+		return super(node_instance._type, node_instance._type)._create_or_get_new_node_symbol(node_instance)
+
+	@staticmethod
+	def value(node_instance):
+		return node_instance._value
+
+
+class NumberNode(RootNode):
+
+	@staticmethod
+	def _graph_node_group(node_instance):
+		return node_instance.graph._number_nodes
+
+	@staticmethod
+	def _node_number_counter(node_instance):
+		return node_instance.graph._number_node_num_counter
+
+	@staticmethod
+	def _node_symbol_letter(node_instance):
+		return 'n'
+
+	@staticmethod
+	def _create_or_get_new_node_symbol(node_instance):
+		return super(node_instance._type, node_instance._type)._create_or_get_new_node_symbol(node_instance)
+
+	@staticmethod
+	def value(node_instance):
+		return node_instance._value
+
+
+class IntermediateNode(ExpressionNodeABC):
+
+	@staticmethod
+	def _graph_node_group(node_instance):
+		return node_instance.graph._intermediate_nodes
+
+	@staticmethod
+	def _node_number_counter(node_instance):
+		return node_instance.graph._intermediate_node_num_counter
+
+	@staticmethod
+	def _node_symbol_letter(node_instance):
+		return 'w'
+
+	@staticmethod
+	def _create_or_get_new_node_symbol(node_instance):
+		return super(node_instance._type, node_instance._type)._create_or_get_new_node_symbol(node_instance)
+
+	@staticmethod
+	def _inspect_parents(node_instance):
+		expr_to_traverse = node_instance.key
+		for arg in expr_to_traverse.args:
+			parent_node = Node(arg, node_instance.graph)
+			node_instance.new_parent(parent_node)
+		node_instance._operation = expr_to_traverse.func
+
+	@staticmethod
+	def parent_nodes(node_instance):
+		return node_instance._parent_nodes
+
+	@staticmethod
+	def new_parent(node_instance, parent):
+		node_instance.parent_nodes.append(parent)
+		parent._child_nodes.add(node_instance)
+
+	@staticmethod
+	def arguments(node_instance):
+		return tuple(parent.symbol for parent in node_instance.parent_nodes)
+
+	@staticmethod
+	def value(node_instance):
+		if node_instance._operation is sym.Symbol:
+			try:
+				node_instance._value = node_instance.arguments[0]
+			except IndexError:
+				msg = (f'Parent arguments not set for {node_instance.symbol}')
+				raise ValueError(msg)
+		else:
+			node_instance._value = node_instance.operation(*node_instance.arguments)
+		return node_instance._value
+
+	@staticmethod
+	def is_root():
+		return False
+
+	@staticmethod
+	def tier(node_instance):
+		return max([parent.tier for parent in node_instance.parent_nodes]) + 1
+
+	@staticmethod
+	def is_precomputable(node_instance):
+		return all([parent.is_precomputable for parent in node_instance.parent_nodes])
+
+
+
+
+
+

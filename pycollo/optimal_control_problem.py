@@ -128,15 +128,15 @@ class OptimalControlProblem():
 	@property
 	def time_symbol(self):
 		msg = (f"pycollo do not currently support dynamic, path or integral constraints that are explicit functions of continuous time.")
-		raise NotImplementedError
+		raise NotImplementedError(msg)
 
 	@property
 	def initial_time(self):
-		return self._t0_user
+		return self._t0_USER
 
 	@property
 	def final_time(self):
-		return self._tF_user
+		return self._tF_USER
 
 	@property
 	def initial_state(self):
@@ -158,8 +158,8 @@ class OptimalControlProblem():
 	def state_variables(self, y_vars):
 		self._initialised = False
 		self._y_vars_user = pu.format_as_tuple(y_vars)
-		self._y_t0_user = tuple(sym.symbols(f'{y}(t0)') for y in self._y_vars_user)
-		self._y_tF_user = tuple(sym.symbols(f'{y}(tF)') for y in self._y_vars_user)
+		self._y_t0_user = tuple(sym.Symbol(f'{y}(t0)') for y in self._y_vars_user)
+		self._y_tF_user = tuple(sym.Symbol(f'{y}(tF)') for y in self._y_vars_user)
 		_ = self._update_vars()
 		_ = pu.check_sym_name_clash(self._y_vars_user)
 
@@ -255,7 +255,7 @@ class OptimalControlProblem():
 	def integrand_functions(self, integrands):
 		self._initialised = False
 		self._q_funcs_user = pu.format_as_tuple(integrands)
-		self._q_vars_user = tuple(sym.symbols(f'_q{i_q}') for i_q, _ in enumerate(self._q_funcs_user))
+		self._q_vars_user = tuple(sym.Symbol(f'_q{i_q}') for i_q, _ in enumerate(self._q_funcs_user))
 		_ = self._update_vars()
 
 	@property
@@ -352,6 +352,466 @@ class OptimalControlProblem():
 	def solution(self):
 		return self._mesh_iterations[-1].solution
 
+
+	@staticmethod
+	def _console_out_message_heading(msg):
+		msg_len = len(msg)
+		seperator = '=' * msg_len
+		output_msg = f"\n{seperator}\n{msg}\n{seperator}\n"
+		print(output_msg)
+		return None
+
+
+	def solve(self, display_progress=False):
+
+		self._display_progress = display_progress
+		
+		if self._initialised == False:
+			self._initialised = self.initialise()
+
+		# Solve the transcribed NLP on the initial mesh
+		new_iteration_mesh, new_iteration_guess = self._mesh_iterations[0]._solve()
+
+		mesh_iterations_met = self._settings.max_mesh_iterations == 1
+		if new_iteration_mesh is None:
+				mesh_tolerance_met = True
+		else:
+			mesh_tolerance_met = False
+
+		while not mesh_iterations_met and not mesh_tolerance_met:
+			new_iteration = Iteration(optimal_control_problem=self, iteration_number=self.num_mesh_iterations+1, mesh=new_iteration_mesh)
+			self._mesh_iterations.append(new_iteration)
+			self._mesh_iterations[-1]._initialise_iteration(new_iteration_guess)
+			new_iteration_mesh, new_iteration_guess = self._mesh_iterations[-1]._solve()
+			if new_iteration_mesh is None:
+				mesh_tolerance_met = True
+				print(f'Mesh tolerance met in mesh iteration {len(self._mesh_iterations)}.\n')
+			elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
+				mesh_iterations_met = True
+				print(f'Maximum number of mesh iterations reached. pycollo exiting before mesh tolerance met.\n')
+	
+		_ = self._final_output()
+
+
+	def initialise(self):
+
+		ocp_initialisation_time_start = timer()
+
+		eom_msg = 'Initialising optimal control problem.'
+		self._console_out_message_heading(eom_msg)
+
+		# User-defined symbols allowed in continuous and endpoint functions
+		user_var_syms_endpoint = set(self._x_b_vars_user)
+		user_var_syms_continuous = set.union(set(self._y_vars_user), set(self._u_vars_user), {sym.Symbol('t')}, set(self._s_vars_user))
+		user_var_syms = set.union(user_var_syms_endpoint, user_var_syms_continuous)
+		self._allowed_endpoint_set = set.union(user_var_syms_endpoint, set(self._aux_data_user.keys()))
+		self._allowed_continuous_set =set.union(user_var_syms_continuous, set(self._aux_data_user.keys()))
+		
+		# Check auxiliary data
+		disallowed_syms_set = set(self._aux_data_user.keys()).intersection(set(user_var_syms))
+		if disallowed_syms_set:
+			disallowed_syms = ', '.join(f'{symbol}' for symbol in disallowed_syms_set)
+			msg = (f"Additional information about {disallowed_syms} cannot be supplied as auxiliary data as these are variables in the optimal control problem.")
+			raise ValueError(msg)
+
+		aux_data_temp = {}
+		aux_subs_temp = {}
+		shallow_subs_temp = {}
+		deep_subs_temp = {}
+
+		for k, v in self._aux_data_user.items():
+			try:
+				aux_data_temp[k] = float(v)
+			except (ValueError, TypeError):
+				aux_subs_temp[k] = v
+
+		accounted_for_keys = set(aux_data_temp.keys())
+
+		user_subs_list_by_tier = []
+		next_check_subs_temp = aux_subs_temp.copy()
+
+		if len(next_check_subs_temp) > 0:
+			max_dependancy_depth = 20
+			for i in range(max_dependancy_depth):
+
+				for k, v in next_check_subs_temp.items():
+
+					v_free_syms = v.free_symbols
+					v_var_syms = v_free_syms.intersection(user_var_syms)
+					v_data_syms = v_free_syms.intersection(set(accounted_for_keys))
+					v_subs_syms = v_free_syms.intersection(set(aux_subs_temp.keys()))
+					v_extra_syms = v_free_syms.difference(set.union(v_var_syms, v_data_syms, v_subs_syms))
+
+					if v_extra_syms:
+						disallowed_syms = ', '.join(f'{symbol}' for symbol in v_extra_syms)
+						msg = (f"Additional information for {k} cannot be provided as auxiliary data in its current form as it is a function of {disallowed_syms}. These symbols have not been defined elsewhere in the optimal control problem. Please supply numerical values for them as auxiliary data.")
+						raise ValueError(msg)
+
+					difference = v_subs_syms.difference(v_data_syms)
+
+					if difference == set():
+						if v_free_syms:
+							shallow_subs_temp[k] = v
+						else:
+							aux_data_temp[k] = float(v)
+
+					else:
+						deep_subs_temp[k] = v
+
+				accounted_for_keys = accounted_for_keys.union(set(list(shallow_subs_temp.keys())))
+				user_subs_list_by_tier.append(shallow_subs_temp)
+				next_check_subs_temp = deep_subs_temp.copy()
+
+				deep_subs_temp = {}
+				shallow_subs_temp = {}
+
+				if len(next_check_subs_temp) == 0:
+					break
+			else:
+				msg = (f'Substitution dependency chain appears to be too deep: {max_dependancy_depth} levels.')
+				raise NotImplementedError(msg)
+		else:
+			pass
+		print('Auxiliary substitutions tree for hSAD analysed.')
+
+		# Check state equations
+		if len(self._y_eqns_user) != len(self._y_vars_user):
+			msg = (f"A differential state equation must be supplied for each state variable. {len(self._y_eqns_user)} differential equations were supplied for {len(self._y_vars_user)} state variables.")
+			raise ValueError(msg)
+		for i_y, eqn in enumerate(self._y_eqns_user):
+			eqn_syms = set.union(me.find_dynamicsymbols(eqn), eqn.free_symbols)
+			if not eqn_syms.issubset(self._allowed_continuous_set):
+				disallowed_syms = ', '.join(f'{symbol}' for symbol in eqn_syms.difference(self._allowed_continuous_set))
+				msg = (f"State equation #{i_y+1}: {eqn}, cannot be a function of {disallowed_syms}.")
+				raise ValueError(msg)
+		print('State equations checked.')
+
+		# Check path constraints
+		for i_c, con in enumerate(self._c_cons_user):
+			con_syms = set.union(me.find_dynamicsymbols(con), con.free_symbols)
+			if not con_syms.issubset(self._allowed_continuous_set):
+				disallowed_syms = ', '.join(f'{symbol}' for symbol in con_syms.difference(self._allowed_continuous_set))
+				msg = (f"Path constraint #{i_c+1}: {con}, cannot be a function of {disallowed_syms}.")
+				raise ValueError(msg)
+		print('Path constraints checked.')
+
+		# Check integrand functions
+		for i_q, func in enumerate(self._q_funcs_user):
+			func_syms = set.union(me.find_dynamicsymbols(func), func.free_symbols)
+			if not func_syms.issubset(self._allowed_continuous_set):
+				disallowed_syms = ', '.join(f'{symbol}' for symbol in func_syms.difference(self._allowed_continuous_set))
+				msg = (f"Integrand function #{i_q+1}: {func}, cannot be a function of {disallowed_syms}.")
+				raise ValueError(msg)
+		print('Integral functions checked.')
+
+		# Check state endpoint constraints
+		for i_y_b, con in enumerate(self._y_b_cons_user):
+			if con not in self.state_endpoint:
+				msg = (f"State endpoint constraints #{i_y_b}: {con} should not be supplied as a state endpoint constraint as it more than a function of a single state endpoint variable. Please resupply this constraint as a boundary constraint using `OptimalControlProblem.boundary_constraints`.")
+				raise ValueError(msg)
+
+		# Check endpoint constraints
+		for i_b, con in enumerate(self._b_cons_user):
+			if con in self.state_endpoint:
+				msg = (f"Boundary constraint #{i_b}: {con} should not be supplied as a boundary constraint as it only contains a single state endpoint variable. Please resupply this constraint as a state endpoint constraint using `OptimalControlProblem.state_endpoint_constraints`.")
+				raise ValueError(msg)
+			con_syms = set.union(me.find_dynamicsymbols(con), con.free_symbols)
+			if not con_syms.issubset(self._allowed_endpoint_set):
+				disallowed_syms = ', '.join(f'{symbol}' for symbol in con_syms.difference(self._allowed_endpoint_set))
+				msg = (f"Boundary constraint #{i_b+1}: {con}, cannot be a function of {disallowed_syms}.")
+				raise ValueError(msg)
+		print('Point constraints checked.')
+
+		# Check objective function
+		if self._forward_dynamics:
+			pass
+		elif self._J_user is not None:
+			if not self._J_user.free_symbols:
+				msg = (f"The declared objective function {J} is invalid as it doesn't contain any Mayer terms (functions of the initial and final times and states) or any Lagrange terms (integrals of functions of the state and control variables with respect to time between the limits '_t0' and '_tF').")
+				raise ValueError(msg)
+			if isinstance(self._J_user, sym.Add):
+				bolza_set = set(self._J_user.args)
+			else:
+				bolza_set = {self._J_user}
+			for term in bolza_set:
+				term_syms = set.union(me.find_dynamicsymbols(term), term.free_symbols)
+				if not term_syms.issubset(self._allowed_endpoint_set):
+					disallowed_syms = ', '.join(f'{symbol}' for symbol in term_syms.difference(self._allowed_endpoint_set))
+					msg = (f"The objective function cannot be a function of {disallowed_syms}.")
+					raise ValueError(msg)
+		else:
+			allowed_syms = ', '.join(f'{symbol}' for symbol in self._x_b_vars_user)
+			msg = (f"User must supply an objective function as a function of {allowed_syms}.")
+			raise ValueError(msg)
+		print('Objective function checked.')
+
+		# Generate pycollo symbols and functions
+		self._aux_data = {sym.Symbol(f'_a{i_a}'): value for i_a, (_, value) in enumerate(aux_data_temp.items())}
+		a_subs_dict = dict(zip(aux_data_temp.keys(), self._aux_data.keys()))
+
+		# Check user-supplied bounds
+		self._bounds._bounds_check(aux_data=aux_data_temp, aux_subs=aux_subs_temp)
+		print('Bounds checked.')
+
+		# State variables
+		y_vars = [sym.Symbol(f'_y{i_y}') for i_y, _ in enumerate(self._y_vars_user)]
+		self._y_vars = sym.Matrix([y for y, y_needed in zip(y_vars, self._bounds._y_needed) if y_needed])
+		if not self._y_vars:
+			self._y_vars = sym.Matrix.zeros(0, 1)
+		self._num_y_vars = self._y_vars.shape[0]
+		self._y_t0 = sym.Matrix([sym.Symbol(f'{y}_t0') for y in self._y_vars])
+		self._y_tF = sym.Matrix([sym.Symbol(f'{y}_tF') for y in self._y_vars])
+		self._y_b_vars = sym.Matrix(list(itertools.chain.from_iterable(y for y in zip(self._y_t0, self._y_tF))))
+		self._aux_data.update({y: value for y, y_needed, value in zip(y_vars, self._bounds._y_needed, self._bounds._y_l) if not y_needed})
+		y_subs_dict = dict(zip(self._y_vars_user, y_vars))
+		y_endpoint_subs_dict = {**dict(zip(self.initial_state, self._y_t0)), ** dict(zip(self.final_state, self._y_tF))}
+
+		# Control variables
+		u_vars = [sym.Symbol(f'_u{i_u}') for i_u, _ in enumerate(self._u_vars_user)]
+		self._u_vars = sym.Matrix([u for u, u_needed in zip(u_vars, self._bounds._u_needed) if u_needed])
+		if not self._u_vars:
+			self._u_vars = sym.Matrix.zeros(0, 1)
+		self._num_u_vars = self._u_vars.shape[0]
+		self._aux_data.update({u: value for u, u_needed, value in zip(u_vars, self._bounds._u_needed, self._bounds._u_l) if not u_needed})
+		u_subs_dict = dict(zip(self._u_vars_user, u_vars))
+
+		# Integral variables
+		q_vars = sym.Matrix(self._q_vars_user)
+		self._q_vars = sym.Matrix([q for q, q_needed in zip(q_vars, self._bounds._q_needed) if q_needed])
+		if not self._q_vars:
+			self._q_vars = sym.Matrix.zeros(0, 1)
+		self._num_q_vars = self._q_vars.shape[0]
+		self._aux_data.update({q: value for q, q_needed, value in zip(q_vars, self._bounds._q_needed, self._bounds._q_l) if not q_needed})
+
+		# Time variables
+		t_vars = [self._t0, self._tF]
+		self._t_vars = sym.Matrix([t for t, t_needed in zip(t_vars, self._bounds._t_needed) if t_needed])
+		if not self._t_vars:
+			self._t_vars = sym.Matrix.zeros(0, 1)
+		self._num_t_vars = self._t_vars.shape[0]
+		if not self._bounds._t_needed[0]:
+			self._aux_data.update({self._t0: self._bounds._t0_l})
+		if not self._bounds._t_needed[1]:
+			self._aux_data.update({self._tF: self._bounds._tF_l})
+		t_subs_dict = dict(zip(self._t_vars_user, t_vars))
+
+		# Parameter variables
+		s_vars = [sym.Symbol(f'_s{i_s}') for i_s, _ in enumerate(self._s_vars_user)]
+		self._s_vars = sym.Matrix([s for s, s_needed in zip(s_vars, self._bounds._s_needed) if s_needed])
+		if not self._s_vars:
+			self._s_vars = sym.Matrix.zeros(0, 1)
+		self._num_s_vars = self._s_vars.shape[0]
+		self._aux_data.update({s: value for s, s_needed, value in zip(s_vars, self._bounds._s_needed, self._bounds._s_l) if not s_needed})
+		s_subs_dict = dict(zip(self._s_vars_user, s_vars))
+
+		# Variables set
+		self._x_vars = sym.Matrix([self._y_vars, self._u_vars, self._q_vars, self._t_vars, self._s_vars])
+		self._num_vars = self._x_vars.shape[0]
+		self._num_vars_tuple = (self._num_y_vars, self._num_u_vars, self._num_q_vars, self._num_t_vars, self._num_s_vars)
+		self._x_b_vars = sym.Matrix([self._y_b_vars, self._q_vars, self._t_vars, self._s_vars])
+		self._num_point_vars = self._x_b_vars.shape[0]
+		self._user_subs_dict = {**y_subs_dict, **y_endpoint_subs_dict, **u_subs_dict, **t_subs_dict, **s_subs_dict, **a_subs_dict}
+		print('pycollo symbols generated.')
+
+		self._inverse_aux_subs = {}
+		self._e_vars = []
+		self._e_subs = []
+		self._tier_slices = []
+
+		for subs_dict in user_subs_list_by_tier:
+			tier_offset = len(self._e_vars)
+			e_vars_new = [sym.Symbol(f'_e{i_e + tier_offset}') for i_e, _ in enumerate(subs_dict)]
+			self._e_vars.extend(e_vars_new)
+			self._e_subs.extend(list(subs_dict.values()))
+			tier_slice = slice(tier_offset, len(self._e_vars))
+			self._tier_slices.append(tier_slice)
+
+			inverse_aux_subs = dict(zip(list(subs_dict.keys()), e_vars_new))
+			self._inverse_aux_subs.update(inverse_aux_subs)
+
+		self._pycollo_syms_subs_dict = {**self._user_subs_dict, **self._inverse_aux_subs}
+
+		self._e_vars = sym.Matrix(self._e_vars)
+		self._e_subs = sym.Matrix(self._e_subs).subs(self._pycollo_syms_subs_dict)
+		self._num_subs_tiers = len(self._tier_slices)
+		self._aux_subs = dict(zip(self._e_vars, self._e_subs))
+		print('pycollo auxiliary substitutions completed.')
+
+		# State equations
+		self._y_eqns = sym.Matrix(self._y_eqns_user).subs(self._pycollo_syms_subs_dict) if self._y_eqns_user else sym.Matrix.zeros(0, 1)
+
+		# Path constraints
+		self._c_cons = sym.Matrix(self._c_cons_user).subs(self._pycollo_syms_subs_dict) if self._c_cons_user else sym.Matrix.zeros(0, 1)
+		self._num_c_cons = self._c_cons.shape[0]
+
+		# Integrand functions
+		self._q_funcs = sym.Matrix(self._q_funcs_user).subs(self._pycollo_syms_subs_dict) if self._q_funcs_user else sym.Matrix.zeros(0, 1)
+
+		# Boundary constraints
+		self._y_b_cons = sym.Matrix(self._y_b_cons_user).subs(self._pycollo_syms_subs_dict) if self._y_b_cons_user else sym.Matrix.zeros(0, 1)
+		self._b_end_cons = sym.Matrix(self._b_cons_user).subs(self._pycollo_syms_subs_dict) if self._b_cons_user else sym.Matrix.zeros(0, 1)
+		self._b_cons = sym.Matrix([self._y_b_cons, self._b_end_cons])
+		self._num_b_cons = self._b_cons.shape[0]
+		print('Sybolic constraint functions generated.')
+
+		# Objective function
+		self._J = self._J_user.subs(self._pycollo_syms_subs_dict)
+
+		# Check user-defined initial guess
+		self._initial_guess._guess_check()
+
+		# Generate constraint and derivative functions
+		# Variables index slices
+		self._y_slice = slice(0, self._num_y_vars)
+		self._u_slice = slice(self._y_slice.stop, self._y_slice.stop + self._num_u_vars)
+		self._q_slice = slice(self._u_slice.stop, self._u_slice.stop + self._num_q_vars)
+		self._t_slice = slice(self._q_slice.stop, self._q_slice.stop + self._num_t_vars)
+		self._s_slice = slice(self._t_slice.stop, self._num_vars)
+		self._yu_slice = slice(self._y_slice.start, self._u_slice.stop)
+		self._qts_slice = slice(self._q_slice.start, self._s_slice.stop)
+		self._yu_qts_split = self._yu_slice.stop
+
+		self._y_b_slice = slice(0, self._num_y_vars*2)
+		self._u_b_slice = slice(self._y_b_slice.stop, self._y_b_slice.stop)
+		self._q_b_slice = slice(self._u_b_slice.stop, self._u_b_slice.stop + self._num_q_vars)
+		self._t_b_slice = slice(self._q_b_slice.stop, self._q_b_slice.stop + self._num_t_vars)
+		self._s_b_slice = slice(self._t_b_slice.stop, self._t_b_slice.stop + self._num_s_vars)
+		self._qts_b_slice = slice(self._q_b_slice.start, self._s_b_slice.stop)
+		self._y_b_qts_b_split = self._y_b_slice.stop
+
+		# Constraints
+		self._c = sym.Matrix([self._y_eqns, self._c_cons, self._q_funcs, self._b_cons])
+		self._num_c = self._c.shape[0]
+
+		# Constraints index slices
+		self._c_defect_slice = slice(0, self._num_y_vars)
+		self._c_path_slice = slice(self._c_defect_slice.stop, self._c_defect_slice.stop + self._num_c_cons)
+		self._c_integral_slice = slice(self._c_path_slice.stop, self._c_path_slice.stop + self._num_q_vars)
+		self._c_boundary_slice = slice(self._c_integral_slice.stop, self._c_integral_slice.stop + self._num_b_cons)
+		self._c_continuous_slice = slice(0, self._num_c - self._num_b_cons)
+
+		def hybrid_symbolic_algorithmic_differentiation(target_func, tier_0_symbols, tier_symbols, tier_substitutions, tier_slices):
+
+			print('\n\n\n')
+
+			def by_differentiation(function, wrt):
+				return function.diff(wrt).T
+
+			def by_jacobian(function, wrt):
+				return function.jacobian(wrt)
+
+			symbol_tiers = [tier_0_symbols] + [sym.Matrix(tier_symbols[slice_]) for slice_ in tier_slices]
+
+			num_e0 = tier_0_symbols.shape[0]
+			if isinstance(target_func, sym.Matrix):
+				differentiate = by_jacobian
+				num_f = target_func.shape[0]
+				transpose_before_return = False
+			else:
+				differentiate = by_differentiation
+				num_f = 1
+				transpose_before_return = True
+
+			df_de = [differentiate(target_func, symbol_tier) for symbol_tier in symbol_tiers]
+
+			for i, (val, tier) in enumerate(zip(df_de, symbol_tiers)):
+				print(f"Tier {i}:")
+				print(tier)
+				print(val, '\n')
+
+			delta_matrices = [1]
+
+			for i, slice_ in enumerate(tier_slices):
+				num_ei = slice_.stop - slice_.start
+				delta_matrix_i = sym.Matrix.zeros(num_ei, num_e0)
+				for j in range(i + 1):
+					delta_matrix_j = delta_matrices[j]
+					deriv_matrix = tier_substitutions[slice_, :].jacobian(symbol_tiers[j])
+					print('\n', j)
+					print(tier_substitutions[slice_, :])
+					print(symbol_tiers[j])
+					print(deriv_matrix, '\n')
+					delta_matrix_i += deriv_matrix*delta_matrix_j
+				delta_matrices.append(delta_matrix_i)
+
+			for i, d_mat in enumerate(delta_matrices):
+				print(f"Delta {i}:")
+				print(d_mat, '\n')
+
+			derivative = sym.Matrix.zeros(num_f, num_e0)
+
+			for df_dei, delta_i in zip(df_de, delta_matrices):
+				derivative += df_dei*delta_i
+
+			print('\n\n\n')
+
+			if transpose_before_return:
+				return sym.Matrix(derivative).T
+			else:
+				return derivative
+
+		self._dJ_dxb = hybrid_symbolic_algorithmic_differentiation(self._J, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
+		print('Symbolic objective gradient calculated.')
+
+		self._dc_dx = hybrid_symbolic_algorithmic_differentiation(self._c[self._c_continuous_slice, :], self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+		print('Symbolic jacobian of the continuous constraints calculated.')
+
+		# print('\n\n\n', self._dc_dx, '\n\n\n')
+		# raise ValueError
+
+		self._db_dxb = hybrid_symbolic_algorithmic_differentiation(self._b_cons, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
+		print('Symbolic jacobian of the point constraints calculated.')
+
+		# Hessian
+		self._sigma = sym.symbols('_sigma')
+		self._lagrange_syms = [sym.symbols(f'_lambda_{n}') for n in range(self._num_c)]
+
+		lagrangian_objective = self._sigma*self._J
+		lagrangian_defect = sum((self._STRETCH*l*c for l, c in zip(self._lagrange_syms[self._c_defect_slice], self._c[self._c_defect_slice])), sym.sympify(0))
+		lagrangian_path = sum((self._STRETCH*l*c for l, c in zip(self._lagrange_syms[self._c_path_slice], self._c[self._c_path_slice])), sym.sympify(0))
+		lagrangian_integral = sum((self._STRETCH*l*c for l, c in zip(self._lagrange_syms[self._c_integral_slice], self._c[self._c_integral_slice])), sym.sympify(0))
+		lagrangian_endpoint = sum((l*b for l, b in zip(self._lagrange_syms[self._c_boundary_slice], self._c[self._c_boundary_slice])), sym.sympify(0))
+
+		dL_dxb_J = hybrid_symbolic_algorithmic_differentiation(lagrangian_objective, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
+		ddL_dxbdxb_J = hybrid_symbolic_algorithmic_differentiation(dL_dxb_J, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
+
+		dL_dx_zeta = hybrid_symbolic_algorithmic_differentiation(lagrangian_defect, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+		ddL_dxdx_zeta = hybrid_symbolic_algorithmic_differentiation(dL_dx_zeta, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+
+		dL_dx_gamma = hybrid_symbolic_algorithmic_differentiation(lagrangian_path, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+		ddL_dxdx_gamma = hybrid_symbolic_algorithmic_differentiation(dL_dx_gamma, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+
+		dL_dx_rho = hybrid_symbolic_algorithmic_differentiation(lagrangian_integral, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+		ddL_dxdx_rho = hybrid_symbolic_algorithmic_differentiation(dL_dx_rho, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
+
+		dL_dxb_beta = hybrid_symbolic_algorithmic_differentiation(lagrangian_endpoint, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
+		ddL_dxbdxb_beta = hybrid_symbolic_algorithmic_differentiation(dL_dxb_beta, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
+
+		# Make Hessian matrices lower triangular
+		self._ddL_dxbdxb_J = sym.Matrix(np.tril(np.array(ddL_dxbdxb_J)))
+		self._ddL_dxdx_zeta = sym.Matrix(np.tril(np.array(ddL_dxdx_zeta)))
+		self._ddL_dxdx_gamma = sym.Matrix(np.tril(np.array(ddL_dxdx_gamma)))
+		self._ddL_dxdx_rho = sym.Matrix(np.tril(np.array(ddL_dxdx_rho)))
+		self._ddL_dxbdxb_beta = sym.Matrix(np.tril(np.array(ddL_dxbdxb_beta)))
+		print('Symbolic hessian of the Lagrangian calculated.')
+
+		# Quadrature computations
+		self._quadrature = Quadrature(optimal_control_problem=self)
+		print('Quadrature scheme initialised.')
+
+		# Compile numba numerical functions
+		_ = self._compile_numba_functions()
+
+		# Initialise the initial mesh iterations
+		self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
+
+		ocp_initialisation_time_stop = timer()
+
+		self._ocp_initialisation_time = ocp_initialisation_time_stop - ocp_initialisation_time_start
+
+		# Set the initialisation flag
+		return True
+
 	def _compile_numba_functions(self):
 
 		def reshape_x(x, num_yu, yu_qts_split):
@@ -368,8 +828,10 @@ class OptimalControlProblem():
 
 		self._x_reshape_lambda = reshape_x
 		self._x_reshape_lambda_point = reshape_x_point
+		print('Variable reshape functions compiled.')
 
 		self._J_lambda = pu.numbafy(expression=self._J, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=0)
+		print('Objective function compiled.')
 
 		dJ_dxb_lambda = pu.numbafy(expression=self._dJ_dxb, parameters=self._x_b_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=1, N_arg=True, endpoint=True, ocp_num_vars=self._num_vars_tuple)
 
@@ -378,6 +840,7 @@ class OptimalControlProblem():
 			return g
 
 		self._g_lambda = g_lambda
+		print('Objective gradient function compiled.')
 
 		t_stretch_lambda = pu.numbafy(expression=self._STRETCH, parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=0)
 		self._dstretch_dt = [val for val, t_needed in zip(self._dSTRETCH_dt, self._bounds._t_needed) if t_needed]
@@ -420,6 +883,7 @@ class OptimalControlProblem():
 			return c
 
 		self._c_lambda = c_lambda
+		print('Constraints function compiled.')
 
 		ddy_dy_lambda = pu.numbafy(expression=self._dc_dx[self._c_defect_slice, self._y_slice], parameters=self._x_vars, constants=self._aux_data, substitutions=self._aux_subs, return_dims=2, N_arg=True, ocp_num_vars=self._num_vars_tuple)
 
@@ -552,6 +1016,7 @@ class OptimalControlProblem():
 			return G
 
 		self._G_lambda = G_lambda
+		print('Jacobian function compiled.')
 
 		lagrange_syms_defect = self._lagrange_syms[self._c_defect_slice]
 		lagrange_syms_defect_matrix = lagrange_syms_defect if isinstance(lagrange_syms_defect, sym.Matrix) else sym.Matrix([lagrange_syms_defect])
@@ -615,421 +1080,12 @@ class OptimalControlProblem():
 			return H
 
 		self._H_lambda = H_lambda
+		print('Hessian function compiled.')
 
 		return None
 
-	def initialise(self):
-
-		ocp_initialisation_time_start = timer()
-
-		# User-defined symbols allowed in continuous and endpoint functions
-		user_var_syms_endpoint = set(self._x_b_vars_user)
-		user_var_syms_continuous = set.union(set(self._y_vars_user), set(self._u_vars_user), {sym.Symbol('t')}, set(self._s_vars_user))
-		user_var_syms = set.union(user_var_syms_endpoint, user_var_syms_continuous)
-		self._allowed_endpoint_set = set.union(user_var_syms_endpoint, set(self._aux_data_user.keys()))
-		self._allowed_continuous_set =set.union(user_var_syms_continuous, set(self._aux_data_user.keys()))
-		
-		# Check auxiliary data
-		disallowed_syms_set = set(self._aux_data_user.keys()).intersection(set(user_var_syms))
-		if disallowed_syms_set:
-			disallowed_syms = ', '.join(f'{symbol}' for symbol in disallowed_syms_set)
-			msg = (f"Additional information about {disallowed_syms} cannot be supplied as auxiliary data as these are variables in the optimal control problem.")
-			raise ValueError(msg)
-
-		aux_data_temp = {}
-		aux_subs_temp = {}
-		shallow_subs_temp = {}
-		deep_subs_temp = {}
-
-		for (k, v) in self._aux_data_user.items():
-			try:
-				aux_data_temp[k] = float(v)
-			except (ValueError, TypeError):
-				aux_subs_temp[k] = v
-
-		accounted_for_keys = set(aux_data_temp.keys())
-
-		user_subs_list_by_tier = []
-		next_check_subs_temp = aux_subs_temp.copy()
-
-		if len(next_check_subs_temp) > 0:
-			max_dependancy_depth = 20
-			for i in range(max_dependancy_depth):
-
-				for k, v in next_check_subs_temp.items():
-
-					v_free_syms = v.free_symbols
-					v_var_syms = v_free_syms.intersection(user_var_syms)
-					v_data_syms = v_free_syms.intersection(set(accounted_for_keys))
-					v_subs_syms = v_free_syms.intersection(set(aux_subs_temp.keys()))
-					v_extra_syms = v_free_syms.difference(set.union(v_var_syms, v_data_syms, v_subs_syms))
-
-					if v_extra_syms:
-						disallowed_syms = ', '.join(f'{symbol}' for symbol in v_extra_syms)
-						msg = (f"Additional information for {k} cannot be provided as auxiliary data in its current form as it is a function of {disallowed_syms}. These symbols have not been defined elsewhere in the optimal control problem. Please supply numerical values for them as auxiliary data.")
-						raise ValueError(msg)
-
-					difference = v_subs_syms.difference(v_data_syms)
-
-					if difference == set():
-						if v_free_syms:
-							shallow_subs_temp[k] = v
-						else:
-							aux_data_temp[k] = float(v)
-
-					else:
-						deep_subs_temp[k] = v
-
-				accounted_for_keys = accounted_for_keys.union(set(list(shallow_subs_temp.keys())))
-				user_subs_list_by_tier.append(shallow_subs_temp)
-				next_check_subs_temp = deep_subs_temp.copy()
-
-				deep_subs_temp = {}
-				shallow_subs_temp = {}
-
-				if len(next_check_subs_temp) == 0:
-					break
-			else:
-				msg = (f'Substitution dependency chain appears to be too deep: {max_dependancy_depth} levels.')
-				raise NotImplementedError(msg)
-		else:
-			pass
-
-		# Check state equations
-		if len(self._y_eqns_user) != len(self._y_vars_user):
-			msg = (f"A differential state equation must be supplied for each state variable. {len(self._y_eqns_user)} differential equations were supplied for {len(self._y_vars_user)} state variables.")
-			raise ValueError(msg)
-		for i_y, eqn in enumerate(self._y_eqns_user):
-			eqn_syms = set.union(me.find_dynamicsymbols(eqn), eqn.free_symbols)
-			if not eqn_syms.issubset(self._allowed_continuous_set):
-				disallowed_syms = ', '.join(f'{symbol}' for symbol in eqn_syms.difference(self._allowed_continuous_set))
-				msg = (f"State equation #{i_y+1}: {eqn}, cannot be a function of {disallowed_syms}.")
-				raise ValueError(msg)
-
-		# Check path constraints
-		for i_c, con in enumerate(self._c_cons_user):
-			con_syms = set.union(me.find_dynamicsymbols(con), con.free_symbols)
-			if not con_syms.issubset(self._allowed_continuous_set):
-				disallowed_syms = ', '.join(f'{symbol}' for symbol in con_syms.difference(self._allowed_continuous_set))
-				msg = (f"Path constraint #{i_c+1}: {con}, cannot be a function of {disallowed_syms}.")
-				raise ValueError(msg)
-
-		# Check integrand functions
-		for i_q, func in enumerate(self._q_funcs_user):
-			func_syms = set.union(me.find_dynamicsymbols(func), func.free_symbols)
-			if not func_syms.issubset(self._allowed_continuous_set):
-				disallowed_syms = ', '.join(f'{symbol}' for symbol in func_syms.difference(self._allowed_continuous_set))
-				msg = (f"Integrand function #{i_q+1}: {func}, cannot be a function of {disallowed_syms}.")
-				raise ValueError(msg)
-
-		# Check state endpoint constraints
-		for i_y_b, con in enumerate(self._y_b_cons_user):
-			if con not in self.state_endpoint:
-				msg = (f"State endpoint constraints #{i_y_b}: {con} should not be supplied as a state endpoint constraint as it more than a function of a single state endpoint variable. Please resupply this constraint as a boundary constraint using `OptimalControlProblem.boundary_constraints`.")
-				raise ValueError(msg)
-
-		# Check endpoint constraints
-		for i_b, con in enumerate(self._b_cons_user):
-			if con in self.state_endpoint:
-				msg = (f"Boundary constraint #{i_b}: {con} should not be supplied as a boundary constraint as it only contains a single state endpoint variable. Please resupply this constraint as a state endpoint constraint using `OptimalControlProblem.state_endpoint_constraints`.")
-				raise ValueError(msg)
-			con_syms = set.union(me.find_dynamicsymbols(con), con.free_symbols)
-			if not con_syms.issubset(self._allowed_endpoint_set):
-				disallowed_syms = ', '.join(f'{symbol}' for symbol in con_syms.difference(self._allowed_endpoint_set))
-				msg = (f"Boundary constraint #{i_b+1}: {con}, cannot be a function of {disallowed_syms}.")
-				raise ValueError(msg)
-
-		# Check objective function
-		if self._forward_dynamics:
-			pass
-		elif self._J_user is not None:
-			if not self._J_user.free_symbols:
-				msg = (f"The declared objective function {J} is invalid as it doesn't contain any Mayer terms (functions of the initial and final times and states) or any Lagrange terms (integrals of functions of the state and control variables with respect to time between the limits '_t0' and '_tF').")
-				raise ValueError(msg)
-			if isinstance(self._J_user, sym.Add):
-				bolza_set = set(self._J_user.args)
-			else:
-				bolza_set = {self._J_user}
-			for term in bolza_set:
-				term_syms = set.union(me.find_dynamicsymbols(term), term.free_symbols)
-				if not term_syms.issubset(self._allowed_endpoint_set):
-					disallowed_syms = ', '.join(f'{symbol}' for symbol in term_syms.difference(self._allowed_endpoint_set))
-					msg = (f"The objective function cannot be a function of {disallowed_syms}.")
-					raise ValueError(msg)
-		else:
-			allowed_syms = ', '.join(f'{symbol}' for symbol in self._x_b_vars_user)
-			msg = (f"User must supply an objective function as a function of {allowed_syms}.")
-			raise ValueError(msg)
-
-		# Generate pycollo symbols and functions
-		self._aux_data = {sym.Symbol(f'_a{i_a}'): value for i_a, (_, value) in enumerate(aux_data_temp.items())}
-		a_subs_dict = dict(zip(aux_data_temp.keys(), self._aux_data.keys()))
-
-		# Check user-supplied bounds
-		self._bounds._bounds_check(aux_data=aux_data_temp, aux_subs=aux_subs_temp)
-
-		# State variables
-		y_vars = [sym.Symbol(f'_y{i_y}') for i_y, _ in enumerate(self._y_vars_user)]
-		self._y_vars = sym.Matrix([y for y, y_needed in zip(y_vars, self._bounds._y_needed) if y_needed])
-		if not self._y_vars:
-			self._y_vars = sym.Matrix.zeros(0, 1)
-		self._num_y_vars = self._y_vars.shape[0]
-		self._y_t0 = sym.Matrix([sym.Symbol(f'{y}_t0') for y in self._y_vars])
-		self._y_tF = sym.Matrix([sym.Symbol(f'{y}_tF') for y in self._y_vars])
-		self._y_b_vars = sym.Matrix(list(itertools.chain.from_iterable(y for y in zip(self._y_t0, self._y_tF))))
-		self._aux_data.update({y: value for y, y_needed, value in zip(y_vars, self._bounds._y_needed, self._bounds._y_l) if not y_needed})
-		y_subs_dict = dict(zip(self._y_vars_user, y_vars))
-		y_endpoint_subs_dict = {**dict(zip(self.initial_state, self._y_t0)), ** dict(zip(self.final_state, self._y_tF))}
-
-		# Control variables
-		u_vars = [sym.Symbol(f'_u{i_u}') for i_u, _ in enumerate(self._u_vars_user)]
-		self._u_vars = sym.Matrix([u for u, u_needed in zip(u_vars, self._bounds._u_needed) if u_needed])
-		if not self._u_vars:
-			self._u_vars = sym.Matrix.zeros(0, 1)
-		self._num_u_vars = self._u_vars.shape[0]
-		self._aux_data.update({u: value for u, u_needed, value in zip(u_vars, self._bounds._u_needed, self._bounds._u_l) if not u_needed})
-		u_subs_dict = dict(zip(self._u_vars_user, u_vars))
-
-		# Integral variables
-		q_vars = sym.Matrix(self._q_vars_user)
-		self._q_vars = sym.Matrix([q for q, q_needed in zip(q_vars, self._bounds._q_needed) if q_needed])
-		if not self._q_vars:
-			self._q_vars = sym.Matrix.zeros(0, 1)
-		self._num_q_vars = self._q_vars.shape[0]
-		self._aux_data.update({q: value for q, q_needed, value in zip(q_vars, self._bounds._q_needed, self._bounds._q_l) if not q_needed})
-
-		# Time variables
-		t_vars = [self._t0, self._tF]
-		self._t_vars = sym.Matrix([t for t, t_needed in zip(t_vars, self._bounds._t_needed) if t_needed])
-		if not self._t_vars:
-			self._t_vars = sym.Matrix.zeros(0, 1)
-		self._num_t_vars = self._t_vars.shape[0]
-		if not self._bounds._t_needed[0]:
-			self._aux_data.update({self._t0: self._bounds._t0_l})
-		if not self._bounds._t_needed[1]:
-			self._aux_data.update({self._tF: self._bounds._tF_l})
-		t_subs_dict = dict(zip(self._t_vars_user, t_vars))
-
-		# Parameter variables
-		s_vars = [sym.Symbol(f'_s{i_s}') for i_s, _ in enumerate(self._s_vars_user)]
-		self._s_vars = sym.Matrix([s for s, s_needed in zip(s_vars, self._bounds._s_needed) if s_needed])
-		if not self._s_vars:
-			self._s_vars = sym.Matrix.zeros(0, 1)
-		self._num_s_vars = self._s_vars.shape[0]
-		self._aux_data.update({s: value for s, s_needed, value in zip(s_vars, self._bounds._s_needed, self._bounds._s_l) if not s_needed})
-		s_subs_dict = dict(zip(self._s_vars_user, s_vars))
-
-		# Variables set
-		self._x_vars = sym.Matrix([self._y_vars, self._u_vars, self._q_vars, self._t_vars, self._s_vars])
-		self._num_vars = self._x_vars.shape[0]
-		self._num_vars_tuple = (self._num_y_vars, self._num_u_vars, self._num_q_vars, self._num_t_vars, self._num_s_vars)
-		self._x_b_vars = sym.Matrix([self._y_b_vars, self._q_vars, self._t_vars, self._s_vars])
-		self._num_point_vars = self._x_b_vars.shape[0]
-		self._user_subs_dict = {**y_subs_dict, **y_endpoint_subs_dict, **u_subs_dict, **t_subs_dict, **s_subs_dict, **a_subs_dict}
-
-		self._inverse_aux_subs = {}
-		self._e_vars = []
-		self._e_subs = []
-		self._tier_slices = []
-
-		for subs_dict in user_subs_list_by_tier:
-			tier_offset = len(self._e_vars)
-			e_vars_new = [sym.Symbol(f'_e{i_e + tier_offset}') for i_e, _ in enumerate(subs_dict)]
-			self._e_vars.extend(e_vars_new)
-			self._e_subs.extend(list(subs_dict.values()))
-			tier_slice = slice(tier_offset, len(self._e_vars))
-			self._tier_slices.append(tier_slice)
-
-			inverse_aux_subs = dict(zip(list(subs_dict.keys()), e_vars_new))
-			self._inverse_aux_subs.update(inverse_aux_subs)
-
-		self._pycollo_syms_subs_dict = {**self._user_subs_dict, **self._inverse_aux_subs}
-
-		self._e_vars = sym.Matrix(self._e_vars)
-		self._e_subs = sym.Matrix(self._e_subs).subs(self._pycollo_syms_subs_dict)
-		self._num_subs_tiers = len(self._tier_slices)
-		self._aux_subs = dict(zip(self._e_vars, self._e_subs))
-
-		# State equations
-		self._y_eqns = sym.Matrix(self._y_eqns_user).subs(self._pycollo_syms_subs_dict) if self._y_eqns_user else sym.Matrix.zeros(0, 1)
-
-		# Path constraints
-		self._c_cons = sym.Matrix(self._c_cons_user).subs(self._pycollo_syms_subs_dict) if self._c_cons_user else sym.Matrix.zeros(0, 1)
-		self._num_c_cons = self._c_cons.shape[0]
-
-		# Integrand functions
-		self._q_funcs = sym.Matrix(self._q_funcs_user).subs(self._pycollo_syms_subs_dict) if self._q_funcs_user else sym.Matrix.zeros(0, 1)
-
-		# Boundary constraints
-		self._y_b_cons = sym.Matrix(self._y_b_cons_user).subs(self._pycollo_syms_subs_dict) if self._y_b_cons_user else sym.Matrix.zeros(0, 1)
-		self._b_end_cons = sym.Matrix(self._b_cons_user).subs(self._pycollo_syms_subs_dict) if self._b_cons_user else sym.Matrix.zeros(0, 1)
-		self._b_cons = sym.Matrix([self._y_b_cons, self._b_end_cons])
-		self._num_b_cons = self._b_cons.shape[0]
-
-		# Objective function
-		self._J = self._J_user.subs(self._pycollo_syms_subs_dict)
-
-		# Check user-defined initial guess
-		self._initial_guess._guess_check()
-
-		# Generate constraint and derivative functions
-		# Variables index slices
-		self._y_slice = slice(0, self._num_y_vars)
-		self._u_slice = slice(self._y_slice.stop, self._y_slice.stop + self._num_u_vars)
-		self._q_slice = slice(self._u_slice.stop, self._u_slice.stop + self._num_q_vars)
-		self._t_slice = slice(self._q_slice.stop, self._q_slice.stop + self._num_t_vars)
-		self._s_slice = slice(self._t_slice.stop, self._num_vars)
-		self._yu_slice = slice(self._y_slice.start, self._u_slice.stop)
-		self._qts_slice = slice(self._q_slice.start, self._s_slice.stop)
-		self._yu_qts_split = self._yu_slice.stop
-
-		self._y_b_slice = slice(0, self._num_y_vars*2)
-		self._u_b_slice = slice(self._y_b_slice.stop, self._y_b_slice.stop)
-		self._q_b_slice = slice(self._u_b_slice.stop, self._u_b_slice.stop + self._num_q_vars)
-		self._t_b_slice = slice(self._q_b_slice.stop, self._q_b_slice.stop + self._num_t_vars)
-		self._s_b_slice = slice(self._t_b_slice.stop, self._t_b_slice.stop + self._num_s_vars)
-		self._qts_b_slice = slice(self._q_b_slice.start, self._s_b_slice.stop)
-		self._y_b_qts_b_split = self._y_b_slice.stop
-
-		# Constraints
-		self._c = sym.Matrix([self._y_eqns, self._c_cons, self._q_funcs, self._b_cons])
-		self._num_c = self._c.shape[0]
-
-		# Constraints index slices
-		self._c_defect_slice = slice(0, self._num_y_vars)
-		self._c_path_slice = slice(self._c_defect_slice.stop, self._c_defect_slice.stop + self._num_c_cons)
-		self._c_integral_slice = slice(self._c_path_slice.stop, self._c_path_slice.stop + self._num_q_vars)
-		self._c_boundary_slice = slice(self._c_integral_slice.stop, self._c_integral_slice.stop + self._num_b_cons)
-		self._c_continuous_slice = slice(0, self._num_c - self._num_b_cons)
-
-		def hybrid_symbolic_algorithmic_differentiation(target_func, tier_0_symbols, tier_symbols, tier_substitutions, tier_slices):
-
-			def by_differentiation(function, wrt):
-				return function.diff(wrt).T
-
-			def by_jacobian(function, wrt):
-				return function.jacobian(wrt)
-
-			symbol_tiers = [tier_0_symbols] + [sym.Matrix(tier_symbols[slice_]) for slice_ in tier_slices]
-
-			num_e0 = tier_0_symbols.shape[0]
-			if isinstance(target_func, sym.Matrix):
-				differentiate = by_jacobian
-				num_f = target_func.shape[0]
-				transpose_before_return = False
-			else:
-				differentiate = by_differentiation
-				num_f = 1
-				transpose_before_return = True
-
-			df_de = [differentiate(target_func, symbol_tier) for symbol_tier in symbol_tiers]
-
-			delta_matrices = [1]
-
-			for i, slice_ in enumerate(tier_slices):
-				num_ei = slice_.stop - slice_.start
-				delta_matrix_i = sym.Matrix.zeros(num_ei, num_e0)
-				for j in range(i + 1):
-					delta_matrix_j = delta_matrices[j]
-					deriv_matrix = tier_substitutions[slice_, :].jacobian(symbol_tiers[j])
-					delta_matrix_i += deriv_matrix*delta_matrix_j
-				delta_matrices.append(delta_matrix_i)
-
-			derivative = sym.Matrix.zeros(num_f, num_e0)
-
-			for df_dei, delta_i in zip(df_de, delta_matrices):
-				derivative += df_dei*delta_i
-
-			if transpose_before_return:
-				return sym.Matrix(derivative).T
-			else:
-				return derivative
-
-		self._dJ_dxb = hybrid_symbolic_algorithmic_differentiation(self._J, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
-
-		self._dc_dx = hybrid_symbolic_algorithmic_differentiation(self._c[self._c_continuous_slice, :], self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
-
-		self._db_dxb = hybrid_symbolic_algorithmic_differentiation(self._b_cons, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
-
-		# Hessian
-		self._sigma = sym.symbols('_sigma')
-		self._lagrange_syms = [sym.symbols(f'_lambda_{n}') for n in range(self._num_c)]
-
-		lagrangian_objective = self._sigma*self._J
-		lagrangian_defect = sum((self._STRETCH*l*c for l, c in zip(self._lagrange_syms[self._c_defect_slice], self._c[self._c_defect_slice])), sym.sympify(0))
-		lagrangian_path = sum((self._STRETCH*l*c for l, c in zip(self._lagrange_syms[self._c_path_slice], self._c[self._c_path_slice])), sym.sympify(0))
-		lagrangian_integral = sum((self._STRETCH*l*c for l, c in zip(self._lagrange_syms[self._c_integral_slice], self._c[self._c_integral_slice])), sym.sympify(0))
-		lagrangian_endpoint = sum((l*b for l, b in zip(self._lagrange_syms[self._c_boundary_slice], self._c[self._c_boundary_slice])), sym.sympify(0))
-
-		dL_dxb_J = hybrid_symbolic_algorithmic_differentiation(lagrangian_objective, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
-		ddL_dxbdxb_J = hybrid_symbolic_algorithmic_differentiation(dL_dxb_J, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
-
-		dL_dx_zeta = hybrid_symbolic_algorithmic_differentiation(lagrangian_defect, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
-		ddL_dxdx_zeta = hybrid_symbolic_algorithmic_differentiation(dL_dx_zeta, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
-
-		dL_dx_gamma = hybrid_symbolic_algorithmic_differentiation(lagrangian_path, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
-		ddL_dxdx_gamma = hybrid_symbolic_algorithmic_differentiation(dL_dx_gamma, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
-
-		dL_dx_rho = hybrid_symbolic_algorithmic_differentiation(lagrangian_integral, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
-		ddL_dxdx_rho = hybrid_symbolic_algorithmic_differentiation(dL_dx_rho, self._x_vars, self._e_vars, self._e_subs, self._tier_slices)
-
-		dL_dxb_beta = hybrid_symbolic_algorithmic_differentiation(lagrangian_endpoint, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
-		ddL_dxbdxb_beta = hybrid_symbolic_algorithmic_differentiation(dL_dxb_beta, self._x_b_vars, self._e_vars, self._e_subs, self._tier_slices)
-
-		# Make Hessian matrices lower triangular
-		self._ddL_dxbdxb_J = sym.Matrix(np.tril(np.array(ddL_dxbdxb_J)))
-		self._ddL_dxdx_zeta = sym.Matrix(np.tril(np.array(ddL_dxdx_zeta)))
-		self._ddL_dxdx_gamma = sym.Matrix(np.tril(np.array(ddL_dxdx_gamma)))
-		self._ddL_dxdx_rho = sym.Matrix(np.tril(np.array(ddL_dxdx_rho)))
-		self._ddL_dxbdxb_beta = sym.Matrix(np.tril(np.array(ddL_dxbdxb_beta)))
-
-		# Quadrature computations
-		self._quadrature = Quadrature(optimal_control_problem=self)
-
-		# Compile numba numerical functions
-		_ = self._compile_numba_functions()
-
-		# Initialise the initial mesh iterations
-		self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
-
-		ocp_initialisation_time_stop = timer()
-
-		self._ocp_initialisation_time = ocp_initialisation_time_stop - ocp_initialisation_time_start
-
-		# Set the initialisation flag
-		return True
-
-	def solve(self):
-		
-		if self._initialised == False:
-			self._initialised = self.initialise()
-
-		# Solve the transcribed NLP on the initial mesh
-		new_iteration_mesh, new_iteration_guess = self._mesh_iterations[0]._solve()
-
-		mesh_iterations_met = self._settings.max_mesh_iterations == 1
-		mesh_tolerance_met = False
-
-		while not mesh_iterations_met and not mesh_tolerance_met:
-			new_iteration = Iteration(optimal_control_problem=self, iteration_number=self.num_mesh_iterations+1, mesh=new_iteration_mesh)
-			self._mesh_iterations.append(new_iteration)
-			self._mesh_iterations[-1]._initialise_iteration(new_iteration_guess)
-			new_iteration_mesh, new_iteration_guess = self._mesh_iterations[-1]._solve()
-			if new_iteration_mesh is None:
-				mesh_tolerance_met = True
-				print(f'Mesh tolerance met in mesh iteration {len(self._mesh_iterations)}.\n')
-			elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
-				mesh_iterations_met = True
-				print(f'Maximum number of mesh iterations reached. pycollo exiting before mesh tolerance met.\n')
-	
-		_ = self._final_output()
 
 	def _final_output(self):
-
-		def header():
-			solved_msg = ('\n\n===========================================\nOptimal control problem sucessfully solved.\n===========================================\n')
-			print(solved_msg)
-			return None
 
 		def solution_results():
 			J_msg = (f'Final Objective Function Evaluation: {self.mesh_iterations[-1]._solution._J:.4f}\n')
@@ -1070,7 +1126,9 @@ class OptimalControlProblem():
 
 			return None
 
-		_ = header()
+		solved_msg = ('Optimal control problem sucessfully solved.')
+		self._console_out_message_heading(solved_msg)
+
 		_ = solution_results()
 		_ = mesh_results()
 		_ = time_results()

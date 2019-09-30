@@ -3,10 +3,12 @@ from numbers import Number
 
 import numba
 import numpy as np
-from numpy import sin, cos, tan, exp, sqrt
+from numpy import sin, cos, tan, exp, sqrt, arctan, tanh
 from ordered_set import OrderedSet
 import scipy.interpolate as interpolate
 import sympy as sym
+
+atan = arctan
 
 def numbafy(expression, parameters=None, constants=None, substitutions=None, return_dims=None, return_flat=False, N_arg=False, endpoint=False, hessian=None, hessian_sym_set=None, ocp_num_vars=None):
 

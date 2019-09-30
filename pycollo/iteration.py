@@ -1,4 +1,5 @@
 import collections
+import csv
 import itertools
 from timeit import default_timer as timer
 import time
@@ -34,8 +35,6 @@ class Iteration:
 		
 		# Result
 		self._result = None
-
-		_ = self._display_mesh_iteration()
 
 	def _display_mesh_iteration(self):
 		print(f'\n\n\n==========================\nSolving Mesh Iteration {self.iteration_number}:\n==========================\n')
@@ -87,6 +86,8 @@ class Iteration:
 	# @profile
 	def _initialise_iteration(self, prev_guess):
 
+		_ = self._display_mesh_iteration()
+
 		initialisation_time_start = timer()
 
 		def interpolate_to_new_mesh(num_vars, prev):
@@ -116,6 +117,7 @@ class Iteration:
 		self._guess._q = prev_guess._q
 		self._guess._t = prev_guess._t
 		self._guess._s = prev_guess._s
+		print('Guess interpolated to iteration mesh.')
 
 		# plt.plot(self._guess._time, self._guess._y[2, :])
 		# plt.plot(self._guess._time, self._guess._y[3, :])
@@ -277,6 +279,7 @@ class Iteration:
 		self._G_nonzero_row = tuple(G_nonzero_row)
 		self._G_nonzero_col = tuple(G_nonzero_col)
 		self._num_G_nonzero = len(G_nonzero_row)
+		print('Full Jacobian sparsity computed.')
 
 		# Hessian defect
 		H_defect_nonzero_row = []
@@ -399,6 +402,7 @@ class Iteration:
 		self._H_nonzero_row = tuple(sH_matrix.row)
 		self._H_nonzero_col = tuple(sH_matrix.col)
 		self._num_H_nonzero = len(self._H_nonzero_row)
+		print('Full Hessian sparsity computed.')
 
 
 
@@ -492,10 +496,12 @@ class Iteration:
 			return (self._H_nonzero_row, self._H_nonzero_col)
 
 		self._hessian_structure_lambda = hessian_structure
+		print('IPOPT functions compiled.')
 
 		# Generate bounds
 		self._x_bnd_l, self._x_bnd_u = self._generate_x_bounds()
 		self._c_bnd_l, self._c_bnd_u = self._generate_c_bounds()
+		print('Mesh-specific bounds generated.\n\n')
 
 		# ========================================================
 		# JACOBIAN CHECK
@@ -699,7 +705,7 @@ class Iteration:
 			print(self._solution._s, '\n')
 
 		if self._ocp._settings.display_mesh_result_graph:
-			self._solution._plot_interpolated_solution(plot_y=True, plot_dy=False, plot_u=False)
+			self._solution._plot_interpolated_solution(plot_y=True, plot_dy=True, plot_u=True)
 
 
 
@@ -852,27 +858,98 @@ class Solution:
 			t_data.append(t_list)
 			u_datas.append(u_list)
 
-		t_data = np.array(t_data[0])
+		t_data = np.array(t_data[0])*self._stretch + self._shift
 		y_datas = np.array(y_datas)
 		dy_datas = np.array(dy_datas)
 		u_datas = np.array(u_datas)
 
 		if plot_y:
 			for i_y, y_data in enumerate(y_datas):
-				plt.plot(t_data, y_data)
-				plt.plot(self._tau, self._y[i_y], marker='x', markersize=7, linestyle='')
+				plt.plot(self._time, self._y[i_y], marker='x', markersize=5, linestyle='', color='black')
+				plt.plot(t_data, y_data, linewidth=2)
+			plt.grid(True)
+			plt.title('States')
+			plt.xlabel('Time / $s$')
+			plt.show()
 
 		if plot_dy:
 			for i_y, dy_data in enumerate(dy_datas):
-				plt.plot(t_data, dy_data)
-				plt.plot(self._tau, self._dy[i_y], marker='x', markersize=7, linestyle='')
+				plt.plot(self._time, self._dy[i_y], marker='x', markersize=5, linestyle='', color='black')
+				plt.plot(t_data, dy_data, linewidth=2)
+				plt.grid(True)
+				plt.title('State Derivatives')
+				plt.xlabel('Time / $s$')
+			plt.show()
 
 		if plot_u:
 			for i_u, u_data in enumerate(u_datas):
-				plt.plot(t_data, u_data)
-				plt.plot(self._tau, self._u[i_u], marker='x', markersize=7, linestyle='')
+				plt.plot(self._time, self._u[i_u], marker='x', markersize=5, linestyle='', color='black')
+				plt.plot(t_data, u_data, linewidth=2)
+				plt.grid(True)
+				plt.title('Controls')
+				plt.xlabel('Time / $s$')
+			plt.show()
 
-		plt.show()
+		
+
+		if False:
+
+			with open('result_tradjectory.csv', mode='w') as result_tradjectory_file:
+
+			    result_tradjectory_writer = csv.writer(result_tradjectory_file, delimiter=',')
+
+			    result_tradjectory_writer.writerow(t_data)
+
+			    for i_y, y_data in enumerate(y_datas):
+			    	result_tradjectory_writer.writerow(y_data)
+
+			    for i_y, dy_data in enumerate(dy_datas):
+			    	result_tradjectory_writer.writerow(dy_data)
+
+			    for i_u, u_data in enumerate(u_datas):
+			    	result_tradjectory_writer.writerow(u_data)
+
+		if False:
+			fig, ax1 = plt.subplots()
+			plt.grid(True, axis='both')
+
+			color = 'tab:blue'
+			ax1.set_xlabel('Time / $s$')
+			ax1.set_ylabel('Angle / $rad$', color=color)
+			ax1.plot(self._time, self._y[0], marker='x', markersize=7, linestyle='', color='black')
+			ax1.plot(t_data, y_datas[0], color=color, linewidth=2)
+			ax1.tick_params(axis='y', labelcolor=color)
+			plt.yticks([-np.pi, -0.5*np.pi, 0, 0.5*np.pi, np.pi], ['$-\\pi/2$', '$-\\pi/4$', '0', '$\\pi/4$', '$\\pi/2$'])
+
+			ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+			color = 'tab:orange'
+			ax2.set_ylabel('Angular Velocity / $rad \\cdot s^{-1}$', color=color)  # we already handled the x-label with ax1
+			ax2.plot(self._time, self._dy[0], marker='x', markersize=7, linestyle='', color='black')
+			ax2.plot(t_data, dy_datas[0], color=color, linewidth=2)
+			ax2.tick_params(axis='y', labelcolor=color)
+			plt.yticks([-10, -5, 0, 5, 10])
+
+			fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+			plt.show()
+
+
+
+			fig, ax1 = plt.subplots()
+			plt.grid(True, axis='both')
+
+			color = 'tab:green'
+			ax1.set_xlabel('Time / $s$')
+			ax1.set_ylabel('Torque / $N\\cdot m$', color=color)
+			plt.plot(self._time, self._u[0]*15, marker='x', markersize=7, linestyle='', color='black')
+			ax1.plot(t_data, u_datas[0]*15, color=color, linewidth=2)
+			ax1.tick_params(axis='y', labelcolor=color)
+			plt.yticks([-2, -1, 0, 1, 2])
+
+			fig.tight_layout()  # otherwise the right y-label is slightly clipped
+			plt.show()
+
 
 	def _patterson_rao_discretisation_mesh_error(self):
 
@@ -889,6 +966,12 @@ class Solution:
 			mesh_section_fractions=self._mesh._mesh_sec_fracs,
 			mesh_collocation_points=(self._mesh._mesh_col_points+1))
 		ph_mesh._generate_mesh()
+
+		# ph_mesh = Mesh(optimal_control_problem=self._ocp,
+		# 	mesh_sections=self._mesh._K,
+		# 	mesh_section_fractions=None,
+		# 	mesh_collocation_points=2)
+		# ph_mesh._generate_mesh()
 
 		y_tilde = np.zeros((self._ocp._num_y_vars, ph_mesh._N))
 		y_tilde[:, ph_mesh._mesh_index_boundaries] = self._y[:, self._mesh._mesh_index_boundaries]

@@ -45,7 +45,24 @@ problem.initial_guess = pycollo.Guess(optimal_control_problem=problem, time=[0, 
 problem.auxiliary_data = dict({g: -9.81, m0: 1.0, p0: 0.5, d0: 0.5, k0: 1/12, m1: 1.0, p1: 0.5, d1: 0.5, k1: 1/12, l0: p0 + d0, l1: p1 + d1, I0: m0*(k0**2 + p0**2), I1: m1*(k1**2 + p1**2), c0: sym.cos(y0), s0: sym.sin(y0), c1: sym.cos(y1), s1: sym.sin(y1), M00: I0 + m1*l0**2, M01: m1*p1*l0*(s0*s1 + c0*c1), M10: M01, M11: I1, K0: u0 + g*(m0*p0 + m1*l0)*c0 + m1*p1*l0*(s1*c0 - s0*c1)*y3**2, K1: u1 + g*m1*p1*c1 + m1*p1*l0*(s0*c1 - s1*c0)*y2**2, detM: M00*M11 - M01*M10})
 
 # Solve
-problem.solve()
+problem.initialise()
+
+
+if False:
+	x_vars_user = sym.Matrix(problem.state_variables + problem.control_variables + problem.integral_variables)
+
+	_x0, _x1, _x2, _x3, _x4, _x5, _x6 = sym.symbols('_x0 _x1 _x2 _x3 _x4 _x5 _x6')
+	x_vars = sym.Matrix([_x0, _x1, _x2, _x3, _x4, _x5, _x6])
+
+	J = problem.objective_function
+	c = sym.Matrix([sym.Matrix(problem.state_equations), sym.Matrix(problem.integrand_functions)])
+	L = sym.Matrix([])
+
+	for _ in range(1):
+		expression_graph = pycollo.ExpressionGraph(x_vars_user, x_vars, problem.auxiliary_data, J, c, L)
+
+	print(f"Constraints:\n{expression_graph.c}\n\n")
+	print(f"Jacobian:\n{expression_graph.dc_dx}\n\n")
 
 
 

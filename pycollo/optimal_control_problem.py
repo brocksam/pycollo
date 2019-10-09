@@ -17,31 +17,39 @@ from pycollo.settings import Settings
 import pycollo.utils as pu
 
 """
-Parameters are definied in accordance with Betts, JT (2010). Practical Methods for Optimal Control and Estimiation Using Nonlinear Programming (Second Edition).
+The main way to define and interact with a Pycollo optimal control problem.
 
-Parameters:
-	t: independent parameter (time).
-	y: state variables vector.
-	u: control variables vector.
-	J: objective function.
-	g: gradient of the objective function w.r.t. x.
-	G: Jacobian matrix.
-	H: Hessian matrix.
-	b: vector of event constraints (equal to zero).
-	c: vector of path constraint equations (equal to zero).
-	s: free parameters.
-	q: vector of integral constraints.
-	delta: defect constraints.
-	rho: integral constraints.
-	beta: boundary constraints.
-
-	N: number of temporal nodes in collocation.
+This module contains the main class that the user will interact with to define
+and run their optimal control problem when working with Pycollo. Terminolgy is 
+loosely defined in accordance with "Betts, JT (2010). Practical Methods for 
+Optimal Control and Estimiation Using Nonlinear Programming (Second Edition)".
+See the ``Notes`` section for a full list of symbols used.
 
 Notes:
-	x = [y, u, q, t, s]
-	n = len(x): number of free variables
-	m = len([c, b]): number of constraints
+------
+	* t: independent parameter (time).
+	* x = [y, u, q, t0, tf, s]: vector of problem variables.
+	* y: vector state variables (which are functions of time).
+	* u: vector control variables (which are functions of time).
+	* q: vector of integral constraints.
+	* t0: the initial time of the (single) phase.
+	* tf: the final time of the (single) phase.
+	* s: vector of static parameter variables (which are phase-independent).
 
+	* J: objective function.
+	* g: gradient of the objective function w.r.t. x.
+	* L: Lagrangian of the objective function.
+	* H: Hessian of the Lagrangian.
+
+	* c = [zeta, gamma, rho, beta]: vector of constraints.
+	* zeta: vector of defect constraints.
+	* gamma: vector of path constraints.
+	* rho: vector of integral constraints.
+	* beta: vector of endpoint constraints.
+	* G: Jacobian of the constaints.
+
+	* n = len(x): number of free variables
+	* m = len(c): number of constraints
 """
 
 class OptimalControlProblem():
@@ -361,39 +369,17 @@ class OptimalControlProblem():
 		print(output_msg)
 		return None
 
-
-	def solve(self, display_progress=False):
-
-		self._display_progress = display_progress
-		
-		if self._initialised == False:
-			self._initialised = self.initialise()
-
-		# Solve the transcribed NLP on the initial mesh
-		new_iteration_mesh, new_iteration_guess = self._mesh_iterations[0]._solve()
-
-		mesh_iterations_met = self._settings.max_mesh_iterations == 1
-		if new_iteration_mesh is None:
-				mesh_tolerance_met = True
-		else:
-			mesh_tolerance_met = False
-
-		while not mesh_iterations_met and not mesh_tolerance_met:
-			new_iteration = Iteration(optimal_control_problem=self, iteration_number=self.num_mesh_iterations+1, mesh=new_iteration_mesh)
-			self._mesh_iterations.append(new_iteration)
-			self._mesh_iterations[-1]._initialise_iteration(new_iteration_guess)
-			new_iteration_mesh, new_iteration_guess = self._mesh_iterations[-1]._solve()
-			if new_iteration_mesh is None:
-				mesh_tolerance_met = True
-				print(f'Mesh tolerance met in mesh iteration {len(self._mesh_iterations)}.\n')
-			elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
-				mesh_iterations_met = True
-				print(f'Maximum number of mesh iterations reached. pycollo exiting before mesh tolerance met.\n')
-	
-		_ = self._final_output()
-
-
 	def initialise(self):
+		"""Initialise the optimal control problem before solving.
+
+		The initialisation of the optimal control problem involves the 
+		following stages:
+
+		- Determine the set of user-defined variables that are allowed in the 
+		  continuous and endpoint functions.
+		
+
+		"""
 
 		ocp_initialisation_time_start = timer()
 
@@ -1084,20 +1070,62 @@ class OptimalControlProblem():
 
 		return None
 
+	def solve(self, display_progress=False):
+		"""Solve the optimal control problem.
+
+		If the initialisation flag is not set to True then the initialisation 
+		method is called to initialise the optimal control problem. 
+
+		Args:
+			display_progress (bool): Option for whether progress updates 
+				should be outputted to the console during solving. Defaults 
+				to False.
+		"""
+
+		_ = self._set_solve_options(display_progress)
+		_ = self._check_if_initialisation_required_before_solve()
+
+		# Solve the transcribed NLP on the initial mesh
+		new_iteration_mesh, new_iteration_guess = self._mesh_iterations[0]._solve()
+
+		mesh_iterations_met = self._settings.max_mesh_iterations == 1
+		if new_iteration_mesh is None:
+				mesh_tolerance_met = True
+		else:
+			mesh_tolerance_met = False
+
+		while not mesh_iterations_met and not mesh_tolerance_met:
+			new_iteration = Iteration(optimal_control_problem=self, iteration_number=self.num_mesh_iterations+1, mesh=new_iteration_mesh)
+			self._mesh_iterations.append(new_iteration)
+			self._mesh_iterations[-1]._initialise_iteration(new_iteration_guess)
+			new_iteration_mesh, new_iteration_guess = self._mesh_iterations[-1]._solve()
+			if new_iteration_mesh is None:
+				mesh_tolerance_met = True
+				print(f'Mesh tolerance met in mesh iteration {len(self._mesh_iterations)}.\n')
+			elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
+				mesh_iterations_met = True
+				print(f'Maximum number of mesh iterations reached. pycollo exiting before mesh tolerance met.\n')
+	
+		_ = self._final_output()
+
+	def _set_solve_options(self, display_progress):
+		self._display_progress = display_progress
+
+	def _check_if_initialisation_required_before_solve(self):
+		if self._initialised == False:
+			self._initialised = self.initialise()
 
 	def _final_output(self):
 
 		def solution_results():
 			J_msg = (f'Final Objective Function Evaluation: {self.mesh_iterations[-1]._solution._J:.4f}\n')
 			print(J_msg)
-			return None
 
 		def mesh_results():
 			section_msg = (f'Final Number of Mesh Sections:       {self.mesh_iterations[-1]._mesh._K}')
 			node_msg = (f'Final Number of Collocation Nodes:   {self.mesh_iterations[-1]._mesh._N}\n')
 			print(section_msg)
 			print(node_msg)
-			return None
 
 		def time_results():
 			ocp_init_time_msg = (f'Total OCP Initialisation Time:       {self._ocp_initialisation_time:.4f} s')
@@ -1119,12 +1147,8 @@ class OptimalControlProblem():
 			print(process_results_time_msg)
 
 			total_time_msg = (f'\nTotal Time:                          {self._ocp_initialisation_time + self._iteration_initialisation_time + self._nlp_time + self._process_results_time:.4f} s')
-
 			print(total_time_msg)
-			
 			print('\n\n')
-
-			return None
 
 		solved_msg = ('Optimal control problem sucessfully solved.')
 		self._console_out_message_heading(solved_msg)

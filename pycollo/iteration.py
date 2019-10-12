@@ -506,45 +506,37 @@ class Iteration:
 		# ========================================================
 		# JACOBIAN CHECK
 		# ========================================================
-		if False:
+		if True:
 			print('\n\n\n')
-
-			print('x:')
-			x_data = np.array(range(self._num_x))
-			lagrange = np.array(range(self._num_c))
-			obj_factor = 2
+			x_data = np.array(range(self._num_x), dtype=float)
+			lagrange = np.array(range(self._num_c), dtype=float)
+			obj_factor = 2.0
 			# x_data = 2*np.ones(self._num_x)
-			print(self._ocp._x_vars)
-			print(x_data, '\n')
-			print(lagrange)
-			if False:
-				print('J:')
-				J = self._objective_lambda(x_data)
-				print(J, '\n')
+			print(f"x Variables:\n{self._ocp._x_vars}\n")
+			print(f"x Data:\n{x_data}\n")
+			print(f"Lagrange Multipliers:\n{lagrange}\n")
 
-				print('g:')
-				g = self._gradient_lambda(x_data)
-				print(g, '\n')
+			J = self._objective_lambda(x_data)
+			print(f"J:\n{J}\n")
 
-				print('c:')
-				c = self._constraint_lambda(x_data)
-				print(c, '\n')
+			g = self._gradient_lambda(x_data)
+			print(f"g:\n{g}\n")
 
-				print('G Structure:')
-				G_struct = self._jacobian_structure_lambda()
-				print(G_struct, '\n')
+			print('c:')
+			c = self._constraint_lambda(x_data)
+			print(f"c:\n{c}\n")
 
-				print('G:')
-				G = self._jacobian_lambda(x_data)
-				print(G, '\n')
+			G_struct = self._jacobian_structure_lambda()
+			print(f"G Structure:\n{G_struct}\n")
 
-			print('H Structure:')
+			G = self._jacobian_lambda(x_data)
+			print(f"G:\n{G}\n")
+
 			H_struct = self._hessian_structure_lambda()
-			print(H_struct, '\n')
+			print(f"H Structure:\n{H_struct}\n")
 
-			print('H:')
 			H = self._hessian_lambda(x_data, lagrange, obj_factor)
-			print(H, '\n')
+			print(f"H:\n{H}\n")
 			
 			print('\n\n\n')
 			raise NotImplementedError

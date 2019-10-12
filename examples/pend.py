@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append('/Users/sambrockie/Documents/Cambridge/PhD/Code/Repositories/pycollo')
+
 import numpy as np
 import sympy as sym
 import sympy.physics.mechanics as me

@@ -101,6 +101,19 @@ class OptimalControlProblem():
 		self._initialised = False
 		self._forward_dynamics = False
 
+	def _init_empty_tuples(self):
+		self._y_vars_user = ()
+		self._u_vars_user = ()
+		self._q_vars_user = ()
+		self._t_vars_user = (self._t0_USER, self._tF_USER)
+		self._s_vars_user = ()
+
+		self._y_eqns_user = ()
+		self._c_cons_user = ()
+		self._q_funcs_user = ()
+		self._y_b_cons_user = ()
+		self._b_cons_user = ()
+
 	def _init_user_options(self, state_variables, control_variables, 
 		parameter_variables, state_equations, path_constraints, 
 		integrand_functions, state_endpoint_constraints, boundary_constraints, 
@@ -124,19 +137,6 @@ class OptimalControlProblem():
 		self.auxiliary_data = dict(auxiliary_data) if auxiliary_data else {}
 		self.bounds = bounds
 		self.initial_guess = initial_guess
-
-	def _init_empty_tuples(self):
-		self._y_vars_user = ()
-		self._u_vars_user = ()
-		self._q_vars_user = ()
-		self._t_vars_user = (self._t0_USER, self._tF_USER)
-		self._s_vars_user = ()
-
-		self._y_eqns_user = ()
-		self._c_cons_user = ()
-		self._q_funcs_user = ()
-		self._y_b_cons_user = ()
-		self._b_cons_user = ()
 
 	def _init_initial_mesh(self, initial_mesh):
 		self._mesh_iterations = []

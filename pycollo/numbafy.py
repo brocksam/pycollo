@@ -48,6 +48,9 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
         yu_qts_continuous_split = sum(ocp_num_vars[0:2])
         yu_qts_endpoint_split = 2*ocp_num_vars[0]
 
+    zero_sym = expression_graph._zero_node.symbol
+    one_sym = expression_graph._one_node.symbol
+
     if return_dims is None:
         return_value = f'{expression}'
 
@@ -61,7 +64,6 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 
             y_tuple = []
             for y_t0, y_tF in grouper(expression[:yu_qts_endpoint_split], 2):
-                zero_sym = expression_graph._zero_node.symbol
                 if y_t0 == zero_sym and y_tF == zero_sym:
                     to_append = 'np.zeros(_N)'
                 elif y_t0 == zero_sym:
@@ -101,12 +103,13 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             expression_list = []
             row = expression.row(row_num)
             for col_num, e in enumerate(row):
-                index = row_num*expression.rows + col_num
+                index = row_num*expression.cols + col_num
                 node = expression_nodes[index]
+                print(node, node.is_vector)
                 if e.free_symbols.intersection(parameter_set):
                     expression_list.append(e)
                 else:
-                    if node.is_vector or col_num >= yu_qts_continuous_split:
+                    if node.is_vector:
                         e_entry = f'{e}'
                     else:
                         e_entry = f'({e})*np.ones(_N)'
@@ -124,6 +127,28 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             return_value = f'np.concatenate([{expression_string}])'
         else:
             return_value = f'np.array([{expression_string}])'
+
+    elif return_dims == 3:
+        expression_rows = []
+        for row_num in range(expression.rows):
+            expression_list = []
+            row = expression.row(row_num)
+            for col_num, e in enumerate(row):
+                index = row_num*expression.cols + col_num
+                node = expression_nodes[index]
+                if e is zero_sym:
+                    e_entry = f'np.zeros(_N)'
+                elif e is one_sym:
+                    e_entry = f'np.ones(_N)'
+                elif node.is_vector:
+                    e_entry = f'{e}'
+                else:
+                    e_entry = f'({e})*np.ones(_N)'
+                expression_list.append(e_entry)
+            expression_row = ', '.join(f'{e}' for e in expression_list)
+            expression_rows.append(f"np.array([{expression_row}])")
+        expression_string = ', '.join(f'{e}' for e in expression_rows)
+        return_value = f'np.array([{expression_string}])'
 
     # elif return_dims == 2:
     #     parameter_set = set(parameters[:yu_qts_continuous_split])

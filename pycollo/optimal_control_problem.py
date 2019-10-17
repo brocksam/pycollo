@@ -1047,6 +1047,7 @@ class OptimalControlProblem():
 
 		def G_dzeta_dy_lambda(ddy_dy, stretch, A, D, A_row_col_array, num_y, 
 			dzeta_dy_D_nonzero, dzeta_dy_slice):
+			cout(ddy_dy)
 			num_nz = A_row_col_array.shape[1]
 			return_array = np.empty(num_y**2 * num_nz)
 			G_dzeta_dy = A_x_dot_sparse(A, ddy_dy, num_y, num_nz, stretch, 
@@ -1132,18 +1133,17 @@ class OptimalControlProblem():
 			p = c_continuous[:, p_slice]
 			g = c_continuous[:, g_slice]
 
-			cout(c_continuous)
-			cout(dc_dx)
-			cout(dzeta_dy_slice)
+			# cout(dc_dx)
+			# cout(dc_dx[:2, ])
 
-			kill()
+			# kill()
 
-			ddy_dy = dc_dx[dzeta_dy_slice]
-			ddy_du = dc_dx[dzeta_du_slice]
-			ddy_ds = dc_dx[dzeta_ds_slice]
-			drho_dy = dc_dx[drho_dy_slice]
-			drho_du = dc_dx[drho_du_slice]
-			drho_ds = dc_dx[drho_ds_slice]
+			ddy_dy = dc_dx[:2, :, :]
+			# ddy_du = dc_dx[dzeta_du_slice]
+			# ddy_ds = dc_dx[dzeta_ds_slice]
+			# drho_dy = dc_dx[drho_dy_slice]
+			# drho_du = dc_dx[drho_du_slice]
+			# drho_ds = dc_dx[drho_ds_slice]
 
 			G = np.empty(num_G_nonzero)
 
@@ -1191,7 +1191,7 @@ class OptimalControlProblem():
 			precomputable_nodes=expr_graph.dc_dx_precomputable,
 			dependent_tiers=expr_graph.dc_dx_dependent_tiers,
 			parameters=self._x_vars, 
-			return_dims=2, 
+			return_dims=3, 
 			N_arg=True, 
 			ocp_num_vars=self._num_vars_tuple,
 			)
@@ -1206,9 +1206,6 @@ class OptimalControlProblem():
 			N_arg=True, 
 			ocp_num_vars=self._num_vars_tuple,
 			)
-
-		cout(expr_graph.dc_dx)
-		kill()
 
 		self._G_lambda = jacobian_lambda
 		print('Jacobian function compiled.')

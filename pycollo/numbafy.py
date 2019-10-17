@@ -16,10 +16,10 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
         args = [iter(iterable)] * n
         return itertools.zip_longest(*args)
 
-    cout(expression)
-    cout(precomputable_nodes)
-    cout(dependent_tiers)
-    cout(parameters)
+    # cout(expression)
+    # cout(precomputable_nodes)
+    # cout(dependent_tiers)
+    # cout(parameters)
 
     if parameters:
         function_arguments = ', '.join(f'{p}' 
@@ -93,87 +93,59 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             return_value = f'np.array([{expression_string}])'
 
     elif return_dims == 2:
+        expression_rows = []
         parameter_set = set(parameters[:yu_qts_continuous_split])
-        if hessian in ('defect', 'path', 'integral', 'endpoint'):
-            raise NotImplementedError
-            # expressions_factored, code_cse, factors_dict = factor_cse(expression, ignore=hessian_sym_set)
-            # continuous_parameter_set = parameter_set.copy()
-            # for k, v in substitutions.items():
-            #     if v.free_symbols.intersection(continuous_parameter_set):
-            #         continuous_parameter_set.add(k)
-            # for k, v in factors_dict.items():
-            #     if v.free_symbols.intersection(continuous_parameter_set):
-            #         continuous_parameter_set.add(k)
-        
-        expression_list = []
-        for e, node in zip(expression, expression_nodes):
-            if hessian is 'defect':
-                lagrange_syms = e.free_symbols.intersection(hessian_sym_set)
-                e_lambda_factorised = sym.collect(e.expand(), lagrange_syms)
-                lagrange_sym_list = []
-                lagrange_arg_list = []
-                if len(lagrange_syms) > 1:
-                    while lagrange_syms:
-                        lagrange_sym = lagrange_syms.pop()
-                        for arg in e_lambda_factorised.args:
-                            if lagrange_sym in arg.free_symbols:
-                                lagrange_sym_list.append(lagrange_sym)
-                                lagrange_arg_list.append(arg / lagrange_sym)
+        if expression.shape[0] != 1 and expression.shape[1] == 1:
+            expression = expression.T
+        for row_num in range(expression.rows):
+            expression_list = []
+            row = expression.row(row_num)
+            for col_num, e in enumerate(row):
+                index = row_num*expression.rows + col_num
+                node = expression_nodes[index]
+                if e.free_symbols.intersection(parameter_set):
+                    expression_list.append(e)
                 else:
-                    lagrange_sym = lagrange_syms.pop()
-                    lagrange_sym_list.append(lagrange_sym)
-                    lagrange_arg_list.append(e_lambda_factorised / lagrange_sym)
-                defect_expression_list = []
-                for lagrange_sym, e_no_lagrange in zip(lagrange_sym_list, lagrange_arg_list):
-                    if e_no_lagrange.free_symbols.intersection(hessian_sym_set):
-                        msg = ("Factorisation failed.")
-                        raise ValueError(msg)
-                    if not e_no_lagrange.free_symbols.intersection(continuous_parameter_set):
-
-                        e_entry = f'np.outer({lagrange_sym}, ({e_no_lagrange})*np.ones(_N))'
+                    if node.is_vector or col_num >= yu_qts_continuous_split:
+                        e_entry = f'{e}'
                     else:
-                        e_entry = f'np.outer({lagrange_sym}, ({e_no_lagrange}))'
-                    defect_expression_list.append(e_entry)
-                e_entry = ' + '.join(defect_expression_list)
-                expression_list.append(e_entry)
-            elif hessian is 'path':
-                raise NotImplementedError
-            elif hessian is 'integral':
-                lagrange_syms = e.free_symbols.intersection(hessian_sym_set)
-                if len(lagrange_syms) != 1:
-                    raise NotImplementedError
-                lagrange_sym = lagrange_syms.pop()
-                e_no_lagrange = sym.collect(e, lagrange_sym) / lagrange_sym
-                if e_no_lagrange.free_symbols.intersection(hessian_sym_set):
-                    msg = ("Factorisation failed.")
-                    raise ValueError(msg)
-                if not e_no_lagrange.free_symbols.intersection(continuous_parameter_set):
+                        e_entry = f'({e})*np.ones(_N)'
+                    if return_flat:
+                        raise NotImplementedError
+                        e_entry = f'{e_entry}.flatten()'
+                    expression_list.append(e_entry)
+            expression_row = ', '.join(f'{e}' for e in expression_list)
+            expression_rows.append(f"np.hstack([{expression_row}])")
 
-                    e_entry = f'{lagrange_sym}*({e_no_lagrange})*np.ones(_N)'
-                else:
-                    e_entry = f'{lagrange_sym}*({e_no_lagrange})'
-                expression_list.append(e_entry)
-            elif hessian is 'endpoint':
-                raise NotImplementedError
-            elif hessian is 'objective':
-                raise NotImplementedError
-            elif e.free_symbols.intersection(parameter_set):
-                expression_list.append(e)
-            else:
-                if node.is_vector:
-                    e_entry = f'{e}'
-                else:
-                    e_entry = f'({e})*np.ones(_N)'
-                if return_flat:
-                    e_entry = f'{e_entry}.flatten()'
-                expression_list.append(e_entry)
-
-        expression_string = ', '.join(f'{e}' for e in expression_list)
+        expression_string = ', '.join(f'{e}' for e in expression_rows)
 
         if return_flat:
+            raise NotImplementedError
             return_value = f'np.concatenate([{expression_string}])'
         else:
             return_value = f'np.array([{expression_string}])'
+
+    # elif return_dims == 2:
+    #     parameter_set = set(parameters[:yu_qts_continuous_split])
+    #     expression_list = []
+    #     for i, (e, node) in enumerate(zip(expression, expression_nodes)):
+    #         if e.free_symbols.intersection(parameter_set):
+    #             expression_list.append(e)
+    #         else:
+    #             if node.is_vector or i > yu_qts_continuous_split:
+    #                 e_entry = f'{e}'
+    #             else:
+    #                 e_entry = f'({e})*np.ones(_N)'
+    #             if return_flat:
+    #                 e_entry = f'{e_entry}.flatten()'
+    #             expression_list.append(e_entry)
+
+    #     expression_string = ', '.join(f'{e}' for e in expression_list)
+
+    #     if return_flat:
+    #         return_value = f'np.concatenate([{expression_string}])'
+    #     else:
+    #         return_value = f'np.array([{expression_string}])'
 
     else:
         msg = ("Value for `return_dims` argument must be 0, 1, or 2 only.")
@@ -185,8 +157,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
         f"    {intermediate_substitutions}\n"
         f"    return {return_value}")
 
-    print(function_string)
-    print('\n\n\n')
+    cout(function_string)
     
     exec(function_string)
        

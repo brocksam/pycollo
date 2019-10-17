@@ -173,7 +173,9 @@ class OptimalControlProblem():
 
 	@property
 	def state_endpoint(self):
-		return self.initial_state + self.final_state
+		state_endpoint = tuple(itertools.chain.from_iterable(y 
+			for y in zip(self._y_t0_user, self._y_tF_user)))
+		return state_endpoint
 
 	@property
 	def state_variables(self):
@@ -252,7 +254,7 @@ class OptimalControlProblem():
 	def _update_vars(self):
 		self._x_vars_user = tuple(self._y_vars_user + self._u_vars_user
 			+ self._q_vars_user + self._t_vars_user + self._s_vars_user)
-		self._x_b_vars_user = tuple(self.initial_state + self.final_state 
+		self._x_b_vars_user = tuple(self.state_endpoint 
 			+ self._q_vars_user + self._t_vars_user + self._s_vars_user)
 
 	@property
@@ -435,6 +437,7 @@ class OptimalControlProblem():
 		self._generate_expression_graph()
 		self._generate_quadrature()
 		self._compile_numba_functions()
+		self._check_user_supplied_initial_guess()
 
 		# Initialise the initial mesh iterations
 		self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
@@ -727,6 +730,7 @@ class OptimalControlProblem():
 			for y, y_needed, value in zip(
 				y_vars, self._bounds._y_needed, self._bounds._y_l) 
 			if not y_needed})
+
 		# y_subs_dict = dict(zip(self._y_vars_user, y_vars))
 		# y_endpoint_subs_dict = {**dict(zip(self.initial_state, self._y_t0)), 
 		# 	**dict(zip(self.final_state, self._y_tF))}
@@ -885,9 +889,7 @@ class OptimalControlProblem():
 		self._compile_objective_gradient()
 		self._compile_constraints()
 		self._compile_jacobian_constraints()
-		# self._compule_hessian_lagrangian()
-
-		kill()
+		self._compile_hessian_lagrangian()
 
 	def _compile_reshape(self):
 
@@ -953,8 +955,10 @@ class OptimalControlProblem():
 		def defect_constraints_lambda(y, dy, A, D, stretch):
 			return (D.dot(y.T) + stretch*A.dot(dy.T)).flatten(order='F')
 
-		def path_constraints_lambda(c, stretch):
-			return stretch*c
+		def path_constraints_lambda(p, stretch):
+			if p.size:
+				raise NotImplementedError
+			return []
 
 		def integral_constraints_lambda(q, g, W, stretch):
 			return q - stretch*np.matmul(g, W) if g.size else q
@@ -963,8 +967,8 @@ class OptimalControlProblem():
 			return b
 
 		def constraints_lambda(x_tuple, x_tuple_point, N, ocp_y_slice, 
-				ocp_q_slice, num_c, defect_slice, path_slice, integral_slice, 
-				boundary_slice, A, D, W):
+				ocp_q_slice, num_c, dy_slice, p_slice, g_slice, defect_slice, 
+				path_slice, integral_slice, boundary_slice, A, D, W):
 			
 			y = np.vstack(x_tuple[ocp_y_slice])
 			q = np.array(x_tuple[ocp_q_slice])
@@ -973,16 +977,16 @@ class OptimalControlProblem():
 			c_continuous = c_continuous_lambda(*x_tuple, N)
 			c_endpoint = c_endpoint_lambda(*x_tuple_point, N)
 
-			dy = c_continuous[defect_slice]
-			c = c_continuous_lambda[path_slice]
-			g = c_continuous[integral_slice]
+			dy = c_continuous[:, dy_slice].reshape((-1, N))
+			p = c_continuous[:, p_slice]
+			g = c_continuous[:, g_slice]
 			b = c_endpoint
 
 			c = np.empty(num_c)
 			c[defect_slice] = defect_constraints_lambda(y, dy, A, D, stretch)
-			c[path_slice] = path_constraints_lambda(c, stretch)
+			c[path_slice] = path_constraints_lambda(p, stretch)
 			c[integral_slice] = integral_constraints_lambda(q, g, W, stretch)
-			c[boundary_slice] = boundary_constraints_lambda(b)
+			c[boundary_slice] = endpoint_constraints_lambda(b)
 
 			return c
 
@@ -1035,7 +1039,10 @@ class OptimalControlProblem():
 				start = i*num_nz
 				stop = start + num_nz
 				entries = stretch*A_sparse.multiply(row).data
+				cout(start, stop, entries)
+				input()
 				return_array[start:stop] = entries
+			cout('COmpleted....')
 			return return_array
 
 		def G_dzeta_dy_lambda(ddy_dy, stretch, A, D, A_row_col_array, num_y, 
@@ -1108,26 +1115,35 @@ class OptimalControlProblem():
 				return []
 
 		def jacobian_lambda(x_tuple, x_tuple_point, N, num_G_nonzero, 
-			num_x_ocp, A, D, W, A_row_col_array, defect_slice, path_slice, 
-			integral_slice, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, 
+			num_x_ocp, A, D, W, A_row_col_array, dy_slice, 
+			p_slice, g_slice, dzeta_dy_D_nonzero, 
+			dzeta_dy_slice, dzeta_du_slice, 
 			dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, 
-			dgamma_dt_slice, dgamma_ds_slice, rho_dy_slice, drho_du_slice, 
+			dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, 
 			drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dxb_slice):
 
+			cout(*x_tuple)
+
 			stretch = t_stretch_lambda(*x_tuple)
-			dstretch_dt = 
+			dstretch_dt = self._dstretch_dt
 			c_continuous = c_continuous_lambda(*x_tuple, N)
 			dc_dx = dc_dx_lambda(*x_tuple, N)
-			dy = c_continuous[defect_slice]
-			c = c_continuous_lambda[path_slice]
-			g = c_continuous[integral_slice]
+			dy = c_continuous[:, dy_slice].reshape((-1, N))
+			p = c_continuous[:, p_slice]
+			g = c_continuous[:, g_slice]
 
-			ddy_dy = dc_dx[]
-			ddy_du = dc_dx[]
-			ddy_ds = dc_dx[]
-			drho_dy = dc_dx[]
-			drho_du = dc_dx[]
-			drho_ds = dc_dx[]
+			cout(c_continuous)
+			cout(dc_dx)
+			cout(dzeta_dy_slice)
+
+			kill()
+
+			ddy_dy = dc_dx[dzeta_dy_slice]
+			ddy_du = dc_dx[dzeta_du_slice]
+			ddy_ds = dc_dx[dzeta_ds_slice]
+			drho_dy = dc_dx[drho_dy_slice]
+			drho_du = dc_dx[drho_du_slice]
+			drho_ds = dc_dx[drho_ds_slice]
 
 			G = np.empty(num_G_nonzero)
 
@@ -1183,20 +1199,18 @@ class OptimalControlProblem():
 		db_dxb_lambda = numbafy(
 			expression_graph=expr_graph,
 			expression=expr_graph.db_dxb,
-			precomputable_nodes=expr_graph.db_db_precomputable,
-			dependent_tiers=expr_graph.db_db_dependent_tiers,
+			precomputable_nodes=expr_graph.db_dxb_precomputable,
+			dependent_tiers=expr_graph.db_dxb_dependent_tiers,
 			parameters=self._x_b_vars, 
 			return_dims=1, 
 			N_arg=True, 
 			ocp_num_vars=self._num_vars_tuple,
 			)
 
-		self._G_lambda = G_lambda
+		self._G_lambda = jacobian_lambda
 		print('Jacobian function compiled.')
 
-		kill()
-
-	def _compile_hessian_lagrangian():
+	def _compile_hessian_lagrangian(self):
 
 		def H_objective_lambda(ddL_dxbdxb):
 			H = np.empty(num_nonzero)
@@ -1259,44 +1273,49 @@ class OptimalControlProblem():
 			return H
 
 		expr_graph = self._expression_graph
+		L_syms = expr_graph.lagrange_syms
 
-		lagrange_syms_defect = self._lagrange_syms[self._c_defect_slice]
-		lagrange_syms_defect_matrix = lagrange_syms_defect if isinstance(lagrange_syms_defect, sym.Matrix) else sym.Matrix([lagrange_syms_defect])
+		lagrange_syms_defect = L_syms[self._c_defect_slice]
+		lagrange_syms_defect_matrix = (lagrange_syms_defect 
+			if isinstance(lagrange_syms_defect, sym.Matrix) 
+			else sym.Matrix([lagrange_syms_defect]))
 		lagrange_syms_defect_set = OrderedSet(lagrange_syms_defect)
-		H_defect_parameters = sym.Matrix([self._x_vars, lagrange_syms_defect_matrix.T])
+		H_defect_parameters = sym.Matrix([self._x_vars, 
+			lagrange_syms_defect_matrix.T])
 
-		ddL_dxdx_defect = self._ddL_dxdx_zeta.values()
 		ddL_dxdx_defect_lambda = numbafy(
 			expression_graph=expr_graph,
-			expression=expr_graph.ddL_defect_dxdx,
-			expression_nodes=expr_graph.ddL_defect_dxdx,
-			precomputable_nodes=expr_graph.ddL_defect_dxdx_precomputable,
-			dependent_tiers=expr_graph.ddL_defect_dxdx_dependent_tiers,
+			expression=expr_graph.ddL_zeta_dxdx,
+			expression_nodes=expr_graph.ddL_zeta_dxdx_nodes,
+			precomputable_nodes=expr_graph.ddL_zeta_dxdx_precomputable,
+			dependent_tiers=expr_graph.ddL_zeta_dxdx_dependent_tiers,
 			parameters=H_defect_parameters, 
 			return_dims=2, 
 			N_arg=True, 
-			hessian='defect', 
-			hessian_sym_set=lagrange_syms_defect_set, 
+			# hessian='defect', 
+			# hessian_sym_set=lagrange_syms_defect_set, 
 			ocp_num_vars=self._num_vars_tuple,
 			)
 
-		lagrange_syms_integral = self._lagrange_syms[self._c_integral_slice]
-		lagrange_syms_integral_matrix = lagrange_syms_integral if isinstance(lagrange_syms_integral, sym.Matrix) else sym.Matrix([lagrange_syms_integral])
+		lagrange_syms_integral = L_syms[self._c_integral_slice]
+		lagrange_syms_integral_matrix = (lagrange_syms_integral 
+			if isinstance(lagrange_syms_integral, sym.Matrix) 
+			else sym.Matrix([lagrange_syms_integral]))
 		lagrange_syms_integral_set = OrderedSet(lagrange_syms_integral)
-		H_integral_parameters = sym.Matrix([self._x_vars, lagrange_syms_integral_matrix.T])
+		H_integral_parameters = sym.Matrix([self._x_vars, 
+			lagrange_syms_integral_matrix.T])
 
-		ddL_dxdx_integral = self._ddL_dxdx_rho.values()
 		ddL_dxdx_integral_lambda = numbafy(
 			expression_graph=expr_graph,
-			expression=expr_graph.ddL_integral_dxdx,
-			expression_nodes=expr_graph.ddL_integral_dxdx,
-			precomputable_nodes=expr_graph.ddL_integral_dxdx_precomputable,
-			dependent_tiers=expr_graph.ddL_integral_dxdx_dependent_tiers,
+			expression=expr_graph.ddL_rho_dxdx,
+			expression_nodes=expr_graph.ddL_rho_dxdx_nodes,
+			precomputable_nodes=expr_graph.ddL_rho_dxdx_precomputable,
+			dependent_tiers=expr_graph.ddL_rho_dxdx_dependent_tiers,
 			parameters=H_integral_parameters, 
 			return_dims=2, 
 			N_arg=True, 
-			hessian='integral', 
-			hessian_sym_set=lagrange_syms_integral_set, 
+			# hessian='integral', 
+			# hessian_sym_set=lagrange_syms_integral_set, 
 			ocp_num_vars=self._num_vars_tuple,
 			)
 

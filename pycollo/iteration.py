@@ -142,14 +142,18 @@ class Iteration:
 		self._qts_slice = slice(self._q_slice.start, self._s_slice.stop)
 
 		# Constraints
-		self._num_c_defect = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
-		self._num_c_path = self._ocp._num_c_cons
+		self._num_c_defect = self._ocp.number_state_equations * self._mesh._num_c_boundary_per_y
+		self._num_c_path = self._ocp.number_path_constraints
 		if self._num_c_path != 0:
 			# Will also need to check the lagrange_reshape() function
 			raise NotImplementedError
-		self._num_c_integral = self._ocp._num_q_vars
-		self._num_c_boundary = self._ocp._num_b_cons
+		self._num_c_integral = self._ocp.number_integrand_functions
+		self._num_c_boundary = self._ocp.number_state_endpoint_constraints + self._ocp.number_endpoint_constraints
 		self._num_c = self._num_c_defect + self._num_c_path + self._num_c_integral + self._num_c_boundary
+
+		self._c_lambda_dy_slice = slice(0, self._num_y)
+		self._c_lambda_p_slice = slice(self._c_lambda_dy_slice.stop, self._c_lambda_dy_slice.stop + self._num_c_path*self._mesh._N)
+		self._c_lambda_g_slice = slice(self._c_lambda_p_slice.stop, self._c_lambda_p_slice.stop + self._num_c_integral*self._mesh._N)
 
 		self._c_defect_slice = slice(0, self._num_c_defect)
 		self._c_path_slice = slice(self._c_defect_slice.stop, self._c_defect_slice.stop + self._num_c_path)
@@ -221,7 +225,7 @@ class Iteration:
 		# Integral constraints by state variables
 		for i_c in range(self._ocp._num_q_vars):
 			for i_y in range(self._ocp._num_y_vars):
-				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
+				row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
 				col_offset = i_y * self._mesh._N
 				G_nonzero_row.extend(list(row_offset*np.ones(self._mesh._N, dtype=int)))
 				G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
@@ -230,7 +234,7 @@ class Iteration:
 		# Integral constraints by control variables
 		for i_c in range(self._ocp._num_q_vars):
 			for i_u in range(self._ocp._num_u_vars):
-				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
+				row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
 				col_offset = (self._ocp._num_y_vars + i_u) * self._mesh._N
 				G_nonzero_row.extend(list(row_offset*np.ones(self._mesh._N, dtype=int)))
 				G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
@@ -238,7 +242,7 @@ class Iteration:
 
 		# Integral constraints by integral variables
 		for i_c in range(self._ocp._num_q_vars):
-			row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
+			row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
 			col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + i_c
 			G_nonzero_row.extend(list(row_offset*np.ones(self._ocp._num_q_vars, dtype=int)))
 			G_nonzero_col.extend(list(range(col_offset, self._ocp._num_q_vars + col_offset)))
@@ -247,7 +251,7 @@ class Iteration:
 		# Integral constraints by time variables
 		for i_c in range(self._ocp._num_q_vars):
 			for i_t in range(self._ocp._num_t_vars):
-				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
+				row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
 				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + i_t
 				G_nonzero_row.append(row_offset)
 				G_nonzero_col.append(col_offset)
@@ -256,21 +260,21 @@ class Iteration:
 		# Integral constraints by parameter variables
 		for i_c in range(self._ocp._num_q_vars):
 			for i_s in range(self._ocp._num_s_vars):
-				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + i_c
+				row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
 				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars + i_s
 				G_nonzero_row.append(row_offset)
 				G_nonzero_col.append(col_offset)
 		drho_ds_slice = slice(drho_dt_slice.stop, len(G_nonzero_row))
 
 		# Boundary constraints
-		for i_c in range(self._ocp._num_b_cons):
+		for i_c in range(self._ocp.number_state_endpoint_constraints + self._ocp.number_endpoint_constraints):
 			for i_y in range(self._ocp._num_y_vars):
-				row_offset = [(self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c]*2
+				row_offset = [(self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c]*2
 				col_offset = [i_y * self._mesh._N, (i_y+1) * self._mesh._N - 1]
 				G_nonzero_row.extend(row_offset)
 				G_nonzero_col.extend(col_offset)
 			for i_qts in range(self._ocp._num_q_vars + self._ocp._num_t_vars + self._ocp._num_s_vars):
-				row_offset = (self._ocp._num_y_vars + self._ocp._num_c_cons) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c
+				row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + self._ocp.number_integrand_functions + i_c
 				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + i_qts
 				G_nonzero_row.append(row_offset)
 				G_nonzero_col.append(col_offset)
@@ -287,7 +291,7 @@ class Iteration:
 		H_defect_sum_flag = []
 		
 		for i_row in range(self._ocp._num_vars):
-			row = self._ocp._ddL_dxdx_zeta[i_row, :i_row+1]
+			row = self._ocp._expression_graph.ddL_zeta_dxdx[i_row, :i_row+1]
 			if i_row < self._ocp._yu_qts_split:
 				row_offset = i_row * self._mesh._N
 				row_numbers = list(range(row_offset, row_offset + self._mesh._N))
@@ -323,7 +327,7 @@ class Iteration:
 		H_integral_sum_flag = []
 		
 		for i_row in range(self._ocp._num_vars):
-			row = self._ocp._ddL_dxdx_rho[i_row, :i_row+1]
+			row = self._ocp._expression_graph.ddL_rho_dxdx[i_row, :i_row+1]
 			if i_row < self._ocp._yu_qts_split:
 				row_offset = i_row * self._mesh._N
 				row_numbers = list(range(row_offset, row_offset + self._mesh._N))
@@ -437,7 +441,7 @@ class Iteration:
 		# Generate objective function lambda
 		def objective(x):
 			x_tuple_point = reshape_x_point(x)
-			J = self._ocp._J_lambda(*x_tuple_point)
+			J = self._ocp._J_lambda(x_tuple_point)
 			return J
 
 		self._objective_lambda = objective
@@ -454,7 +458,7 @@ class Iteration:
 		def constraint(x):
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
-			c = self._ocp._c_lambda(x_tuple, x_tuple_point, self._mesh._N, self._ocp._y_slice, self._ocp._q_slice, self._num_c, self._c_defect_slice, self._c_path_slice, self._c_integral_slice, self._c_boundary_slice, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix)
+			c = self._ocp._c_lambda(x_tuple, x_tuple_point, self._mesh._N, self._ocp._y_slice, self._ocp._q_slice, self._num_c, self._c_lambda_dy_slice, self._c_lambda_p_slice, self._c_lambda_g_slice, self._c_defect_slice, self._c_path_slice, self._c_integral_slice, self._c_boundary_slice, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix)
 			return c
 
 		self._constraint_lambda = constraint
@@ -465,7 +469,7 @@ class Iteration:
 		def jacobian(x):
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
-			G = self._ocp._G_lambda(x_tuple, x_tuple_point, self._mesh._N, self._num_G_nonzero, ocp_num_x, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix, A_row_col_array, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dxb_slice)
+			G = self._ocp._G_lambda(x_tuple, x_tuple_point, self._mesh._N, self._num_G_nonzero, ocp_num_x, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix, A_row_col_array, self._c_lambda_dy_slice, self._c_lambda_p_slice, self._c_lambda_g_slice, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dxb_slice)
 			return G
 
 		self._jacobian_lambda = jacobian
@@ -522,7 +526,6 @@ class Iteration:
 			g = self._gradient_lambda(x_data)
 			print(f"g:\n{g}\n")
 
-			print('c:')
 			c = self._constraint_lambda(x_data)
 			print(f"c:\n{c}\n")
 
@@ -598,7 +601,7 @@ class Iteration:
 		bnd_u = np.zeros((self._num_c, ))
 
 		# Path constraints bounds
-		if self._ocp._num_c_cons:
+		if self._ocp.number_path_constraints:
 			print(self._ocp._c_cons)
 			raise NotImplementedError
 

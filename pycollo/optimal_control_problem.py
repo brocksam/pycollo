@@ -1042,7 +1042,7 @@ class OptimalControlProblem():
 				cout(start, stop, entries)
 				input()
 				return_array[start:stop] = entries
-			cout('COmpleted....')
+			cout('Completed....')
 			return return_array
 
 		def G_dzeta_dy_lambda(ddy_dy, stretch, A, D, A_row_col_array, num_y, 
@@ -1206,6 +1206,9 @@ class OptimalControlProblem():
 			N_arg=True, 
 			ocp_num_vars=self._num_vars_tuple,
 			)
+
+		cout(expr_graph.dc_dx)
+		kill()
 
 		self._G_lambda = jacobian_lambda
 		print('Jacobian function compiled.')

@@ -1083,6 +1083,7 @@ class OptimalControlProblem():
 			return np.zeros((0,))
 
 		def G_drho_dy_lambda(drho_dy, stretch, W):
+
 			if drho_dy.size:
 				G_drho_dy = (- stretch * drho_dy * W).flatten()
 				return G_drho_dy
@@ -1097,7 +1098,6 @@ class OptimalControlProblem():
 				return []
 
 		def G_drho_dt_lambda(g, dstretch_dt, W):
-			g = rho_lambda(*x_tuple, N)
 			if g.size > 0:
 				product = np.outer(self._dstretch_dt, np.matmul(g, W))
 				return - product.flatten(order='F')
@@ -1129,12 +1129,15 @@ class OptimalControlProblem():
 
 			dzeta_dy = dc_dx[dc_dx_slice.zeta_y].reshape(*dc_dx_shape.zeta_y)
 			dzeta_du = dc_dx[dc_dx_slice.zeta_u].reshape(*dc_dx_shape.zeta_u)
+			dzeta_dt = None
 			dzeta_ds = dc_dx[dc_dx_slice.zeta_s].reshape(*dc_dx_shape.zeta_s)
 			dgamma_dy = dc_dx[dc_dx_slice.gamma_y].reshape(*dc_dx_shape.gamma_y)
 			dgamma_du = dc_dx[dc_dx_slice.gamma_u].reshape(*dc_dx_shape.gamma_u)
+			dgamma_dt = None
 			dgamma_ds = dc_dx[dc_dx_slice.gamma_s].reshape(*dc_dx_shape.gamma_s)
 			drho_dy = dc_dx[dc_dx_slice.rho_y].reshape(*dc_dx_shape.rho_y)
 			drho_du = dc_dx[dc_dx_slice.rho_u].reshape(*dc_dx_shape.rho_u)
+			drho_dt = None
 			drho_ds = dc_dx[dc_dx_slice.rho_s].reshape(*dc_dx_shape.rho_s)
 
 			G = np.empty(num_G_nonzero)
@@ -1150,7 +1153,7 @@ class OptimalControlProblem():
 				G[dzeta_du_slice] = G_dzeta_du_lambda(dzeta_du, stretch, A, 
 					A_row_col_array, num_x_ocp.y, num_x_ocp.u)
 				G[dgamma_du_slice] = G_dgamma_du_lambda(dgamma_du, stretch)
-				G[drho_du_slice] = G_drho_du_lambda(drho_dy, stretch, W)
+				G[drho_du_slice] = G_drho_du_lambda(drho_du, stretch, W)
 
 			if num_x_ocp.q:
 				G[drho_dq_slice] = 1

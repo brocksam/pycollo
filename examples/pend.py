@@ -1,6 +1,7 @@
+import os
 import sys
 
-sys.path.append('/Users/sambrockie/Documents/Cambridge/PhD/Code/Repositories/pycollo')
+sys.path.insert(0, os.path.abspath('.'))
 
 import numpy as np
 import sympy as sym

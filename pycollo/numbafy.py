@@ -26,6 +26,10 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             for p in parameters)
         if N_arg is True:
             function_arguments += ', _N'
+            numpy_default_arrays = ("_np_zeros_array_N = np.zeros(_N)\n"
+                "    _np_ones_array_N = np.ones(_N)")
+        else:
+            numpy_default_arrays = ""
     else:
         raise NotImplementedError
 
@@ -50,9 +54,6 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 
     zero_sym = expression_graph._zero_node.symbol
     one_sym = expression_graph._one_node.symbol
-
-    numpy_default_arrays = ("_np_zeros_array_N = np.zeros(_N)\n"
-        "    _np_ones_array_N = np.ones(_N)")
 
     if return_dims is None:
         return_value = f'{expression}'

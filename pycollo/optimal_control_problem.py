@@ -1039,15 +1039,11 @@ class OptimalControlProblem():
 				start = i*num_nz
 				stop = start + num_nz
 				entries = stretch*A_sparse.multiply(row).data
-				cout(start, stop, entries)
-				input()
 				return_array[start:stop] = entries
-			cout('Completed....')
 			return return_array
 
 		def G_dzeta_dy_lambda(ddy_dy, stretch, A, D, A_row_col_array, num_y, 
 			dzeta_dy_D_nonzero, dzeta_dy_slice):
-			cout(ddy_dy)
 			num_nz = A_row_col_array.shape[1]
 			return_array = np.empty(num_y**2 * num_nz)
 			G_dzeta_dy = A_x_dot_sparse(A, ddy_dy, num_y, num_nz, stretch, 
@@ -1123,8 +1119,6 @@ class OptimalControlProblem():
 			dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, 
 			drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dxb_slice):
 
-			cout(*x_tuple)
-
 			stretch = t_stretch_lambda(*x_tuple)
 			dstretch_dt = self._dstretch_dt
 			c_continuous = c_continuous_lambda(*x_tuple, N)
@@ -1133,29 +1127,27 @@ class OptimalControlProblem():
 			p = c_continuous[:, p_slice]
 			g = c_continuous[:, g_slice]
 
-			# cout(dc_dx)
-			# cout(dc_dx[:2, ])
-
-			# kill()
-
-			ddy_dy = dc_dx[:2, :, :]
-			# ddy_du = dc_dx[dzeta_du_slice]
-			# ddy_ds = dc_dx[dzeta_ds_slice]
-			# drho_dy = dc_dx[drho_dy_slice]
-			# drho_du = dc_dx[drho_du_slice]
-			# drho_ds = dc_dx[drho_ds_slice]
+			dzeta_dy = dc_dx[dc_dx_slice.zeta_y].reshape(*dc_dx_shape.zeta_y)
+			dzeta_du = dc_dx[dc_dx_slice.zeta_u].reshape(*dc_dx_shape.zeta_u)
+			dzeta_ds = dc_dx[dc_dx_slice.zeta_s].reshape(*dc_dx_shape.zeta_s)
+			dgamma_dy = dc_dx[dc_dx_slice.gamma_y].reshape(*dc_dx_shape.gamma_y)
+			dgamma_du = dc_dx[dc_dx_slice.gamma_u].reshape(*dc_dx_shape.gamma_u)
+			dgamma_ds = dc_dx[dc_dx_slice.gamma_s].reshape(*dc_dx_shape.gamma_s)
+			drho_dy = dc_dx[dc_dx_slice.rho_y].reshape(*dc_dx_shape.rho_y)
+			drho_du = dc_dx[dc_dx_slice.rho_u].reshape(*dc_dx_shape.rho_u)
+			drho_ds = dc_dx[dc_dx_slice.rho_s].reshape(*dc_dx_shape.rho_s)
 
 			G = np.empty(num_G_nonzero)
 
 			if num_x_ocp.y:
-				G[dzeta_dy_slice] = G_dzeta_dy_lambda(ddy_dy, stretch, A, D, 
+				G[dzeta_dy_slice] = G_dzeta_dy_lambda(dzeta_dy, stretch, A, D, 
 					A_row_col_array, num_x_ocp.y, dzeta_dy_D_nonzero, 
 					dzeta_dy_slice)
 				G[dgamma_dy_slice] = G_dgamma_dy_lambda(dgamma_dy, stretch)
 				G[drho_dy_slice] = G_drho_dy_lambda(drho_dy, stretch, W)
 
 			if num_x_ocp.u:
-				G[dzeta_du_slice] = G_dzeta_du_lambda(ddy_du, stretch, A, 
+				G[dzeta_du_slice] = G_dzeta_du_lambda(dzeta_du, stretch, A, 
 					A_row_col_array, num_x_ocp.y, num_x_ocp.u)
 				G[dgamma_du_slice] = G_dgamma_du_lambda(dgamma_du, stretch)
 				G[drho_du_slice] = G_drho_du_lambda(drho_dy, stretch, W)
@@ -1169,7 +1161,7 @@ class OptimalControlProblem():
 				G[drho_dt_slice] = G_drho_dt_lambda(g, dstretch_dt, W)
 
 			if num_x_ocp.s:
-				G[dzeta_ds_slice] = G_dzeta_ds_lambda(ddy_ds, stretch, A)
+				G[dzeta_ds_slice] = G_dzeta_ds_lambda(dzeta_ds, stretch, A)
 				G[dgamma_ds_slice] = G_dgamma_ds_lambda(dgamma_ds, stretch)
 				G[drho_ds_slice] = G_drho_ds_lambda(drho_ds, stretch, W)
 
@@ -1194,6 +1186,34 @@ class OptimalControlProblem():
 			return_dims=3, 
 			N_arg=True, 
 			ocp_num_vars=self._num_vars_tuple,
+			)
+
+		dc_dx_slice = pu.dcdxInfo(
+			zeta_y=[self._c_defect_slice, self._y_slice],
+			zeta_u=[self._c_defect_slice, self._u_slice],
+			zeta_s=[self._c_defect_slice, self._s_slice],
+			gamma_y=[self._c_path_slice, self._y_slice],
+			gamma_u=[self._c_path_slice, self._u_slice],
+			gamma_s=[self._c_path_slice, self._s_slice],
+			rho_y=[self._c_integral_slice, self._y_slice],
+			rho_u=[self._c_integral_slice, self._u_slice],
+			rho_s=[self._c_integral_slice, self._s_slice],
+			)
+
+		if self.number_path_constraints != 0:
+			msg = ("Handle the zeros below...")
+			raise NotImplementedError(msg)
+
+		dc_dx_shape = pu.dcdxInfo(
+			zeta_y=[self.number_state_equations*self.number_state_variables, -1],
+			zeta_u=[self.number_state_equations*self.number_control_variables, -1],
+			zeta_s=[self.number_state_equations*self.number_parameter_variables, -1],
+			gamma_y=[self.number_path_constraints*self.number_state_variables, 0],
+			gamma_u=[self.number_path_constraints*self.number_control_variables, 0],
+			gamma_s=[self.number_path_constraints*self.number_parameter_variables, 0],
+			rho_y=[self.number_integrand_functions*self.number_state_variables, -1],
+			rho_u=[self.number_integrand_functions*self.number_control_variables, -1],
+			rho_s=[self.number_integrand_functions*self.number_parameter_variables, -1],
 			)
 
 		db_dxb_lambda = numbafy(

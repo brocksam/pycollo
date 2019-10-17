@@ -51,6 +51,9 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
     zero_sym = expression_graph._zero_node.symbol
     one_sym = expression_graph._one_node.symbol
 
+    numpy_default_arrays = ("_np_zeros_array_N = np.zeros(_N)\n"
+        "    _np_ones_array_N = np.ones(_N)")
+
     if return_dims is None:
         return_value = f'{expression}'
 
@@ -137,9 +140,9 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
                 index = row_num*expression.cols + col_num
                 node = expression_nodes[index]
                 if e is zero_sym:
-                    e_entry = f'np.zeros(_N)'
+                    e_entry = f'_np_zeros_array_N'
                 elif e is one_sym:
-                    e_entry = f'np.ones(_N)'
+                    e_entry = f'_np_ones_array_N'
                 elif node.is_vector:
                     e_entry = f'{e}'
                 else:
@@ -178,6 +181,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 
     function_string = (
         f"def numbafied_func({function_arguments}):\n"
+        f"    {numpy_default_arrays}\n"
         f"    {precomputed_constants}\n"
         f"    {intermediate_substitutions}\n"
         f"    return {return_value}")

@@ -481,10 +481,13 @@ class Iteration:
 
 		def reshape_lagrange(lagrange):
 			lagrange = np.array(lagrange)
+			print(lagrange)
 			delta_lagrange = lagrange[self._c_defect_slice].reshape((self._ocp._num_y_vars, self._mesh._num_c_boundary_per_y))
 			c_lagrange = lagrange[self._c_path_slice].reshape(-1, )
 			rho_lagrange = lagrange[self._c_integral_slice].reshape(-1, )
 			beta_lagrange = lagrange[self._c_boundary_slice].reshape(-1, )
+			print('\n\n\n')
+			raise ValueError
 			return tuple([*delta_lagrange]), tuple([*c_lagrange]), tuple([*rho_lagrange]), tuple([*beta_lagrange])
 
 		def hessian(x, lagrange, obj_factor):
@@ -510,7 +513,7 @@ class Iteration:
 		# ========================================================
 		# JACOBIAN CHECK
 		# ========================================================
-		if True:
+		if False:
 			print('\n\n\n')
 			x_data = np.array(range(self._num_x), dtype=float)
 			lagrange = np.array(range(self._num_c), dtype=float)
@@ -549,7 +552,7 @@ class Iteration:
 		# ========================================================
 		if False:
 			print('\n\n\n')
-			num_loops = 100
+			num_loops = 1000
 			for i in range(num_loops):
 				x_data = np.random.rand(self._num_x)
 				J = self._objective_lambda(x_data)
@@ -558,6 +561,7 @@ class Iteration:
 				G = self._jacobian_lambda(x_data)
 				G_struct = self._jacobian_structure_lambda()
 			print('\n\n\n')
+			raise ValueError
 
 		# ========================================================
 

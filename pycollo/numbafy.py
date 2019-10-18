@@ -1,7 +1,7 @@
 import itertools
 from numbers import Number
 
-import numba
+import numba as nb
 import numpy as np
 from numpy import sin, cos, tan, exp, sqrt, arctan, tanh
 from ordered_set import OrderedSet
@@ -109,7 +109,6 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             for col_num, e in enumerate(row):
                 index = row_num*expression.cols + col_num
                 node = expression_nodes[index]
-                print(node, node.is_vector)
                 if e.free_symbols.intersection(parameter_set):
                     expression_list.append(e)
                 else:
@@ -185,9 +184,10 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
         f"    {numpy_default_arrays}\n"
         f"    {precomputed_constants}\n"
         f"    {intermediate_substitutions}\n"
+        # f"    print({return_value})\n"
         f"    return {return_value}")
 
-    cout(function_string)
+    # cout(function_string)
     
     exec(function_string)
        

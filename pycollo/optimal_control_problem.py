@@ -1127,10 +1127,10 @@ class OptimalControlProblem():
 			p = c_continuous[:, p_slice]
 			g = c_continuous[:, g_slice]
 
-			dzeta_dy = dc_dx[dc_dx_slice.zeta_y].reshape(*dc_dx_shape.zeta_y)
-			dzeta_du = dc_dx[dc_dx_slice.zeta_u].reshape(*dc_dx_shape.zeta_u)
+			dzeta_dy = dc_dx[dc_dx_slice.zeta_y].reshape(dc_dx_shape.zeta_y)
+			dzeta_du = dc_dx[dc_dx_slice.zeta_u].reshape(dc_dx_shape.zeta_u)
 			dzeta_dt = None
-			dzeta_ds = dc_dx[dc_dx_slice.zeta_s].reshape(*dc_dx_shape.zeta_s)
+			dzeta_ds = dc_dx[dc_dx_slice.zeta_s].reshape(dc_dx_shape.zeta_s)
 			dgamma_dy = dc_dx[dc_dx_slice.gamma_y].reshape(*dc_dx_shape.gamma_y)
 			dgamma_du = dc_dx[dc_dx_slice.gamma_u].reshape(*dc_dx_shape.gamma_u)
 			dgamma_dt = None
@@ -1192,31 +1192,40 @@ class OptimalControlProblem():
 			)
 
 		dc_dx_slice = pu.dcdxInfo(
-			zeta_y=[self._c_defect_slice, self._y_slice],
-			zeta_u=[self._c_defect_slice, self._u_slice],
-			zeta_s=[self._c_defect_slice, self._s_slice],
-			gamma_y=[self._c_path_slice, self._y_slice],
-			gamma_u=[self._c_path_slice, self._u_slice],
-			gamma_s=[self._c_path_slice, self._s_slice],
-			rho_y=[self._c_integral_slice, self._y_slice],
-			rho_u=[self._c_integral_slice, self._u_slice],
-			rho_s=[self._c_integral_slice, self._s_slice],
+			zeta_y=(self._c_defect_slice, self._y_slice),
+			zeta_u=(self._c_defect_slice, self._u_slice),
+			zeta_s=(self._c_defect_slice, self._s_slice),
+			gamma_y=(self._c_path_slice, self._y_slice),
+			gamma_u=(self._c_path_slice, self._u_slice),
+			gamma_s=(self._c_path_slice, self._s_slice),
+			rho_y=(self._c_integral_slice, self._y_slice),
+			rho_u=(self._c_integral_slice, self._u_slice),
+			rho_s=(self._c_integral_slice, self._s_slice),
 			)
 
 		if self.number_path_constraints != 0:
 			msg = ("Handle the zeros below...")
 			raise NotImplementedError(msg)
 
+		if self.number_parameter_variables:
+			zeta_s = (self.number_state_equations*self.number_parameter_variables, -1)
+			gamma_s = (self.number_path_constraints*self.number_parameter_variables, 0)
+			rho_s = (self.number_integrand_functions*self.number_parameter_variables, -1)
+		else:
+			zeta_s = (0, )
+			gamma_s = (0, )
+			rho_s = (0, )
+
 		dc_dx_shape = pu.dcdxInfo(
-			zeta_y=[self.number_state_equations*self.number_state_variables, -1],
-			zeta_u=[self.number_state_equations*self.number_control_variables, -1],
-			zeta_s=[self.number_state_equations*self.number_parameter_variables, -1],
-			gamma_y=[self.number_path_constraints*self.number_state_variables, 0],
-			gamma_u=[self.number_path_constraints*self.number_control_variables, 0],
-			gamma_s=[self.number_path_constraints*self.number_parameter_variables, 0],
-			rho_y=[self.number_integrand_functions*self.number_state_variables, -1],
-			rho_u=[self.number_integrand_functions*self.number_control_variables, -1],
-			rho_s=[self.number_integrand_functions*self.number_parameter_variables, -1],
+			zeta_y=(self.number_state_equations*self.number_state_variables, -1),
+			zeta_u=(self.number_state_equations*self.number_control_variables, -1),
+			zeta_s=zeta_s,
+			gamma_y=(self.number_path_constraints*self.number_state_variables, 0),
+			gamma_u=(self.number_path_constraints*self.number_control_variables, 0),
+			gamma_s=gamma_s,
+			rho_y=(self.number_integrand_functions*self.number_state_variables, -1),
+			rho_u=(self.number_integrand_functions*self.number_control_variables, -1),
+			rho_s=rho_s,
 			)
 
 		db_dxb_lambda = numbafy(
@@ -1273,15 +1282,21 @@ class OptimalControlProblem():
 			endpoint_index, objective_index, A, W, defect_sum_flag, 
 			integral_sum_flag):
 			
-			ddL_objective_dxbdxb = ddL_objective_dxbdxb_lambda(*x_tuple_point, 
-				sigma)
-			ddL_defect_dxdx = ddL_defect_dxdx_lambda(*x_tuple, 
+			# ddL_objective_dxbdxb = ddL_objective_dxbdxb_lambda(*x_tuple_point, 
+			# 	sigma)
+
+			cout(lagrange_defect)
+
+			ddL_defect_dxdx = ddL_dxdx_defect_lambda(*x_tuple, 
 				*lagrange_defect, N)
 			ddL_path_dxdx = ddL_path_dxdx_lambda(*x_tuple, *lagrange_path, N)
 			ddL_integral_dxdx = ddL_integral_dxdx_lambda(*x_tuple, 
 				*lagrange_integral, N)
 			ddL_endpoint_dxbdxb = ddL_endpoint_dxbdxb_lambda(*x_tuple_point, 
 				*lagrange_endpoint, N)
+
+			cout(ddL_defect_dxdx)
+			kill()
 
 			H = np.zeros(num_nonzero)
 
@@ -1296,7 +1311,8 @@ class OptimalControlProblem():
 			return H
 
 		expr_graph = self._expression_graph
-		L_syms = expr_graph.lagrange_syms
+		L_sigma = expr_graph.lagrange_syms[0]
+		L_syms = expr_graph.lagrange_syms[1:]
 
 		lagrange_syms_defect = L_syms[self._c_defect_slice]
 		lagrange_syms_defect_matrix = (lagrange_syms_defect 
@@ -1313,10 +1329,8 @@ class OptimalControlProblem():
 			precomputable_nodes=expr_graph.ddL_zeta_dxdx_precomputable,
 			dependent_tiers=expr_graph.ddL_zeta_dxdx_dependent_tiers,
 			parameters=H_defect_parameters, 
-			return_dims=2, 
+			return_dims=3, 
 			N_arg=True, 
-			# hessian='defect', 
-			# hessian_sym_set=lagrange_syms_defect_set, 
 			ocp_num_vars=self._num_vars_tuple,
 			)
 
@@ -1337,8 +1351,6 @@ class OptimalControlProblem():
 			parameters=H_integral_parameters, 
 			return_dims=2, 
 			N_arg=True, 
-			# hessian='integral', 
-			# hessian_sym_set=lagrange_syms_integral_set, 
 			ocp_num_vars=self._num_vars_tuple,
 			)
 

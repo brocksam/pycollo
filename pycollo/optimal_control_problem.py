@@ -1246,7 +1246,8 @@ class OptimalControlProblem():
 	def _compile_hessian_lagrangian(self):
 
 		def H_objective_lambda(ddL_dxbdxb):
-			H = np.empty(num_nonzero)
+			# H = np.empty(num_nonzero)
+			H = []
 			return H
 
 		def H_defect_lambda(ddL_dxdx, A, sum_flag):
@@ -1257,9 +1258,10 @@ class OptimalControlProblem():
 				else:
 					vals = np.array(A.multiply(matrix).sum(axis=0)).flatten()
 				H = np.concatenate([H, vals])
+			print(H)
 			return H
 
-		def H_path_lambda(ddL_dxdx):
+		def H_path_lambda(ddL_dxdx, num_nonzero):
 			H = np.empty(num_nonzero)
 			return H
 
@@ -1282,19 +1284,12 @@ class OptimalControlProblem():
 			num_nonzero, objective_index, defect_index, 
 			endpoint_index, A, W, defect_sum_flag):
 
-			cout(x_tuple)
-
 			ddL_objective_dxbdxb = ddL_objective_dxbdxb_lambda(*x_tuple_point, 
 				sigma, N)
 			ddL_defect_dxdx = ddL_defect_dxdx_lambda(*x_tuple, 
 				*zeta_lagrange, N)
 			# ddL_endpoint_dxbdxb = ddL_endpoint_dxbdxb_lambda(*x_tuple_point, 
 				# *lagrange, N)
-
-			cout(ddL_objective_dxbdxb)
-			cout(ddL_defect_dxdx)
-			cout(ddL_endpoint_dxdx)
-			kill()
 
 			H = np.zeros(num_nonzero)
 

@@ -527,7 +527,7 @@ class Iteration:
 			x_tuple_point = reshape_x_point(x)
 			zeta_lagrange, gamma_lagrange, rho_lagrange, beta_lagrange = reshape_lagrange(lagrange)
 			# H = self._ocp._H_lambda(x_tuple, x_tuple_point, obj_factor, lagrange_defect, lagrange_path, lagrange_integral, lagrange_endpoint, self._mesh._N, self._num_H_nonzero, H_defect_indices, H_path_indices, H_integral_indices, H_endpoint_indices, H_objective_indices, self._mesh._sA_matrix, self._mesh._W_matrix, H_defect_sum_flag, H_integral_sum_flag)
-			H = self._ocp._H_lambda(x_tuple, x_tuple_point, obj_factor, zeta_lagrange, gamma_lagrange, rho_lagrange, beta_lagrange, self._mesh._N, self._num_H_nonzero, H_objective_indices, H_defect_indices, H_endpoint_indices, self._mesh._sA_matrix, self._mesh._W_matrix)
+			H = self._ocp._H_lambda(x_tuple, x_tuple_point, obj_factor, zeta_lagrange, gamma_lagrange, rho_lagrange, beta_lagrange, self._mesh._N, self._num_H_nonzero, H_objective_indices, H_defect_indices, H_endpoint_indices, self._mesh._sA_matrix, self._mesh._W_matrix, H_defect_sum_flag)
 			return H
 
 		def hessian_structure():

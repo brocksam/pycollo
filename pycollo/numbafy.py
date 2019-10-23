@@ -10,21 +10,57 @@ import sympy as sym
 
 atan = arctan
 
-def numbafy(expression_graph=None, expression=None, expression_nodes=None, precomputable_nodes=None, dependent_tiers=None, parameters=None, return_dims=None, return_flat=False, N_arg=False, endpoint=False, hessian=None, hessian_sym_set=None, ocp_num_vars=None):
+def numbafy(expression_graph=None, expression=None, expression_nodes=None, precomputable_nodes=None, dependent_tiers=None, parameters=None, lagrange_parameters=None, return_dims=None, return_flat=False, N_arg=False, endpoint=False, hessian=None, hessian_sym_set=None, ocp_num_vars=None):
 
     def grouper(iterable, n):
         args = [iter(iterable)] * n
         return itertools.zip_longest(*args)
 
-    # cout(expression)
-    # cout(precomputable_nodes)
-    # cout(dependent_tiers)
-    # cout(parameters)
+    def expand_to_array(e, node):
+        if e is zero_sym:
+            e_entry = f'_np_zeros_array_N'
+        elif e is one_sym:
+            e_entry = f'_np_ones_array_N'
+        elif node.is_vector:
+            e_entry = f'{e}'
+        else:
+            e_entry = f'({e})*np.ones(_N)'
+        return e_entry
+
+    def build_single_lagrange_matrix_2D(expression, expression_nodes):
+
+        expression_rows = []
+        for row_num in range(expression.rows):
+            expression_list = []
+            row = expression.row(row_num)
+            for col_num, e, in enumerate(row):
+                index = row_num*expression.cols + col_num
+                node = expression_nodes[index]
+                if endpoint:
+                    e_entry = f'{e}'
+                else:
+                    e_entry = expand_to_array(e, node)
+                expression_list.append(e_entry)
+            expression_row = ', '.join(f'{e}' for e in expression_list)
+            expression_rows.append(f"np.array([{expression_row}])")
+        expression_string = ', '.join(f'{e}' for e in expression_rows)
+        return_value = f'np.array([{expression_string}])'
+
+        return return_value
 
     if parameters:
         function_arguments = ', '.join(f'{p}' 
             for p in parameters)
-        if N_arg is True:
+        if lagrange_parameters:
+            try:
+                iter(lagrange_parameters)
+            except TypeError:
+                function_arguments += f', {lagrange_parameters}'
+            else:
+                function_arguments += ', '
+                function_arguments += ', '.join(f'{L}' 
+                    for L in lagrange_parameters)
+        if N_arg:
             function_arguments += ', _N'
             numpy_default_arrays = ("_np_zeros_array_N = np.zeros(_N)\n"
                 "    _np_ones_array_N = np.ones(_N)")
@@ -55,7 +91,19 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
     zero_sym = expression_graph._zero_node.symbol
     one_sym = expression_graph._one_node.symbol
 
-    if return_dims is None:
+    if lagrange_parameters:
+
+        if not isinstance(expression, list):
+            return_value = build_single_lagrange_matrix_2D(expression, expression_nodes)
+        else:
+            sum_arguments = []
+            for expression_matrix, expression_matrix_nodes, L_sym in zip(expression, expression_nodes, lagrange_parameters):
+                expr_mat = build_single_lagrange_matrix_2D(expression_matrix, expression_matrix_nodes)
+                sum_arguments.append(f"{expr_mat}")
+                sum_argument = ', '.join(sum_arguments)
+            return_value = f'np.array([{sum_argument}])'
+
+    elif return_dims is None:
         return_value = f'{expression}'
 
     elif return_dims == 1:
@@ -69,7 +117,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             y_tuple = []
             for y_t0, y_tF in grouper(expression[:yu_qts_endpoint_split], 2):
                 if y_t0 == zero_sym and y_tF == zero_sym:
-                    to_append = 'np.zeros(_N)'
+                    to_append = '_np_zeros_array_N'
                 elif y_t0 == zero_sym:
                     to_append = (f'np.hstack((np.zeros(_N-1), {y_tF}))')
                 elif y_tF == zero_sym:
@@ -80,7 +128,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 
             y_str = ', '.join(f'{e}' for e in y_tuple)
 
-            u_str = ', '.join(f'np.zeros(_N)' for i in range(ocp_num_vars[1]))
+            u_str = ', '.join(f'_np_zeros_array_N' for i in range(ocp_num_vars[1]))
 
             qts_str = ', '.join(f'{e}' for e in expression[yu_qts_endpoint_split:])
 
@@ -115,7 +163,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
                     if node.is_vector:
                         e_entry = f'{e}'
                     else:
-                        e_entry = f'({e})*np.ones(_N)'
+                        e_entry = f'({e})*_np_ones_array_N'
                     if return_flat:
                         raise NotImplementedError
                         e_entry = f'{e_entry}.flatten()'
@@ -132,6 +180,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             return_value = f'np.array([{expression_string}])'
 
     elif return_dims == 3:
+
         expression_rows = []
         for row_num in range(expression.rows):
             expression_list = []
@@ -187,7 +236,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
         # f"    print({return_value})\n"
         f"    return {return_value}")
 
-    # cout(function_string)
+    cout(function_string)
     
     exec(function_string)
        

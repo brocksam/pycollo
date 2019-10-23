@@ -1280,7 +1280,7 @@ class OptimalControlProblem():
 		def H_lambda(x_tuple, x_tuple_point, sigma, zeta_lagrange, 
 			gamma_lagrange, rho_lagrange, beta_lagrange, N, 
 			num_nonzero, objective_index, defect_index, 
-			endpoint_index, A, W):
+			endpoint_index, A, W, defect_sum_flag):
 
 			cout(x_tuple)
 
@@ -1288,11 +1288,11 @@ class OptimalControlProblem():
 				sigma, N)
 			ddL_defect_dxdx = ddL_defect_dxdx_lambda(*x_tuple, 
 				*zeta_lagrange, N)
-			ddL_endpoint_dxbdxb = ddL_endpoint_dxbdxb_lambda(*x_tuple_point, 
-				*lagrange, N)
+			# ddL_endpoint_dxbdxb = ddL_endpoint_dxbdxb_lambda(*x_tuple_point, 
+				# *lagrange, N)
 
-			cout(ddL_objective_dxdx)
-			cout(ddL_continuous_dxdx)
+			cout(ddL_objective_dxbdxb)
+			cout(ddL_defect_dxdx)
 			cout(ddL_endpoint_dxdx)
 			kill()
 

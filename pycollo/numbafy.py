@@ -17,7 +17,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
         return itertools.zip_longest(*args)
 
     def expand_to_array(e, node):
-        if e is zero_sym:
+        if e is zero_sym or e == 0:
             e_entry = f'_np_zeros_array_N'
         elif e is one_sym:
             e_entry = f'_np_ones_array_N'
@@ -27,7 +27,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             e_entry = f'({e})*np.ones(_N)'
         return e_entry
 
-    def build_single_lagrange_matrix_2D(expression, expression_nodes):
+    def build_objective_lagrange_matrix(expression, expression_nodes):
 
         expression_rows = []
         for row_num in range(expression.rows):
@@ -36,10 +36,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             for col_num, e, in enumerate(row):
                 index = row_num*expression.cols + col_num
                 node = expression_nodes[index]
-                if endpoint:
-                    e_entry = f'{e}'
-                else:
-                    e_entry = expand_to_array(e, node)
+                e_entry = f'{e}'
                 expression_list.append(e_entry)
             expression_row = ', '.join(f'{e}' for e in expression_list)
             expression_rows.append(f"np.array([{expression_row}])")
@@ -47,6 +44,17 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
         return_value = f'np.array([{expression_string}])'
 
         return return_value
+
+    def build_defect_lagrange_matrix(expression, expression_nodes, L_sym):
+
+        expressions = []
+        for expr, node in zip(expression, expression_nodes):
+            e_entry = expand_to_array(expr, node)
+            print(e_entry)
+            expressions.append(f"np.outer({L_sym}, {e_entry})")
+        return_value = ', '.join(outer for outer in expressions)
+        return return_value
+
 
     if parameters:
         function_arguments = ', '.join(f'{p}' 
@@ -94,14 +102,14 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
     if lagrange_parameters:
 
         if not isinstance(expression, list):
-            return_value = build_single_lagrange_matrix_2D(expression, expression_nodes)
+            return_value = build_objective_lagrange_matrix(expression, expression_nodes)
         else:
-            sum_arguments = []
+            array_arguments = []
             for expression_matrix, expression_matrix_nodes, L_sym in zip(expression, expression_nodes, lagrange_parameters):
-                expr_mat = build_single_lagrange_matrix_2D(expression_matrix, expression_matrix_nodes)
-                sum_arguments.append(f"{expr_mat}")
-                sum_argument = ', '.join(sum_arguments)
-            return_value = f'np.array([{sum_argument}])'
+                expr_mat = build_defect_lagrange_matrix(expression_matrix, expression_matrix_nodes, L_sym)
+                array_arguments.append(expr_mat)
+                array_argument = ', '.join(array_arguments)
+            return_value = f'np.array([{array_argument}])'
 
     elif return_dims is None:
         return_value = f'{expression}'

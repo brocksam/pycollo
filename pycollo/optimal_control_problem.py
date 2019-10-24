@@ -1267,7 +1267,6 @@ class OptimalControlProblem():
 		def H_integral_lambda(ddL_dxdx, W, sum_flag):
 			H = np.array([])
 			for row, flag in zip(ddL_dxdx, sum_flag):
-				print(flag)
 				if flag:
 					vals = np.array([-np.dot(W, row)])
 				else:

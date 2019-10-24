@@ -478,29 +478,29 @@ class Iteration:
 			H_endpoint_nonzero_col = []
 			col_numbers = []
 
-			# YY
-			for i_yb in range(self._ocp._num_y_vars):
-				row_number = self._mesh._N * i_yb
-				H_endpoint_nonzero_row.extend([row_number]*(2*i_yb+1))
-				col_numbers.append(row_number)
-				H_endpoint_nonzero_col.extend(col_numbers)
-				row_number = self._mesh._N * (i_yb + 1) - 1
-				H_endpoint_nonzero_row.extend([row_number]*(2*i_yb+2))
-				col_numbers.append(row_number)
-				H_endpoint_nonzero_col.extend(col_numbers)
+			# # YY
+			# for i_yb in range(self._ocp._num_y_vars):
+			# 	row_number = self._mesh._N * i_yb
+			# 	H_endpoint_nonzero_row.extend([row_number]*(2*i_yb+1))
+			# 	col_numbers.append(row_number)
+			# 	H_endpoint_nonzero_col.extend(col_numbers)
+			# 	row_number = self._mesh._N * (i_yb + 1) - 1
+			# 	H_endpoint_nonzero_row.extend([row_number]*(2*i_yb+2))
+			# 	col_numbers.append(row_number)
+			# 	H_endpoint_nonzero_col.extend(col_numbers)
 
-			# QY, QQ, TY, TQ, TT, SY, SQ, ST, SS
-			for i_qts in range(self._ocp._num_q_vars + self._ocp._num_t_vars + self._ocp._num_s_vars):
-				row_number = self._num_y + self._num_u + i_qts
-				col_numbers.append(row_number)
-				H_endpoint_nonzero_row.extend([row_number]*len(col_numbers))
-				H_endpoint_nonzero_col.extend(col_numbers)
+			# # QY, QQ, TY, TQ, TT, SY, SQ, ST, SS
+			# for i_qts in range(self._ocp._num_q_vars + self._ocp._num_t_vars + self._ocp._num_s_vars):
+			# 	row_number = self._num_y + self._num_u + i_qts
+			# 	col_numbers.append(row_number)
+			# 	H_endpoint_nonzero_row.extend([row_number]*len(col_numbers))
+			# 	H_endpoint_nonzero_col.extend(col_numbers)
 
 			num_H_endpoint_nonzero = len(H_endpoint_nonzero_row)
 			sH_endpoint_matrix = sparse.coo_matrix(([1]*num_H_endpoint_nonzero, (H_endpoint_nonzero_row, H_endpoint_nonzero_col)), shape=(self._num_x, self._num_x))
 			sH_endpoint_indices = list(zip(sH_endpoint_matrix.row, sH_endpoint_matrix.col))
 
-			sH_matrix = (sH_objective_matrix + sH_defect_matrix + sH_endpoint_matrix).tocoo()
+			sH_matrix = (sH_objective_matrix + sH_defect_matrix + sH_path_matrix + sH_integral_matrix + sH_endpoint_matrix).tocoo()
 			sH_indices = list(zip(sH_matrix.row, sH_matrix.col))
 
 			H_objective_indices = []

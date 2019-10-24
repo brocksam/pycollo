@@ -21,8 +21,8 @@ if True:
 
 	# Optimal Control Problem
 	mesh = pycollo.Mesh(mesh_sections=2, mesh_section_fractions=None, mesh_collocation_points=[2, 3])
-	# problem = pycollo.OptimalControlProblem(state_variables=[y0, y1], control_variables=[u0], parameter_variables=[m0, p0], initial_mesh=mesh)
-	problem = pycollo.OptimalControlProblem(state_variables=[y0, y1], control_variables=[u0], initial_mesh=mesh)
+	problem = pycollo.OptimalControlProblem(state_variables=[y0, y1], control_variables=[u0], parameter_variables=[m0, p0], initial_mesh=mesh)
+	# problem = pycollo.OptimalControlProblem(state_variables=[y0, y1], control_variables=[u0], initial_mesh=mesh)
 
 	# State equations
 	problem.state_equations = [y1, (g*m0*p0*sym.cos(y0) + (((T0min + T0max)/2) + u0*(T0max - T0min)))/(m0*(k0**2 + p0**2))]
@@ -40,8 +40,8 @@ if True:
 		problem.final_state[1]]
 
 	# Bounds
-	# problem.bounds = pycollo.Bounds(optimal_control_problem=problem, initial_time=0, final_time=[1, final_time], state=[[-np.pi, np.pi], [-10, 10]], control=[[-0.5, 0.5]], integral=[0, 1000], parameter=[[0.5, 1.5], [0.5, 1.5]], state_endpoint=[[-np.pi/2, -np.pi/2], [0, 0], [np.pi/2, np.pi/2], [0, 0]])
-	problem.bounds = pycollo.Bounds(optimal_control_problem=problem, initial_time=0, final_time=[1, final_time], state=[[-np.pi, np.pi], [-10, 10]], control=[[-0.5, 0.5]], integral=[0, 1000], state_endpoint=[[-np.pi/2, -np.pi/2], [0, 0], [np.pi/2, np.pi/2], [0, 0]])
+	problem.bounds = pycollo.Bounds(optimal_control_problem=problem, initial_time=0, final_time=[1, final_time], state=[[-np.pi, np.pi], [-10, 10]], control=[[-0.5, 0.5]], integral=[0, 1000], parameter=[[0.5, 1.5], [0.5, 1.5]], state_endpoint=[[-np.pi/2, -np.pi/2], [0, 0], [np.pi/2, np.pi/2], [0, 0]])
+	# problem.bounds = pycollo.Bounds(optimal_control_problem=problem, initial_time=0, final_time=[1, final_time], state=[[-np.pi, np.pi], [-10, 10]], control=[[-0.5, 0.5]], integral=[0, 1000], state_endpoint=[[-np.pi/2, -np.pi/2], [0, 0], [np.pi/2, np.pi/2], [0, 0]])
 
 	# Guess
 	problem.initial_guess = pycollo.Guess(optimal_control_problem=problem, time=[0, final_time], state=[[-np.pi/2, np.pi/2], [0, 0]], control=[0.01, 0.01], integral=[100], state_endpoints_override=True)

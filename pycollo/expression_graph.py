@@ -200,6 +200,7 @@ class ExpressionGraph:
 				completion_msg='Hessian of the objective Lagrangian')
 
 		def form_defect(L_defect):
+			print(L_defect)
 			self.ddL_zeta_dxdx = []
 			self.ddL_zeta_dxdx_nodes = []
 			self.ddL_zeta_dxdx_precomputable = set()
@@ -254,6 +255,7 @@ class ExpressionGraph:
 				for ddL_zeta_dxdx in self.ddL_zeta_dxdx]
 			self.ddL_dxbdxb_b = [make_lower_triangular(ddL_b_dxbdxb)
 				for ddL_b_dxbdxb in self.ddL_b_dxbdxb]
+			print(self.ddL_zeta_dxdx)
 
 		form_function_and_derivative = functools.partial(
 			self._form_function_and_derivative, order=2, init_func=False)
@@ -297,8 +299,11 @@ class ExpressionGraph:
 		# form_integral(L_integral)
 		# form_endpoint(L_endpoint)
 
+		L_defect_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
+			for l, c in zip(L_syms[c_defect_slice], self.c[c_defect_slice])))
+
 		form_objective(sigma * self.J)
-		form_defect(self._stretch_node.symbol * sym.Matrix(self.c[c_defect_slice]))
+		form_defect(L_defect_terms)
 		form_endpoint(self.b)
 
 		make_L_matrices_lower_triangular()
@@ -331,8 +336,6 @@ class ExpressionGraph:
 
 		init_args = self._initialise_function(func)
 
-		# print(init_args)
-
 		if init_func is True:
 			self = add_to_namespace(self, init_args, func_abrv)
 
@@ -346,7 +349,6 @@ class ExpressionGraph:
 			self = add_to_namespace(self, init_args, deriv_abrv)
 
 		completion_msg = f"Symbolic {completion_msg} calculated."
-		print(completion_msg)
 
 	def _initialise_function(self, expr):
 

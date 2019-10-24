@@ -628,7 +628,7 @@ class Iteration:
 		# ========================================================
 		# JACOBIAN CHECK
 		# ========================================================
-		if True:
+		if False:
 			print('\n\n\n')
 			x_data = np.array(range(self._num_x), dtype=float)
 			lagrange = np.array(range(self._num_c), dtype=float)
@@ -885,7 +885,7 @@ class Solution:
 
 	def _process_ipopt_solution(self):
 		self._y = self._x[self._it._y_slice].reshape(self._ocp._num_y_vars, -1) if self._ocp._num_y_vars else []
-		self._dy = self._ocp._dy_lambda(*self._it._reshape_x(self._x), self._mesh._N) if self._ocp._num_y_vars else []
+		self._dy = self._ocp._c_continuous_lambda(*self._it._reshape_x(self._x), self._mesh._N)[:, self._it._c_lambda_dy_slice].reshape((-1, self._mesh._N)) if self._ocp._num_y_vars else []
 		self._u = self._x[self._it._u_slice].reshape(self._ocp._num_u_vars, -1) if self._ocp._num_u_vars else []
 		self._q = self._x[self._it._q_slice]
 		self._t = self._x[self._it._t_slice]
@@ -1083,12 +1083,6 @@ class Solution:
 			mesh_collocation_points=(self._mesh._mesh_col_points+1))
 		ph_mesh._generate_mesh()
 
-		# ph_mesh = Mesh(optimal_control_problem=self._ocp,
-		# 	mesh_sections=self._mesh._K,
-		# 	mesh_section_fractions=None,
-		# 	mesh_collocation_points=2)
-		# ph_mesh._generate_mesh()
-
 		y_tilde = np.zeros((self._ocp._num_y_vars, ph_mesh._N))
 		y_tilde[:, ph_mesh._mesh_index_boundaries] = self._y[:, self._mesh._mesh_index_boundaries]
 		y_tilde = eval_polynomials(self._y_polys, ph_mesh, y_tilde)
@@ -1100,7 +1094,7 @@ class Solution:
 		else:
 			u_tilde = np.array([])
 
-		dy_tilde = self._ocp._dy_lambda(*y_tilde, *u_tilde, *self._q, *self._t, *self._s, ph_mesh._N)
+		dy_tilde = self._ocp._c_continuous_lambda(*y_tilde, *u_tilde, *self._q, *self._t, *self._s, ph_mesh._N)[:, :self._ocp._num_y_vars*ph_mesh._N].reshape(-1, ph_mesh._N)
 
 		stretch = 0.5 * (self._tF - self._t0)
 		A_dy_tilde = stretch*ph_mesh._sA_matrix.dot(dy_tilde.T)

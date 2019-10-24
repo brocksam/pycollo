@@ -1258,7 +1258,6 @@ class OptimalControlProblem():
 				else:
 					vals = np.array(A.multiply(matrix).sum(axis=0)).flatten()
 				H = np.concatenate([H, vals])
-			print(H)
 			return H
 
 		def H_path_lambda(ddL_dxdx, num_nonzero):
@@ -1268,10 +1267,11 @@ class OptimalControlProblem():
 		def H_integral_lambda(ddL_dxdx, W, sum_flag):
 			H = np.array([])
 			for row, flag in zip(ddL_dxdx, sum_flag):
+				print(flag)
 				if flag:
 					vals = np.array([-np.dot(W, row)])
 				else:
-					vals = -np.multiply(W, row)
+					vals = -np.multiply(W, row).flatten()
 				H = np.concatenate([H, vals])
 			return H
 
@@ -1280,28 +1280,28 @@ class OptimalControlProblem():
 			return H
 
 		def H_lambda(x_tuple, x_tuple_point, sigma, zeta_lagrange, 
-			gamma_lagrange, rho_lagrange, beta_lagrange, N, 
-			num_nonzero, objective_index, defect_index, 
-			endpoint_index, A, W, defect_sum_flag):
+			gamma_lagrange, rho_lagrange, beta_lagrange, N, num_nonzero, 
+			objective_index, defect_index, path_index, integral_index,
+			endpoint_index, A, W, defect_sum_flag, integral_sum_flag):
 
 			ddL_objective_dxbdxb = ddL_objective_dxbdxb_lambda(*x_tuple_point, 
 				sigma, N)
 			ddL_defect_dxdx = ddL_defect_dxdx_lambda(*x_tuple, 
 				*zeta_lagrange, N)
+			ddL_integral_dxdx = ddL_integral_dxdx_lambda(*x_tuple,
+				*rho_lagrange, N)
 			# ddL_endpoint_dxbdxb = ddL_endpoint_dxbdxb_lambda(*x_tuple_point, 
 				# *lagrange, N)
-
-			cout(ddL_defect_dxdx)
 
 			H = np.zeros(num_nonzero)
 
 			H[objective_index] = H_objective_lambda(ddL_objective_dxbdxb)
 			H[defect_index] += H_defect_lambda(ddL_defect_dxdx, A, 
 				defect_sum_flag)
-			H[path_index] += H_path_lambda(ddL_path_dxdx)
+			# H[path_index] += H_path_lambda(ddL_path_dxdx)
 			H[integral_index] += H_integral_lambda(ddL_integral_dxdx, W, 
 				integral_sum_flag)
-			H[endpoint_index] += H_endpoint_lambda(ddL_endpoint_dxbdxb)
+			# H[endpoint_index] += H_endpoint_lambda(ddL_endpoint_dxbdxb)
 
 			return H
 
@@ -1336,6 +1336,19 @@ class OptimalControlProblem():
 			ocp_num_vars=self._num_vars_tuple,
 			)
 
+		ddL_integral_dxdx_lambda = numbafy(
+			expression_graph=expr_graph,
+			expression=expr_graph.ddL_rho_dxdx,
+			expression_nodes=expr_graph.ddL_rho_dxdx_nodes,
+			precomputable_nodes=expr_graph.ddL_rho_dxdx_precomputable,
+			dependent_tiers=expr_graph.ddL_rho_dxdx_dependent_tiers,
+			parameters=self._x_vars,
+			lagrange_parameters=L_syms[self._c_integral_slice],
+			return_dims=2,
+			N_arg=True,
+			ocp_num_vars=self._num_vars_tuple,
+			)
+
 		# ddL_endpoint_dxbdxb_lambda = numbafy(
 		# 	expression_graph=expr_graph,
 		# 	expression=expr_graph.ddL_b_dxbdxb,
@@ -1350,48 +1363,10 @@ class OptimalControlProblem():
 		# 	ocp_num_vars=self._num_vars_tuple,
 		# 	)
 
-		ocp_defect_slice = self._c_continuous_slice
-		# ocp_endpoint_slice = self._c_endpoint_slice
-
-		# lagrange_syms_defect = L_syms[self._c_defect_slice]
-		# lagrange_syms_defect_matrix = (lagrange_syms_defect 
-		# 	if isinstance(lagrange_syms_defect, sym.Matrix) 
-		# 	else sym.Matrix([lagrange_syms_defect]))
-		# lagrange_syms_defect_set = OrderedSet(lagrange_syms_defect)
-		# H_defect_parameters = sym.Matrix([self._x_vars, 
-		# 	lagrange_syms_defect_matrix.T])
-
-		# ddL_dxdx_defect_lambda = numbafy(
-		# 	expression_graph=expr_graph,
-		# 	expression=expr_graph.ddL_zeta_dxdx,
-		# 	expression_nodes=expr_graph.ddL_zeta_dxdx_nodes,
-		# 	precomputable_nodes=expr_graph.ddL_zeta_dxdx_precomputable,
-		# 	dependent_tiers=expr_graph.ddL_zeta_dxdx_dependent_tiers,
-		# 	parameters=H_defect_parameters, 
-		# 	return_dims=3, 
-		# 	N_arg=True, 
-		# 	ocp_num_vars=self._num_vars_tuple,
-		# 	)
-
-		# lagrange_syms_integral = L_syms[self._c_integral_slice]
-		# lagrange_syms_integral_matrix = (lagrange_syms_integral 
-		# 	if isinstance(lagrange_syms_integral, sym.Matrix) 
-		# 	else sym.Matrix([lagrange_syms_integral]))
-		# lagrange_syms_integral_set = OrderedSet(lagrange_syms_integral)
-		# H_integral_parameters = sym.Matrix([self._x_vars, 
-		# 	lagrange_syms_integral_matrix.T])
-
-		# ddL_dxdx_integral_lambda = numbafy(
-		# 	expression_graph=expr_graph,
-		# 	expression=expr_graph.ddL_rho_dxdx,
-		# 	expression_nodes=expr_graph.ddL_rho_dxdx_nodes,
-		# 	precomputable_nodes=expr_graph.ddL_rho_dxdx_precomputable,
-		# 	dependent_tiers=expr_graph.ddL_rho_dxdx_dependent_tiers,
-		# 	parameters=H_integral_parameters, 
-		# 	return_dims=2, 
-		# 	N_arg=True, 
-		# 	ocp_num_vars=self._num_vars_tuple,
-		# 	)
+		ocp_defect_slice = self._c_defect_slice
+		ocp_path_slice = self._c_path_slice
+		ocp_integral_slice = self._c_integral_slice
+		ocp_endpoint_slice = self._c_endpoint_slice
 
 		self._H_lambda = H_lambda
 		print('Hessian function compiled.')

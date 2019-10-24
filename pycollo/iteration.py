@@ -397,6 +397,82 @@ class Iteration:
 			sH_defect_matrix = sparse.coo_matrix(([1]*num_H_defect_nonzero, (H_defect_nonzero_row, H_defect_nonzero_col)), shape=(self._num_x, self._num_x))
 			sH_defect_indices = list(zip(sH_defect_matrix.row, sH_defect_matrix.col))
 
+			# Hessian path
+			H_path_nonzero_row = []
+			H_path_nonzero_col = []
+			H_path_sum_flag = []
+
+			try:
+				ddL_gamma_dxdx_nonzero = self._ocp._expression_graph.ddL_gamma_dxdx[0]
+			except IndexError:
+				ddL_gamma_dxdx_nonzero = sym.zeros(*ddL_zeta_dxdx_nonzero.shape)
+			else:
+				for matrix in self._ocp._expression_graph.ddL_gamma_dxdx[1:]:
+					ddL_gamma_dxdx_nonzero += matrix
+			
+			for i_row in range(self._ocp._num_vars):
+				row = ddL_gamma_dxdx_nonzero[i_row, :i_row+1]
+				if i_row < self._ocp._yu_qts_split:
+					row_offset = i_row * self._mesh._N
+					row_numbers = list(range(row_offset, row_offset + self._mesh._N))
+				else:
+					row_offset = self._ocp._yu_qts_split * (self._mesh._N - 1) + i_row
+					row_numbers = [row_offset]*self._mesh._N
+				for i_col, entry in enumerate(row):
+					entry = entry.subs({self._ocp._expression_graph._zero_node.symbol: 0})
+					if entry != 0:
+						if i_col < self._ocp._yu_qts_split:
+							col_offset = i_col * self._mesh._N
+							col_numbers = list(range(col_offset, col_offset + self._mesh._N))
+							H_path_sum_flag.append(False)
+						else:
+							col_offset = self._ocp._yu_qts_split* (self._mesh._N - 1) + i_col
+							row_numbers = [row_offset]
+							col_numbers = [col_offset]
+							H_path_sum_flag.append(True)
+						H_path_nonzero_row.extend(row_numbers)
+						H_path_nonzero_col.extend(col_numbers)
+
+			num_H_path_nonzero = len(H_path_nonzero_row)
+			sH_path_matrix = sparse.coo_matrix(([1]*num_H_path_nonzero, (H_path_nonzero_row, H_path_nonzero_col)), shape=(self._num_x, self._num_x))
+			sH_path_indices = list(zip(sH_path_matrix.row, sH_path_matrix.col))
+
+			# Hessian integral
+			H_integral_nonzero_row = []
+			H_integral_nonzero_col = []
+			H_integral_sum_flag = []
+
+			ddL_rho_dxdx_nonzero = self._ocp._expression_graph.ddL_rho_dxdx[0]
+			for matrix in self._ocp._expression_graph.ddL_rho_dxdx[1:]:
+				ddL_rho_dxdx_nonzero += matrix
+			
+			for i_row in range(self._ocp._num_vars):
+				row = ddL_rho_dxdx_nonzero[i_row, :i_row+1]
+				if i_row < self._ocp._yu_qts_split:
+					row_offset = i_row * self._mesh._N
+					row_numbers = list(range(row_offset, row_offset + self._mesh._N))
+				else:
+					row_offset = self._ocp._yu_qts_split * (self._mesh._N - 1) + i_row
+					row_numbers = [row_offset]*self._mesh._N
+				for i_col, entry in enumerate(row):
+					entry = entry.subs({self._ocp._expression_graph._zero_node.symbol: 0})
+					if entry != 0:
+						if i_col < self._ocp._yu_qts_split:
+							col_offset = i_col * self._mesh._N
+							col_numbers = list(range(col_offset, col_offset + self._mesh._N))
+							H_integral_sum_flag.append(False)
+						else:
+							col_offset = self._ocp._yu_qts_split* (self._mesh._N - 1) + i_col
+							row_numbers = [row_offset]
+							col_numbers = [col_offset]
+							H_integral_sum_flag.append(True)
+						H_integral_nonzero_row.extend(row_numbers)
+						H_integral_nonzero_col.extend(col_numbers)
+
+			num_H_integral_nonzero = len(H_integral_nonzero_row)
+			sH_integral_matrix = sparse.coo_matrix(([1]*num_H_integral_nonzero, (H_integral_nonzero_row, H_integral_nonzero_col)), shape=(self._num_x, self._num_x))
+			sH_integral_indices = list(zip(sH_integral_matrix.row, sH_integral_matrix.col))
+
 			# Hessian endpoint
 			H_endpoint_nonzero_row = []
 			H_endpoint_nonzero_col = []
@@ -429,12 +505,18 @@ class Iteration:
 
 			H_objective_indices = []
 			H_defect_indices = []
+			H_path_indices = []
+			H_integral_indices = []
 			H_endpoint_indices = []
 			for i, pair in enumerate(sH_indices):
 				if pair in sH_objective_indices:
 					H_objective_indices.append(i)
 				if pair in sH_defect_indices:
 					H_defect_indices.append(i)
+				if pair in sH_path_indices:
+					H_path_indices.append(i)
+				if pair in sH_integral_indices:
+					H_integral_indices.append(i)
 				if pair in sH_endpoint_indices:
 					H_endpoint_indices.append(i)
 
@@ -527,7 +609,7 @@ class Iteration:
 			x_tuple_point = reshape_x_point(x)
 			zeta_lagrange, gamma_lagrange, rho_lagrange, beta_lagrange = reshape_lagrange(lagrange)
 			# H = self._ocp._H_lambda(x_tuple, x_tuple_point, obj_factor, lagrange_defect, lagrange_path, lagrange_integral, lagrange_endpoint, self._mesh._N, self._num_H_nonzero, H_defect_indices, H_path_indices, H_integral_indices, H_endpoint_indices, H_objective_indices, self._mesh._sA_matrix, self._mesh._W_matrix, H_defect_sum_flag, H_integral_sum_flag)
-			H = self._ocp._H_lambda(x_tuple, x_tuple_point, obj_factor, zeta_lagrange, gamma_lagrange, rho_lagrange, beta_lagrange, self._mesh._N, self._num_H_nonzero, H_objective_indices, H_defect_indices, H_endpoint_indices, self._mesh._sA_matrix, self._mesh._W_matrix, H_defect_sum_flag)
+			H = self._ocp._H_lambda(x_tuple, x_tuple_point, obj_factor, zeta_lagrange, gamma_lagrange, rho_lagrange, beta_lagrange, self._mesh._N, self._num_H_nonzero, H_objective_indices, H_defect_indices, H_path_indices, H_integral_indices, H_endpoint_indices, self._mesh._sA_matrix, self._mesh._W_matrix, H_defect_sum_flag, H_integral_sum_flag)
 			return H
 
 		def hessian_structure():

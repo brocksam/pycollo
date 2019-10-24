@@ -169,38 +169,12 @@ class ExpressionGraph:
 
 	def _form_lagrangian_and_derivatives(self):
 
-		# def form_objective(L_J):
-		# 	form_function_and_derivative(func=L_J,
-		# 		wrt=self._endpoint_variable_nodes, func_abrv='L_J',
-		# 		completion_msg='Hessian of the objective Lagrangian')
-
-		# def form_defect(L_zeta):
-		# 	form_function_and_derivative(func=L_zeta,
-		# 		wrt=self._continuous_variable_nodes, func_abrv='L_zeta',
-		# 		completion_msg='Hessian of the defect Lagrangian')
-
-		# def form_path(L_gamma):
-		# 	form_function_and_derivative(func=L_gamma,
-		# 		wrt=self._continuous_variable_nodes, func_abrv='L_gamma',
-		# 		completion_msg='Hessian of the path Lagrangian')
-
-		# def form_integral(L_rho):
-		# 	form_function_and_derivative(func=L_rho,
-		# 		wrt=self._continuous_variable_nodes, func_abrv='L_rho',
-		# 		completion_msg='Hessian of the integral Lagrangian')
-
-		# def form_endpoint(L_beta):
-		# 	form_function_and_derivative(func=L_beta,
-		# 		wrt=self._endpoint_variable_nodes, func_abrv='L_beta',
-		# 		completion_msg='Hessian of the endpoint Lagrangian')
-
 		def form_objective(L_J):
 			form_function_and_derivative(func=L_J,
 				wrt=self._endpoint_variable_nodes, func_abrv='L_J',
 				completion_msg='Hessian of the objective Lagrangian')
 
 		def form_defect(L_defect):
-			print(L_defect)
 			self.ddL_zeta_dxdx = []
 			self.ddL_zeta_dxdx_nodes = []
 			self.ddL_zeta_dxdx_precomputable = set()
@@ -218,6 +192,44 @@ class ExpressionGraph:
 						self.ddL_zeta_dxdx_dependent_tiers[tier].update(nodes)
 					except KeyError:
 						self.ddL_zeta_dxdx_dependent_tiers[tier] = nodes
+
+		def form_path(L_path):
+			self.ddL_gamma_dxdx = []
+			self.ddL_gamma_dxdx_nodes = []
+			self.ddL_gamma_dxdx_precomputable = set()
+			self.ddL_gamma_dxdx_dependent_tiers = {}
+			for i, L_gamma in enumerate(L_path):
+				form_function_and_derivative(func=L_gamma,
+					wrt=self._continuous_variable_nodes, func_abrv='L_gamma_temp',
+					completion_msg=f'Hessian of the path Lagrangian #{i}')
+				self.ddL_gamma_dxdx.append(self.ddL_gamma_temp_dxdx)
+				self.ddL_gamma_dxdx_nodes.append(self.ddL_gamma_temp_dxdx_nodes)
+				self.ddL_gamma_dxdx_precomputable.update(
+					self.ddL_gamma_temp_dxdx_precomputable)
+				for tier, nodes in self.ddL_gamma_temp_dxdx_dependent_tiers.items():
+					try:
+						self.ddL_gamma_dxdx_dependent_tiers[tier].update(nodes)
+					except KeyError:
+						self.ddL_gamma_dxdx_dependent_tiers[tier] = nodes
+
+		def form_integral(L_integral):
+			self.ddL_rho_dxdx = []
+			self.ddL_rho_dxdx_nodes = []
+			self.ddL_rho_dxdx_precomputable = set()
+			self.ddL_rho_dxdx_dependent_tiers = {}
+			for i, L_rho in enumerate(L_integral):
+				form_function_and_derivative(func=L_rho,
+					wrt=self._continuous_variable_nodes, func_abrv='L_rho_temp',
+					completion_msg=f'Hessian of the integral Lagrangian #{i}')
+				self.ddL_rho_dxdx.append(self.ddL_rho_temp_dxdx)
+				self.ddL_rho_dxdx_nodes.append(self.ddL_rho_temp_dxdx_nodes)
+				self.ddL_rho_dxdx_precomputable.update(
+					self.ddL_rho_temp_dxdx_precomputable)
+				for tier, nodes in self.ddL_rho_temp_dxdx_dependent_tiers.items():
+					try:
+						self.ddL_rho_dxdx_dependent_tiers[tier].update(nodes)
+					except KeyError:
+						self.ddL_rho_dxdx_dependent_tiers[tier] = nodes
 
 		def form_endpoint(L_endpoint):
 			self.ddL_b_dxbdxb = []
@@ -244,18 +256,15 @@ class ExpressionGraph:
 			def make_lower_triangular(mat):
 				return sym.Matrix(np.tril(np.array(mat)))
 
-			# self.ddL_dxbdxb_J = make_lower_triangular(self.ddL_J_dxbdxb)
-			# self.ddL_dxdx_zeta = make_lower_triangular(self.ddL_zeta_dxdx)
-			# self.ddL_dxdx_gamma = make_lower_triangular(self.ddL_gamma_dxdx)
-			# self.ddL_dxdx_rho = make_lower_triangular(self.ddL_rho_dxdx)
-			# self.ddL_dxbdxb_beta = make_lower_triangular(self.ddL_beta_dxbdxb)
-
 			self.ddL_J_dxbdxb = make_lower_triangular(self.ddL_J_dxbdxb)
 			self.ddL_zeta_dxdx = [make_lower_triangular(ddL_zeta_dxdx) 
 				for ddL_zeta_dxdx in self.ddL_zeta_dxdx]
+			self.ddL_gamma_dxdx = [make_lower_triangular(ddL_gamma_dxdx) 
+				for ddL_gamma_dxdx in self.ddL_gamma_dxdx]
+			self.ddL_rho_dxdx = [make_lower_triangular(ddL_rho_dxdx) 
+				for ddL_rho_dxdx in self.ddL_rho_dxdx]
 			self.ddL_dxbdxb_b = [make_lower_triangular(ddL_b_dxbdxb)
 				for ddL_b_dxbdxb in self.ddL_b_dxbdxb]
-			print(self.ddL_zeta_dxdx)
 
 		form_function_and_derivative = functools.partial(
 			self._form_function_and_derivative, order=2, init_func=False)
@@ -275,36 +284,21 @@ class ExpressionGraph:
 		c_integral_slice = self.ocp._c_integral_slice
 		c_endpoint_slice = self.ocp._c_boundary_slice
 
-		# L_objective = sigma*self.J
-		
-		# L_defect_terms = tuple(self.ocp._STRETCH*l*c 
-		# 	for l, c in zip(L_syms[c_defect_slice], self.c[c_defect_slice]))
-		# L_defect = sum(L_defect_terms, sym.sympify(0))
-
-		# L_path_terms = tuple(self.ocp._STRETCH*l*c 
-		# 	for l, c in zip(L_syms[c_path_slice], self.c[c_path_slice]))
-		# L_path = sum(L_path_terms, sym.sympify(0))
-
-		# L_integral_terms = tuple(self.ocp._STRETCH*l*c 
-		# 	for l, c in zip(L_syms[c_integral_slice], self.c[c_integral_slice]))
-		# L_integral = sum(L_integral_terms, sym.sympify(0))
-
-		# L_endpoint_terms = tuple(b*l 
-		# 	for l, b in zip(L_syms[c_endpoint_slice], self.b))
-		# L_endpoint = sum(L_endpoint_terms, sym.sympify(0))
-
-		# form_objective(L_objective)
-		# form_defect(L_defect)
-		# form_path(L_path)
-		# form_integral(L_integral)
-		# form_endpoint(L_endpoint)
-
+		L_objective = sigma * self.J
 		L_defect_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
-			for l, c in zip(L_syms[c_defect_slice], self.c[c_defect_slice])))
+			for c in self.c[c_defect_slice]))
+		L_path_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
+			for c in self.c[c_path_slice]))
+		L_integral_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
+			for c in self.c[c_integral_slice]))
+		L_endpoint_terms = sym.Matrix(tuple(b 
+			for b in self.c[c_endpoint_slice]))
 
-		form_objective(sigma * self.J)
+		form_objective(L_objective)
 		form_defect(L_defect_terms)
-		form_endpoint(self.b)
+		form_path(L_path_terms)
+		form_integral(L_integral_terms)
+		form_endpoint(L_endpoint_terms)
 
 		make_L_matrices_lower_triangular()
 

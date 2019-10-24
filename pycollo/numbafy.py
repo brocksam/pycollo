@@ -24,7 +24,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
         elif node.is_vector:
             e_entry = f'{e}'
         else:
-            e_entry = f'({e})*np.ones(_N)'
+            e_entry = f'({e})*_np_ones_array_N'
         return e_entry
 
     def build_objective_lagrange_matrix(expression, expression_nodes):
@@ -45,14 +45,18 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 
         return return_value
 
-    def build_defect_lagrange_matrix(expression, expression_nodes, L_sym):
+    def build_lagrange_matrix_entry(terms, term_nodes, L_syms):
 
         expressions = []
-        for expr, node in zip(expression, expression_nodes):
-            e_entry = expand_to_array(expr, node)
-            print(e_entry)
-            expressions.append(f"np.outer({L_sym}, {e_entry})")
-        return_value = ', '.join(outer for outer in expressions)
+        for term, node, L_sym in zip(terms, term_nodes, L_syms):
+            if term == 0:
+                pass
+            elif term == zero_sym:
+                pass
+            else:
+                e_entry = expand_to_array(term, node)
+                expressions.append(f"np.outer({L_sym}, {e_entry})")
+        return_value = ' + '.join(outer for outer in expressions)
         return return_value
 
 
@@ -105,10 +109,15 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             return_value = build_objective_lagrange_matrix(expression, expression_nodes)
         else:
             array_arguments = []
-            for expression_matrix, expression_matrix_nodes, L_sym in zip(expression, expression_nodes, lagrange_parameters):
-                expr_mat = build_defect_lagrange_matrix(expression_matrix, expression_matrix_nodes, L_sym)
-                array_arguments.append(expr_mat)
-                array_argument = ', '.join(array_arguments)
+            L_syms = lagrange_parameters
+            for i, _ in enumerate(expression[0]):
+                terms = [expr_mat[i] for expr_mat in expression if expr_mat[i] != 0]
+                term_nodes = [expr_mat_nodes[i] for expr_mat_nodes in expression_nodes]
+                if terms:
+                    mat_entry = build_lagrange_matrix_entry(terms, term_nodes, L_syms)
+                    if mat_entry:
+                        array_arguments.append(mat_entry)
+                        array_argument = ', '.join(array_arguments)
             return_value = f'np.array([{array_argument}])'
 
     elif return_dims is None:

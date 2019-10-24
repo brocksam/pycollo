@@ -1291,6 +1291,8 @@ class OptimalControlProblem():
 			# ddL_endpoint_dxbdxb = ddL_endpoint_dxbdxb_lambda(*x_tuple_point, 
 				# *lagrange, N)
 
+			cout(ddL_defect_dxdx)
+
 			H = np.zeros(num_nonzero)
 
 			H[objective_index] = H_objective_lambda(ddL_objective_dxbdxb)

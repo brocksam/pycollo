@@ -1,12 +1,19 @@
 class Settings():
 
+	_COLLOCATION_MATRIX_FORMS = {'differential', 'integral'}
+	_SCALING_OPTIONS = {None, 'automatic', 'user'}
+	_NLP_SOLVERS = {'ipopt'}
+	_LINEAR_SOLVERS = {'mumps', 'ma57'}
+	_QUADRATURE_METHODS = {'gauss', 'lobatto', 'radau'}
+	_DERIVATIVE_LEVELS = {1, 2}
+
 	def __init__(self, *, optimal_control_problem=None, 
 		collocation_matrix_form='integral', nlp_solver='ipopt', 
 		linear_solver='mumps', nlp_tolerance=1e-10, max_nlp_iterations=2000, 
 		quadrature_method='lobatto', derivative_level=2, max_mesh_iterations=10, 
 		mesh_tolerance=1e-8, collocation_points_min=4, collocation_points_max=10, 
 		display_mesh_refinement_info=True, display_mesh_result_info=False, 
-		display_mesh_result_graph=False):
+		display_mesh_result_graph=False, scaling_method=None):
 
 		# Optimal Control Problem
 		self._ocp = optimal_control_problem
@@ -33,17 +40,30 @@ class Settings():
 		self.display_mesh_result_graph = display_mesh_result_graph
 
 	@property
+	def scaling_method(self):
+		return self._scaling_method
+
+	@scaling_method.setter
+	def scaling_method(self, method):
+		if method not in self._SCALING_OPTIONS:
+			msg = (f"{method} is not a valid NLP solver.")
+			raise ValueError(msg)
+		self._scaling_method = method
+
+	@property
 	def collocation_matrix_form(self):
 		return self._col_mat_form
 	
 	@collocation_matrix_form.setter
 	def collocation_matrix_form(self, form):
 		form = form.casefold()
-		if form not in {'differential', 'integral'}:
-			msg = ("{} is not a valid collocation matrix form.")
-			raise ValueError(msg.format(form))
-		elif form == 'integral':
-			msg = ("Integral matrix form is not currently supported. Please use integral matrix form.")
+		if form not in self._COLLOCATION_MATRIX_FORMS:
+			msg = (f"{form} is not a valid collocation matrix form.")
+			raise ValueError(msg)
+		elif form == 'derivative':
+			msg = ("Derivative matrix form is not currently supported. Please "
+				"use integral matrix form.")
+			raise ValueError(msg)
 		self._col_mat_form = form
 
 	@property
@@ -52,9 +72,9 @@ class Settings():
 
 	@nlp_solver.setter
 	def nlp_solver(self, nlp_solver):
-		if nlp_solver not in {'ipopt'}:
-			msg = ("{} is not a valid NLP solver.")
-			raise ValueError(msg.format(nlp_solver))
+		if nlp_solver not in self._NLP_SOLVERS:
+			msg = (f"{nlp_solver} is not a valid NLP solver.")
+			raise ValueError(msg)
 		self._nlp_solver = nlp_solver
 
 	@property
@@ -64,7 +84,7 @@ class Settings():
 	@linear_solver.setter
 	def linear_solver(self, linear_solver):
 		if self.nlp_solver == 'ipopt':
-			if linear_solver not in {'mumps', 'ma57'}:
+			if linear_solver not in self._LINEAR_SOLVERS:
 				msg = ("{} is not a valid linear solver.")
 				raise ValueError(msg.format(linear_solver))
 			self._linear_solver = linear_solver
@@ -101,7 +121,7 @@ class Settings():
 	@quadrature_method.setter
 	def quadrature_method(self, method):
 		method = method.casefold()
-		if method not in {'gauss', 'lobatto', 'radau'}:
+		if method not in self._QUADRATURE_METHODS:
 			msg = ("The quadrature method of '{}' is not a valid argument string.")
 			raise ValueError(msg.format(method))
 		self._quadrature_method = method
@@ -113,7 +133,7 @@ class Settings():
 	@derivative_level.setter
 	def derivative_level(self, deriv_level):
 		deriv_level = int(deriv_level)
-		if deriv_level not in (1, 2):
+		if deriv_level not in self._DERIVATIVE_LEVELS:
 			msg = (f"Derivative level must be set to either 1 (which uses the gradient vector of the objective function and the Jacobian matrix of the constraints vector) or 2 (which also uses the Hessian matrix of the Lagrangian of the constraints).")
 			raise ValueError(msg)
 		self._derivative_level = deriv_level

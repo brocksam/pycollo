@@ -1,7 +1,3 @@
-import sys
-
-sys.path.append('/Users/sambrockie/Documents/Cambridge/PhD/Code/Repositories/pycollo')
-
 import numpy as np
 import sympy as sym
 import sympy.physics.mechanics as me
@@ -20,7 +16,7 @@ if True:
 	T0min, T0max = sym.symbols('T0min T0max')
 
 	# Optimal Control Problem
-	mesh = pycollo.Mesh(mesh_sections=10, mesh_section_fractions=None, mesh_collocation_points=4)
+	mesh = pycollo.Mesh(mesh_sections=100, mesh_section_fractions=None, mesh_collocation_points=9)
 	# problem = pycollo.OptimalControlProblem(state_variables=[y0, y1], control_variables=[u0], parameter_variables=[m0, p0], initial_mesh=mesh)
 	problem = pycollo.OptimalControlProblem(state_variables=[y0, y1], control_variables=[u0], initial_mesh=mesh)
 
@@ -41,7 +37,7 @@ if True:
 
 	# Bounds
 	# problem.bounds = pycollo.Bounds(optimal_control_problem=problem, initial_time=0, final_time=[1, final_time], state=[[-np.pi, np.pi], [-10, 10]], control=[[-0.5, 0.5]], integral=[0, 1000], parameter=[[0.5, 1.5], [0.5, 1.5]], state_endpoint=[[-np.pi/2, -np.pi/2], [0, 0], [np.pi/2, np.pi/2], [0, 0]])
-	problem.bounds = pycollo.Bounds(optimal_control_problem=problem, initial_time=0, final_time=[1, final_time], state=[[-np.pi, np.pi], [-10, 10]], control=[[-0.5, 0.5]], integral=[0, 1000], state_endpoint=[[-np.pi/2, -np.pi/2], [0, 0], [np.pi/2, np.pi/2], [0, 0]])
+	problem.bounds = pycollo.Bounds(optimal_control_problem=problem, initial_time=0, final_time=[0, final_time], state=[[-np.pi, np.pi], [-10, 10]], control=[[-0.5, 0.5]], integral=[0, 1000], state_endpoint=[[-np.pi/2, -np.pi/2], [0, 0], [np.pi/2, np.pi/2], [0, 0]])
 
 	# Guess
 	problem.initial_guess = pycollo.Guess(optimal_control_problem=problem, time=[0, final_time], state=[[-np.pi/2, np.pi/2], [0, 0]], control=[0.01, 0.01], integral=[100], state_endpoints_override=True)

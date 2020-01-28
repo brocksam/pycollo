@@ -29,7 +29,13 @@ class Scaling:
 			}
 
 	def _generate_none(self):
-		pass
+		needed = np.concatenate([self.bounds._y_needed, self.bounds._u_needed, self.bounds._q_needed, self.bounds._t_needed, self.bounds._s_needed])
+		zeros = np.zeros_like(needed)
+		ones = np.ones_like(needed)
+		self.V_matrix_terms = ones
+		self.V_inv_matrix_terms = ones
+		self.V_inv_matrix_sqrd_terms = ones
+		self.r_vector_terms = zeros
 
 	def _generate_automatic(self):
 

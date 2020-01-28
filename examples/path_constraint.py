@@ -37,6 +37,6 @@ problem.initial_guess = pycollo.Guess(optimal_control_problem=problem, time=[0, 
 	state=np.array([[0, 0], [0, 0], [0, 0], [0, 0]]), 
 	control=np.array([[0, 0], [0, 0]]), state_endpoints_override=True)
 
-problem.settings.scaling_method = 'automatic'
+problem.settings.scaling_method = None
 
 problem.solve()

@@ -286,13 +286,17 @@ class ExpressionGraph:
 
 		L_objective = sigma * self.J
 		L_defect_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
-			for c in self.c[c_defect_slice]))
+			for c in self.c[c_defect_slice])
+			if c_defect_slice.start != c_defect_slice.stop else [0])
 		L_path_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
-			for c in self.c[c_path_slice]))
+			for c in self.c[c_path_slice]) 
+			if c_path_slice.start != c_path_slice.stop else [0])
 		L_integral_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
-			for c in self.c[c_integral_slice]))
+			for c in self.c[c_integral_slice])
+			if c_integral_slice.start != c_integral_slice.stop else [0])
 		L_endpoint_terms = sym.Matrix(tuple(b 
-			for b in self.c[c_endpoint_slice]))
+			for b in self.b)
+			if self.b else [0])
 
 		form_objective(L_objective)
 		form_defect(L_defect_terms)

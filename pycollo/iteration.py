@@ -285,74 +285,7 @@ class Iteration:
 		self._num_G_nonzero = len(G_nonzero_row)
 		print('Full Jacobian sparsity computed.')
 
-		if self._ocp.settings.derivative_level == 2:
-			# # Hessian defect
-			# H_defect_nonzero_row = []
-			# H_defect_nonzero_col = []
-			# H_defect_sum_flag = []
-			
-			# for i_row in range(self._ocp._num_vars):
-			# 	row = self._ocp._expression_graph.ddL_zeta_dxdx[i_row, :i_row+1]
-			# 	if i_row < self._ocp._yu_qts_split:
-			# 		row_offset = i_row * self._mesh._N
-			# 		row_numbers = list(range(row_offset, row_offset + self._mesh._N))
-			# 	else:
-			# 		row_offset = self._ocp._yu_qts_split * (self._mesh._N - 1) + i_row
-			# 		row_numbers = [row_offset]*self._mesh._N
-			# 	for i_col, entry in enumerate(row):
-			# 		if entry != 0:
-			# 			if i_col < self._ocp._yu_qts_split:
-			# 				col_offset = i_col * self._mesh._N
-			# 				col_numbers = list(range(col_offset, col_offset + self._mesh._N))
-			# 				H_defect_sum_flag.append(False)
-			# 			else:
-			# 				col_offset = self._ocp._yu_qts_split* (self._mesh._N - 1) + i_col
-			# 				row_numbers = [row_offset]
-			# 				col_numbers = [col_offset]
-			# 				H_defect_sum_flag.append(True)
-			# 			H_defect_nonzero_row.extend(row_numbers)
-			# 			H_defect_nonzero_col.extend(col_numbers)
-
-			# num_H_defect_nonzero = len(H_defect_nonzero_row)
-			# sH_defect_matrix = sparse.coo_matrix(([1]*num_H_defect_nonzero, (H_defect_nonzero_row, H_defect_nonzero_col)), shape=(self._num_x, self._num_x))
-			# sH_defect_indices = list(zip(sH_defect_matrix.row, sH_defect_matrix.col))
-
-			# # Hessian path
-			# H_path_indices = []
-			# # print(self._ocp._ddL_dxdx_c.values())
-
-
-			# # Hessian integral
-			# H_integral_nonzero_row = []
-			# H_integral_nonzero_col = []
-			# H_integral_sum_flag = []
-			
-			# for i_row in range(self._ocp._num_vars):
-			# 	row = self._ocp._expression_graph.ddL_rho_dxdx[i_row, :i_row+1]
-			# 	if i_row < self._ocp._yu_qts_split:
-			# 		row_offset = i_row * self._mesh._N
-			# 		row_numbers = list(range(row_offset, row_offset + self._mesh._N))
-			# 	else:
-			# 		row_offset = self._ocp._yu_qts_split * (self._mesh._N - 1) + i_row
-			# 		row_numbers = [row_offset]*self._mesh._N
-			# 	for i_col, entry in enumerate(row):
-			# 		if entry != 0:
-			# 			if i_col < self._ocp._yu_qts_split:
-			# 				col_offset = i_col * self._mesh._N
-			# 				col_numbers = list(range(col_offset, col_offset + self._mesh._N))
-			# 				H_integral_sum_flag.append(False)
-			# 			else:
-			# 				col_offset = self._ocp._yu_qts_split* (self._mesh._N - 1) + i_col
-			# 				row_numbers = [row_offset]
-			# 				col_numbers = [col_offset]
-			# 				H_integral_sum_flag.append(True)
-			# 			H_integral_nonzero_row.extend(row_numbers)
-			# 			H_integral_nonzero_col.extend(col_numbers)
-
-			# num_H_integral_nonzero = len(H_integral_nonzero_row)
-			# sH_integral_matrix = sparse.coo_matrix(([1]*num_H_integral_nonzero, (H_integral_nonzero_row, H_integral_nonzero_col)), shape=(self._num_x, self._num_x))
-			# sH_integral_indices = list(zip(sH_integral_matrix.row, sH_integral_matrix.col))
-
+		def hessian_objective_sparsity():
 			H_objective_nonzero_row = []
 			H_objective_nonzero_col = []
 			col_numbers = []
@@ -360,8 +293,9 @@ class Iteration:
 			num_H_objective_nonzero = len(H_objective_nonzero_row)
 			sH_objective_matrix = sparse.coo_matrix(([1]*num_H_objective_nonzero, (H_objective_nonzero_row, H_objective_nonzero_col)), shape=(self._num_x, self._num_x))
 			sH_objective_indices = list(zip(sH_objective_matrix.row, sH_objective_matrix.col))
+			return sH_objective_matrix, sH_objective_indices
 
-			# Hessian defect
+		def hessian_defect_sparsity():
 			H_defect_nonzero_row = []
 			H_defect_nonzero_col = []
 			H_defect_sum_flag = []
@@ -396,8 +330,9 @@ class Iteration:
 			num_H_defect_nonzero = len(H_defect_nonzero_row)
 			sH_defect_matrix = sparse.coo_matrix(([1]*num_H_defect_nonzero, (H_defect_nonzero_row, H_defect_nonzero_col)), shape=(self._num_x, self._num_x))
 			sH_defect_indices = list(zip(sH_defect_matrix.row, sH_defect_matrix.col))
+			return sH_defect_matrix, sH_defect_indices, H_defect_sum_flag
 
-			# Hessian path
+		def hessian_path_sparsity(hessian_shape):
 			H_path_nonzero_row = []
 			H_path_nonzero_col = []
 			H_path_sum_flag = []
@@ -405,7 +340,7 @@ class Iteration:
 			try:
 				ddL_gamma_dxdx_nonzero = self._ocp._expression_graph.ddL_gamma_dxdx[0]
 			except IndexError:
-				ddL_gamma_dxdx_nonzero = sym.zeros(*ddL_zeta_dxdx_nonzero.shape)
+				ddL_gamma_dxdx_nonzero = sym.zeros(*hessian_shape)
 			else:
 				for matrix in self._ocp._expression_graph.ddL_gamma_dxdx[1:]:
 					ddL_gamma_dxdx_nonzero += matrix
@@ -436,8 +371,9 @@ class Iteration:
 			num_H_path_nonzero = len(H_path_nonzero_row)
 			sH_path_matrix = sparse.coo_matrix(([1]*num_H_path_nonzero, (H_path_nonzero_row, H_path_nonzero_col)), shape=(self._num_x, self._num_x))
 			sH_path_indices = list(zip(sH_path_matrix.row, sH_path_matrix.col))
+			return sH_path_matrix, sH_path_indices
 
-			# Hessian integral
+		def hessian_integral_sparsity():
 			H_integral_nonzero_row = []
 			H_integral_nonzero_col = []
 			H_integral_sum_flag = []
@@ -472,33 +408,25 @@ class Iteration:
 			num_H_integral_nonzero = len(H_integral_nonzero_row)
 			sH_integral_matrix = sparse.coo_matrix(([1]*num_H_integral_nonzero, (H_integral_nonzero_row, H_integral_nonzero_col)), shape=(self._num_x, self._num_x))
 			sH_integral_indices = list(zip(sH_integral_matrix.row, sH_integral_matrix.col))
+			return sH_integral_matrix, sH_integral_indices, H_integral_sum_flag
 
-			# Hessian endpoint
+		def hessian_endpoint_sparsity():
 			H_endpoint_nonzero_row = []
 			H_endpoint_nonzero_col = []
 			col_numbers = []
 
-			# # YY
-			# for i_yb in range(self._ocp._num_y_vars):
-			# 	row_number = self._mesh._N * i_yb
-			# 	H_endpoint_nonzero_row.extend([row_number]*(2*i_yb+1))
-			# 	col_numbers.append(row_number)
-			# 	H_endpoint_nonzero_col.extend(col_numbers)
-			# 	row_number = self._mesh._N * (i_yb + 1) - 1
-			# 	H_endpoint_nonzero_row.extend([row_number]*(2*i_yb+2))
-			# 	col_numbers.append(row_number)
-			# 	H_endpoint_nonzero_col.extend(col_numbers)
-
-			# # QY, QQ, TY, TQ, TT, SY, SQ, ST, SS
-			# for i_qts in range(self._ocp._num_q_vars + self._ocp._num_t_vars + self._ocp._num_s_vars):
-			# 	row_number = self._num_y + self._num_u + i_qts
-			# 	col_numbers.append(row_number)
-			# 	H_endpoint_nonzero_row.extend([row_number]*len(col_numbers))
-			# 	H_endpoint_nonzero_col.extend(col_numbers)
-
 			num_H_endpoint_nonzero = len(H_endpoint_nonzero_row)
 			sH_endpoint_matrix = sparse.coo_matrix(([1]*num_H_endpoint_nonzero, (H_endpoint_nonzero_row, H_endpoint_nonzero_col)), shape=(self._num_x, self._num_x))
 			sH_endpoint_indices = list(zip(sH_endpoint_matrix.row, sH_endpoint_matrix.col))
+			return sH_endpoint_matrix, sH_endpoint_indices
+
+		if self._ocp.settings.derivative_level == 2:
+			hessian_shape = self._ocp._expression_graph.ddL_zeta_dxdx[0].shape
+			sH_objective_matrix, sH_objective_indices = hessian_objective_sparsity()
+			sH_defect_matrix, sH_defect_indices, H_defect_sum_flag = hessian_defect_sparsity()
+			sH_path_matrix, sH_path_indices = hessian_path_sparsity(hessian_shape)
+			sH_integral_matrix, sH_integral_indices, H_integral_sum_flag = hessian_integral_sparsity()
+			sH_endpoint_matrix, sH_endpoint_indices = hessian_endpoint_sparsity()			
 
 			sH_matrix = (sH_objective_matrix + sH_defect_matrix + sH_path_matrix + sH_integral_matrix + sH_endpoint_matrix).tocoo()
 			sH_indices = list(zip(sH_matrix.row, sH_matrix.col))
@@ -525,16 +453,34 @@ class Iteration:
 			self._num_H_nonzero = len(self._H_nonzero_row)
 			print('Full Hessian sparsity computed.')
 
+		# Lambda to unscale scaled variables from IPOPT
+		def unscale_x_tilde(x_tilde):
+			x = self.scaling.V_inv * (x_tilde - self.scaling.r)
+			return x
 
+		def scale_objective(J):
+			J_tilde = self.scaling.w_J * J
+			return J_tilde
 
+		def scale_gradient(g):
+			g_tilde = self.scaling.w_J * g * self.scaling.V_inv
+			return g_tilde
 
+		def scale_constraint(c):
+			c_tilde = self.scaling.W * c
+			return c_tilde
 
+		def scale_jacobian(G):
+			G_tilde = self.scaling.W * G * self.scaling.V_inv
+			return G_tilde
 
+		def scale_hessian(H):
+			H_tilde = H * self.scaling.V_inv_sqrd
+			return H_tilde
 
-
-
-
-
+		def rescale_x(x):
+			x_tilde = self.scaling.V*x + self.scaling.r
+			return x_tilde
 
 		# Lambda to prepare x from IPOPT for numba funcs
 		def reshape_x(x):
@@ -556,10 +502,12 @@ class Iteration:
 			return self._ocp._x_reshape_lambda_point(x, self._x_endpoint_indices)
 
 		# Generate objective function lambda
-		def objective(x):
+		def objective(x_tilde):
+			x = unscale_x_tilde(x_tilde)
 			x_tuple_point = reshape_x_point(x)
 			J = self._ocp._J_lambda(x_tuple_point)
-			return J
+			J_tilde = scale_objective(J)
+			return J_tilde
 
 		self._objective_lambda = objective
 
@@ -567,7 +515,8 @@ class Iteration:
 		def gradient(x):
 			x_tuple_point = reshape_x_point(x)
 			g = self._ocp._g_lambda(x_tuple_point, self._mesh._N)
-			return g
+			g_tilde = scale_gradient(g)
+			return g_tilde
 
 		self._gradient_lambda = gradient
 
@@ -576,7 +525,8 @@ class Iteration:
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
 			c = self._ocp._c_lambda(x_tuple, x_tuple_point, self._mesh._N, self._ocp._y_slice, self._ocp._q_slice, self._num_c, self._c_lambda_dy_slice, self._c_lambda_p_slice, self._c_lambda_g_slice, self._c_defect_slice, self._c_path_slice, self._c_integral_slice, self._c_boundary_slice, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix)
-			return c
+			c_tilde = scale_constraint(c)
+			return c_tilde
 
 		self._constraint_lambda = constraint
 
@@ -587,7 +537,8 @@ class Iteration:
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
 			G = self._ocp._G_lambda(x_tuple, x_tuple_point, self._mesh._N, self._num_G_nonzero, ocp_num_x, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix, A_row_col_array, self._c_lambda_dy_slice, self._c_lambda_p_slice, self._c_lambda_g_slice, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dxb_slice)
-			return G
+			G_tilde = scale_jacobian(G)
+			return G_tilde
 
 		self._jacobian_lambda = jacobian
 
@@ -608,9 +559,9 @@ class Iteration:
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
 			zeta_lagrange, gamma_lagrange, rho_lagrange, beta_lagrange = reshape_lagrange(lagrange)
-			# H = self._ocp._H_lambda(x_tuple, x_tuple_point, obj_factor, lagrange_defect, lagrange_path, lagrange_integral, lagrange_endpoint, self._mesh._N, self._num_H_nonzero, H_defect_indices, H_path_indices, H_integral_indices, H_endpoint_indices, H_objective_indices, self._mesh._sA_matrix, self._mesh._W_matrix, H_defect_sum_flag, H_integral_sum_flag)
 			H = self._ocp._H_lambda(x_tuple, x_tuple_point, obj_factor, zeta_lagrange, gamma_lagrange, rho_lagrange, beta_lagrange, self._mesh._N, self._num_H_nonzero, H_objective_indices, H_defect_indices, H_path_indices, H_integral_indices, H_endpoint_indices, self._mesh._sA_matrix, self._mesh._W_matrix, H_defect_sum_flag, H_integral_sum_flag)
-			return H
+			H_tilde = scale_hessian(H)
+			return H_tilde
 
 		def hessian_structure():
 			return (self._H_nonzero_row, self._H_nonzero_col)
@@ -633,7 +584,6 @@ class Iteration:
 			x_data = np.array(range(self._num_x), dtype=float)
 			lagrange = np.array(range(self._num_c), dtype=float)
 			obj_factor = 2.0
-			# x_data = 2*np.ones(self._num_x)
 			print(f"x Variables:\n{self._ocp._x_vars}\n")
 			print(f"x Data:\n{x_data}\n")
 			print(f"Lagrange Multipliers:\n{lagrange}\n")
@@ -669,14 +619,21 @@ class Iteration:
 		# ========================================================
 		if False:
 			print('\n\n\n')
-			num_loops = 1000
+			num_loops = 100
 			for i in range(num_loops):
 				x_data = np.random.rand(self._num_x)
+				lagrange = np.random.rand(self._num_c)
+				obj_factor = np.random.rand()
 				J = self._objective_lambda(x_data)
 				g = self._gradient_lambda(x_data)
 				c = self._constraint_lambda(x_data)
 				G = self._jacobian_lambda(x_data)
 				G_struct = self._jacobian_structure_lambda()
+
+				if self._ocp.settings.derivative_level == 2:
+					H = self._hessian_lambda(x_data, lagrange, obj_factor)
+					H_struct = self._hessian_structure_lambda()
+
 			print('\n\n\n')
 			raise ValueError
 
@@ -885,7 +842,7 @@ class Solution:
 
 	def _process_ipopt_solution(self):
 		self._y = self._x[self._it._y_slice].reshape(self._ocp._num_y_vars, -1) if self._ocp._num_y_vars else []
-		self._dy = self._ocp._c_continuous_lambda(*self._it._reshape_x(self._x), self._mesh._N)[:, self._it._c_lambda_dy_slice].reshape((-1, self._mesh._N)) if self._ocp._num_y_vars else []
+		self._dy = self._ocp._c_continuous_lambda(*self._it._reshape_x(self._x), self._mesh._N)[self._it._c_lambda_dy_slice].reshape((-1, self._mesh._N)) if self._ocp._num_y_vars else []
 		self._u = self._x[self._it._u_slice].reshape(self._ocp._num_u_vars, -1) if self._ocp._num_u_vars else []
 		self._q = self._x[self._it._q_slice]
 		self._t = self._x[self._it._t_slice]
@@ -1094,7 +1051,7 @@ class Solution:
 		else:
 			u_tilde = np.array([])
 
-		dy_tilde = self._ocp._c_continuous_lambda(*y_tilde, *u_tilde, *self._q, *self._t, *self._s, ph_mesh._N)[:, :self._ocp._num_y_vars*ph_mesh._N].reshape(-1, ph_mesh._N)
+		dy_tilde = self._ocp._c_continuous_lambda(*y_tilde, *u_tilde, *self._q, *self._t, *self._s, ph_mesh._N)[:self._ocp._num_y_vars*ph_mesh._N].reshape(-1, ph_mesh._N)
 
 		stretch = 0.5 * (self._tF - self._t0)
 		A_dy_tilde = stretch*ph_mesh._sA_matrix.dot(dy_tilde.T)

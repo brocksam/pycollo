@@ -46,7 +46,7 @@ class Settings():
 	@scaling_method.setter
 	def scaling_method(self, method):
 		if method not in self._SCALING_OPTIONS:
-			msg = (f"{method} is not a valid NLP solver.")
+			msg = (f"{method} is not a valid scaling option.")
 			raise ValueError(msg)
 		self._scaling_method = method
 

@@ -60,18 +60,25 @@ class Scaling:
 
 class IterationScaling:
 
-	def __init__(self, optimal_control_problem):
-
-		self._ocp = optimal_control_problem
+	def __init__(self, iteration):
+		self._iteration = iteration
+		self._generate_scaling()
 
 	@property
 	def optimal_control_problem(self):
-		return self._ocp
+		return self._iteration.optimal_control_problem
 
 	@property
-	def base(self):
+	def base_scaling(self):
 		return self.optimal_control_problem.scaling
-	
+
+	def _generate_scaling(self):
+		self.r = 0
+		self.V = 1
+		self.V_inv = 1
+		self.w_J = 1
+		self.W = 1
+		self.V_inv_sqrd = 1
 
 
 

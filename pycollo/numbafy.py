@@ -35,13 +35,24 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             row = expression.row(row_num)
             for col_num, e, in enumerate(row):
                 index = row_num*expression.cols + col_num
-                node = expression_nodes[index]
                 e_entry = f'{e}'
                 expression_list.append(e_entry)
             expression_row = ', '.join(f'{e}' for e in expression_list)
             expression_rows.append(f"np.array([{expression_row}])")
         expression_string = ', '.join(f'{e}' for e in expression_rows)
         return_value = f'np.stack(({expression_string}))'
+
+        return return_value
+
+    def build_endpoint_lagrange_matrix(expression, expression_nodes, L_syms):
+        if len(expression) > 0:
+            matrix = sym.zeros(*expression[0].shape)
+            for mat, L_sym in zip(expression, L_syms):
+                mat = mat.subs({expression_graph._zero_node.symbol: 0})
+                matrix += L_sym*mat
+        else:
+            raise NotImplementedError
+        return_value = build_objective_lagrange_matrix(matrix, expression_nodes)
 
         return return_value
 
@@ -107,6 +118,9 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 
         if not isinstance(expression, list):
             return_value = build_objective_lagrange_matrix(expression, expression_nodes)
+        elif endpoint:
+            L_syms = lagrange_parameters
+            return_value = build_endpoint_lagrange_matrix(expression, expression_nodes, L_syms)
         else:
             array_arguments = []
             L_syms = lagrange_parameters

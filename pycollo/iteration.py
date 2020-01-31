@@ -1044,14 +1044,14 @@ class Solution:
 				plt.xlabel('Time / $s$')
 			plt.show()
 
-		plt.plot(self._y[0], self._y[1], marker='x', markersize=5, linestyle='', color='black')
-		plt.plot(y_datas[0], y_datas[1], linewidth=2)
-		plt.grid(True)
-		plt.gca().set_aspect('equal', adjustable='box')
-		plt.title('Path')
-		plt.xlabel('x / $m$')
-		plt.ylabel('y / $m$')
-		plt.show()
+		# plt.plot(self._y[0], self._y[1], marker='x', markersize=5, linestyle='', color='black')
+		# plt.plot(y_datas[0], y_datas[1], linewidth=2)
+		# plt.grid(True)
+		# plt.gca().set_aspect('equal', adjustable='box')
+		# plt.title('Path')
+		# plt.xlabel('x / $m$')
+		# plt.ylabel('y / $m$')
+		# plt.show()
 
 		
 

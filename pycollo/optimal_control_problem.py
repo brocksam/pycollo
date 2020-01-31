@@ -728,10 +728,8 @@ class OptimalControlProblem():
 		def defect_constraints_lambda(y, dy, A, D, stretch):
 			return (D.dot(y.T) + stretch*A.dot(dy.T)).flatten(order='F')
 
-		def path_constraints_lambda(p, stretch):
-			if p.size:
-				raise NotImplementedError
-			return []
+		def path_constraints_lambda(p):
+			return p
 
 		def integral_constraints_lambda(q, g, W, stretch):
 			return q - stretch*np.matmul(g, W) if g.size else q
@@ -757,7 +755,7 @@ class OptimalControlProblem():
 
 			c = np.empty(num_c)
 			c[defect_slice] = defect_constraints_lambda(y, dy, A, D, stretch)
-			c[path_slice] = path_constraints_lambda(p, stretch)
+			c[path_slice] = path_constraints_lambda(p)
 			c[integral_slice] = integral_constraints_lambda(q, g, W, stretch)
 			c[boundary_slice] = endpoint_constraints_lambda(b)
 
@@ -804,6 +802,10 @@ class OptimalControlProblem():
 		self._c_lambda = constraints_lambda
 		print('Constraints function compiled.')
 
+		# print(expr_graph.c)
+		# print('\n\n\n')
+		# raise NotImplementedError
+
 	def _compile_jacobian_constraints(self):
 
 		def A_x_dot_sparse(A_sparse, ddy_dx, num_y, num_nz, stretch, 
@@ -843,17 +845,29 @@ class OptimalControlProblem():
 			G_dzeta_ds = stretch*A.dot(ddy_ds.T).flatten(order='F')
 			return G_dzeta_ds
 
-		def G_dgamma_dy_lambda(dgamma_dy, stretch):
-			return np.zeros((0,))
+		def G_dgamma_dy_lambda(dgamma_dy):
+			if dgamma_dy.size:
+				return dgamma_dy.flatten()
+			else:
+				return []
 
-		def G_dgamma_du_lambda(dgamma_du, stretch):
-			return np.zeros((0,))
+		def G_dgamma_du_lambda(dgamma_du):
+			if dgamma_du.size:
+				return dgamma_du.flatten()
+			else:
+				return []
 
-		def G_dgamma_dt_lambda(dgamma_dt, stretch):
-			return np.zeros((0,))
+		def G_dgamma_dt_lambda(p):
+			if p.size:
+				return np.zeros_like(p).flatten()
+			else:
+				return []
 
-		def G_dgamma_ds_lambda(dgamma_ds, stretch):
-			return np.zeros((0,))
+		def G_dgamma_ds_lambda(dgamma_ds):
+			if dgamma_ds.size:
+				return dgamma_ds.flatten()
+			else:
+				return []
 
 		def G_drho_dy_lambda(drho_dy, stretch, W):
 
@@ -870,7 +884,7 @@ class OptimalControlProblem():
 			else:
 				return []
 
-		def G_drho_dt_lambda(g, dstretch_dt, W):
+		def G_drho_dt_lambda(g, W):
 			if g.size > 0:
 				product = np.outer(self._dstretch_dt, np.matmul(g, W))
 				return - product.flatten(order='F')
@@ -900,18 +914,18 @@ class OptimalControlProblem():
 			p = c_continuous[p_slice]
 			g = c_continuous[g_slice]
 
-			dzeta_dy = dc_dx[dc_dx_slice.zeta_y].reshape(dc_dx_shape.zeta_y)
-			dzeta_du = dc_dx[dc_dx_slice.zeta_u].reshape(dc_dx_shape.zeta_u)
+			dzeta_dy = dc_dx[dc_dx_slice.zeta_y].reshape(dc_dx_shape.zeta_y, N)
+			dzeta_du = dc_dx[dc_dx_slice.zeta_u].reshape(dc_dx_shape.zeta_u, N)
 			dzeta_dt = None
-			dzeta_ds = dc_dx[dc_dx_slice.zeta_s].reshape(dc_dx_shape.zeta_s)
-			dgamma_dy = dc_dx[dc_dx_slice.gamma_y].reshape(dc_dx_shape.gamma_y)
-			dgamma_du = dc_dx[dc_dx_slice.gamma_u].reshape(dc_dx_shape.gamma_u)
+			dzeta_ds = dc_dx[dc_dx_slice.zeta_s].reshape(dc_dx_shape.zeta_s, N)
+			dgamma_dy = dc_dx[dc_dx_slice.gamma_y].reshape(dc_dx_shape.gamma_y, N)
+			dgamma_du = dc_dx[dc_dx_slice.gamma_u].reshape(dc_dx_shape.gamma_u, N)
 			dgamma_dt = None
-			dgamma_ds = dc_dx[dc_dx_slice.gamma_s].reshape(dc_dx_shape.gamma_s)
-			drho_dy = dc_dx[dc_dx_slice.rho_y].reshape(dc_dx_shape.rho_y)
-			drho_du = dc_dx[dc_dx_slice.rho_u].reshape(dc_dx_shape.rho_u)
+			dgamma_ds = dc_dx[dc_dx_slice.gamma_s].reshape(dc_dx_shape.gamma_s, N)
+			drho_dy = dc_dx[dc_dx_slice.rho_y].reshape(dc_dx_shape.rho_y, N)
+			drho_du = dc_dx[dc_dx_slice.rho_u].reshape(dc_dx_shape.rho_u, N)
 			drho_dt = None
-			drho_ds = dc_dx[dc_dx_slice.rho_s].reshape(dc_dx_shape.rho_s)
+			drho_ds = dc_dx[dc_dx_slice.rho_s].reshape(dc_dx_shape.rho_s, N)
 
 			G = np.empty(num_G_nonzero)
 
@@ -919,13 +933,13 @@ class OptimalControlProblem():
 				G[dzeta_dy_slice] = G_dzeta_dy_lambda(dzeta_dy, stretch, A, D, 
 					A_row_col_array, num_x_ocp.y, dzeta_dy_D_nonzero, 
 					dzeta_dy_slice)
-				G[dgamma_dy_slice] = G_dgamma_dy_lambda(dgamma_dy, stretch)
+				G[dgamma_dy_slice] = G_dgamma_dy_lambda(dgamma_dy)
 				G[drho_dy_slice] = G_drho_dy_lambda(drho_dy, stretch, W)
 
 			if num_x_ocp.u:
 				G[dzeta_du_slice] = G_dzeta_du_lambda(dzeta_du, stretch, A, 
 					A_row_col_array, num_x_ocp.y, num_x_ocp.u)
-				G[dgamma_du_slice] = G_dgamma_du_lambda(dgamma_du, stretch)
+				G[dgamma_du_slice] = G_dgamma_du_lambda(dgamma_du)
 				G[drho_du_slice] = G_drho_du_lambda(drho_du, stretch, W)
 
 			if num_x_ocp.q:
@@ -933,12 +947,12 @@ class OptimalControlProblem():
 
 			if num_x_ocp.t:
 				G[dzeta_dt_slice] = G_dzeta_dt_lambda(dy, A)
-				G[dgamma_dt_slice] = G_dgamma_dt_lambda(dgamma_dt, stretch)
-				G[drho_dt_slice] = G_drho_dt_lambda(g, dstretch_dt, W)
+				G[dgamma_dt_slice] = G_dgamma_dt_lambda(p)
+				G[drho_dt_slice] = G_drho_dt_lambda(g, W)
 
 			if num_x_ocp.s:
 				G[dzeta_ds_slice] = G_dzeta_ds_lambda(dzeta_ds, stretch, A)
-				G[dgamma_ds_slice] = G_dgamma_ds_lambda(dgamma_ds, stretch)
+				G[dgamma_ds_slice] = G_dgamma_ds_lambda(dgamma_ds)
 				G[drho_ds_slice] = G_drho_ds_lambda(drho_ds, stretch, W)
 
 			G[dbeta_dxb_slice] = db_dxb_lambda(*x_tuple_point, N)
@@ -976,33 +990,16 @@ class OptimalControlProblem():
 			rho_s=(self._c_integral_slice, self._s_slice),
 			)
 
-		if self.number_path_constraints != 0:
-			msg = ("Handle the zeros below...")
-			raise NotImplementedError(msg)
-
-		if self.number_parameter_variables:
-			zeta_s = (self.number_state_equations*self.number_parameter_variables, -1)
-			gamma_s = (self.number_path_constraints*self.number_parameter_variables, 0)
-			rho_s = (self.number_integrand_functions*self.number_parameter_variables, -1)
-		else:
-			zeta_s = (0, )
-			gamma_s = (0, )
-			rho_s = (0, )
-
-		zeta_dim_padder = -1 if self.number_state_equations else 0
-		gamma_dim_padder = -1 if self.number_path_constraints else 0
-		rho_dim_padder = -1 if self.number_integrand_functions else 0
-
 		dc_dx_shape = pu.dcdxInfo(
-			zeta_y=(self.number_state_equations*self.number_state_variables, zeta_dim_padder),
-			zeta_u=(self.number_state_equations*self.number_control_variables, zeta_dim_padder),
-			zeta_s=zeta_s,
-			gamma_y=(self.number_path_constraints*self.number_state_variables, gamma_dim_padder),
-			gamma_u=(self.number_path_constraints*self.number_control_variables, gamma_dim_padder),
-			gamma_s=gamma_s,
-			rho_y=(self.number_integrand_functions*self.number_state_variables, rho_dim_padder),
-			rho_u=(self.number_integrand_functions*self.number_control_variables, rho_dim_padder),
-			rho_s=rho_s,
+			zeta_y=(self.number_state_equations*self.number_state_variables),
+			zeta_u=(self.number_state_equations*self.number_control_variables),
+			zeta_s=(self.number_state_equations*self.number_parameter_variables),
+			gamma_y=(self.number_path_constraints*self.number_state_variables),
+			gamma_u=(self.number_path_constraints*self.number_control_variables),
+			gamma_s=(self.number_path_constraints*self.number_parameter_variables),
+			rho_y=(self.number_integrand_functions*self.number_state_variables),
+			rho_u=(self.number_integrand_functions*self.number_control_variables),
+			rho_s=(self.number_integrand_functions*self.number_parameter_variables),
 			)
 
 		db_dxb_lambda = numbafy(
@@ -1021,9 +1018,9 @@ class OptimalControlProblem():
 
 	def _compile_hessian_lagrangian(self):
 
-		def H_objective_lambda(ddL_dxbdxb):
-			# H = np.empty(num_nonzero)
-			H = []
+		def H_point_lambda(ddL_dxbdxb):
+			vals = np.tril(ddL_dxbdxb).flatten()
+			H = vals[vals != 0]
 			return H
 
 		def H_defect_lambda(ddL_dxdx, A, sum_flag):
@@ -1036,8 +1033,11 @@ class OptimalControlProblem():
 				H = np.concatenate([H, vals])
 			return H
 
-		def H_path_lambda(ddL_dxdx, num_nonzero):
-			H = np.empty(num_nonzero)
+		def H_path_lambda(ddL_dxdx):
+			H = np.array([])
+			for matrix in ddL_dxdx:
+				vals = np.diag(matrix).flatten()
+				H = np.concatenate([H, vals])
 			return H
 
 		def H_integral_lambda(ddL_dxdx, W, sum_flag):
@@ -1050,11 +1050,6 @@ class OptimalControlProblem():
 				H = np.concatenate([H, vals])
 			return H
 
-		def H_endpoint_lambda(ddL_dxbdxb):
-			H = np.empty(num_nonzero)
-			return H
-
-		# @profile
 		def H_lambda(x_tuple, x_tuple_point, sigma, zeta_lagrange, 
 			gamma_lagrange, rho_lagrange, beta_lagrange, N, num_nonzero, 
 			objective_index, defect_index, path_index, integral_index,
@@ -1064,20 +1059,21 @@ class OptimalControlProblem():
 				sigma, N)
 			ddL_defect_dxdx = ddL_defect_dxdx_lambda(*x_tuple, 
 				*zeta_lagrange, N)
+			ddL_path_dxdx = ddL_path_dxdx_lambda(*x_tuple, *gamma_lagrange, N)
 			ddL_integral_dxdx = ddL_integral_dxdx_lambda(*x_tuple,
 				*rho_lagrange, N)
-			# ddL_endpoint_dxbdxb = ddL_endpoint_dxbdxb_lambda(*x_tuple_point, 
-				# *lagrange, N)
+			ddL_endpoint_dxbdxb = ddL_endpoint_dxbdxb_lambda(*x_tuple_point, 
+				*beta_lagrange, N)
 
 			H = np.zeros(num_nonzero)
 
-			H[objective_index] += H_objective_lambda(ddL_objective_dxbdxb)
+			H[objective_index] += H_point_lambda(ddL_objective_dxbdxb)
 			H[defect_index] += H_defect_lambda(ddL_defect_dxdx, A, 
 				defect_sum_flag)
-			# H[path_index] += H_path_lambda(ddL_path_dxdx)
+			H[path_index] += H_path_lambda(ddL_path_dxdx)
 			H[integral_index] += H_integral_lambda(ddL_integral_dxdx, W, 
 				integral_sum_flag)
-			# H[endpoint_index] += H_endpoint_lambda(ddL_endpoint_dxbdxb)
+			H[endpoint_index] += H_point_lambda(ddL_endpoint_dxbdxb)
 
 			return H
 
@@ -1112,6 +1108,19 @@ class OptimalControlProblem():
 			ocp_num_vars=self._num_vars_tuple,
 			)
 
+		ddL_path_dxdx_lambda = numbafy(
+			expression_graph=expr_graph,
+			expression=expr_graph.ddL_gamma_dxdx,
+			expression_nodes=expr_graph.ddL_gamma_dxdx_nodes,
+			precomputable_nodes=expr_graph.ddL_gamma_dxdx_precomputable,
+			dependent_tiers=expr_graph.ddL_gamma_dxdx_dependent_tiers,
+			parameters=self._x_vars,
+			lagrange_parameters=L_syms[self._c_path_slice],
+			return_dims=2,
+			N_arg=True,
+			ocp_num_vars=self._num_vars_tuple,
+			)
+
 		ddL_integral_dxdx_lambda = numbafy(
 			expression_graph=expr_graph,
 			expression=expr_graph.ddL_rho_dxdx,
@@ -1125,19 +1134,19 @@ class OptimalControlProblem():
 			ocp_num_vars=self._num_vars_tuple,
 			)
 
-		# ddL_endpoint_dxbdxb_lambda = numbafy(
-		# 	expression_graph=expr_graph,
-		# 	expression=expr_graph.ddL_b_dxbdxb,
-		# 	expression_nodes=expr_graph.ddL_b_dxbdxb_nodes,
-		# 	precomputable_nodes=expr_graph.ddL_b_dxbdxb_precomputable,
-		# 	dependent_tiers=expr_graph.ddL_b_dxbdxb_dependent_tiers,
-		# 	parameters=self._x_b_vars,
-		# 	lagrange_parameters=L_syms[self._c_endpoint_slice],
-		# 	return_dims=2,
-		# 	endpoint=True,
-		# 	N_arg=True,
-		# 	ocp_num_vars=self._num_vars_tuple,
-		# 	)
+		ddL_endpoint_dxbdxb_lambda = numbafy(
+			expression_graph=expr_graph,
+			expression=expr_graph.ddL_b_dxbdxb,
+			expression_nodes=expr_graph.ddL_b_dxbdxb_nodes,
+			precomputable_nodes=expr_graph.ddL_b_dxbdxb_precomputable,
+			dependent_tiers=expr_graph.ddL_b_dxbdxb_dependent_tiers,
+			parameters=self._x_b_vars,
+			lagrange_parameters=L_syms[self._c_endpoint_slice],
+			return_dims=2,
+			endpoint=True,
+			N_arg=True,
+			ocp_num_vars=self._num_vars_tuple,
+			)
 
 		ocp_defect_slice = self._c_defect_slice
 		ocp_path_slice = self._c_path_slice
@@ -1146,6 +1155,11 @@ class OptimalControlProblem():
 
 		self._H_lambda = H_lambda
 		print('Hessian function compiled.')
+
+		# print(self._x_vars)
+		# print(expr_graph.ddL_gamma_dxdx)
+		# print('\n\n\n')
+		# raise NotImplementedError
 
 	def solve(self, display_progress=False):
 		"""Solve the optimal control problem.

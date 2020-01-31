@@ -15,6 +15,7 @@ import sympy as sym
 
 from pycollo.guess import Guess
 from pycollo.mesh import Mesh
+from pycollo.scaling import IterationScaling
 
 class Iteration:
 
@@ -100,6 +101,9 @@ class Iteration:
 		# Mesh
 		self._mesh._generate_mesh()
 
+		# Scaling
+		self.scaling = IterationScaling(self)
+
 		# Guess
 		self._guess = Guess(
 			optimal_control_problem=self._ocp)
@@ -143,10 +147,7 @@ class Iteration:
 
 		# Constraints
 		self._num_c_defect = self._ocp.number_state_equations * self._mesh._num_c_boundary_per_y
-		self._num_c_path = self._ocp.number_path_constraints
-		if self._num_c_path != 0:
-			# Will also need to check the lagrange_reshape() function
-			raise NotImplementedError
+		self._num_c_path = self._ocp.number_path_constraints * self._mesh._N
 		self._num_c_integral = self._ocp.number_integrand_functions
 		self._num_c_boundary = self._ocp.number_state_endpoint_constraints + self._ocp.number_endpoint_constraints
 		self._num_c = self._num_c_defect + self._num_c_path + self._num_c_integral + self._num_c_boundary
@@ -211,15 +212,43 @@ class Iteration:
 		dzeta_ds_slice = slice(dzeta_dt_slice.stop, len(G_nonzero_row))
 
 		# Path constraints by state variables
+		for i_c in range(self._ocp.number_path_constraints):
+			for i_y in range(self._ocp._num_y_vars):
+				row_offset = self._ocp.number_state_equations*self._mesh._num_c_boundary_per_y + i_c
+				col_offset = i_y * self._mesh._N
+				G_nonzero_row.extend(list(range(row_offset, self._mesh._N + row_offset)))
+				G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
 		dgamma_dy_slice = slice(dzeta_ds_slice.stop, len(G_nonzero_row))
 
 		# Path constraints by control variables
+		for i_c in range(self._ocp.number_path_constraints):
+			for i_u in range(self._ocp._num_u_vars):
+				row_offset = self._ocp.number_state_equations*self._mesh._num_c_boundary_per_y + i_c
+				col_offset = (self._ocp._num_y_vars + i_u) * self._mesh._N
+				G_nonzero_row.extend(list(range(row_offset, self._mesh._N + row_offset)))
+				G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
 		dgamma_du_slice = slice(dgamma_dy_slice.stop, len(G_nonzero_row))
 
 		# Path constraints by time variables
+		num_rows = self._ocp.number_path_constraints * self._mesh._N
+		num_cols = self._ocp._num_t_vars
+		row_offset = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
+		col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars
+		row_indices = list(range(row_offset, row_offset+num_rows))
+		col_indices = list(range(col_offset, col_offset+num_cols))
+		G_nonzero_row.extend(np.repeat(row_indices, num_cols))
+		G_nonzero_col.extend(np.tile(col_indices, num_rows))
 		dgamma_dt_slice = slice(dgamma_du_slice.stop, len(G_nonzero_row))
 
 		# Path constraints by parameter variables
+		num_rows = self._ocp.number_path_constraints * self._mesh._N
+		num_cols = self._ocp._num_s_vars
+		row_offset = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
+		col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars
+		row_indices = list(range(row_offset, row_offset+num_rows))
+		col_indices = list(range(col_offset, col_offset+num_cols))
+		G_nonzero_row.extend(np.repeat(row_indices, num_cols))
+		G_nonzero_col.extend(np.tile(col_indices, num_rows))
 		dgamma_ds_slice = slice(dgamma_dt_slice.stop, len(G_nonzero_row))
 
 		# Integral constraints by state variables
@@ -269,7 +298,7 @@ class Iteration:
 		# Boundary constraints
 		for i_c in range(self._ocp.number_state_endpoint_constraints + self._ocp.number_endpoint_constraints):
 			for i_y in range(self._ocp._num_y_vars):
-				row_offset = [(self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + self._ocp._num_q_vars + i_c]*2
+				row_offset = [self._ocp.number_state_equations*self._mesh._num_c_boundary_per_y + self._ocp.number_path_constraints*self._mesh._N + self._ocp._num_q_vars + i_c]*2
 				col_offset = [i_y * self._mesh._N, (i_y+1) * self._mesh._N - 1]
 				G_nonzero_row.extend(row_offset)
 				G_nonzero_col.extend(col_offset)
@@ -288,7 +317,30 @@ class Iteration:
 		def hessian_objective_sparsity():
 			H_objective_nonzero_row = []
 			H_objective_nonzero_col = []
-			col_numbers = []
+
+			ddL_J_dxbdxb_nonzero = self._ocp._expression_graph.ddL_J_dxbdxb
+
+			for i_row in range(self._ocp._num_point_vars):
+				row = ddL_J_dxbdxb_nonzero[i_row, :i_row+1]
+				if i_row < 2*self._ocp._num_y_vars:
+					if i_row % 2:
+						row_offset = int((i_row+1)/2) * self._mesh._N - 1
+					else:
+						row_offset = int(i_row/2) * self._mesh._N
+				else:
+					row_offset = self._ocp._yu_qts_split * self._mesh._N + (i_row - 2*self._ocp._num_y_vars)
+				for i_col, entry in enumerate(row):
+					entry = entry.subs({self._ocp._expression_graph._zero_node.symbol: 0})
+					if entry != 0:
+						if i_col < 2*self._ocp._num_y_vars:
+							if i_col % 2:
+								col_offset = int((i_col+1)/2) * self._mesh._N - 1
+							else:
+								col_offset = int(i_col/2) * self._mesh._N
+						else:
+							col_offset = self._ocp._yu_qts_split * self._mesh._N + (i_col - 2*self._ocp._num_y_vars)
+						H_objective_nonzero_row.append(row_offset)
+						H_objective_nonzero_col.append(col_offset)
 
 			num_H_objective_nonzero = len(H_objective_nonzero_row)
 			sH_objective_matrix = sparse.coo_matrix(([1]*num_H_objective_nonzero, (H_objective_nonzero_row, H_objective_nonzero_col)), shape=(self._num_x, self._num_x))
@@ -332,7 +384,7 @@ class Iteration:
 			sH_defect_indices = list(zip(sH_defect_matrix.row, sH_defect_matrix.col))
 			return sH_defect_matrix, sH_defect_indices, H_defect_sum_flag
 
-		def hessian_path_sparsity(hessian_shape):
+		def hessian_path_sparsity():#hessian_shape):
 			H_path_nonzero_row = []
 			H_path_nonzero_col = []
 			H_path_sum_flag = []
@@ -340,11 +392,13 @@ class Iteration:
 			try:
 				ddL_gamma_dxdx_nonzero = self._ocp._expression_graph.ddL_gamma_dxdx[0]
 			except IndexError:
-				ddL_gamma_dxdx_nonzero = sym.zeros(*hessian_shape)
+				raise NotImplementedError
 			else:
 				for matrix in self._ocp._expression_graph.ddL_gamma_dxdx[1:]:
 					ddL_gamma_dxdx_nonzero += matrix
 			
+			# print('\n\n\n')
+
 			for i_row in range(self._ocp._num_vars):
 				row = ddL_gamma_dxdx_nonzero[i_row, :i_row+1]
 				if i_row < self._ocp._yu_qts_split:
@@ -359,19 +413,19 @@ class Iteration:
 						if i_col < self._ocp._yu_qts_split:
 							col_offset = i_col * self._mesh._N
 							col_numbers = list(range(col_offset, col_offset + self._mesh._N))
-							H_path_sum_flag.append(False)
+							# H_path_sum_flag.append(False)
 						else:
 							col_offset = self._ocp._yu_qts_split* (self._mesh._N - 1) + i_col
 							row_numbers = [row_offset]
 							col_numbers = [col_offset]
-							H_path_sum_flag.append(True)
+							# H_path_sum_flag.append(True)
 						H_path_nonzero_row.extend(row_numbers)
 						H_path_nonzero_col.extend(col_numbers)
 
 			num_H_path_nonzero = len(H_path_nonzero_row)
 			sH_path_matrix = sparse.coo_matrix(([1]*num_H_path_nonzero, (H_path_nonzero_row, H_path_nonzero_col)), shape=(self._num_x, self._num_x))
 			sH_path_indices = list(zip(sH_path_matrix.row, sH_path_matrix.col))
-			return sH_path_matrix, sH_path_indices
+			return sH_path_matrix, sH_path_indices#, H_path_sum_flag
 
 		def hessian_integral_sparsity():
 			H_integral_nonzero_row = []
@@ -398,7 +452,7 @@ class Iteration:
 							col_numbers = list(range(col_offset, col_offset + self._mesh._N))
 							H_integral_sum_flag.append(False)
 						else:
-							col_offset = self._ocp._yu_qts_split* (self._mesh._N - 1) + i_col
+							col_offset = self._ocp._yu_qts_split * (self._mesh._N - 1) + i_col
 							row_numbers = [row_offset]
 							col_numbers = [col_offset]
 							H_integral_sum_flag.append(True)
@@ -413,7 +467,36 @@ class Iteration:
 		def hessian_endpoint_sparsity():
 			H_endpoint_nonzero_row = []
 			H_endpoint_nonzero_col = []
-			col_numbers = []
+
+			if len(self._ocp._expression_graph.ddL_b_dxbdxb) > 0:
+				ddL_b_dxbdxb_nonzero = sym.zeros(*self._ocp._expression_graph.ddL_b_dxbdxb[0].shape)
+				for ddL_b_dxbdxb in self._ocp._expression_graph.ddL_b_dxbdxb:
+					ddL_b_dxbdxb = ddL_b_dxbdxb.subs({self._ocp._expression_graph._zero_node.symbol: 0})
+					ddL_b_dxbdxb_nonzero += ddL_b_dxbdxb
+			else:
+				raise NotImplementedError
+
+			for i_row in range(self._ocp._num_point_vars):
+				row = ddL_b_dxbdxb_nonzero[i_row, :i_row+1]
+				if i_row < 2*self._ocp._num_y_vars:
+					if i_row % 2:
+						row_offset = int((i_row+1)/2) * self._mesh._N - 1
+					else:
+						row_offset = int(i_row/2) * self._mesh._N
+				else:
+					row_offset = self._ocp._yu_qts_split * self._mesh._N + (i_row - 2*self._ocp._num_y_vars)
+				for i_col, entry in enumerate(row):
+					entry = entry.subs({self._ocp._expression_graph._zero_node.symbol: 0})
+					if entry != 0:
+						if i_col < 2*self._ocp._num_y_vars:
+							if i_col % 2:
+								col_offset = int((i_col+1)/2) * self._mesh._N - 1
+							else:
+								col_offset = int(i_col/2) * self._mesh._N
+						else:
+							col_offset = self._ocp._yu_qts_split * self._mesh._N + (i_col - 2*self._ocp._num_y_vars)
+						H_endpoint_nonzero_row.append(row_offset)
+						H_endpoint_nonzero_col.append(col_offset)
 
 			num_H_endpoint_nonzero = len(H_endpoint_nonzero_row)
 			sH_endpoint_matrix = sparse.coo_matrix(([1]*num_H_endpoint_nonzero, (H_endpoint_nonzero_row, H_endpoint_nonzero_col)), shape=(self._num_x, self._num_x))
@@ -421,10 +504,9 @@ class Iteration:
 			return sH_endpoint_matrix, sH_endpoint_indices
 
 		if self._ocp.settings.derivative_level == 2:
-			hessian_shape = self._ocp._expression_graph.ddL_zeta_dxdx[0].shape
 			sH_objective_matrix, sH_objective_indices = hessian_objective_sparsity()
 			sH_defect_matrix, sH_defect_indices, H_defect_sum_flag = hessian_defect_sparsity()
-			sH_path_matrix, sH_path_indices = hessian_path_sparsity(hessian_shape)
+			sH_path_matrix, sH_path_indices = hessian_path_sparsity()
 			sH_integral_matrix, sH_integral_indices, H_integral_sum_flag = hessian_integral_sparsity()
 			sH_endpoint_matrix, sH_endpoint_indices = hessian_endpoint_sparsity()			
 
@@ -550,7 +632,7 @@ class Iteration:
 		def reshape_lagrange(lagrange):
 			lagrange = np.array(lagrange)
 			zeta_lagrange = lagrange[self._c_defect_slice].reshape((self._ocp._num_y_vars, self._mesh._num_c_boundary_per_y))
-			gamma_lagrange = lagrange[self._c_path_slice].reshape(-1, )
+			gamma_lagrange = lagrange[self._c_path_slice].reshape((self._ocp.number_path_constraints, self._mesh._N))
 			rho_lagrange = lagrange[self._c_integral_slice].reshape(-1, )
 			beta_lagrange = lagrange[self._c_boundary_slice].reshape(-1, )
 			return tuple([*zeta_lagrange]), tuple([*gamma_lagrange]), tuple([*rho_lagrange]), tuple([*beta_lagrange])
@@ -598,7 +680,7 @@ class Iteration:
 			print(f"c:\n{c}\n")
 
 			G_struct = self._jacobian_structure_lambda()
-			print(f"G Structure:\n{G_struct}\n")
+			print(f"G Structure:\n{G_struct[0]}\n{G_struct[1]}")
 
 			G = self._jacobian_lambda(x_data)
 			print(f"G:\n{G}\n")
@@ -679,9 +761,8 @@ class Iteration:
 		bnd_u = np.zeros((self._num_c, ))
 
 		# Path constraints bounds
-		if self._ocp.number_path_constraints:
-			print(self._ocp._c_cons)
-			raise NotImplementedError
+		bnd_l[self._c_path_slice] = (self._ocp._bounds._c_l * self._mesh._N).flatten()
+		bnd_u[self._c_path_slice] = (self._ocp._bounds._c_u * self._mesh._N).flatten()
 
 		# Boundary constrants bounds
 		bnd_l[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_l, self._ocp._bounds._b_l))
@@ -962,6 +1043,15 @@ class Solution:
 				plt.title('Controls')
 				plt.xlabel('Time / $s$')
 			plt.show()
+
+		plt.plot(self._y[0], self._y[1], marker='x', markersize=5, linestyle='', color='black')
+		plt.plot(y_datas[0], y_datas[1], linewidth=2)
+		plt.grid(True)
+		plt.gca().set_aspect('equal', adjustable='box')
+		plt.title('Path')
+		plt.xlabel('x / $m$')
+		plt.ylabel('y / $m$')
+		plt.show()
 
 		
 

@@ -33,6 +33,10 @@ class Mesh():
 		self._shift = None
 
 	@property
+	def ocp(self):
+		return self._ocp
+
+	@property
 	def mesh_sections(self):
 		return self._K
 	

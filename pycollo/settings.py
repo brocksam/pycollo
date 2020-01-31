@@ -16,7 +16,7 @@ class Settings():
 		display_mesh_result_graph=False, scaling_method=None):
 
 		# Optimal Control Problem
-		self._ocp = optimal_control_problem
+		self.ocp = optimal_control_problem
 
 		# NLP solver
 		self.nlp_solver = nlp_solver

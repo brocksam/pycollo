@@ -262,7 +262,7 @@ class ExpressionGraph:
 				for ddL_gamma_dxdx in self.ddL_gamma_dxdx]
 			self.ddL_rho_dxdx = [make_lower_triangular(ddL_rho_dxdx) 
 				for ddL_rho_dxdx in self.ddL_rho_dxdx]
-			self.ddL_dxbdxb_b = [make_lower_triangular(ddL_b_dxbdxb)
+			self.ddL_b_dxbdxb = [make_lower_triangular(ddL_b_dxbdxb)
 				for ddL_b_dxbdxb in self.ddL_b_dxbdxb]
 
 		form_function_and_derivative = functools.partial(
@@ -287,7 +287,7 @@ class ExpressionGraph:
 		L_defect_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
 			for c in self.c[c_defect_slice])
 			if c_defect_slice.start != c_defect_slice.stop else [0])
-		L_path_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
+		L_path_terms = sym.Matrix(tuple(c 
 			for c in self.c[c_path_slice]) 
 			if c_path_slice.start != c_path_slice.stop else [0])
 		L_integral_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 

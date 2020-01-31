@@ -472,7 +472,7 @@ class IntermediateNode(ExpressionNodeABC):
 	@staticmethod
 	def _get_derivative_wrt(node_instance, wrt):
 		if node_instance.is_precomputable:
-			raise ValueError
+			return node_instance.graph._zero_node
 		else:
 			if wrt in node_instance.parent_nodes:
 				deriv_node = node_instance._derivatives.get(wrt)

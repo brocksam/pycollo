@@ -477,7 +477,11 @@ class IntermediateNode(ExpressionNodeABC):
 			if wrt in node_instance.parent_nodes:
 				deriv_node = node_instance._derivatives.get(wrt)
 				if deriv_node is None:
-					deriv = node_instance._expression.diff(wrt.symbol)
+					if isinstance(node_instance._expression, sym.Pow):
+						args = node_instance._expression.args
+						deriv = args[1] * args[0]**(args[1] - 1)
+					else:
+						deriv = node_instance._expression.diff(wrt.symbol)
 					if deriv.is_Atom:
 						if isinstance(deriv, sym.Symbol):
 							deriv_node = node_instance.graph.symbols_to_nodes_mapping.get(deriv)

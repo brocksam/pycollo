@@ -1070,7 +1070,8 @@ class OptimalControlProblem():
 			H[objective_index] += H_point_lambda(ddL_objective_dxbdxb)
 			H[defect_index] += H_defect_lambda(ddL_defect_dxdx, A, 
 				defect_sum_flag)
-			H[path_index] += H_path_lambda(ddL_path_dxdx)
+			if self.number_path_constraints:
+				H[path_index] += H_path_lambda(ddL_path_dxdx)
 			H[integral_index] += H_integral_lambda(ddL_integral_dxdx, W, 
 				integral_sum_flag)
 			H[endpoint_index] += H_point_lambda(ddL_endpoint_dxbdxb)

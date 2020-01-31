@@ -1,3 +1,4 @@
+import collections
 import itertools
 from numbers import Number
 
@@ -273,6 +274,13 @@ def numbafy(expression, parameters=None, constants=None, substitutions=None, ret
     exec(function_string)
        
     return locals()['numbafied_func']
+
+
+dcdxInfo = collections.namedtuple('dcdxInfo', [
+            'zeta_y', 'zeta_u', 'zeta_s',
+            'gamma_y', 'gamma_u', 'gamma_s',
+            'rho_y', 'rho_u', 'rho_s',
+            ])
 
 
 supported_iter_types = (tuple, list, np.ndarray)

@@ -42,4 +42,6 @@ problem.bounds = col.Bounds(optimal_control_problem=problem, initial_time=0.0, f
 # Guess
 problem.initial_guess = col.Guess(optimal_control_problem=problem, time=[t0, tfmax], state=np.array([[x0, xf], [y0, yf], [v0, v0]]), control=np.array([0, umax]), state_endpoints_override=True)
 
+problem.settings.scaling_method = 'automatic'
+
 problem.solve()

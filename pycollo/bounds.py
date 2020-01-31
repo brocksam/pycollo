@@ -336,7 +336,7 @@ class Bounds():
 	def boundary_upper(self, b_u):
 		self._b_u = self.parse_single_bounds(b_u, 'boundary_upper', self._ocp._b_cons_user)
 
-	def _bounds_check(self, aux_data=None, aux_subs=None):
+	def _bounds_check(self):
 
 		def compare_lower_and_upper(lower, upper, name):
 			if not np.logical_or(np.less(lower, upper), np.isclose(lower, upper)).all():
@@ -456,6 +456,7 @@ class Bounds():
 		# State
 		self._y_l, self._y_u = parse_bounds_to_np_array(self.state, self._ocp._y_vars_user, 'state')
 		self._y_needed = compare_lower_and_upper(self._y_l, self._y_u, 'state')
+		self._y_b_needed = np.repeat(self._y_needed, 2)
 
 		self._y_l_needed = self._y_l[self._y_needed.astype(bool)]
 		self._y_u_needed = self._y_u[self._y_needed.astype(bool)]
@@ -466,6 +467,16 @@ class Bounds():
 
 		self._u_l_needed = self._u_l[self._u_needed.astype(bool)]
 		self._u_u_needed = self._u_u[self._u_needed.astype(bool)]
+
+		# Integral
+		if self.infer_bounds:
+			raise NotImplementedError
+			self.integral = infer_bound(self.integral, self._ocp._q_vars_user, self._ocp._q_funcs_user, aux_data, aux_subs, 'integral')
+		self._q_l, self._q_u = parse_bounds_to_np_array(self.integral, self._ocp._q_vars_user, 'integral')
+		self._q_needed = compare_lower_and_upper(self._q_l, self._q_u, 'integral')
+
+		self._q_l_needed = self._q_l[self._q_needed.astype(bool)]
+		self._q_u_needed = self._q_u[self._q_needed.astype(bool)]
 
 		# Time
 		_ = parse_bounds_to_np_array(np.array([[self._t0_l, self._tF_l], [self._t0_u, self._tF_u]], dtype=np.float64), self._ocp._t_vars_user, 'time')
@@ -493,16 +504,6 @@ class Bounds():
 		self._t_l_needed = self._t_l[self._t_needed.astype(bool)]
 		self._t_u_needed = self._t_u[self._t_needed.astype(bool)]
 
-		# print('\n\n\n')
-
-		# print(self._t_u)
-
-
-		# print('\n\n\n')
-		# raise ValueError
-
-		
-
 		# Parameter
 		self._s_l, self._s_u = parse_bounds_to_np_array(self.parameter, self._ocp._s_vars_user, 'parameter')
 		self._s_needed = compare_lower_and_upper(self._s_l, self._s_u, 'parameter')
@@ -510,14 +511,8 @@ class Bounds():
 		self._s_l_needed = self._s_l[self._s_needed.astype(bool)]
 		self._s_u_needed = self._s_u[self._s_needed.astype(bool)]
 
-		# Integral
-		if self.infer_bounds:
-			self.integral = infer_bound(self.integral, self._ocp._q_vars_user, self._ocp._q_funcs_user, aux_data, aux_subs, 'integral')
-		self._q_l, self._q_u = parse_bounds_to_np_array(self.integral, self._ocp._q_vars_user, 'integral')
-		self._q_needed = compare_lower_and_upper(self._q_l, self._q_u, 'integral')
-
-		self._q_l_needed = self._q_l[self._q_needed.astype(bool)]
-		self._q_u_needed = self._q_u[self._q_needed.astype(bool)]
+		self._x_needed = np.concatenate([self._y_needed, self._u_needed, self._q_needed, self._t_needed, self._s_needed])
+		self._x_b_needed = np.concatenate([self._y_b_needed, self._q_needed, self._t_needed, self._s_needed])
 
 		# Path
 		if self.infer_bounds:

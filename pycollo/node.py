@@ -56,6 +56,8 @@ class Node(metaclass=Cached):
 	def _set_node_type_stateful_object(self):
 		if self.graph.user_to_pycollo_problem_variables_mapping_in_order.get(self.key) is not None:
 			self._type = VariableNode
+		elif self.key in self.graph.lagrange_syms:
+			self._type = VariableNode
 		elif self.key.is_Number:
 			self._type = NumberNode
 		elif self.key in self.graph._user_constants:
@@ -131,12 +133,23 @@ class Node(metaclass=Cached):
 		return is_precomputable
 
 	@cachedproperty
+	def is_vector(self):
+		return self._type.is_vector(self)
+
+	@cachedproperty
 	def dependent_nodes(self):
 		if self.is_root:
 			return set()
 		else:
 			nodes = set.union(*[set.union(parent.dependent_nodes, set([parent])) for parent in self.parent_nodes])
 			return nodes
+
+	@property
+	def numbafy_expression(self):
+		if self.value is not None:
+			return f'{self.symbol} = {self.value}'
+		else:
+			return f'{self.symbol} = {self.expression}'
 
 	@cachedproperty
 	def tier(self):
@@ -223,6 +236,11 @@ class ExpressionNodeABC(abc.ABC):
 
 	@staticmethod
 	@abc.abstractmethod
+	def is_vector(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstractmethod
 	def _str(node_instance):
 		pass
 
@@ -269,6 +287,10 @@ class RootNode(ExpressionNodeABC):
 	def is_precomputable(node_instance):
 		return True
 
+	@staticmethod
+	def is_vector(node_instance):
+		return False
+
 
 class VariableNode(RootNode):
 
@@ -286,7 +308,7 @@ class VariableNode(RootNode):
 
 	@staticmethod
 	def _create_or_get_new_node_symbol(node_instance):
-		symbol = node_instance.graph.user_to_pycollo_problem_variables_mapping_in_order[node_instance.key]
+		symbol = node_instance.graph.user_to_pycollo_problem_variables_mapping_in_order.get(node_instance.key, node_instance.key)
 		return symbol
 
 	@staticmethod
@@ -299,6 +321,13 @@ class VariableNode(RootNode):
 	@staticmethod
 	def is_precomputable(node_instance):
 		return False
+
+	@staticmethod
+	def is_vector(node_instance):
+		if node_instance in node_instance.graph.time_function_variable_nodes:
+			return True
+		else:
+			return False
 
 	@staticmethod
 	def _str(node_instance):
@@ -322,6 +351,10 @@ class ConstantNode(RootNode):
 	@staticmethod
 	def _create_or_get_new_node_symbol(node_instance):
 		return super(node_instance._type, node_instance._type)._create_or_get_new_node_symbol(node_instance)
+
+	@staticmethod
+	def _get_derivative_wrt(node_instance, wrt):
+		return node_instance.graph._zero_node
 
 	@staticmethod
 	def _set_value(node_instance, value):
@@ -349,6 +382,10 @@ class NumberNode(RootNode):
 	@staticmethod
 	def _create_or_get_new_node_symbol(node_instance):
 		return super(node_instance._type, node_instance._type)._create_or_get_new_node_symbol(node_instance)
+
+	@staticmethod
+	def _get_derivative_wrt(node_instance, wrt):
+		return node_instance.graph._zero_node
 
 	@staticmethod
 	def _set_value(node_instance, value):
@@ -440,7 +477,11 @@ class IntermediateNode(ExpressionNodeABC):
 			if wrt in node_instance.parent_nodes:
 				deriv_node = node_instance._derivatives.get(wrt)
 				if deriv_node is None:
-					deriv = node_instance._expression.diff(wrt.symbol)
+					if isinstance(node_instance._expression, sym.Pow):
+						args = node_instance._expression.args
+						deriv = args[1] * args[0]**(args[1] - 1)
+					else:
+						deriv = node_instance._expression.diff(wrt.symbol)
 					if deriv.is_Atom:
 						if isinstance(deriv, sym.Symbol):
 							deriv_node = node_instance.graph.symbols_to_nodes_mapping.get(deriv)
@@ -466,11 +507,22 @@ class IntermediateNode(ExpressionNodeABC):
 
 	@staticmethod
 	def tier(node_instance):
-		return max([parent.tier for parent in node_instance.parent_nodes]) + 1
+		tiers = [parent.tier for parent in node_instance.parent_nodes]
+		return max(tiers) + 1
 
 	@staticmethod
 	def is_precomputable(node_instance):
-		return all([parent.is_precomputable for parent in node_instance.parent_nodes])
+		is_precomputable = all([parent.is_precomputable 
+			for parent in node_instance.parent_nodes])
+		if is_precomputable:
+			node_instance._value = node_instance.operation(*[parent.value 
+				for parent in node_instance.parent_nodes])
+		return is_precomputable
+
+	@staticmethod
+	def is_vector(node_instance):
+		return any([parent.is_vector 
+			for parent in node_instance.parent_nodes])
 
 	@staticmethod
 	def _str(node_instance):

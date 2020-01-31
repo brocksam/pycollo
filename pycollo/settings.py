@@ -27,7 +27,6 @@ class Settings():
 		# Collocation and quadrature
 		self.quadrature_method = quadrature_method
 		self.derivative_level = derivative_level
-		
 
 		# Mesh refinement
 		self.collocation_points_min = collocation_points_min
@@ -38,6 +37,9 @@ class Settings():
 		self.display_mesh_refinement_info = display_mesh_refinement_info
 		self.display_mesh_result_info = display_mesh_result_info
 		self.display_mesh_result_graph = display_mesh_result_graph
+
+		# Scaling
+		self.scaling_method = scaling_method
 
 	@property
 	def scaling_method(self):

@@ -241,7 +241,6 @@ class ExpressionGraph:
 					wrt=self._endpoint_variable_nodes, func_abrv='L_b_temp',
 					completion_msg='Hessian of the endpoint Lagrangian')
 				self.ddL_b_dxbdxb.append(self.ddL_b_temp_dxbdxb)
-				self.ddL_b_dxbdxb.append(self.ddL_b_temp_dxbdxb)
 				self.ddL_b_dxbdxb_nodes.append(self.ddL_b_temp_dxbdxb_nodes)
 				self.ddL_b_dxbdxb_precomputable.update(
 					self.ddL_b_temp_dxbdxb_precomputable)

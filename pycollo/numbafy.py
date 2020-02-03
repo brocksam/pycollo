@@ -133,7 +133,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
                         array_arguments.append(mat_entry)
             if array_arguments:
                 array_argument = ', '.join(array_arguments)
-                return_value = f'np.stack(({array_argument}))'
+                return_value = f'np.stack(({array_argument}, ))'
             else:
                 return_value = f'np.zeros((_N, _N))'
 

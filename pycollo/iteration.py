@@ -1020,7 +1020,8 @@ class Solution:
 		if plot_y:
 			for i_y, y_data in enumerate(y_datas):
 				plt.plot(self._time, self._y[i_y], marker='x', markersize=5, linestyle='', color='black')
-				plt.plot(t_data, y_data, linewidth=2)
+				plt.plot(t_data, y_data, linewidth=2, label=self._ocp._y_vars_user[i_y])
+			plt.legend(loc='upper left')
 			plt.grid(True)
 			plt.title('States')
 			plt.xlabel('Time / $s$')
@@ -1029,19 +1030,21 @@ class Solution:
 		if plot_dy:
 			for i_y, dy_data in enumerate(dy_datas):
 				plt.plot(self._time, self._dy[i_y], marker='x', markersize=5, linestyle='', color='black')
-				plt.plot(t_data, dy_data, linewidth=2)
-				plt.grid(True)
-				plt.title('State Derivatives')
-				plt.xlabel('Time / $s$')
+				plt.plot(t_data, dy_data, linewidth=2, label=self._ocp._y_vars_user[i_y])	
+			plt.legend(loc='upper left')
+			plt.grid(True)
+			plt.title('State Derivatives')
+			plt.xlabel('Time / $s$')
 			plt.show()
 
 		if plot_u:
 			for i_u, u_data in enumerate(u_datas):
 				plt.plot(self._time, self._u[i_u], marker='x', markersize=5, linestyle='', color='black')
-				plt.plot(t_data, u_data, linewidth=2)
-				plt.grid(True)
-				plt.title('Controls')
-				plt.xlabel('Time / $s$')
+				plt.plot(t_data, u_data, linewidth=2, label=self._ocp._u_vars_user[i_u])
+			plt.legend(loc='upper left')
+			plt.grid(True)
+			plt.title('Controls')
+			plt.xlabel('Time / $s$')
 			plt.show()
 
 		# plt.plot(self._y[0], self._y[1], marker='x', markersize=5, linestyle='', color='black')

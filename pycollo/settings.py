@@ -11,7 +11,7 @@ class Settings():
 		collocation_matrix_form='integral', nlp_solver='ipopt', 
 		linear_solver='mumps', nlp_tolerance=1e-10, max_nlp_iterations=2000, 
 		quadrature_method='lobatto', derivative_level=2, max_mesh_iterations=10, 
-		mesh_tolerance=1e-8, collocation_points_min=4, collocation_points_max=10, 
+		mesh_tolerance=1e-8, collocation_points_min=2, collocation_points_max=10, 
 		display_mesh_refinement_info=True, display_mesh_result_info=False, 
 		display_mesh_result_graph=False, scaling_method=None):
 

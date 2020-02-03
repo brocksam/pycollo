@@ -81,16 +81,16 @@ class Quadrature:
 		coefficients.extend([1, 1])
 		denominator_coefficients = [1, 1]
 		legendre_polynomial = np.polynomial.legendre.Legendre(coefficients)
-		radau_points = legendre_polynomial.roots()
 		self._polynomials.update({order: legendre_polynomial})
 
-		lobatto_points = legendre_polynomial.deriv().roots()
-		lobatto_points = np.insert(lobatto_points, 0, -1, axis=0)
-		lobatto_points = np.append(lobatto_points, 1)
-		self._quadrature_points.update({order: lobatto_points})
+		radau_points = legendre_polynomial.roots()
+		self._quadrature_points.update({order: radau_points})
 
-		lobatto_weights = np.array([1/(order*(order-1)*(legendre_polynomial(x)**2)) for x in lobatto_points])
-		self._quadrature_weights.update({order: lobatto_weights})
+		radau_weights = np.array([1/(order*(order-1)*(legendre_polynomial(x)**2)) for x in radau_points])
+		self._quadrature_weights.update({order: radau_weights})
+
+		print(radau_weights)
+		input()
 
 		butcher_points = self.quadrature_point(order, domain=[0, 1])
 		butcher_array = np.zeros((order, order))
@@ -147,9 +147,6 @@ class Quadrature:
 		lobatto_points = np.insert(lobatto_points, 0, -1, axis=0)
 		lobatto_points = np.append(lobatto_points, 1)
 		self._quadrature_points.update({order: lobatto_points})
-
-		print(self._quadrature_points)
-		input()
 
 		lobatto_weights = np.array([1/(order*(order-1)*(legendre_polynomial(x)**2)) for x in lobatto_points])
 		self._quadrature_weights.update({order: lobatto_weights})

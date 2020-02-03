@@ -81,7 +81,7 @@ class OptimalControlProblem():
 		self.settings = settings
 
 		# Initialise problem description
-		self._init_empty_tuples()
+		self._init_private_attributes()
 		self._init_user_options(
 			state_variables,
 			control_variables, 
@@ -103,7 +103,7 @@ class OptimalControlProblem():
 		self._initialised = False
 		self._forward_dynamics = False
 
-	def _init_empty_tuples(self):
+	def _init_private_attributes(self):
 		self._y_vars_user = ()
 		self._u_vars_user = ()
 		self._q_vars_user = ()
@@ -449,6 +449,7 @@ class OptimalControlProblem():
 		ocp_initialisation_time_start = timer()
 		eom_msg = 'Initialising optimal control problem.'
 		self._console_out_message_heading(eom_msg)
+		self._check_state_equation_for_each_state_variable()
 		self._check_user_supplied_bounds()
 		self._generate_scaling()
 		self._generate_expression_graph()
@@ -463,6 +464,17 @@ class OptimalControlProblem():
 		self._ocp_initialisation_time = (ocp_initialisation_time_stop 
 			- ocp_initialisation_time_start)
 		self._initialised = True
+
+	def _check_state_equation_for_each_state_variable(self):
+		if self.number_state_variables != self.number_state_equations:
+			msg = ("A state equation must be supplied for each state variable. "
+				f"Currently {self.number_state_equations} state equations are "
+				f"supplied for {self.number_state_variables} state variables.")
+			raise ValueError(msg)
+
+	def _check_user_supplied_bounds(self):
+		self._bounds._bounds_check()
+		print('Bounds checked.')
 
 	def _generate_expression_graph(self):
 		self._generate_pycollo_symbols()
@@ -486,10 +498,6 @@ class OptimalControlProblem():
 			)
 		self._expression_graph = ExpressionGraph(self, user_variables, 
 			variables, aux_data, self.objective_function, constraints)
-
-	def _check_user_supplied_bounds(self):
-		self._bounds._bounds_check()
-		print('Bounds checked.')
 
 	def _generate_scaling(self):
 		self._scaling._generate()

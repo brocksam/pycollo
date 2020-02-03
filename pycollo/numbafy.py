@@ -8,6 +8,8 @@ from ordered_set import OrderedSet
 import scipy.interpolate as interpolate
 import sympy as sym
 
+acos = arccos
+asin = arcsin
 atan = arctan
 
 def numbafy(expression_graph=None, expression=None, expression_nodes=None, precomputable_nodes=None, dependent_tiers=None, parameters=None, lagrange_parameters=None, return_dims=None, return_flat=False, N_arg=False, endpoint=False, hessian=None, hessian_sym_set=None, ocp_num_vars=None):

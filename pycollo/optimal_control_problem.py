@@ -81,7 +81,7 @@ class OptimalControlProblem():
 		self.settings = settings
 
 		# Initialise problem description
-		self._init_empty_tuples()
+		self._init_private_attributes()
 		self._init_user_options(
 			state_variables,
 			control_variables, 
@@ -103,7 +103,7 @@ class OptimalControlProblem():
 		self._initialised = False
 		self._forward_dynamics = False
 
-	def _init_empty_tuples(self):
+	def _init_private_attributes(self):
 		self._y_vars_user = ()
 		self._u_vars_user = ()
 		self._q_vars_user = ()

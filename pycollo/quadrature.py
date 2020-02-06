@@ -79,22 +79,27 @@ class Quadrature:
 	def _radau_generator(self, order):
 		coefficients = [0]*(order - 1)
 		coefficients.extend([1, 1])
-		denominator_coefficients = [1, 1]
 		legendre_polynomial = np.polynomial.legendre.Legendre(coefficients)
 		self._polynomials.update({order: legendre_polynomial})
 
 		radau_points = legendre_polynomial.roots()
 		self._quadrature_points.update({order: radau_points})
 
-		radau_weights = np.array([1/(order*(order-1)*(legendre_polynomial(x)**2)) for x in radau_points])
+		coefficients = [0]*(order - 1)
+		coefficients.extend([1])
+		legendre_polynomial = np.polynomial.legendre.Legendre(coefficients)
+		radau_weights = [2/order**2]
+		radau_weights = np.array(
+			radau_weights + [(1 - x)/(order**2*(legendre_polynomial(x)**2)) 
+			for x in radau_points[1:]])
 		self._quadrature_weights.update({order: radau_weights})
 
-		print(radau_weights)
-		input()
+		print(f'x: {radau_points}')
+		print(f'w: {radau_weights}, {sum(radau_weights)}')
 
 		butcher_points = self.quadrature_point(order, domain=[0, 1])
 		butcher_array = np.zeros((order, order))
-		butcher_array[-1, :] = lobatto_weights
+		butcher_array[-1, :] = radau_weights
 		if order > 2:
 			A_row = (order + 1) * (order - 2)
 			A_col = order * (order - 2)
@@ -105,8 +110,8 @@ class Quadrature:
 					row = j + k*order
 					for i in range(order-2):
 						col = i + j*(order-2)
-						A[row, col] = lobatto_weights[i+1] * butcher_points[i+1]**k
-					b[row] = (lobatto_weights[j]/(k+1))*(1 - butcher_points[j]**(k+1)) - lobatto_weights[-1]*lobatto_weights[j]
+						A[row, col] = radau_weights[i+1] * butcher_points[i+1]**k
+					b[row] = (radau_weights[j]/(k+1))*(1 - butcher_points[j]**(k+1)) - radau_weights[-1]*radau_weights[j]
 			del_row = []
 			for i, row in enumerate(A):
 				if np.count_nonzero(row) == 0:
@@ -117,8 +122,11 @@ class Quadrature:
 			butcher_array[1:-1, :] = a.reshape(order-2, -1, order='F')
 		self._butcher_arrays.update({order: butcher_array})
 
-		D_left = np.ones((num_interior_points, 1), dtype=int)
-		D_right = np.diag(-1*np.ones((num_interior_points, ), dtype=int))
+		print(butcher_array)
+		input()
+
+		D_left = np.ones((order - 1, 1), dtype=int)
+		D_right = np.diag(-1*np.ones((order - 1, ), dtype=int))
 		D_matrix = np.hstack([D_left, D_right])
 		self._D_matrices.update({order: D_matrix})
 
@@ -151,7 +159,11 @@ class Quadrature:
 		lobatto_weights = np.array([1/(order*(order-1)*(legendre_polynomial(x)**2)) for x in lobatto_points])
 		self._quadrature_weights.update({order: lobatto_weights})
 
+		print(f'x: {lobatto_points}')
+		print(f'w: {lobatto_weights}')
+
 		butcher_points = self.quadrature_point(order, domain=[0, 1])
+		print(f'x\': {butcher_points}')
 		butcher_array = np.zeros((order, order))
 		butcher_array[-1, :] = lobatto_weights
 		if order > 2:
@@ -160,12 +172,20 @@ class Quadrature:
 			A = np.zeros((A_row, A_col))
 			b = np.zeros(A_row)
 			for k in range(order-2):
+				print(f'k: {k}')
 				for j in range(order):
+					print(f'j: {j}')
 					row = j + k*order
+					print(f'row: {row}')
 					for i in range(order-2):
+						print(f'i: {i}')
 						col = i + j*(order-2)
+						print(f'col: {col}')
 						A[row, col] = lobatto_weights[i+1] * butcher_points[i+1]**k
+						print(f'A: {lobatto_weights[i+1] * butcher_points[i+1]**k}')
 					b[row] = (lobatto_weights[j]/(k+1))*(1 - butcher_points[j]**(k+1)) - lobatto_weights[-1]*lobatto_weights[j]
+					
+					print(f'b: {(lobatto_weights[j]/(k+1))*(1 - butcher_points[j]**(k+1)) - lobatto_weights[-1]*lobatto_weights[j]}\n')
 			del_row = []
 			for i, row in enumerate(A):
 				if np.count_nonzero(row) == 0:
@@ -173,6 +193,9 @@ class Quadrature:
 			A = np.delete(A, del_row, axis=0)
 			b = np.delete(b, del_row, axis=0)
 			a = np.linalg.solve(A, b)
+			print(f'A: {A}')
+			print(f'b: {b}')
+			print(f'a: {a}')
 			butcher_array[1:-1, :] = a.reshape(order-2, -1, order='F')
 		self._butcher_arrays.update({order: butcher_array})
 
@@ -194,6 +217,8 @@ class Quadrature:
 		D_index_array = np.concatenate((D_left, D_right))
 		D_index_array.sort()
 		self._D_index_arrays.update({order: D_index_array})
+
+		input()
 
 		
 

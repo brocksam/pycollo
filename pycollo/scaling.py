@@ -97,9 +97,9 @@ class IterationScaling:
 
 		# Constraints scale
 		W_defect = V_vals[self._iteration._c_defect_slice]
-		W_path = np.zeros(self._iteration._num_c_path)
+		W_path = np.ones(self._iteration._num_c_path)
 		W_integral = V_vals[self._iteration._c_integral_slice]
-		W_point = np.zeros(self._iteration._num_c_boundary)
+		W_point = np.ones(self._iteration._num_c_boundary)
 		W_vals = np.concatenate([W_defect, W_path, W_integral, W_point])
 		self.W = sparse.diags(W_vals)
 

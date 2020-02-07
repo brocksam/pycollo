@@ -20,7 +20,7 @@ m0, p0, d0, l0, k0, I0 = sym.symbols('m0 p0 d0 l0 k0 I0')
 T0min, T0max = sym.symbols('T0min T0max')
 
 # Optimal Control Problem
-mesh = pycollo.Mesh(mesh_sections=2, mesh_section_fractions=None, mesh_collocation_points=[2,3])
+mesh = pycollo.Mesh(mesh_sections=10, mesh_section_fractions=None, mesh_collocation_points=4)
 problem = pycollo.OptimalControlProblem(state_variables=[y0, y1], control_variables=[u0], parameter_variables=[m0, p0], initial_mesh=mesh)
 
 # State equations
@@ -46,6 +46,8 @@ problem.initial_guess = pycollo.Guess(optimal_control_problem=problem, time=[0, 
 
 # Auxiliary data
 problem.auxiliary_data = {g: -9.81, d0: 0.5, k0: 1/12, T0min: -15, T0max: 15}
+
+problem.settings.scaling_method = 'automatic'
 
 # Solve
 problem.solve()

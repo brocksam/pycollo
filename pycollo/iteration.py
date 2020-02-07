@@ -313,11 +313,18 @@ class Iteration:
 				G_nonzero_col.append(col_offset)
 		dbeta_dxb_slice = slice(drho_ds_slice.stop, len(G_nonzero_row))
 
-		sG_matrix = sparse.coo_matrix(([1]*len(G_nonzero_row), (G_nonzero_row, G_nonzero_col)), shape=self._G_shape).tocsr().tocoo()
+		sG_matrix = sparse.coo_matrix((np.ones(len(G_nonzero_row)), (G_nonzero_row, G_nonzero_col)), shape=(self._num_c, self._num_x)).tocsr().tocoo()
 
 		self._G_nonzero_row = tuple(sG_matrix.row)
 		self._G_nonzero_col = tuple(sG_matrix.col)
 		self._num_G_nonzero = sG_matrix.nnz
+
+		G_from_lambda = list(zip(G_nonzero_row, G_nonzero_col))
+		G_from_lambda_indices = []
+		for pair in zip(self._G_nonzero_row, self._G_nonzero_col):
+			G_from_lambda_indices.append(G_from_lambda.index(pair))
+		self._G_from_lambda_indices = G_from_lambda_indices
+
 		print('Full Jacobian sparsity computed.')
 
 		def hessian_objective_sparsity():
@@ -559,7 +566,8 @@ class Iteration:
 			return c_tilde
 
 		def scale_jacobian(G):
-			G_sparse = sparse.coo_matrix((G, jacobian_structure()), shape=self._G_shape)
+			G_ordered = G[self._G_from_lambda_indices]
+			G_sparse = sparse.coo_matrix((G_ordered, jacobian_structure()), shape=self._G_shape)
 			G_tilde = self.scaling.W * G_sparse * self.scaling.V_inv
 			G_tilde_coo = G_tilde.tocoo()
 			G_data = np.concatenate([G_tilde_coo.data, np.zeros(G_sparse.nnz)])
@@ -678,7 +686,7 @@ class Iteration:
 		# ========================================================
 		# JACOBIAN CHECK
 		# ========================================================
-		if False:
+		if True:
 			print('\n\n\n')
 			x_data = np.array(range(self._num_x), dtype=float)
 			lagrange = np.array(range(self._num_c), dtype=float)

@@ -197,7 +197,10 @@ class OptimalControlProblem():
 
 	@property
 	def number_state_variables(self):
-		return len(self._y_vars_user)
+		if self._bounds._bounds_checked:
+			return self._bounds._y_needed.sum()
+		else:
+			return len(self._y_vars_user)
 	
 	@property
 	def control_variables(self):
@@ -212,7 +215,10 @@ class OptimalControlProblem():
 
 	@property
 	def number_control_variables(self):
-		return len(self._u_vars_user)
+		if self._bounds._bounds_checked:
+			return self._bounds._u_needed.sum()
+		else:
+			return len(self._u_vars_user)
 
 	@property
 	def integral_variables(self):
@@ -220,7 +226,10 @@ class OptimalControlProblem():
 
 	@property
 	def number_integral_variables(self):
-		return len(self._q_vars_user)
+		if self._bounds._bounds_checked:
+			return self._bounds._q_needed.sum()
+		else:
+			return len(self._q_vars_user)
 
 	@property
 	def time_variables(self):
@@ -228,7 +237,10 @@ class OptimalControlProblem():
 
 	@property
 	def number_time_variables(self):
-		return len(self._t_vars_user)
+		if self._bounds._bounds_checked:
+			return self._bounds._t_needed.sum()
+		else:
+			return len(self._t_vars_user)
 	
 	@property
 	def parameter_variables(self):
@@ -244,7 +256,10 @@ class OptimalControlProblem():
 
 	@property
 	def number_parameter_variables(self):
-		return len(self._s_vars_user)
+		if self._bounds._bounds_checked:
+			return self._bounds._s_needed.sum()
+		else:
+			return len(self._s_vars_user)
 
 	@property
 	def variables(self):
@@ -252,7 +267,10 @@ class OptimalControlProblem():
 
 	@property
 	def number_variables(self):
-		return len(self._x_vars_user)
+		if self._bounds._bounds_checked:
+			return self._bounds._x_needed.sum()
+		else:
+			return len(self._x_vars_user)
 
 	def _update_vars(self):
 		self._x_vars_user = tuple(self._y_vars_user + self._u_vars_user

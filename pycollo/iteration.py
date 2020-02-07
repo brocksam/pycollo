@@ -41,6 +41,10 @@ class Iteration:
 		print(f'\n\n\n==========================\nSolving Mesh Iteration {self.iteration_number}:\n==========================\n')
 
 	@property
+	def optimal_control_problem(self):
+		return self._ocp
+
+	@property
 	def iteration_number(self):
 		return self._iteration_number
 
@@ -101,9 +105,6 @@ class Iteration:
 		# Mesh
 		self._mesh._generate_mesh()
 
-		# Scaling
-		self.scaling = IterationScaling(self)
-
 		# Guess
 		self._guess = Guess(
 			optimal_control_problem=self._ocp)
@@ -160,6 +161,9 @@ class Iteration:
 		self._c_path_slice = slice(self._c_defect_slice.stop, self._c_defect_slice.stop + self._num_c_path)
 		self._c_integral_slice = slice(self._c_path_slice.stop, self._c_path_slice.stop + self._num_c_integral)
 		self._c_boundary_slice = slice(self._c_integral_slice.stop, self._num_c)
+
+		self._G_shape = (self._num_c, self._num_x)
+		self._H_shape = (self._num_x, self._num_x)
 
 		# Jacobian
 		G_nonzero_row = []
@@ -309,9 +313,11 @@ class Iteration:
 				G_nonzero_col.append(col_offset)
 		dbeta_dxb_slice = slice(drho_ds_slice.stop, len(G_nonzero_row))
 
-		self._G_nonzero_row = tuple(G_nonzero_row)
-		self._G_nonzero_col = tuple(G_nonzero_col)
-		self._num_G_nonzero = len(G_nonzero_row)
+		sG_matrix = sparse.coo_matrix(([1]*len(G_nonzero_row), (G_nonzero_row, G_nonzero_col)), shape=self._G_shape).tocsr().tocoo()
+
+		self._G_nonzero_row = tuple(sG_matrix.row)
+		self._G_nonzero_col = tuple(sG_matrix.col)
+		self._num_G_nonzero = sG_matrix.nnz
 		print('Full Jacobian sparsity computed.')
 
 		def hessian_objective_sparsity():
@@ -343,7 +349,7 @@ class Iteration:
 						H_objective_nonzero_col.append(col_offset)
 
 			num_H_objective_nonzero = len(H_objective_nonzero_row)
-			sH_objective_matrix = sparse.coo_matrix(([1]*num_H_objective_nonzero, (H_objective_nonzero_row, H_objective_nonzero_col)), shape=(self._num_x, self._num_x))
+			sH_objective_matrix = sparse.coo_matrix(([1]*num_H_objective_nonzero, (H_objective_nonzero_row, H_objective_nonzero_col)), shape=self._H_shape)
 			sH_objective_indices = list(zip(sH_objective_matrix.row, sH_objective_matrix.col))
 			return sH_objective_matrix, sH_objective_indices
 
@@ -380,7 +386,7 @@ class Iteration:
 						H_defect_nonzero_col.extend(col_numbers)
 
 			num_H_defect_nonzero = len(H_defect_nonzero_row)
-			sH_defect_matrix = sparse.coo_matrix(([1]*num_H_defect_nonzero, (H_defect_nonzero_row, H_defect_nonzero_col)), shape=(self._num_x, self._num_x))
+			sH_defect_matrix = sparse.coo_matrix(([1]*num_H_defect_nonzero, (H_defect_nonzero_row, H_defect_nonzero_col)), shape=self._H_shape)
 			sH_defect_indices = list(zip(sH_defect_matrix.row, sH_defect_matrix.col))
 			return sH_defect_matrix, sH_defect_indices, H_defect_sum_flag
 
@@ -423,7 +429,7 @@ class Iteration:
 						H_path_nonzero_col.extend(col_numbers)
 
 			num_H_path_nonzero = len(H_path_nonzero_row)
-			sH_path_matrix = sparse.coo_matrix(([1]*num_H_path_nonzero, (H_path_nonzero_row, H_path_nonzero_col)), shape=(self._num_x, self._num_x))
+			sH_path_matrix = sparse.coo_matrix(([1]*num_H_path_nonzero, (H_path_nonzero_row, H_path_nonzero_col)), shape=self._H_shape)
 			sH_path_indices = list(zip(sH_path_matrix.row, sH_path_matrix.col))
 			return sH_path_matrix, sH_path_indices#, H_path_sum_flag
 
@@ -460,7 +466,7 @@ class Iteration:
 						H_integral_nonzero_col.extend(col_numbers)
 
 			num_H_integral_nonzero = len(H_integral_nonzero_row)
-			sH_integral_matrix = sparse.coo_matrix(([1]*num_H_integral_nonzero, (H_integral_nonzero_row, H_integral_nonzero_col)), shape=(self._num_x, self._num_x))
+			sH_integral_matrix = sparse.coo_matrix(([1]*num_H_integral_nonzero, (H_integral_nonzero_row, H_integral_nonzero_col)), shape=self._H_shape)
 			sH_integral_indices = list(zip(sH_integral_matrix.row, sH_integral_matrix.col))
 			return sH_integral_matrix, sH_integral_indices, H_integral_sum_flag
 
@@ -499,7 +505,7 @@ class Iteration:
 						H_endpoint_nonzero_col.append(col_offset)
 
 			num_H_endpoint_nonzero = len(H_endpoint_nonzero_row)
-			sH_endpoint_matrix = sparse.coo_matrix(([1]*num_H_endpoint_nonzero, (H_endpoint_nonzero_row, H_endpoint_nonzero_col)), shape=(self._num_x, self._num_x))
+			sH_endpoint_matrix = sparse.coo_matrix(([1]*num_H_endpoint_nonzero, (H_endpoint_nonzero_row, H_endpoint_nonzero_col)), shape=self._H_shape)
 			sH_endpoint_indices = list(zip(sH_endpoint_matrix.row, sH_endpoint_matrix.col))
 			return sH_endpoint_matrix, sH_endpoint_indices
 
@@ -553,12 +559,19 @@ class Iteration:
 			return c_tilde
 
 		def scale_jacobian(G):
-			G_tilde = self.scaling.W * G * self.scaling.V_inv
-			return G_tilde
+			G_sparse = sparse.coo_matrix((G, jacobian_structure()), shape=self._G_shape)
+			G_tilde = self.scaling.W * G_sparse * self.scaling.V_inv
+			G_tilde_coo = G_tilde.tocoo()
+			G_data = np.concatenate([G_tilde_coo.data, np.zeros(G_sparse.nnz)])
+			G_row = np.concatenate([G_tilde_coo.row, G_sparse.row])
+			G_col = np.concatenate([G_tilde_coo.col, G_sparse.col])
+			G_tilde_with_zeros = sparse.coo_matrix((G_data, (G_row, G_col)), shape=self._G_shape).tocsr().tocoo()
+			return G_tilde_with_zeros.data
 
 		def scale_hessian(H):
-			H_tilde = H * self.scaling.V_inv_sqrd
-			return H_tilde
+			H_sparse = sparse.coo_matrix((H, hessian_structure()), shape=self._H_shape)
+			H_tilde = H_sparse * self.scaling.V_inv_sqrd
+			return H_tilde.data
 
 		def rescale_x(x):
 			x_tilde = self.scaling.V*x + self.scaling.r
@@ -656,7 +669,11 @@ class Iteration:
 		# Generate bounds
 		self._x_bnd_l, self._x_bnd_u = self._generate_x_bounds()
 		self._c_bnd_l, self._c_bnd_u = self._generate_c_bounds()
-		print('Mesh-specific bounds generated.\n\n')
+		print('Mesh-specific bounds generated.')
+
+		# Scaling
+		self.scaling = IterationScaling(self)
+		print('Scaling generated.\n\n')
 
 		# ========================================================
 		# JACOBIAN CHECK

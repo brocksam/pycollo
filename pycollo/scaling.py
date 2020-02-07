@@ -73,12 +73,38 @@ class IterationScaling:
 		return self.optimal_control_problem.scaling
 
 	def _generate_scaling(self):
-		self.r = 0
-		self.V = 1
-		self.V_inv = 1
+
+		def expand_to_mesh(base_scaling):
+			yu = base_scaling[self.optimal_control_problem._yu_slice]
+			qts = base_scaling[self.optimal_control_problem._qts_slice]
+			return np.concatenate([np.repeat(yu, N), qts])
+
+		N = self._iteration._mesh._N
+
+		# Variables shift
+		self.r = expand_to_mesh(self.base_scaling.r_vector_terms)
+
+		# Variables scale
+		V_vals = expand_to_mesh(self.base_scaling.V_matrix_terms)
+		V_inv_vals = expand_to_mesh(self.base_scaling.V_inv_matrix_terms)
+		V_inv_sqrd_vals = expand_to_mesh(self.base_scaling.V_inv_matrix_sqrd_terms)
+		self.V = sparse.diags(V_vals)
+		self.V_inv = sparse.diags(V_inv_vals)
+		self.V_inv_sqrd = sparse.diags(V_inv_sqrd_vals)
+
+		# Objective scale
 		self.w_J = 1
-		self.W = 1
-		self.V_inv_sqrd = 1
+
+		# Constraints scale
+		W_defect = V_vals[self._iteration._c_defect_slice]
+		W_path = np.zeros(self._iteration._num_c_path)
+		W_integral = V_vals[self._iteration._c_integral_slice]
+		W_point = np.zeros(self._iteration._num_c_boundary)
+		W_vals = np.concatenate([W_defect, W_path, W_integral, W_point])
+		self.W = sparse.diags(W_vals)
+
+		# print('\n\n\n')
+		# raise NotImplementedError
 
 
 

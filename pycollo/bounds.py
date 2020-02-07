@@ -16,6 +16,7 @@ class Bounds():
 		self._ocp = optimal_control_problem
 		self.default_inf=default_inf
 		self.infer_bounds=infer_bounds
+		self._bounds_checked = False
 
 		if initial_time is not None:
 			_ = self.kwarg_conflict_check(initial_time_lower, initial_time_upper, 'initial_time')
@@ -528,6 +529,8 @@ class Bounds():
 		# Boundary
 		self._b_l, self._b_u = parse_bounds_to_np_array(self.boundary, self._ocp._b_cons_user, 'boundary constraint')
 		_ = compare_lower_and_upper(self._b_l, self._b_u, 'boundary constraint')
+
+		self._bounds_checked = True
 
 	@staticmethod
 	def kwarg_conflict_check(lower, upper, kwarg_str):

@@ -88,7 +88,6 @@ class Iteration:
 	def solution(self):
 		return self._solution
 
-	# @profile
 	def _initialise_iteration(self, prev_guess):
 
 		_ = self._display_mesh_iteration()
@@ -123,11 +122,6 @@ class Iteration:
 		self._guess._t = prev_guess._t
 		self._guess._s = prev_guess._s
 		print('Guess interpolated to iteration mesh.')
-
-		# plt.plot(self._guess._time, self._guess._y[2, :])
-		# plt.plot(self._guess._time, self._guess._y[3, :])
-		# plt.show()
-		# raise ValueError
 
 		# Variables
 		self._num_y = self._ocp._num_y_vars * self._mesh._N
@@ -313,18 +307,9 @@ class Iteration:
 				G_nonzero_col.append(col_offset)
 		dbeta_dxb_slice = slice(drho_ds_slice.stop, len(G_nonzero_row))
 
-		sG_matrix = sparse.coo_matrix((np.ones(len(G_nonzero_row)), (G_nonzero_row, G_nonzero_col)), shape=(self._num_c, self._num_x)).tocsr().tocoo()
-
-		self._G_nonzero_row = tuple(sG_matrix.row)
-		self._G_nonzero_col = tuple(sG_matrix.col)
-		self._num_G_nonzero = sG_matrix.nnz
-
-		G_from_lambda = list(zip(G_nonzero_row, G_nonzero_col))
-		G_from_lambda_indices = []
-		for pair in zip(self._G_nonzero_row, self._G_nonzero_col):
-			G_from_lambda_indices.append(G_from_lambda.index(pair))
-		self._G_from_lambda_indices = G_from_lambda_indices
-
+		self._G_nonzero_row = tuple(G_nonzero_row)
+		self._G_nonzero_col = tuple(G_nonzero_col)
+		self._num_G_nonzero = len(self._G_nonzero_row)
 		print('Full Jacobian sparsity computed.')
 
 		def hessian_objective_sparsity():
@@ -397,7 +382,7 @@ class Iteration:
 			sH_defect_indices = list(zip(sH_defect_matrix.row, sH_defect_matrix.col))
 			return sH_defect_matrix, sH_defect_indices, H_defect_sum_flag
 
-		def hessian_path_sparsity():#hessian_shape):
+		def hessian_path_sparsity():
 			H_path_nonzero_row = []
 			H_path_nonzero_col = []
 			H_path_sum_flag = []
@@ -409,8 +394,6 @@ class Iteration:
 			else:
 				for matrix in self._ocp._expression_graph.ddL_gamma_dxdx[1:]:
 					ddL_gamma_dxdx_nonzero += matrix
-			
-			# print('\n\n\n')
 
 			for i_row in range(self._ocp._num_vars):
 				row = ddL_gamma_dxdx_nonzero[i_row, :i_row+1]
@@ -426,19 +409,17 @@ class Iteration:
 						if i_col < self._ocp._yu_qts_split:
 							col_offset = i_col * self._mesh._N
 							col_numbers = list(range(col_offset, col_offset + self._mesh._N))
-							# H_path_sum_flag.append(False)
 						else:
 							col_offset = self._ocp._yu_qts_split* (self._mesh._N - 1) + i_col
 							row_numbers = [row_offset]
 							col_numbers = [col_offset]
-							# H_path_sum_flag.append(True)
 						H_path_nonzero_row.extend(row_numbers)
 						H_path_nonzero_col.extend(col_numbers)
 
 			num_H_path_nonzero = len(H_path_nonzero_row)
 			sH_path_matrix = sparse.coo_matrix(([1]*num_H_path_nonzero, (H_path_nonzero_row, H_path_nonzero_col)), shape=self._H_shape)
 			sH_path_indices = list(zip(sH_path_matrix.row, sH_path_matrix.col))
-			return sH_path_matrix, sH_path_indices#, H_path_sum_flag
+			return sH_path_matrix, sH_path_indices
 
 		def hessian_integral_sparsity():
 			H_integral_nonzero_row = []
@@ -546,44 +527,11 @@ class Iteration:
 			self._H_nonzero_row = tuple(sH_matrix.row)
 			self._H_nonzero_col = tuple(sH_matrix.col)
 			self._num_H_nonzero = len(self._H_nonzero_row)
+
+			H_from_lambda = list(zip(sH_matrix.row, sH_matrix.col))
+			self._H_from_lambda_indices = [H_from_lambda.index(pair) 
+				for pair in zip(self._H_nonzero_row, self._H_nonzero_col)]
 			print('Full Hessian sparsity computed.')
-
-		# Lambda to unscale scaled variables from IPOPT
-		def unscale_x_tilde(x_tilde):
-			x = self.scaling.V_inv * (x_tilde - self.scaling.r)
-			return x
-
-		def scale_objective(J):
-			J_tilde = self.scaling.w_J * J
-			return J_tilde
-
-		def scale_gradient(g):
-			g_tilde = self.scaling.w_J * g * self.scaling.V_inv
-			return g_tilde
-
-		def scale_constraint(c):
-			c_tilde = self.scaling.W * c
-			return c_tilde
-
-		def scale_jacobian(G):
-			G_ordered = G[self._G_from_lambda_indices]
-			G_sparse = sparse.coo_matrix((G_ordered, jacobian_structure()), shape=self._G_shape)
-			G_tilde = self.scaling.W * G_sparse * self.scaling.V_inv
-			G_tilde_coo = G_tilde.tocoo()
-			G_data = np.concatenate([G_tilde_coo.data, np.zeros(G_sparse.nnz)])
-			G_row = np.concatenate([G_tilde_coo.row, G_sparse.row])
-			G_col = np.concatenate([G_tilde_coo.col, G_sparse.col])
-			G_tilde_with_zeros = sparse.coo_matrix((G_data, (G_row, G_col)), shape=self._G_shape).tocsr().tocoo()
-			return G_tilde_with_zeros.data
-
-		def scale_hessian(H):
-			H_sparse = sparse.coo_matrix((H, hessian_structure()), shape=self._H_shape)
-			H_tilde = H_sparse * self.scaling.V_inv_sqrd
-			return H_tilde.data
-
-		def rescale_x(x):
-			x_tilde = self.scaling.V*x + self.scaling.r
-			return x_tilde
 
 		# Lambda to prepare x from IPOPT for numba funcs
 		def reshape_x(x):
@@ -605,12 +553,10 @@ class Iteration:
 			return self._ocp._x_reshape_lambda_point(x, self._x_endpoint_indices)
 
 		# Generate objective function lambda
-		def objective(x_tilde):
-			x = unscale_x_tilde(x_tilde)
+		def objective(x):
 			x_tuple_point = reshape_x_point(x)
 			J = self._ocp._J_lambda(x_tuple_point)
-			J_tilde = scale_objective(J)
-			return J_tilde
+			return J
 
 		self._objective_lambda = objective
 
@@ -618,8 +564,7 @@ class Iteration:
 		def gradient(x):
 			x_tuple_point = reshape_x_point(x)
 			g = self._ocp._g_lambda(x_tuple_point, self._mesh._N)
-			g_tilde = scale_gradient(g)
-			return g_tilde
+			return g
 
 		self._gradient_lambda = gradient
 
@@ -628,8 +573,7 @@ class Iteration:
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
 			c = self._ocp._c_lambda(x_tuple, x_tuple_point, self._mesh._N, self._ocp._y_slice, self._ocp._q_slice, self._num_c, self._c_lambda_dy_slice, self._c_lambda_p_slice, self._c_lambda_g_slice, self._c_defect_slice, self._c_path_slice, self._c_integral_slice, self._c_boundary_slice, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix)
-			c_tilde = scale_constraint(c)
-			return c_tilde
+			return c
 
 		self._constraint_lambda = constraint
 
@@ -640,8 +584,7 @@ class Iteration:
 			x_tuple = reshape_x(x)
 			x_tuple_point = reshape_x_point(x)
 			G = self._ocp._G_lambda(x_tuple, x_tuple_point, self._mesh._N, self._num_G_nonzero, ocp_num_x, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix, A_row_col_array, self._c_lambda_dy_slice, self._c_lambda_p_slice, self._c_lambda_g_slice, dzeta_dy_D_nonzero, dzeta_dy_slice, dzeta_du_slice, dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dxb_slice)
-			G_tilde = scale_jacobian(G)
-			return G_tilde
+			return G
 
 		self._jacobian_lambda = jacobian
 
@@ -663,8 +606,7 @@ class Iteration:
 			x_tuple_point = reshape_x_point(x)
 			zeta_lagrange, gamma_lagrange, rho_lagrange, beta_lagrange = reshape_lagrange(lagrange)
 			H = self._ocp._H_lambda(x_tuple, x_tuple_point, obj_factor, zeta_lagrange, gamma_lagrange, rho_lagrange, beta_lagrange, self._mesh._N, self._num_H_nonzero, H_objective_indices, H_defect_indices, H_path_indices, H_integral_indices, H_endpoint_indices, self._mesh._sA_matrix, self._mesh._W_matrix, H_defect_sum_flag, H_integral_sum_flag)
-			H_tilde = scale_hessian(H)
-			return H_tilde
+			return H
 
 		def hessian_structure():
 			return (self._H_nonzero_row, self._H_nonzero_col)
@@ -674,19 +616,19 @@ class Iteration:
 			self._hessian_structure_lambda = hessian_structure
 		print('IPOPT functions compiled.')
 
+		# Scaling
+		self.scaling = IterationScaling(self)
+		print('Scaling generated.\n\n')
+
 		# Generate bounds
 		self._x_bnd_l, self._x_bnd_u = self._generate_x_bounds()
 		self._c_bnd_l, self._c_bnd_u = self._generate_c_bounds()
 		print('Mesh-specific bounds generated.')
 
-		# Scaling
-		self.scaling = IterationScaling(self)
-		print('Scaling generated.\n\n')
-
 		# ========================================================
 		# JACOBIAN CHECK
 		# ========================================================
-		if True:
+		if False:
 			print('\n\n\n')
 			x_data = np.array(range(self._num_x), dtype=float)
 			lagrange = np.array(range(self._num_c), dtype=float)
@@ -810,7 +752,8 @@ class Iteration:
 				self._jacobian_lambda, 
 				self._jacobian_structure_lambda,
 				self._hessian_lambda,
-				self._hessian_structure_lambda)
+				self._hessian_structure_lambda,
+				)
 
 			self._nlp_problem = ipopt.problem(
 				n=self._num_x,
@@ -825,6 +768,12 @@ class Iteration:
 			self._nlp_problem.addOption('tol', self._ocp._settings.nlp_tolerance)
 			self._nlp_problem.addOption('max_iter', self._ocp._settings.max_nlp_iterations)
 			self._nlp_problem.addOption('print_level', 5)
+			self._nlp_problem.addOption('nlp_scaling_method', 'user-scaling')
+
+			self._nlp_problem.setProblemScaling(
+				self.scaling.obj_scaling, 
+				self.scaling.x_scaling,
+				self.scaling.c_scaling)
 
 		else:
 			raise NotImplementedError
@@ -885,12 +834,6 @@ class Iteration:
 
 		if self._ocp._settings.display_mesh_result_graph:
 			self._solution._plot_interpolated_solution(plot_y=True, plot_dy=True, plot_u=True)
-
-
-
-		
-
-		
 
 	def _refine_new_mesh(self):
 		_ = self._solution._patterson_rao_discretisation_mesh_error()

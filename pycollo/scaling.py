@@ -112,15 +112,12 @@ class IterationScaling:
 		yu = x_guess[self.iteration._yu_slice].reshape(self.iteration._mesh._N, -1)
 		yu_min = np.min(yu, axis=0)
 		yu_max = np.max(yu, axis=0)
-		print(x_guess)
 		x_scaling_yu = 1 / (yu_max - yu_min)
 		qts = x_guess[self.iteration._qts_slice]
 		x_scaling_qts = 1 / np.abs(qts)
 		x_scaling = np.concatenate([x_scaling_yu, x_scaling_qts])
 		prev_x_scalings = np.array([mesh_iter.scaling._x_scaling_unexpanded 
 			for mesh_iter in self.optimal_control_problem._mesh_iterations[:-1]])
-		print(prev_x_scalings)
-		print(x_scaling)
 		x_scalings = np.vstack([prev_x_scalings, x_scaling])
 		self._x_scaling_unexpanded = np.average(x_scalings, axis=0, weights=weights)
 		self.x_scaling = self._expand_x_to_mesh(self._x_scaling_unexpanded)

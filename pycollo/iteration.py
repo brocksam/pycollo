@@ -616,14 +616,14 @@ class Iteration:
 			self._hessian_structure_lambda = hessian_structure
 		print('IPOPT functions compiled.')
 
-		# Scaling
-		self.scaling = IterationScaling(self)
-		print('Scaling generated.\n\n')
-
 		# Generate bounds
 		self._x_bnd_l, self._x_bnd_u = self._generate_x_bounds()
 		self._c_bnd_l, self._c_bnd_u = self._generate_c_bounds()
 		print('Mesh-specific bounds generated.')
+
+		# Scaling
+		self.scaling = IterationScaling(self)
+		print('Scaling generated.\n\n')
 
 		# ========================================================
 		# JACOBIAN CHECK

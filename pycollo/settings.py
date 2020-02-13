@@ -1,7 +1,9 @@
+from typing import Optional
+
 class Settings():
 
 	_COLLOCATION_MATRIX_FORMS = {'differential', 'integral'}
-	_SCALING_OPTIONS = {None, 'automatic', 'user'}
+	_SCALING_OPTIONS = {None, 'user', 'guess', 'bounds'}
 	_NLP_SOLVERS = {'ipopt'}
 	_LINEAR_SOLVERS = {'mumps', 'ma57'}
 	_QUADRATURE_METHODS = {'gauss', 'lobatto', 'radau'}
@@ -13,7 +15,8 @@ class Settings():
 		quadrature_method='lobatto', derivative_level=2, max_mesh_iterations=10, 
 		mesh_tolerance=1e-8, collocation_points_min=4, collocation_points_max=10, 
 		display_mesh_refinement_info=True, display_mesh_result_info=False, 
-		display_mesh_result_graph=False, scaling_method=None):
+		display_mesh_result_graph=False, scaling_method='bounds', 
+		update_scaling=True, number_scaling_samples=0, scaling_weight=0.8):
 
 		# Optimal Control Problem
 		self.ocp = optimal_control_problem
@@ -34,23 +37,63 @@ class Settings():
 		self.mesh_tolerance = mesh_tolerance
 		self.max_mesh_iterations = max_mesh_iterations
 
+		# Scaling
+		self.scaling_method = scaling_method
+		self.update_scaling = update_scaling
+		self.number_scaling_samples = number_scaling_samples
+		self.scaling_weight = scaling_weight
+
+		# Output information
 		self.display_mesh_refinement_info = display_mesh_refinement_info
 		self.display_mesh_result_info = display_mesh_result_info
 		self.display_mesh_result_graph = display_mesh_result_graph
 
-		# Scaling
-		self.scaling_method = scaling_method
-
 	@property
-	def scaling_method(self):
+	def scaling_method(self) -> Optional[str]:
 		return self._scaling_method
 
 	@scaling_method.setter
-	def scaling_method(self, method):
+	def scaling_method(self, method: Optional[str]):
+		if method is not None:
+			method = method.casefold()
 		if method not in self._SCALING_OPTIONS:
 			msg = (f"{method} is not a valid scaling option.")
 			raise ValueError(msg)
 		self._scaling_method = method
+
+	@property
+	def update_scaling(self):
+		return self._update_scaling
+	
+	@update_scaling.setter
+	def update_scaling(self, do_update):
+		do_update = bool(do_update)
+		self._update_scaling = do_update
+
+	@property
+	def scaling_weight(self):
+		return self._scaling_weight
+	
+	@scaling_weight.setter
+	def scaling_weight(self, weight):
+		weight = float(weight)
+		if weight < 0 or weight > 1:
+			msg = (f'Scaling weight must be a number between 0 and 1. {weight} '
+				'is invalid.')
+			raise ValueError(msg)
+		self._scaling_weight = weight
+
+	@property
+	def number_scaling_samples(self):
+		return self._number_scaling_samples
+	
+	@number_scaling_samples.setter
+	def number_scaling_samples(self, num):
+		num = int(num)
+		if num < 0:
+			msg = (f'Number of scaling samples must be an integer greater than '
+				f'or equal to 0. {num} is invalid.')
+		self._number_scaling_samples = num
 
 	@property
 	def collocation_matrix_form(self):

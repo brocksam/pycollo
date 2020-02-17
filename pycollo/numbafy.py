@@ -251,7 +251,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
         # f"    print({return_value})\n"
         f"    return {return_value}")
 
-    cout(function_string)
+    # cout(function_string)
     # input()
     
     exec(function_string)

@@ -9,7 +9,7 @@ import pycollo
 
 y, u = sym.symbols('y u')
 
-mesh = pycollo.Mesh(mesh_sections=10, mesh_section_fractions=None, mesh_collocation_points=4)
+mesh = pycollo.Mesh(mesh_sections=5, mesh_section_fractions=None, mesh_collocation_points=[2,3,4,5,6])
 problem = pycollo.OptimalControlProblem(state_variables=y, control_variables=u, initial_mesh=mesh)
 
 problem.state_equations = [-y**3 + u]
@@ -26,6 +26,7 @@ problem.bounds = pycollo.Bounds(optimal_control_problem=problem, initial_time_lo
 # Guess
 problem.initial_guess = pycollo.Guess(optimal_control_problem=problem, time=[0.0, 10000.0], state=np.array([1.0, 1.5]), control=np.array([0.0, 0.0]), integral=[4], state_endpoints_override=True)
 
-problem.settings.display_mesh_result_graph = False
+problem.settings.display_mesh_result_graph = True
+problem.settings.quadrature_method = 'radau'
 
 problem.solve()

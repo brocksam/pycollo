@@ -352,7 +352,7 @@ class ExpressionGraph:
 		def substitute_function_for_root_symbols(expr):
 
 			def traverse_root_branch(expr, max_tier):
-				root_node = Node(expr, self)
+				root_node = self.symbols_to_nodes_mapping.get(expr, Node(expr, self))
 				max_tier = max(max_tier, root_node.tier)
 				return root_node.symbol, root_node, max_tier
 

@@ -94,8 +94,8 @@ class Quadrature:
 			for x in radau_points[1:]])
 		self._quadrature_weights.update({order: radau_weights})
 
-		print(f'x: {radau_points}')
-		print(f'w: {radau_weights}, {sum(radau_weights)}')
+		# print(f'x: {radau_points}')
+		# print(f'w: {radau_weights}, {sum(radau_weights)}')
 
 		butcher_points = self.quadrature_point(order, domain=[0, 1])
 		butcher_array = np.zeros((order, order))
@@ -122,8 +122,8 @@ class Quadrature:
 			butcher_array[1:-1, :] = a.reshape(order-2, -1, order='F')
 		self._butcher_arrays.update({order: butcher_array})
 
-		print(butcher_array)
-		input()
+		# print(butcher_array)
+		# input()
 
 		D_left = np.ones((order - 1, 1), dtype=int)
 		D_right = np.diag(-1*np.ones((order - 1, ), dtype=int))
@@ -159,11 +159,11 @@ class Quadrature:
 		lobatto_weights = np.array([1/(order*(order-1)*(legendre_polynomial(x)**2)) for x in lobatto_points])
 		self._quadrature_weights.update({order: lobatto_weights})
 
-		print(f'x: {lobatto_points}')
-		print(f'w: {lobatto_weights}')
+		# print(f'x: {lobatto_points}')
+		# print(f'w: {lobatto_weights}')
 
 		butcher_points = self.quadrature_point(order, domain=[0, 1])
-		print(f'x\': {butcher_points}')
+		# print(f'x\': {butcher_points}')
 		butcher_array = np.zeros((order, order))
 		butcher_array[-1, :] = lobatto_weights
 		if order > 2:
@@ -172,20 +172,20 @@ class Quadrature:
 			A = np.zeros((A_row, A_col))
 			b = np.zeros(A_row)
 			for k in range(order-2):
-				print(f'k: {k}')
+				# print(f'k: {k}')
 				for j in range(order):
-					print(f'j: {j}')
+					# print(f'j: {j}')
 					row = j + k*order
-					print(f'row: {row}')
+					# print(f'row: {row}')
 					for i in range(order-2):
-						print(f'i: {i}')
+						# print(f'i: {i}')
 						col = i + j*(order-2)
-						print(f'col: {col}')
+						# print(f'col: {col}')
 						A[row, col] = lobatto_weights[i+1] * butcher_points[i+1]**k
-						print(f'A: {lobatto_weights[i+1] * butcher_points[i+1]**k}')
+						# print(f'A: {lobatto_weights[i+1] * butcher_points[i+1]**k}')
 					b[row] = (lobatto_weights[j]/(k+1))*(1 - butcher_points[j]**(k+1)) - lobatto_weights[-1]*lobatto_weights[j]
 					
-					print(f'b: {(lobatto_weights[j]/(k+1))*(1 - butcher_points[j]**(k+1)) - lobatto_weights[-1]*lobatto_weights[j]}\n')
+					# print(f'b: {(lobatto_weights[j]/(k+1))*(1 - butcher_points[j]**(k+1)) - lobatto_weights[-1]*lobatto_weights[j]}\n')
 			del_row = []
 			for i, row in enumerate(A):
 				if np.count_nonzero(row) == 0:
@@ -193,9 +193,9 @@ class Quadrature:
 			A = np.delete(A, del_row, axis=0)
 			b = np.delete(b, del_row, axis=0)
 			a = np.linalg.solve(A, b)
-			print(f'A: {A}')
-			print(f'b: {b}')
-			print(f'a: {a}')
+			# print(f'A: {A}')
+			# print(f'b: {b}')
+			# print(f'a: {a}')
 			butcher_array[1:-1, :] = a.reshape(order-2, -1, order='F')
 		self._butcher_arrays.update({order: butcher_array})
 
@@ -218,7 +218,7 @@ class Quadrature:
 		D_index_array.sort()
 		self._D_index_arrays.update({order: D_index_array})
 
-		input()
+		# input()
 
 		
 

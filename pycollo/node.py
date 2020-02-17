@@ -45,8 +45,8 @@ class Cached(type):
 class Node(metaclass=Cached):
 
 	def __init__(self, key, graph, *, value=None, equation=None):
-		self.key = sym.sympify(key)
 		self.graph = graph
+		self.key = key
 		self._operation = None
 		self._set_node_type_stateful_object()
 		self._associate_new_node_with_graph()
@@ -71,6 +71,16 @@ class Node(metaclass=Cached):
 	def _associate_new_node_with_graph(self):
 		self.symbol = self._type._create_or_get_new_node_symbol(self)
 		self._type._graph_node_group(self)[self.symbol] = self
+
+	@property
+	def key(self):
+		return self._key
+	
+	@key.setter
+	def key(self, key):
+		self._key = sym.sympify(key)
+		if self.key.is_NumberSymbol:
+			self.graph._user_constants.add(self.key)
 
 	@property
 	def child_nodes(self):
@@ -361,7 +371,10 @@ class ConstantNode(RootNode):
 
 	@staticmethod
 	def _set_value(node_instance, value):
-		return float(value)
+		try:
+			return float(value)
+		except TypeError:
+			return float(node_instance.key)
 
 	@staticmethod
 	def _str(node_instance):

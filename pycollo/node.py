@@ -32,7 +32,10 @@ class Cached(type):
 
 	def __call__(self, *args, **kwargs):
 		if args in self.__cache:
-			return self.__cache[args]
+			cached_node = self.__cache[args]
+			if kwargs.get('equation') != None:
+				cached_node.equation = kwargs['equation']
+			return cached_node
 		else:
 			obj = super().__call__(*args, **kwargs)
 			self.__cache[args] = obj
@@ -438,8 +441,8 @@ class IntermediateNode(ExpressionNodeABC):
 		if equation.args:
 			for arg in equation.args:
 				add_new_parent_node(arg)
-		else:
-			add_new_parent_node(equation)
+		# else:
+		# 	add_new_parent_node(equation)
 
 		has_parent_nodes = node_instance.parent_nodes
 		has_no_operation = node_instance._operation is None

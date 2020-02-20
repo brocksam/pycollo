@@ -448,14 +448,15 @@ class IntermediateNode(ExpressionNodeABC):
 				parent_node = Node(arg, node_instance.graph)
 			node_instance.new_parent(parent_node)
 
-		if equation is None:
+		if equation is None and node_instance.key.args:
 			equation = node_instance.key
 
-		if equation.args:
-			for arg in equation.args:
-				add_new_parent_node(arg)
-		# else:
-		# 	add_new_parent_node(equation)
+		if equation is not None:
+			if equation.args:
+				for arg in equation.args:
+					add_new_parent_node(arg)
+			else:
+				add_new_parent_node(equation)
 
 		has_parent_nodes = node_instance.parent_nodes
 		has_no_operation = node_instance._operation is None

@@ -113,11 +113,13 @@ class ExpressionGraph:
 		self.user_symbol_to_expression_auxiliary_mapping = {}
 		self._user_constants = OrderedSet()
 		for key, value in aux_info.items():
-			if isinstance(value, numbers.Real):
+			try:
+				value = float(value)
+			except (ValueError, TypeError) as e:
+				self.user_symbol_to_expression_auxiliary_mapping[key] = value
+			else:
 				self._user_constants.add(key)
 				node = Node(key, self, value=value)
-			else:
-				self.user_symbol_to_expression_auxiliary_mapping[key] = value
 
 	def _initialise_auxiliary_intermediate_nodes(self):
 		self._stretch_node = Node(self.ocp._STRETCH, self)

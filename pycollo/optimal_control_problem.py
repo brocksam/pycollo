@@ -517,6 +517,13 @@ class OptimalControlProblem():
 		self._expression_graph = ExpressionGraph(self, user_variables, 
 			variables, aux_data, self.objective_function, constraints)
 
+		# print('\n\n\n')
+		# for constraint_group in constraints:
+		# 	for var in continuous_vars_user:
+		# 		print(sym.Matrix(constraint_group).diff(var))
+		# print('\n\n\n')
+		# raise NotImplementedError
+
 	def _generate_scaling(self):
 		self._scaling._generate()
 		print('Scaling generated.')

@@ -139,6 +139,7 @@ class Iteration:
 
 		self._yu_slice = slice(self._y_slice.start, self._u_slice.stop)
 		self._qts_slice = slice(self._q_slice.start, self._s_slice.stop)
+		self._yu_qts_split = self._yu_slice.stop
 
 		# Constraints
 		self._num_c_defect = self._ocp.number_state_equations * self._mesh._num_c_boundary_per_y
@@ -379,6 +380,7 @@ class Iteration:
 
 			num_H_defect_nonzero = len(H_defect_nonzero_row)
 			sH_defect_matrix = sparse.coo_matrix(([1]*num_H_defect_nonzero, (H_defect_nonzero_row, H_defect_nonzero_col)), shape=self._H_shape)
+			sH_defect_matrix = sH_defect_matrix.tocsr().tocoo()
 			sH_defect_indices = list(zip(sH_defect_matrix.row, sH_defect_matrix.col))
 			return sH_defect_matrix, sH_defect_indices, H_defect_sum_flag
 
@@ -417,7 +419,7 @@ class Iteration:
 						H_path_nonzero_col.extend(col_numbers)
 
 			num_H_path_nonzero = len(H_path_nonzero_row)
-			sH_path_matrix = sparse.coo_matrix(([1]*num_H_path_nonzero, (H_path_nonzero_row, H_path_nonzero_col)), shape=self._H_shape)
+			sH_path_matrix = sparse.coo_matrix(([1]*num_H_path_nonzero, (H_path_nonzero_row, H_path_nonzero_col)), shape=self._H_shape).tocsr().tocoo()
 			sH_path_indices = list(zip(sH_path_matrix.row, sH_path_matrix.col))
 			return sH_path_matrix, sH_path_indices
 
@@ -454,7 +456,7 @@ class Iteration:
 						H_integral_nonzero_col.extend(col_numbers)
 
 			num_H_integral_nonzero = len(H_integral_nonzero_row)
-			sH_integral_matrix = sparse.coo_matrix(([1]*num_H_integral_nonzero, (H_integral_nonzero_row, H_integral_nonzero_col)), shape=self._H_shape)
+			sH_integral_matrix = sparse.coo_matrix(([1]*num_H_integral_nonzero, (H_integral_nonzero_row, H_integral_nonzero_col)), shape=self._H_shape).tocsr().tocoo()
 			sH_integral_indices = list(zip(sH_integral_matrix.row, sH_integral_matrix.col))
 			return sH_integral_matrix, sH_integral_indices, H_integral_sum_flag
 
@@ -497,6 +499,44 @@ class Iteration:
 			sH_endpoint_indices = list(zip(sH_endpoint_matrix.row, sH_endpoint_matrix.col))
 			return sH_endpoint_matrix, sH_endpoint_indices
 
+		def reorder_full_hessian_sparsity(sH):
+
+			row_old = sH_matrix.row
+			col_old = sH_matrix.col
+
+			row_new = []
+			col_new = []
+
+			row_temp = []
+			col_temp = []
+
+			for r, c in zip(row_old, col_old):
+				max_row_temp = max(row_temp) if row_temp else r
+				if r < self._yu_qts_split:
+					if (r % self._mesh._N) == 0 and r > max_row_temp:
+						ind_sorted = np.argsort(col_temp)
+						row_sorted = np.array(row_temp)[ind_sorted]
+						col_sorted = np.array(col_temp)[ind_sorted]
+						row_new.extend(row_sorted.tolist())
+						col_new.extend(col_sorted.tolist())
+						row_temp = []
+						col_temp = []
+					row_temp.append(r)
+					col_temp.append(c)
+				else:
+					if row_temp or col_temp:
+						ind_sorted = np.argsort(col_temp)
+						row_sorted = np.array(row_temp)[ind_sorted]
+						col_sorted = np.array(col_temp)[ind_sorted]
+						row_new.extend(row_sorted.tolist())
+						col_new.extend(col_sorted.tolist())
+						row_temp = []
+						col_temp = []
+					row_new.append(r)
+					col_new.append(c)
+
+			return row_new, col_new
+
 		if self._ocp.settings.derivative_level == 2:
 			sH_objective_matrix, sH_objective_indices = hessian_objective_sparsity()
 			sH_defect_matrix, sH_defect_indices, H_defect_sum_flag = hessian_defect_sparsity()
@@ -506,13 +546,18 @@ class Iteration:
 
 			sH_matrix = (sH_objective_matrix + sH_defect_matrix + sH_path_matrix + sH_integral_matrix + sH_endpoint_matrix).tocoo()
 			sH_indices = list(zip(sH_matrix.row, sH_matrix.col))
+			sH_row_reordered, sH_col_reordered = reorder_full_hessian_sparsity(sH_matrix)
+			sH_indices_reordered = list(zip(sH_row_reordered, sH_col_reordered))
+
+			swap_indices = [sH_indices.index(ind) 
+				for ind in sH_indices_reordered]
 
 			H_objective_indices = []
 			H_defect_indices = []
 			H_path_indices = []
 			H_integral_indices = []
 			H_endpoint_indices = []
-			for i, pair in enumerate(sH_indices):
+			for i, pair in zip(swap_indices, sH_indices):
 				if pair in sH_objective_indices:
 					H_objective_indices.append(i)
 				if pair in sH_defect_indices:
@@ -528,13 +573,15 @@ class Iteration:
 			self._H_nonzero_col = tuple(sH_matrix.col)
 			self._num_H_nonzero = len(self._H_nonzero_row)
 
-			H_from_lambda = list(zip(sH_matrix.row, sH_matrix.col))
-			self._H_from_lambda_indices = [H_from_lambda.index(pair) 
-				for pair in zip(self._H_nonzero_row, self._H_nonzero_col)]
 			print('Full Hessian sparsity computed.')
 
 		# Lambda to prepare x from IPOPT for numba funcs
+		def unscale_x(x):
+			# x = self.scaling.x_stretch*(x - self.scaling.x_shift)
+			return x
+
 		def reshape_x(x):
+			x = unscale_x(x)
 			num_yu = self._ocp._num_y_vars + self._ocp._num_u_vars
 			yu_qts_split = self._q_slice.start
 			x_tuple = self._ocp._x_reshape_lambda(x, num_yu, yu_qts_split)
@@ -550,6 +597,7 @@ class Iteration:
 		self._x_endpoint_indices.extend(list(range(self._q_slice.start, self._s_slice.stop)))
 
 		def reshape_x_point(x):
+			x = unscale_x(x)
 			return self._ocp._x_reshape_lambda_point(x, self._x_endpoint_indices)
 
 		# Generate objective function lambda
@@ -623,14 +671,18 @@ class Iteration:
 
 		# Scaling
 		self.scaling = IterationScaling(self)
+		self.scaling._generate()
 		print('Scaling generated.\n\n')
+
+		# Reset mesh-specific bounds for variables
+		self._x_bnd_l, self._x_bnd_u = self._generate_x_bounds()
 
 		# ========================================================
 		# JACOBIAN CHECK
 		# ========================================================
 		if False:
 			print('\n\n\n')
-			x_data = np.array(range(self._num_x), dtype=float)
+			x_data = np.array(range(1, self._num_x+1), dtype=float)
 			lagrange = np.array(range(self._num_c), dtype=float)
 			obj_factor = 2.0
 			print(f"x Variables:\n{self._ocp._x_vars}\n")
@@ -659,6 +711,10 @@ class Iteration:
 
 				H = self._hessian_lambda(x_data, lagrange, obj_factor)
 				print(f"H:\n{H}\n")
+
+				sH = sparse.coo_matrix((H, (H_struct[0], H_struct[1])), shape=self._H_shape)
+				sH = sparse.coo_matrix(np.tril(sH.toarray()))
+				print(sH)
 			
 			print('\n\n\n')
 			raise NotImplementedError
@@ -768,12 +824,13 @@ class Iteration:
 			self._nlp_problem.addOption('tol', self._ocp._settings.nlp_tolerance)
 			self._nlp_problem.addOption('max_iter', self._ocp._settings.max_nlp_iterations)
 			self._nlp_problem.addOption('print_level', 5)
-			self._nlp_problem.addOption('nlp_scaling_method', 'user-scaling')
+			# self._nlp_problem.addOption('nlp_scaling_method', 'gradient-based')
 
-			self._nlp_problem.setProblemScaling(
-				self.scaling.obj_scaling, 
-				self.scaling.x_scaling,
-				self.scaling.c_scaling)
+			# self._nlp_problem.setProblemScaling(
+			# 	self.scaling.obj_scaling, 
+			# 	self.scaling.x_scaling,
+				# self.scaling.c_scaling,
+				# )
 
 		else:
 			raise NotImplementedError

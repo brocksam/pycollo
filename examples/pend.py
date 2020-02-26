@@ -9,7 +9,7 @@ import sympy.physics.mechanics as me
 
 import pycollo
 
-final_time = 8
+final_time = 3
 
 # REMEMBER TO HANDLE NO SUBSTITUTIONS
 
@@ -45,7 +45,7 @@ problem.state_endpoint_constraints = [problem.initial_state[0],
 # Bounds
 problem.bounds = pycollo.Bounds(optimal_control_problem=problem, 
 	initial_time=0, 
-	final_time=[final_time, final_time], 
+	final_time=[1, final_time], 
 	state=[[-np.pi, np.pi], [-10, 10]], 
 	control=[[-0.5, 0.5]], 
 	integral=[0, 1000], 
@@ -54,7 +54,7 @@ problem.bounds = pycollo.Bounds(optimal_control_problem=problem,
 
 # Guess
 problem.initial_guess = pycollo.Guess(optimal_control_problem=problem, 
-	time=[0, final_time], 
+	time=[0, 1], 
 	state=[[-np.pi/2, np.pi/2], [0, 0]], 
 	control=[0, 0], 
 	integral=[100],
@@ -66,7 +66,7 @@ problem.auxiliary_data = {g: -9.81, d0: 0.5, k0: 1/12, T0min: -15, T0max: 15,
 	m0: 1.0, p0: 1.0,
 	}
 
-problem.settings.scaling_method = 'automatic'
+# problem.settings.scaling_method = 'automatic'
 problem.settings.derivative_level = 2
 problem.settings.max_mesh_iterations = 10
 problem.settings.display_mesh_result_graph = True

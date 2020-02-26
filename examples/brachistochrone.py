@@ -25,7 +25,11 @@ vmax = 50
 umin = -np.pi/2
 umax = np.pi/2
 
-problem.state_equations = [v*sym.sin(u), v*sym.cos(u), g*sym.cos(u)]
+problem.state_equations = [
+	v*sym.sin(u), 
+	v*sym.cos(u), 
+	g*sym.cos(u),
+	]
 
 problem.objective_function = problem.final_time
 
@@ -41,7 +45,6 @@ problem.bounds = col.Bounds(optimal_control_problem=problem, initial_time=0.0, f
 # Guess
 problem.initial_guess = col.Guess(optimal_control_problem=problem, time=[t0, tfmax], state=np.array([[x0, xf], [y0, yf], [v0, v0]]), control=np.array([0, umax]), state_endpoints_override=True)
 
-problem.settings.display_mesh_result_graph = True
-problem.settings.derivative_level = 1
+# problem.settings.display_mesh_result_graph = True
 
 problem.solve()

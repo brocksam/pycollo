@@ -14,6 +14,7 @@ from .guess import Guess
 from .iteration import Iteration
 from .mesh import Mesh
 from .numbafy import numbafy
+from .phase import Phase
 from .quadrature import Quadrature
 from .scaling import Scaling
 from .settings import Settings
@@ -40,7 +41,7 @@ Notes:
 
 	* J: objective function.
 	* g: gradient of the objective function w.r.t. x.
-	* L: Lagrangian of the objective function.
+	* L: Lagrangian of the objective function and constraints.
 	* H: Hessian of the Lagrangian.
 
 	* c = [zeta, gamma, rho, beta]: vector of constraints.
@@ -116,6 +117,8 @@ class OptimalControlProblem():
 		self._y_b_cons_user = ()
 		self._b_cons_user = ()
 
+		self._phases = []
+
 	def _init_user_options(self, state_variables, control_variables, 
 		parameter_variables, state_equations, path_constraints, 
 		integrand_functions, state_endpoint_constraints, boundary_constraints, 
@@ -151,6 +154,19 @@ class OptimalControlProblem():
 			iteration_number=1, mesh=initial_mesh)
 		self._mesh_iterations
 		self._mesh_iterations.append(initial_iteration)
+
+	@property
+	def phases(self):
+		return tuple(self._phases)
+	
+	def new_phase(self, state_variables=None):
+		new_phase = Phase(optimal_control_problem=self, 
+			state_variables=state_variables)
+		return new_phase
+
+	@property
+	def number_phases(self):
+		return len(self.phases)
 
 	@property
 	def time_symbol(self):

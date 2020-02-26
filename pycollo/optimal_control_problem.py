@@ -1,5 +1,6 @@
 import itertools
 from timeit import default_timer as timer
+from typing import (Iterable, Optional)
 
 import numba as nb
 import numpy as np
@@ -55,8 +56,11 @@ Notes:
 	* m = len(c): number of constraints
 """
 
+__all__ = ["OptimalControlProblem"]
+
+
 class OptimalControlProblem():
-	"""The main class for Pycollo optimal control problems."""
+	"""The main class for Pycollo optimal control problems"""
 
 	_t0_USER = sym.Symbol('t0')
 	_tF_USER = sym.Symbol('tF')
@@ -68,7 +72,7 @@ class OptimalControlProblem():
 
 	_dSTRETCH_dt = np.array([-0.5, 0.5])
 
-	def __init__(self, state_variables=None, control_variables=None, 
+	def __init__(self, name, state_variables=None, control_variables=None, 
 		parameter_variables=None, state_equations=None, *, bounds=None, 
 		scaling=None, initial_guess=None, initial_mesh=None, 
 		path_constraints=None, integrand_functions=None, 
@@ -77,6 +81,9 @@ class OptimalControlProblem():
 		"""Initialise the optimal control problem with user-passed objects.
 
 		"""
+
+		# Problem name
+		self.name = name
 
 		# Set settings
 		self.settings = settings
@@ -100,8 +107,8 @@ class OptimalControlProblem():
 			)	
 		self._init_initial_mesh(initial_mesh)	
 
-		# Initialistion flag
-		self._initialised = False
+		# Flags
+		self._is_initialised = False
 		self._forward_dynamics = False
 
 	def _init_private_attributes(self):
@@ -156,16 +163,71 @@ class OptimalControlProblem():
 		self._mesh_iterations.append(initial_iteration)
 
 	@property
-	def phases(self):
-		return tuple(self._phases)
+	def name(self) -> str:
+		"""The name associated with the optimal control problem
+
+		The name is not strictly needed, however it improves the usefulness of 
+		Pycollo console output. This is particularly useful in cases where the 
+		user may wish to instantiate multiple `OptimalControlProblem` objects 
+		within a single script, or instantiates other Pycollo objects without 
+		providing a valid `optimal_control_problem` argument for them to be 
+		linked to at initialisation.
+		"""
+		return self._name
 	
-	def new_phase(self, state_variables=None):
+	@name.setter
+	def name(self, name: str):
+		"""Setter for the `name` property
+
+		Casts the optimal control problem name to a str type.
+		"""
+		self._name = str(name)
+
+	@property
+	def phases(self) -> tuple:
+		"""A tuple of all phases associated with the optimal control problem
+
+		Phase numbers (`Phase.number`) are integers beginning at 1 and are 
+		ordered corresponding to the order that they were added to the optimal 
+		control problem. As Python uses zero-based indexing the phase numbers 
+		do not directly map to the indexes of phases within `self.phases`. 
+		Phases are however ordered sequentially corresponding to the 
+		cronological order they were added to the optimal control problem.
+		"""
+		return tuple(self._phases)
+
+	def add_phase(self, phase: "Phase") -> "Phase":
+		"""Add an already instantiated `Phase` to this optimal control problem
+
+		This method is needed as `self.phases` is read only ("private") and 
+		therefore users cannot manually add `Phase` objects to an optimal 
+		control problem. `self.phases` is required to be read only as it is an 
+		iterable of `Phase` objects and must be protected from accidental errors 
+		introduced by user interacting with it incorrectly.
+		"""
+		return self.phases[-1]
+
+	def add_phases(self, phases: Iterable["Phase"]) -> Iterable["Phase"]:
+		"""Associate multiple already instantiated `Phase` objects
+
+		This is a convinience method to allow the user to add multiple `Phase` 
+		objects to the optimal control problem in one go.
+		"""
+		return (self.add_phase(phase) for phase in phases)
+	
+	def new_phase(self, state_variables: Optional(Iterable['sym.Symbol']) = None) -> "Phase":
+		"""Create a new `Phase` object and add to this optimal control problem
+
+		Provides the same behaviour as manually creating a `Phase` object called 
+		phase and calling self.add_phase(phase).
+		"""
 		new_phase = Phase(optimal_control_problem=self, 
 			state_variables=state_variables)
 		return new_phase
 
 	@property
-	def number_phases(self):
+	def number_phases(self) -> int:
+		"""Number of phases associated with this optimal control problem"""
 		return len(self.phases)
 
 	@property
@@ -202,7 +264,7 @@ class OptimalControlProblem():
 
 	@state_variables.setter
 	def state_variables(self, y_vars):
-		self._initialised = False
+		self._is_initialised = False
 		self._y_vars_user = pu.format_as_tuple(y_vars)
 		self._y_t0_user = tuple(sym.Symbol(f'{y}(t0)')
 			for y in self._y_vars_user)
@@ -224,7 +286,7 @@ class OptimalControlProblem():
 
 	@control_variables.setter
 	def control_variables(self, u_vars):
-		self._initialised = False
+		self._is_initialised = False
 		self._u_vars_user = pu.format_as_tuple(u_vars)
 		self._update_vars()
 		_ = pu.check_sym_name_clash(self._u_vars_user)
@@ -264,7 +326,7 @@ class OptimalControlProblem():
 
 	@parameter_variables.setter
 	def parameter_variables(self, s_vars):
-		self._initialised = False
+		self._is_initialised = False
 		s_vars = pu.format_as_tuple(s_vars)
 		self._s_vars_user = tuple(s_vars)
 		self._update_vars()
@@ -300,7 +362,7 @@ class OptimalControlProblem():
 
 	@state_equations.setter
 	def state_equations(self, y_eqns):
-		self._initialised = False
+		self._is_initialised = False
 		y_eqns = pu.format_as_tuple(y_eqns)
 		self._y_eqns_user = tuple(y_eqns)
 
@@ -314,7 +376,7 @@ class OptimalControlProblem():
 
 	@path_constraints.setter
 	def path_constraints(self, c_cons):
-		self._initialised = False
+		self._is_initialised = False
 		c_cons = pu.format_as_tuple(c_cons)
 		self._c_cons_user = tuple(c_cons)
 
@@ -328,7 +390,7 @@ class OptimalControlProblem():
 
 	@integrand_functions.setter
 	def integrand_functions(self, integrands):
-		self._initialised = False
+		self._is_initialised = False
 		self._q_funcs_user = pu.format_as_tuple(integrands)
 		self._q_vars_user = tuple(sym.Symbol(f'_q{i_q}') 
 			for i_q, _ in enumerate(self._q_funcs_user))
@@ -344,7 +406,7 @@ class OptimalControlProblem():
 
 	@state_endpoint_constraints.setter
 	def state_endpoint_constraints(self, y_b_cons):
-		self._initialised = False
+		self._is_initialised = False
 		y_b_cons = pu.format_as_tuple(y_b_cons)
 		self._y_b_cons_user = tuple(y_b_cons)
 
@@ -358,7 +420,7 @@ class OptimalControlProblem():
 
 	@endpoint_constraints.setter
 	def endpoint_constraints(self, b_cons):
-		self._initialised = False
+		self._is_initialised = False
 		b_cons = pu.format_as_tuple(b_cons)
 		self._b_cons_user = tuple(b_cons)
 
@@ -380,7 +442,7 @@ class OptimalControlProblem():
 
 	@objective_function.setter
 	def objective_function(self, J):
-		self._initialised = False
+		self._is_initialised = False
 		self._J_user = sym.sympify(J)
 		self._forward_dynamics = True if self._J_user == 1 else False
 
@@ -390,7 +452,7 @@ class OptimalControlProblem():
 	
 	@auxiliary_data.setter
 	def auxiliary_data(self, aux_data):
-		self._initialised = False
+		self._is_initialised = False
 		self._aux_data_user = dict(aux_data)
 
 	@property
@@ -399,7 +461,7 @@ class OptimalControlProblem():
 	
 	@bounds.setter
 	def bounds(self, bounds):
-		self._initialised = False
+		self._is_initialised = False
 		if bounds is None:
 			self._bounds = Bounds(optimal_control_problem=self)
 		else:
@@ -412,7 +474,7 @@ class OptimalControlProblem():
 	
 	@scaling.setter
 	def scaling(self, scaling):
-		self._initialised = False
+		self._is_initialised = False
 		if scaling is None:
 			self._scaling = Scaling(optimal_control_problem=self)
 		else:
@@ -425,7 +487,7 @@ class OptimalControlProblem():
 	
 	@initial_guess.setter
 	def initial_guess(self, guess):
-		self._initialised = False
+		self._is_initialised = False
 		if guess is None:
 			self._initial_guess = Guess(optimal_control_problem=self)
 		else:
@@ -450,7 +512,7 @@ class OptimalControlProblem():
 	
 	@settings.setter
 	def settings(self, settings):
-		self._initialised = False
+		self._is_initialised = False
 		if settings is None:
 			self._settings = Settings(optimal_control_problem=self)
 		else:
@@ -497,7 +559,7 @@ class OptimalControlProblem():
 		ocp_initialisation_time_stop = timer()
 		self._ocp_initialisation_time = (ocp_initialisation_time_stop 
 			- ocp_initialisation_time_start)
-		self._initialised = True
+		self._is_initialised = True
 
 	def _check_state_equation_for_each_state_variable(self):
 		if self.number_state_variables != self.number_state_equations:
@@ -1254,7 +1316,7 @@ class OptimalControlProblem():
 		self._display_progress = display_progress
 
 	def _check_if_initialisation_required_before_solve(self):
-		if self._initialised == False:
+		if self._is_initialised == False:
 			self.initialise()
 
 	def _final_output(self):
@@ -1298,6 +1360,12 @@ class OptimalControlProblem():
 		solution_results()
 		mesh_results()
 		time_results()
+
+	def __str__(self):
+		pass
+
+	def __repr__(self):
+		pass
 
 
 

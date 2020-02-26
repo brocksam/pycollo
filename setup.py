@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='opyt',
+    name='Pycollo',
     version='0.0.dev0',
     author='Sam Brockie',
     author_email='sgb39@cam.ac.uk',
@@ -12,7 +12,7 @@ setup(
     license='All Rights Reserved',
     description=('General purpose optimal control package using collocation methods.'),
     long_description=open('README.rst').read(),
-    python_requires='>=3.6',
+    python_requires='>=3.8',
     install_requires=['numpy>=1.15',
         'scipy>=1.2',
         'sympy>=1.3',

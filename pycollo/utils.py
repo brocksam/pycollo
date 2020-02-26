@@ -300,13 +300,13 @@ def format_as_tuple(iterable):
 def check_sym_name_clash(syms):
     for sym in syms:
         if str(sym)[0] == '_':
-            msg = (f"The user defined symbol {sym} is invalid as its leading character, '_' is reserved for use by `pycollo`. Please rename this symbol.")
+            msg = (f"The user defined symbol {sym} is invalid as its leading character '_' is reserved for use by `Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
         elif str(sym)[-4:] == '(t0)':
-            msg = (f"The user defined symbol {sym} is invalid as it is named with the suffix '_t0' which is reserved for use by `pycollo`. Please rename this symbol.")
+            msg = (f"The user defined symbol {sym} is invalid as it is named with the suffix '_t0' which is reserved for use by `Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
         elif str(sym)[-4:] == '(tF)':
-            msg = (f"The user defined symbol {sym} is invalid as it is named with the suffix '_tF' which is reserved for use by `pycollo`. Please rename this symbol.")
+            msg = (f"The user defined symbol {sym} is invalid as it is named with the suffix '_tF' which is reserved for use by `Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
 
     if len(set(syms)) != len(syms):

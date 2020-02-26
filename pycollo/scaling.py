@@ -26,16 +26,20 @@ class Scaling:
 
 	def _generate(self):
 		scaling_method = self.optimal_control_problem.settings.scaling_method
-		self.V_matrix_terms = self._GENERATE_DISPATCHER[scaling_method]()
+		self.x_shift, self.x_stretch = self._GENERATE_DISPATCHER[scaling_method]()
 
 	def _generate_none(self):
 		needed = self.bounds._x_needed[self.bounds._x_needed.astype(bool)]
-		return np.ones_like(needed)
+		shift = np.zeros_like(needed)
+		stretch = np.ones_like(needed)
+		return shift, stretch
 
 	def _generate_bounds(self):
 		x_l = np.concatenate([self.bounds._y_l_needed, self.bounds._u_l_needed, self.bounds._q_l_needed, -0.5*np.ones_like(self.bounds._t_l_needed), self.bounds._s_l_needed])
 		x_u = np.concatenate([self.bounds._y_u_needed, self.bounds._u_u_needed, self.bounds._q_u_needed, 0.5*np.ones_like(self.bounds._t_u_needed), self.bounds._s_u_needed])
-		return 1 / (x_u - x_l)
+		shift = 0.5 - x_u / (x_u - x_l)
+		stretch = 1 / (x_u - x_l)
+		return shift, stretch
 
 	def _generate_guess(self):
 		raise NotImplementedError
@@ -54,7 +58,7 @@ class IterationScaling:
 			True: self._generate_from_previous,
 			False: self._generate_from_base,
 			}
-		self._generate()
+		# self._generate()
 
 	@property
 	def optimal_control_problem(self):
@@ -82,8 +86,17 @@ class IterationScaling:
 		x_guess = self.iteration._guess._x
 
 		# Variables scale
-		self._x_scaling_unexpanded = self.base_scaling.V_matrix_terms
-		V_vals = self._expand_x_to_mesh(self.base_scaling.V_matrix_terms)
+		self._x_offset_unexpanded = self.base_scaling.x_shift
+		r_vals = self._expand_x_to_mesh(self.base_scaling.x_shift)
+		self._x_scaling_unexpanded = self.base_scaling.x_stretch
+		V_vals = self._expand_x_to_mesh(self.base_scaling.x_stretch)
+
+		self.x_shift = r_vals
+		self.x_stretch = np.reciprocal(V_vals)
+		self.x_scaling = V_vals
+
+		# Objective scale
+		self.obj_scaling = self._calculate_objective_scaling(x_guess)
 
 		# Constraints scale
 		c_scaling = self._calculate_constraint_scaling(x_guess)
@@ -92,9 +105,7 @@ class IterationScaling:
 		W_integral = V_vals[self.iteration._c_integral_slice]
 		W_point = np.ones(self.iteration._num_c_boundary)
 		W_vals = np.concatenate([W_defect, W_path, W_integral, W_point])
-
-		self.obj_scaling = self._calculate_objective_scaling(x_guess)
-		self.x_scaling = V_vals
+		
 		self.c_scaling = W_vals
 
 	def _generate_from_previous(self):
@@ -112,6 +123,7 @@ class IterationScaling:
 		yu = x_guess[self.iteration._yu_slice].reshape(self.iteration._mesh._N, -1)
 		yu_min = np.min(yu, axis=0)
 		yu_max = np.max(yu, axis=0)
+		x_shift_yu = 0.5 - yu_max - (yu_max - yu_min)
 		x_scaling_yu = 1 / (yu_max - yu_min)
 		qts = x_guess[self.iteration._qts_slice]
 		x_scaling_qts = 1 / np.abs(qts)

@@ -1,5 +1,5 @@
 import itertools
-from typing import (AnyStr, Iterable, Optional, TypeVar, Union)
+from typing import (AnyStr, Iterable, Optional, Tuple, TypeVar, Union)
 from timeit import default_timer as timer
 
 import numba as nb
@@ -116,26 +116,30 @@ class OptimalControlProblem():
 			bounds,
 			scaling,
 			initial_guess,
-			)	
+			)
 		self._init_initial_mesh(initial_mesh)	
+
+	def _init_private_attributes(self):
 
 		# Flags
 		self._is_initialised = False
 		self._forward_dynamics = False
 
-	def _init_private_attributes(self):
+		# Variables
 		self._y_vars_user = ()
 		self._u_vars_user = ()
 		self._q_vars_user = ()
 		self._t_vars_user = (self._t0_USER, self._tF_USER)
 		self._s_vars_user = ()
 
+		# Constraints
 		self._y_eqns_user = ()
 		self._c_cons_user = ()
 		self._q_funcs_user = ()
 		self._y_b_cons_user = ()
 		self._b_cons_user = ()
 
+		# Phases
 		self._phases = []
 
 	def _init_user_options(self, state_variables, control_variables, 
@@ -220,6 +224,7 @@ class OptimalControlProblem():
 		Returns:
 			Phase: the phase that has been added. It is the same 
 		"""
+		phase._optimal_control_problem_setter()
 		return self.phases[-1]
 
 	def add_phases(self, phases: Iterable[Phase]) -> Tuple[Phase, ...]:
@@ -1378,10 +1383,10 @@ class OptimalControlProblem():
 		time_results()
 
 	def __str__(self):
-		pass
+		return self.name
 
 	def __repr__(self):
-		pass
+		return f"OptimalControlProblem('{self.name}')"
 
 
 

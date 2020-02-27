@@ -1,6 +1,6 @@
 import itertools
+from typing import (AnyStr, Iterable, Optional, TypeVar, Union)
 from timeit import default_timer as timer
-from typing import (Iterable, Optional)
 
 import numba as nb
 import numpy as np
@@ -59,8 +59,15 @@ Notes:
 __all__ = ["OptimalControlProblem"]
 
 
+TupleSymsType = Tuple[sym.Symbol, ...]
+OptionalSymsType = Union[None, sym.Symbol, Iterable[sym.Symbol]]
+
+
 class OptimalControlProblem():
-	"""The main class for Pycollo optimal control problems"""
+	"""The main class for Pycollo optimal control problems
+
+	Attributes:
+	"""
 
 	_t0_USER = sym.Symbol('t0')
 	_tF_USER = sym.Symbol('tF')
@@ -80,6 +87,11 @@ class OptimalControlProblem():
 		objective_function=None, settings=None, auxiliary_data=None):
 		"""Initialise the optimal control problem with user-passed objects.
 
+		Args:
+			phases (:obj:`Iterable` of :obj:`Phase`, optional): Phases to be 
+				associated with the optimal control problem at initialisation. 
+				Defaults to None.
+			parameter_variables ()
 		"""
 
 		# Problem name
@@ -164,28 +176,25 @@ class OptimalControlProblem():
 
 	@property
 	def name(self) -> str:
-		"""The name associated with the optimal control problem
+		"""The name associated with the optimal control problem. For setter 
+		behaviour, the supplied `name` is cast to a str.
 
 		The name is not strictly needed, however it improves the usefulness of 
 		Pycollo console output. This is particularly useful in cases where the 
-		user may wish to instantiate multiple `OptimalControlProblem` objects 
-		within a single script, or instantiates other Pycollo objects without 
-		providing a valid `optimal_control_problem` argument for them to be 
-		linked to at initialisation.
+		user may wish to instantiate multiple :obj:`OptimalControlProblem` 
+		objects within a single script, or instantiates other Pycollo objects 
+		without providing a valid `optimal_control_problem` argument for them 
+		to be linked to at initialisation.
 		"""
 		return self._name
 	
 	@name.setter
-	def name(self, name: str):
-		"""Setter for the `name` property
-
-		Casts the optimal control problem name to a str type.
-		"""
+	def name(self, name: AnyStr):
 		self._name = str(name)
 
 	@property
-	def phases(self) -> tuple:
-		"""A tuple of all phases associated with the optimal control problem
+	def phases(self) -> Tuple[Phase, ...]:
+		"""A tuple of all phases associated with the optimal control problem.
 
 		Phase numbers (`Phase.number`) are integers beginning at 1 and are 
 		ordered corresponding to the order that they were added to the optimal 
@@ -196,30 +205,37 @@ class OptimalControlProblem():
 		"""
 		return tuple(self._phases)
 
-	def add_phase(self, phase: "Phase") -> "Phase":
-		"""Add an already instantiated `Phase` to this optimal control problem
+	def add_phase(self, phase: Iterable[Phase]) -> Phase:
+		"""Add an already instantiated `Phase` to this optimal control problem.
 
 		This method is needed as `self.phases` is read only ("private") and 
 		therefore users cannot manually add `Phase` objects to an optimal 
 		control problem. `self.phases` is required to be read only as it is an 
 		iterable of `Phase` objects and must be protected from accidental errors 
 		introduced by user interacting with it incorrectly.
+
+		Args:
+			phase (Phase): The phase to be added to the optimal control problem
+
+		Returns:
+			Phase: the phase that has been added. It is the same 
 		"""
 		return self.phases[-1]
 
-	def add_phases(self, phases: Iterable["Phase"]) -> Iterable["Phase"]:
-		"""Associate multiple already instantiated `Phase` objects
+	def add_phases(self, phases: Iterable[Phase]) -> Tuple[Phase, ...]:
+		"""Associate multiple already instantiated `Phase` objects.
 
 		This is a convinience method to allow the user to add multiple `Phase` 
 		objects to the optimal control problem in one go.
 		"""
-		return (self.add_phase(phase) for phase in phases)
+		return tuple(self.add_phase(phase) for phase in phases)
 	
-	def new_phase(self, state_variables: Optional(Iterable['sym.Symbol']) = None) -> "Phase":
-		"""Create a new `Phase` object and add to this optimal control problem
+	def new_phase(self, state_variables: OptionalSymsType = None,
+			control_variables: OptionalSymsType = None) -> Phase:
+		"""Create a new :obj:`Phase` and add to this optimal control problem.
 
-		Provides the same behaviour as manually creating a `Phase` object called 
-		phase and calling self.add_phase(phase).
+		Provides the same behaviour as manually creating a :obj:`Phase` called 
+		`phase` and calling `self.add_phase(phase)`.
 		"""
 		new_phase = Phase(optimal_control_problem=self, 
 			state_variables=state_variables)
@@ -227,7 +243,7 @@ class OptimalControlProblem():
 
 	@property
 	def number_phases(self) -> int:
-		"""Number of phases associated with this optimal control problem"""
+		"""Number of phases associated with this optimal control problem."""
 		return len(self.phases)
 
 	@property

@@ -1,6 +1,3 @@
-from typing import ()
-
-
 """Convenience types for PEP484-style type annotations for use with Pycollo.
 
 This module provides a number of custom type descriptions that can be imported 
@@ -10,6 +7,11 @@ functions, classes, methods, etc.
 The `typing` module is not exposed to the user, i.e. it is not importable as 
 part of Pycollo.
 """
+
+
+from typing import (Iterable, Tuple, Union)
+
+import sympy as sym
 
 
 OptionalSymsType = Union[None, sym.Symbol, Iterable[sym.Symbol]]

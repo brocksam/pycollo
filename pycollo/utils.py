@@ -1,7 +1,7 @@
 import collections
 import itertools
 from numbers import Number
-from typing import (Tuple)
+from typing import (Iterable, Mapping, Tuple)
 
 import numba
 import numpy as np
@@ -9,6 +9,8 @@ from numpy import sin, cos, tan, exp, sqrt, arctan, tanh
 from ordered_set import OrderedSet
 import scipy.interpolate as interpolate
 import sympy as sym
+
+from .typing import (OptionalSymsType, TupleSymsType)
 
 
 dcdxInfo = collections.namedtuple('dcdxInfo', [
@@ -21,7 +23,8 @@ dcdxInfo = collections.namedtuple('dcdxInfo', [
 supported_iter_types = (tuple, list, np.ndarray)
 
 
-def format_as_tuple(iterable) -> Tuple:
+def format_as_tuple(iterable: OptionalSymsType) -> Tuple:
+    """Formats user supplied arguments as a tuple."""
     if not iterable:
         return ()
     try:
@@ -32,25 +35,44 @@ def format_as_tuple(iterable) -> Tuple:
     return iterable_tuple
 
 
-def check_sym_name_clash(syms):
+def check_sym_name_clash(syms: TupleSymsType) -> None:
+    """Ensures user symbols do not clash with internal Pycollo symbols.
+
+    Pycollo reserves certain naming conventions of sympy symbols for itself. 
+    This function enforces those rules to make sure that any symbols Pycollo 
+    creates and/or manipulates iternally do not conflict with ones that the 
+    user expects ownership of. These naming conventions include all internal 
+    Pycollo symbols being named with a leading underscore as well as the 
+    suffixes '(t0)' and '(tF)'. Finally all user symbols must be uniquely named 
+    for obvious reasons.
+
+    Raises:
+        ValueError: If any of the Pycollo naming rules are not obeyed.
+    """
     for sym in syms:
         if str(sym)[0] == '_':
-            msg = (f"The user defined symbol {sym} is invalid as its leading character '_' is reserved for use by `Pycollo`. Please rename this symbol.")
+            msg = (f"The user defined symbol {sym} is invalid as its leading "
+                f"character '_' is reserved for use by `Pycollo`. Please "
+                f"rename this symbol.")
             raise ValueError(msg)
         elif str(sym)[-4:] == '(t0)':
-            msg = (f"The user defined symbol {sym} is invalid as it is named with the suffix '_t0' which is reserved for use by `Pycollo`. Please rename this symbol.")
+            msg = (f"The user defined symbol {sym} is invalid as it is named "
+                f"with the suffix '(t0)' which is reserved for use by "
+                f"`Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
         elif str(sym)[-4:] == '(tF)':
-            msg = (f"The user defined symbol {sym} is invalid as it is named with the suffix '_tF' which is reserved for use by `Pycollo`. Please rename this symbol.")
+            msg = (f"The user defined symbol {sym} is invalid as it is named "
+                f"with the suffix '(tF)' which is reserved for use by "
+                f"`Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
 
     if len(set(syms)) != len(syms):
         msg = (f"All user defined symbols must have unique names.")
         raise ValueError(msg)
-    return None
 
 
-def dict_merge(*dicts):
+def dict_merge(*dicts: Iterable[Mapping]) -> dict:
+    """Merges multiple dictionaries into a single dictionary."""
     merged = {}
     for d in dicts:
         merged.update(d)

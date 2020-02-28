@@ -1,6 +1,7 @@
 import collections
 import itertools
 from numbers import Number
+from typing import (Tuple)
 
 import numba
 import numpy as np
@@ -20,7 +21,7 @@ dcdxInfo = collections.namedtuple('dcdxInfo', [
 supported_iter_types = (tuple, list, np.ndarray)
 
 
-def format_as_tuple(iterable):
+def format_as_tuple(iterable) -> Tuple:
     if not iterable:
         return ()
     try:

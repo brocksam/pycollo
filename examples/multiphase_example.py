@@ -14,11 +14,11 @@ s1 = sym.Symbol('s1')
 problem = pycollo.OptimalControlProblem(name='Multiphase example problem', 
 	parameter_variables=[s0, s1])
 
-phase_3 = pycollo.Phase(optimal_control_problem=problem)
+# phase_3 = pycollo.Phase(optimal_control_problem=problem)
 
 # phase_4 = problem.new_phase()
 
-# phase_1 = pycollo.Phase()
+phase_1 = pycollo.Phase()
 # problem.add_phase(phase_1)
 
 # phase_2 = pycollo.Phase()

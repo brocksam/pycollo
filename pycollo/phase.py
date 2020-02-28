@@ -1,15 +1,13 @@
-from typing import (Optional, )
+from typing import ()
 
 import sympy as sym
 
 from .processed_property import processed_property
+from .typing import (OptionalSymsType, TupleSymsType)
 from .utils import (check_sym_name_clash, format_as_tuple)
 
 
 __all__ = ["Phase"]
-
-
-TupleSymsType = Tuple[sym.Symbol, ...]
 
 
 class Phase:
@@ -157,26 +155,73 @@ class Phase:
 	def phase_number(self) -> Optional[int]:
 		"""The integer numerical identifier for the phase.
 
+		If this phase has not yet been associated with an optimal control 
+		problem then None is returned.
+
 		Corresponds to the chronological order in which it was associated with 
 		the optimal control problem in question.
-
-		Returns:
-			The phase number if an associated optimal control problem has been 
-			set. Otherwise, None.
 		"""
 		return self._phase_number
 
 	@property
+	def initial_time(self) -> sym.Symbol:
+		"""Symbol for the time at which this phase begins."""
+		return self._t0_USER
+
+	@property
+	def final_time(self) -> sym.Symbol:
+		"""Symbol for the time at which this phase begins."""
+		return self._tF_USER
+
+	@property
+	def initial_state(self) -> TupleSymsType:
+		"""Symbols for this phase's state variables at the initial time.
+
+		Raises:
+			AttributeError: If `optimal_control_problem` property has not yet 
+				been set to a not None value. See docstring for 
+				`state_variables` for details about why.
+		"""
+		return self._y_t0_user
+	
+	@property
+	def final_state(self) -> TupleSymsType:
+		"""Symbols for this phase's state variables at the final time.
+
+		Raises:
+			AttributeError: If `optimal_control_problem` property has not yet 
+				been set to a not None value. See docstring for 
+				`state_variables` for details about why.
+		"""
+		return self._y_tF_user
+
+	@property
 	def state_variables(self) -> TupleSymsType:
+		"""Symbols for this phase's state variables in order added by user.
+
+		The user may supply either a single symbol or an iterable of symbols. 
+		The supplied argument is handled by the `format_as_tuple` method from 
+		the `utils` module. Additional protected attributes `_y_t0_user` and 
+		`_y_tF_user` are set by post-appending either '_PX(t0)' or '_PX(tF)' to 
+		the user supplied symbols where the X is replaced by the phase suffix. 
+		As such if this phase has not yet been associated with an optimal 
+		control problem yet then `self` will not have attributes `_y_t0_user` 
+		and `_y_tF_user` and accessing either the `initial_state` or 
+		`final_state` property will raise an AttributeError.
+		"""
 		return self._y_vars_user
 
 	@state_variables.setter
-	def state_variables(self, y_vars):
+	def state_variables(self, y_vars: OptionalSymsType):
+
 		self._y_vars_user = format_as_tuple(y_vars)
-		self._y_t0_user = tuple(sym.Symbol(f'{y}_P{self._phase_suffix}(t0)')
-			for y in self._y_vars_user)
-		self._y_tF_user = tuple(sym.Symbol(f'{y}_P{self._phase_suffix}(tF)')
-			for y in self._y_vars_user)
+
+		# Generate the state endpoint variable symbols only if phase has number
+		if self.optimal_control_problem is not None:
+			self._y_t0_user = tuple(sym.Symbol(f'{y}_P{self._phase_suffix}(t0)')
+				for y in self._y_vars_user)
+			self._y_tF_user = tuple(sym.Symbol(f'{y}_P{self._phase_suffix}(tF)')
+				for y in self._y_vars_user)
 		# self._update_vars()
 		_ = check_sym_name_clash(self._y_vars_user)
 
@@ -186,12 +231,6 @@ class Phase:
 			return self._bounds._y_needed.sum()
 		else:
 			return len(self._y_vars_user)
-
-	# def _update_vars(self):
-	# 	self._x_vars_user = tuple(self._y_vars_user + self._u_vars_user
-	# 		+ self._q_vars_user + self._t_vars_user + self._s_vars_user)
-	# 	self._x_b_vars_user = tuple(self.state_endpoint 
-	# 		+ self._q_vars_user + self._t_vars_user + self._s_vars_user)
 
 	def __str__(self):
 		string = (f"Phase {self.phase_number} of {self.optimal_control_problem}")

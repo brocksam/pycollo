@@ -2,6 +2,14 @@ import numpy as np
 import scipy.sparse as sparse
 
 
+class EndpointScaling:
+	pass
+
+
+class PhaseScaling:
+	pass
+
+
 class Scaling:
 
 	def __init__(self, optimal_control_problem):
@@ -19,7 +27,6 @@ class Scaling:
 	def optimal_control_problem(self):
 		return self._ocp
 	
-
 	@property
 	def bounds(self):
 		return self._ocp.bounds

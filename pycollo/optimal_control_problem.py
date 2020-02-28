@@ -1,26 +1,3 @@
-import itertools
-from typing import (AnyStr, Iterable, Optional, Tuple, TypeVar, Union)
-from timeit import default_timer as timer
-
-import numba as nb
-import numpy as np
-from ordered_set import OrderedSet
-import scipy.sparse as sparse
-import sympy as sym
-import sympy.physics.mechanics as me
-
-from .bounds import Bounds
-from .expression_graph import ExpressionGraph
-from .guess import Guess
-from .iteration import Iteration
-from .mesh import Mesh
-from .numbafy import numbafy
-from .phase import Phase
-from .quadrature import Quadrature
-from .scaling import Scaling
-from .settings import Settings
-from . import utils as pu
-
 """The main way to define and interact with a Pycollo optimal control problem.
 
 This module contains the main class that the user will interact with to define
@@ -56,11 +33,33 @@ Notes:
 	* m = len(c): number of constraints
 """
 
+
+import itertools
+from typing import (AnyStr, Iterable, Optional, Tuple, TypeVar, Union)
+from timeit import default_timer as timer
+
+import numba as nb
+import numpy as np
+from ordered_set import OrderedSet
+import scipy.sparse as sparse
+import sympy as sym
+import sympy.physics.mechanics as me
+
+from .bounds import Bounds
+from .expression_graph import ExpressionGraph
+from .guess import Guess
+from .iteration import Iteration
+from .mesh import Mesh
+from .numbafy import numbafy
+from .phase import Phase
+from .quadrature import Quadrature
+from .typing import (OptionalSymsType, TupleSymsType)
+from .scaling import Scaling
+from .settings import Settings
+from .utils import (check_sym_name_clash, format_as_tuple)
+
+
 __all__ = ["OptimalControlProblem"]
-
-
-TupleSymsType = Tuple[sym.Symbol, ...]
-OptionalSymsType = Union[None, sym.Symbol, Iterable[sym.Symbol]]
 
 
 class OptimalControlProblem():
@@ -79,12 +78,25 @@ class OptimalControlProblem():
 
 	_dSTRETCH_dt = np.array([-0.5, 0.5])
 
-	def __init__(self, name, state_variables=None, control_variables=None, 
-		parameter_variables=None, state_equations=None, *, bounds=None, 
-		scaling=None, initial_guess=None, initial_mesh=None, 
-		path_constraints=None, integrand_functions=None, 
-		state_endpoint_constraints=None, boundary_constraints=None, 
-		objective_function=None, settings=None, auxiliary_data=None):
+	def __init__(self, 
+			name, 
+			# state_variables=None, 
+			# control_variables=None, 
+			parameter_variables=None, 
+			# state_equations=None, 
+			*, 
+			# bounds=None, 
+			scaling=None, 
+			# initial_guess=None, 
+			# initial_mesh=None, 
+			# path_constraints=None, 
+			# integrand_functions=None, 
+			# state_endpoint_constraints=None, 
+			boundary_constraints=None, 
+			objective_function=None, 
+			settings=None, 
+			auxiliary_data=None,
+			):
 		"""Initialise the optimal control problem with user-passed objects.
 
 		Args:
@@ -103,21 +115,21 @@ class OptimalControlProblem():
 		# Initialise problem description
 		self._init_private_attributes()
 		self._init_user_options(
-			state_variables,
-			control_variables, 
+			# state_variables,
+			# control_variables, 
 			parameter_variables,
-			state_equations,
-			path_constraints, 
-			integrand_functions,
-			state_endpoint_constraints, 
+			# state_equations,
+			# path_constraints, 
+			# integrand_functions,
+			# state_endpoint_constraints, 
 			boundary_constraints,
 			objective_function,
 			auxiliary_data,
-			bounds,
+			# bounds,
 			scaling,
-			initial_guess,
+			# initial_guess,
 			)
-		self._init_initial_mesh(initial_mesh)	
+		# self._init_initial_mesh(initial_mesh)	
 
 	def _init_private_attributes(self):
 
@@ -126,37 +138,48 @@ class OptimalControlProblem():
 		self._forward_dynamics = False
 
 		# Variables
-		self._y_vars_user = ()
-		self._u_vars_user = ()
-		self._q_vars_user = ()
-		self._t_vars_user = (self._t0_USER, self._tF_USER)
+		# self._y_vars_user = ()
+		# self._u_vars_user = ()
+		# self._q_vars_user = ()
+		# self._t_vars_user = (self._t0_USER, self._tF_USER)
 		self._s_vars_user = ()
 
 		# Constraints
-		self._y_eqns_user = ()
-		self._c_cons_user = ()
-		self._q_funcs_user = ()
-		self._y_b_cons_user = ()
+		# self._y_eqns_user = ()
+		# self._c_cons_user = ()
+		# self._q_funcs_user = ()
+		# self._y_b_cons_user = ()
 		self._b_cons_user = ()
 
 		# Phases
 		self._phases = []
 
-	def _init_user_options(self, state_variables, control_variables, 
-		parameter_variables, state_equations, path_constraints, 
-		integrand_functions, state_endpoint_constraints, boundary_constraints, 
-		objective_function, auxiliary_data, bounds, scaling, initial_guess):
+	def _init_user_options(self, 
+			# state_variables, 
+			# control_variables, 
+			parameter_variables, 
+			# state_equations, 
+			# path_constraints, 
+			# integrand_functions, 
+			# state_endpoint_constraints, 
+			boundary_constraints, 
+			objective_function, 
+			auxiliary_data, 
+			# bounds, 
+			scaling, 
+			# initial_guess,
+			):
 
 		# Variables
-		self.state_variables = state_variables
-		self.control_variables = control_variables
-		self.parameter_variables = parameter_variables
+		# self.state_variables = state_variables
+		# self.control_variables = control_variables
+		# self.parameter_variables = parameter_variables
 
 		# Constraints
-		self.state_equations = state_equations
-		self.path_constraints = path_constraints
-		self.integrand_functions = integrand_functions
-		self.state_endpoint_constraints = state_endpoint_constraints
+		# self.state_equations = state_equations
+		# self.path_constraints = path_constraints
+		# self.integrand_functions = integrand_functions
+		# self.state_endpoint_constraints = state_endpoint_constraints
 		self.boundary_constraints = boundary_constraints
 
 		# Functions
@@ -164,8 +187,8 @@ class OptimalControlProblem():
 
 		self.auxiliary_data = dict(auxiliary_data) if auxiliary_data else {}
 		self.scaling = scaling
-		self.bounds = bounds
-		self.initial_guess = initial_guess
+		# self.bounds = bounds
+		# self.initial_guess = initial_guess
 
 	def _init_initial_mesh(self, initial_mesh):
 		self._mesh_iterations = []
@@ -224,7 +247,7 @@ class OptimalControlProblem():
 		Returns:
 			Phase: the phase that has been added. It is the same 
 		"""
-		phase._optimal_control_problem_setter()
+		phase.optimal_control_problem = self
 		return self.phases[-1]
 
 	def add_phases(self, phases: Iterable[Phase]) -> Tuple[Phase, ...]:
@@ -246,6 +269,12 @@ class OptimalControlProblem():
 			state_variables=state_variables)
 		return new_phase
 
+	def new_phase_like(self):
+		pass
+
+	def new_phases_like(self):
+		pass
+
 	@property
 	def number_phases(self) -> int:
 		"""Number of phases associated with this optimal control problem."""
@@ -253,93 +282,99 @@ class OptimalControlProblem():
 
 	@property
 	def time_symbol(self):
+		"""
+		
+		Raises:
+			NotImplementedError: Whenever called to inform the user that these 
+				types of problem are not currently supported.
+		"""
 		msg = (f"Pycollo do not currently support dynamic, path or integral "
 			f"constraints that are explicit functions of continuous time.")
 		raise NotImplementedError(msg)
 
-	@property
-	def initial_time(self):
-		return self._t0_USER
+	# @property
+	# def initial_time(self):
+	# 	return self._t0_USER
 
-	@property
-	def final_time(self):
-		return self._tF_USER
+	# @property
+	# def final_time(self):
+	# 	return self._tF_USER
 
-	@property
-	def initial_state(self):
-		return self._y_t0_user
+	# @property
+	# def initial_state(self):
+	# 	return self._y_t0_user
 	
-	@property
-	def final_state(self):
-		return self._y_tF_user
+	# @property
+	# def final_state(self):
+	# 	return self._y_tF_user
 
-	@property
-	def state_endpoint(self):
-		state_endpoint = tuple(itertools.chain.from_iterable(y 
-			for y in zip(self._y_t0_user, self._y_tF_user)))
-		return state_endpoint
+	# @property
+	# def state_endpoint(self):
+	# 	state_endpoint = tuple(itertools.chain.from_iterable(y 
+	# 		for y in zip(self._y_t0_user, self._y_tF_user)))
+	# 	return state_endpoint
 
-	@property
-	def state_variables(self):
-		return self._y_vars_user
+	# @property
+	# def state_variables(self):
+	# 	return self._y_vars_user
 
-	@state_variables.setter
-	def state_variables(self, y_vars):
-		self._is_initialised = False
-		self._y_vars_user = pu.format_as_tuple(y_vars)
-		self._y_t0_user = tuple(sym.Symbol(f'{y}(t0)')
-			for y in self._y_vars_user)
-		self._y_tF_user = tuple(sym.Symbol(f'{y}(tF)')
-			for y in self._y_vars_user)
-		self._update_vars()
-		_ = pu.check_sym_name_clash(self._y_vars_user)
+	# @state_variables.setter
+	# def state_variables(self, y_vars):
+	# 	self._is_initialised = False
+	# 	self._y_vars_user = format_as_tuple(y_vars)
+	# 	self._y_t0_user = tuple(sym.Symbol(f'{y}(t0)')
+	# 		for y in self._y_vars_user)
+	# 	self._y_tF_user = tuple(sym.Symbol(f'{y}(tF)')
+	# 		for y in self._y_vars_user)
+	# 	self._update_vars()
+	# 	_ = check_sym_name_clash(self._y_vars_user)
 
-	@property
-	def number_state_variables(self):
-		if self._bounds._bounds_checked:
-			return self._bounds._y_needed.sum()
-		else:
-			return len(self._y_vars_user)
+	# @property
+	# def number_state_variables(self):
+	# 	if self._bounds._bounds_checked:
+	# 		return self._bounds._y_needed.sum()
+	# 	else:
+	# 		return len(self._y_vars_user)
 	
-	@property
-	def control_variables(self):
-		return self._u_vars_user
+	# @property
+	# def control_variables(self):
+	# 	return self._u_vars_user
 
-	@control_variables.setter
-	def control_variables(self, u_vars):
-		self._is_initialised = False
-		self._u_vars_user = pu.format_as_tuple(u_vars)
-		self._update_vars()
-		_ = pu.check_sym_name_clash(self._u_vars_user)
+	# @control_variables.setter
+	# def control_variables(self, u_vars):
+	# 	self._is_initialised = False
+	# 	self._u_vars_user = format_as_tuple(u_vars)
+	# 	self._update_vars()
+	# 	_ = check_sym_name_clash(self._u_vars_user)
 
-	@property
-	def number_control_variables(self):
-		if self._bounds._bounds_checked:
-			return self._bounds._u_needed.sum()
-		else:
-			return len(self._u_vars_user)
+	# @property
+	# def number_control_variables(self):
+	# 	if self._bounds._bounds_checked:
+	# 		return self._bounds._u_needed.sum()
+	# 	else:
+	# 		return len(self._u_vars_user)
 
-	@property
-	def integral_variables(self):
-		return self._q_vars_user
+	# @property
+	# def integral_variables(self):
+	# 	return self._q_vars_user
 
-	@property
-	def number_integral_variables(self):
-		if self._bounds._bounds_checked:
-			return self._bounds._q_needed.sum()
-		else:
-			return len(self._q_vars_user)
+	# @property
+	# def number_integral_variables(self):
+	# 	if self._bounds._bounds_checked:
+	# 		return self._bounds._q_needed.sum()
+	# 	else:
+	# 		return len(self._q_vars_user)
 
-	@property
-	def time_variables(self):
-		return self._t_vars_user
+	# @property
+	# def time_variables(self):
+	# 	return self._t_vars_user
 
-	@property
-	def number_time_variables(self):
-		if self._bounds._bounds_checked:
-			return self._bounds._t_needed.sum()
-		else:
-			return len(self._t_vars_user)
+	# @property
+	# def number_time_variables(self):
+	# 	if self._bounds._bounds_checked:
+	# 		return self._bounds._t_needed.sum()
+	# 	else:
+	# 		return len(self._t_vars_user)
 	
 	@property
 	def parameter_variables(self):
@@ -348,10 +383,10 @@ class OptimalControlProblem():
 	@parameter_variables.setter
 	def parameter_variables(self, s_vars):
 		self._is_initialised = False
-		s_vars = pu.format_as_tuple(s_vars)
+		s_vars = format_as_tuple(s_vars)
 		self._s_vars_user = tuple(s_vars)
 		self._update_vars()
-		_ = pu.check_sym_name_clash(self._s_vars_user)
+		_ = check_sym_name_clash(self._s_vars_user)
 
 	@property
 	def number_parameter_variables(self):
@@ -360,80 +395,80 @@ class OptimalControlProblem():
 		else:
 			return len(self._s_vars_user)
 
-	@property
-	def variables(self):
-		return self._x_vars_user
+	# @property
+	# def variables(self):
+	# 	return self._x_vars_user
 
-	@property
-	def number_variables(self):
-		if self._bounds._bounds_checked:
-			return self._bounds._x_needed.sum()
-		else:
-			return len(self._x_vars_user)
+	# @property
+	# def number_variables(self):
+	# 	if self._bounds._bounds_checked:
+	# 		return self._bounds._x_needed.sum()
+	# 	else:
+	# 		return len(self._x_vars_user)
 
-	def _update_vars(self):
-		self._x_vars_user = tuple(self._y_vars_user + self._u_vars_user
-			+ self._q_vars_user + self._t_vars_user + self._s_vars_user)
-		self._x_b_vars_user = tuple(self.state_endpoint 
-			+ self._q_vars_user + self._t_vars_user + self._s_vars_user)
+	# def _update_vars(self):
+	# 	self._x_vars_user = tuple(self._y_vars_user + self._u_vars_user
+	# 		+ self._q_vars_user + self._t_vars_user + self._s_vars_user)
+	# 	self._x_b_vars_user = tuple(self.state_endpoint 
+	# 		+ self._q_vars_user + self._t_vars_user + self._s_vars_user)
 
-	@property
-	def state_equations(self):
-		return self._y_eqns_user
+	# @property
+	# def state_equations(self):
+	# 	return self._y_eqns_user
 
-	@state_equations.setter
-	def state_equations(self, y_eqns):
-		self._is_initialised = False
-		y_eqns = pu.format_as_tuple(y_eqns)
-		self._y_eqns_user = tuple(y_eqns)
+	# @state_equations.setter
+	# def state_equations(self, y_eqns):
+	# 	self._is_initialised = False
+	# 	y_eqns = format_as_tuple(y_eqns)
+	# 	self._y_eqns_user = tuple(y_eqns)
 
-	@property
-	def number_state_equations(self):
-		return len(self._y_eqns_user)
+	# @property
+	# def number_state_equations(self):
+	# 	return len(self._y_eqns_user)
 
-	@property
-	def path_constraints(self):
-		return self._c_cons_user
+	# @property
+	# def path_constraints(self):
+	# 	return self._c_cons_user
 
-	@path_constraints.setter
-	def path_constraints(self, c_cons):
-		self._is_initialised = False
-		c_cons = pu.format_as_tuple(c_cons)
-		self._c_cons_user = tuple(c_cons)
+	# @path_constraints.setter
+	# def path_constraints(self, c_cons):
+	# 	self._is_initialised = False
+	# 	c_cons = format_as_tuple(c_cons)
+	# 	self._c_cons_user = tuple(c_cons)
 
-	@property
-	def number_path_constraints(self):
-		return len(self._c_cons_user)
+	# @property
+	# def number_path_constraints(self):
+	# 	return len(self._c_cons_user)
 
-	@property
-	def integrand_functions(self):
-		return self._q_funcs_user
+	# @property
+	# def integrand_functions(self):
+	# 	return self._q_funcs_user
 
-	@integrand_functions.setter
-	def integrand_functions(self, integrands):
-		self._is_initialised = False
-		self._q_funcs_user = pu.format_as_tuple(integrands)
-		self._q_vars_user = tuple(sym.Symbol(f'_q{i_q}') 
-			for i_q, _ in enumerate(self._q_funcs_user))
-		self._update_vars()
+	# @integrand_functions.setter
+	# def integrand_functions(self, integrands):
+	# 	self._is_initialised = False
+	# 	self._q_funcs_user = format_as_tuple(integrands)
+	# 	self._q_vars_user = tuple(sym.Symbol(f'_q{i_q}') 
+	# 		for i_q, _ in enumerate(self._q_funcs_user))
+	# 	self._update_vars()
 
-	@property
-	def number_integrand_functions(self):
-		return len(self._q_funcs_user)
+	# @property
+	# def number_integrand_functions(self):
+	# 	return len(self._q_funcs_user)
 
-	@property
-	def state_endpoint_constraints(self):
-		return self._y_b_cons_user
+	# @property
+	# def state_endpoint_constraints(self):
+	# 	return self._y_b_cons_user
 
-	@state_endpoint_constraints.setter
-	def state_endpoint_constraints(self, y_b_cons):
-		self._is_initialised = False
-		y_b_cons = pu.format_as_tuple(y_b_cons)
-		self._y_b_cons_user = tuple(y_b_cons)
+	# @state_endpoint_constraints.setter
+	# def state_endpoint_constraints(self, y_b_cons):
+	# 	self._is_initialised = False
+	# 	y_b_cons = format_as_tuple(y_b_cons)
+	# 	self._y_b_cons_user = tuple(y_b_cons)
 
-	@property
-	def number_state_endpoint_constraints(self):
-		return len(self._y_b_cons_user)
+	# @property
+	# def number_state_endpoint_constraints(self):
+	# 	return len(self._y_b_cons_user)
 
 	@property
 	def endpoint_constraints(self):
@@ -442,7 +477,7 @@ class OptimalControlProblem():
 	@endpoint_constraints.setter
 	def endpoint_constraints(self, b_cons):
 		self._is_initialised = False
-		b_cons = pu.format_as_tuple(b_cons)
+		b_cons = format_as_tuple(b_cons)
 		self._b_cons_user = tuple(b_cons)
 
 	@property
@@ -476,18 +511,18 @@ class OptimalControlProblem():
 		self._is_initialised = False
 		self._aux_data_user = dict(aux_data)
 
-	@property
-	def bounds(self):
-		return self._bounds
+	# @property
+	# def bounds(self):
+	# 	return self._bounds
 	
-	@bounds.setter
-	def bounds(self, bounds):
-		self._is_initialised = False
-		if bounds is None:
-			self._bounds = Bounds(optimal_control_problem=self)
-		else:
-			self._bounds = bounds
-			self._bounds._ocp = self
+	# @bounds.setter
+	# def bounds(self, bounds):
+	# 	self._is_initialised = False
+	# 	if bounds is None:
+	# 		self._bounds = Bounds(optimal_control_problem=self)
+	# 	else:
+	# 		self._bounds = bounds
+	# 		self._bounds._ocp = self
 
 	@property
 	def scaling(self):
@@ -495,29 +530,28 @@ class OptimalControlProblem():
 	
 	@scaling.setter
 	def scaling(self, scaling):
-		self._is_initialised = False
 		if scaling is None:
 			self._scaling = Scaling(optimal_control_problem=self)
 		else:
 			self._scaling = scaling
 			self._scaling._ocp = self
 
-	@property
-	def initial_guess(self):
-		return self._initial_guess
+	# @property
+	# def initial_guess(self):
+	# 	return self._initial_guess
 	
-	@initial_guess.setter
-	def initial_guess(self, guess):
-		self._is_initialised = False
-		if guess is None:
-			self._initial_guess = Guess(optimal_control_problem=self)
-		else:
-			self._initial_guess = guess
-			self._initial_guess._ocp = self
+	# @initial_guess.setter
+	# def initial_guess(self, guess):
+	# 	self._is_initialised = False
+	# 	if guess is None:
+	# 		self._initial_guess = Guess(optimal_control_problem=self)
+	# 	else:
+	# 		self._initial_guess = guess
+	# 		self._initial_guess._ocp = self
 
-	@property
-	def initial_mesh(self):
-		return self._mesh_iterations[0]._mesh
+	# @property
+	# def initial_mesh(self):
+	# 	return self._mesh_iterations[0]._mesh
 
 	@property
 	def mesh_iterations(self):

@@ -12,7 +12,7 @@ import sympy as sym
 
 from .processed_property import processed_property
 from .typing import (OptionalSymsType, TupleSymsType)
-from .utils import (check_sym_name_clash, format_as_tuple)
+from .utils import (check_sym_name_clash, format_as_named_tuple)
 
 
 __all__ = ["Phase"]
@@ -235,7 +235,8 @@ class Phase:
 	@state_variables.setter
 	def state_variables(self, y_vars: OptionalSymsType):
 
-		self._y_vars_user = format_as_tuple(y_vars)
+		self._y_vars_user = format_as_named_tuple(y_vars)
+		check_sym_name_clash(self._y_vars_user)
 
 		# Generate the state endpoint variable symbols only if phase has number
 		if self.optimal_control_problem is not None:
@@ -247,12 +248,14 @@ class Phase:
 			self._SHIFT = 0.5 * (self._t0 + self._tF)
 			self._t_vars_user = (self._t0_USER, self._tF_USER)
 
-			self._y_t0_user = tuple(sym.Symbol(f'{y}_P{self._phase_suffix}(t0)')
-				for y in self._y_vars_user)
-			self._y_tF_user = tuple(sym.Symbol(f'{y}_P{self._phase_suffix}(tF)')
-				for y in self._y_vars_user)
-		
-		check_sym_name_clash(self._y_vars_user)
+			self._y_t0_user = format_as_named_tuple(
+				(sym.Symbol(f'{y}_P{self._phase_suffix}(t0)')
+					for y in self._y_vars_user), 
+				use_keys=self._y_vars_user)
+			self._y_tF_user = format_as_named_tuple(
+				(sym.Symbol(f'{y}_P{self._phase_suffix}(tF)')
+					for y in self._y_vars_user),
+				use_keys=self._y_vars_user)
 
 	@property
 	def number_state_variables(self):
@@ -264,7 +267,7 @@ class Phase:
 
 	@control_variables.setter
 	def control_variables(self, u_vars):
-		self._u_vars_user = format_as_tuple(u_vars)
+		self._u_vars_user = format_as_named_tuple(u_vars)
 		_ = check_sym_name_clash(self._u_vars_user)
 
 	@property
@@ -285,7 +288,7 @@ class Phase:
 
 	@state_equations.setter
 	def state_equations(self, y_eqns):
-		self._y_eqns_user = format_as_tuple(y_eqns)
+		self._y_eqns_user = format_as_named_tuple(y_eqns, use_named=False)
 
 	@property
 	def number_state_equations(self):
@@ -297,7 +300,7 @@ class Phase:
 
 	@path_constraints.setter
 	def path_constraints(self, c_cons):
-		self._c_cons_user = format_as_tuple(c_cons)
+		self._c_cons_user = format_as_named_tuple(c_cons)
 
 	@property
 	def number_path_constraints(self):
@@ -309,7 +312,7 @@ class Phase:
 
 	@integrand_functions.setter
 	def integrand_functions(self, integrands):
-		self._q_funcs_user = format_as_tuple(integrands)
+		self._q_funcs_user = format_as_named_tuple(integrands)
 		self._q_vars_user = tuple(sym.Symbol(f'q{i_q}_P{self._phase_suffix}') 
 			for i_q, _ in enumerate(self._q_funcs_user))
 
@@ -323,9 +326,7 @@ class Phase:
 
 	@state_endpoint_constraints.setter
 	def state_endpoint_constraints(self, y_b_cons):
-		self._is_initialised = False
-		y_b_cons = format_as_tuple(y_b_cons)
-		self._y_b_cons_user = tuple(y_b_cons)
+		self._y_b_cons_user = format_as_named_tuple(y_b_cons, use_named=False)
 
 	@property
 	def number_state_endpoint_constraints(self):

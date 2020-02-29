@@ -9,7 +9,8 @@ part of Pycollo.
 """
 
 
-from typing import (Iterable, Tuple, Union)
+from collections import namedtuple
+from typing import (Iterable, NamedTuple, Tuple, Union)
 
 import sympy as sym
 
@@ -17,5 +18,5 @@ import sympy as sym
 OptionalSymsType = Union[None, sym.Symbol, Iterable[sym.Symbol]]
 """For user-supplied symbols for variables."""
 
-TupleSymsType = Tuple[sym.Symbol, ...]
+TupleSymsType = Union[Tuple[sym.Symbol, ...], NamedTuple]
 """For return values of varible properties."""

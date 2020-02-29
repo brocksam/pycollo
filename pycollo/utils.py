@@ -1,7 +1,7 @@
 import collections
 import itertools
 from numbers import Number
-from typing import (Iterable, Mapping, Tuple)
+from typing import (Iterable, Mapping, NamedTuple, Optional, Tuple)
 
 import numba
 import numpy as np
@@ -23,16 +23,34 @@ dcdxInfo = collections.namedtuple('dcdxInfo', [
 supported_iter_types = (tuple, list, np.ndarray)
 
 
-def format_as_tuple(iterable: OptionalSymsType) -> Tuple:
-    """Formats user supplied arguments as a tuple."""
+def format_as_named_tuple(
+        iterable: OptionalSymsType, 
+        use_named: bool = True, 
+        use_keys: Optional[NamedTuple] = None) -> TupleSymsType:
+    """Formats user supplied arguments as a named tuple."""
+    
     if not iterable:
         return ()
     try:
         iter(iterable)
     except TypeError:
         iterable = (iterable, )
-    iterable_tuple = tuple(sym.sympify(symbol) for symbol in iterable)
-    return iterable_tuple
+
+    symbols = [sym.sympify(symbol) for symbol in iterable]
+    if use_named:
+        if use_keys is not None:
+            try:
+                named_tuple_keys = use_keys._fields
+            except AttributeError:
+                return ()
+        else:
+            named_tuple_keys = [str(symbol) for symbol in symbols]
+        NamedTuple = collections.namedtuple('NamedTuple', named_tuple_keys)
+        formatted_symbols = NamedTuple(*symbols)
+    else:
+        formatted_symbols = tuple(symbols)
+    
+    return formatted_symbols
 
 
 def check_sym_name_clash(syms: TupleSymsType) -> None:

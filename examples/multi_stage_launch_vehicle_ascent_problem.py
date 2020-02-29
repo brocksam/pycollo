@@ -1,8 +1,9 @@
 """
 TODO:
-	* Use `collections.named_tuple` objects for variable storage so that they 
-		can be indexed by variable name rather than index 
-	* Similarly use `collections.named_tuple` for phases so that these can be 
+	* Use `collections.namedtuple` for accessing endpoint variables and values.
+	* Add checking for state endpoint constraints to ensure that they are only 
+		functions of a single state endpoint variable.
+	* Similarly use `collections.namedtuple` for phases so that these can be 
 		indexed by phase name.
 	* Rename 'phase numbering' to 'phase naming' and use A, B, C etc. instead 
 		of 1, 2, 3 etc. to avoid confusion with Python's zero-based indexing 
@@ -17,6 +18,10 @@ TODO:
 		number of time variables present in the optimal control problem.
 	* Allow use of matrix expressions (instead of just scalar expressions like 
 		currently supported) to reduce the amount of code needed.
+
+Done:
+	* Use `collections.namedtuple` objects for variable storage so that they 
+		can be indexed by variable name rather than index.
 
 Pitfalls/Gotchas:
 	* Name all symbols the same as their variables are named in your scripts.
@@ -35,6 +40,8 @@ D_x, D_y, D_z = sym.symbols('D_x D_y D_z')
 T, xi, C_D, S_rho, omega_E = sym.symbols('T xi C_D S_rho omega_E')
 v_r_x, v_r_y, v_r_z = sym.symbols('v_r_x v_r_y v_r_z')
 omega_x_r_x, omega_x_r_y, omega_x_r_z = sym.symbols('omega_x_r_x omega_x_r_y omega_x_r_z')
+mu, R_E, psi_L = sym.symbols('mu R_E psi_L')
+r_vec_norm, u_vec_norm, v_vec_norm = sym.symbols('r_vec_norm u_vec_norm v_vec_norm')
 
 problem = pycollo.OptimalControlProblem(
 	name='Multi-stage launch vehicle ascent problem')
@@ -67,12 +74,12 @@ phase_A.path_constraints = [
 	]
 
 phase_A.state_endpoint_constraints = [
-	phase_A.initial_state_variables['r_x'],
-	phase_A.initial_state_variables['r_y'],
-	phase_A.initial_state_variables['r_z'],
-	phase_A.initial_state_variables['v_z'],
-	phase_A.initial_state_variables['v_z'],
-	phase_A.initial_state_variables['v_z'],
+	phase_A.initial_state_variables.r_x,
+	phase_A.initial_state_variables.r_y,
+	phase_A.initial_state_variables.r_z,
+	phase_A.initial_state_variables.v_z,
+	phase_A.initial_state_variables.v_z,
+	phase_A.initial_state_variables.v_z,
 	]
 
 phase_A.bounds = pycollo.Bounds(
@@ -85,7 +92,7 @@ phase_A.bounds = pycollo.Bounds(
 		R_E*sym.cos(psi_L),
 		0,
 		R_E*sym.sin(psi_L),
-		]
+		],
 	state_endpoint_constraints=[
 		])
 

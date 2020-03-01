@@ -3,6 +3,8 @@ TODO:
 	* Use `collections.namedtuple` for accessing endpoint variables and values.
 	* Add checking for state endpoint constraints to ensure that they are only 
 		functions of a single state endpoint variable.
+	* Allow user-defined phase names and change phase storage to use 
+		`collections.namedtuple` to support this.
 	* Similarly use `collections.namedtuple` for phases so that these can be 
 		indexed by phase name.
 	* Rename 'phase numbering' to 'phase naming' and use A, B, C etc. instead 
@@ -40,8 +42,10 @@ D_x, D_y, D_z = sym.symbols('D_x D_y D_z')
 T, xi, C_D, S_rho, omega_E = sym.symbols('T xi C_D S_rho omega_E')
 v_r_x, v_r_y, v_r_z = sym.symbols('v_r_x v_r_y v_r_z')
 omega_x_r_x, omega_x_r_y, omega_x_r_z = sym.symbols('omega_x_r_x omega_x_r_y omega_x_r_z')
-mu, R_E, psi_L = sym.symbols('mu R_E psi_L')
+mu, R_E, psi_L, g_0 = sym.symbols('mu R_E psi_L g_0')
 r_vec_norm, u_vec_norm, v_vec_norm = sym.symbols('r_vec_norm u_vec_norm v_vec_norm')
+T_S, T_1, T_2 = sym.symbols('T_S T_1 T_2')
+I_S, I_1, I_2 = sym.symbols('I_S I_1 I_2')
 
 problem = pycollo.OptimalControlProblem(
 	name='Multi-stage launch vehicle ascent problem')
@@ -80,35 +84,49 @@ phase_A.state_endpoint_constraints = [
 	phase_A.initial_state_variables.v_z,
 	phase_A.initial_state_variables.v_z,
 	phase_A.initial_state_variables.v_z,
+	phase_A.initial_state_variables.m,
 	]
 
-phase_A.bounds = pycollo.Bounds(
-	optimal_control_problem=problem,
-	initial_time=0,
-	final_time=[75.2, 75.2],
-	path_constraints=[
-		1,
-		[R_E, 'inf'],
-		R_E*sym.cos(psi_L),
-		0,
-		R_E*sym.sin(psi_L),
-		],
-	state_endpoint_constraints=[
-		])
+phase_A.bounds.initial_time = 0
+phase_A.bounds.final_time = [75.2, 75.2]
+phase_A.bounds.state_variables = [
+	
+	]
+path_A.bounds.control_variables = [
+	
+	]
+phase_A.bounds.path_constraints = [
+	1,
+	[R_E, 'inf'],
+	]
+phase_A.bounds.state_endpoint_constraints = [
+	0,
+	0,
+	0,
+	R_E*sym.cos(psi_L),
+	0,
+	R_E*sym.sin(psi_L),
+	]
 
 phase_A.auxiliary_data = {
-	T: 6*T_S + T1,
-	xi: (1/g_0) * (6*T_S/I_S + T1/I_1),
+	T: 6*T_S + T_1,
+	xi: (1/g_0) * (6*T_S/I_S + T_1/I_1),
 	}
 
-phase_B, phase_C, phase_D = problem.new_phases_like(phase_A,
+phase_B, phase_C, phase_D = problem.new_phases_like(number=3, like=phase_A,
 	copy_state_variables=True,
 	copy_control_variables=True,
 	copy_state_equations=True,
 	copy_path_constraints=True,
 	copy_integrand_functions=True,
 	copy_state_endpoint_constraints=False,
+	copy_bounds=True,
+	copy_initial_mesh=True,
+
 	)
+
+print('\n\n\n')
+raise NotImplementedError
 
 # PHASE 2
 
@@ -133,22 +151,22 @@ phase_D.auxiliary_data = {
 	xi: T2/(g_0*I_2),
 	}
 
-problem.objective_function = problem.phases['C'].final_state_variables['m']
+problem.objective_function = problem.phases[2].final_state_variables.m
 
 problem.endpoint_constraints = [
 	phase_D.final_time_variable - phase_D.initial_time_variable,
-	phase_A.initial_state_variables[6],
-	(phase_A.final_state_variables[6] - phase_A.initial_state_variables[6] 
+	phase_A.initial_state_variables.m,
+	(phase_A.final_state_variables.m - phase_A.initial_state_variables.m 
 		+ 6*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1),
-	(phase_B.initial_state_variables[6] - phase_A.final_state_variables[6] 
+	(phase_B.initial_state_variables.m - phase_A.final_state_variables.m 
 		+ 6*m_struct_S),
-	(phase_B.final_state_variables['m'] - phase_B.initial_state_variables['m'] 
+	(phase_B.final_state_variables.m - phase_B.initial_state_variables.m 
 		+ 3*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1),
-	(phase_C.initial_state_variables['m'] - phase_B.final_state_variables['m'] 
+	(phase_C.initial_state_variables.m - phase_B.final_state_variables.m 
 		+ 3*m_struct_S),
-	(phase_C.final_state_variables['m'] - phase_C.initial_state_variables['m']
+	(phase_C.final_state_variables.m - phase_C.initial_state_variables.m
 		+ (1 - 2*(tau_burn_S/tau_burn_1))*m_prop_1),
-	(phase_D.initial_state_variables['m'] - phase_C.final_state_variables['m']
+	(phase_D.initial_state_variables.m - phase_C.final_state_variables.m
 		+ m_struct_1),
 	]
 
@@ -166,9 +184,9 @@ problem.bounds.endpoint_constraints = [
 problem.auxiliary_data = {
 	mu: 3.986012e14, # 
 	R_E: 6378145, # Radius of Earth (in m)
-	r_vec_norm: sym.sqrt(r_x**2 + r_y**2 + r_z**2),
-	v_vec_norm: sym.sqrt(v_x**2 + v_y**2 + v_z**2),
-	u_vec_norm: sym.sqrt(u_x**2 + u_y**2 + u_z**2),
+	r_vec_norm: sym.sqrt(r_x**2 + r_y**2 + r_z**2), # Absolute position (in m)
+	v_vec_norm: sym.sqrt(v_x**2 + v_y**2 + v_z**2), # Absolute velocity (in m/s)
+	u_vec_norm: sym.sqrt(u_x**2 + u_y**2 + u_z**2), # Absolute control (in N)
 	D_x: - 0.5 * C_D * S_pho * v_r_vec_norm * v_r_x,
 	D_y: - 0.5 * C_D * S_pho * v_r_vec_norm * v_r_y,
 	D_z: - 0.5 * C_D * S_pho * v_r_vec_norm * v_r_z,
@@ -183,7 +201,8 @@ problem.auxiliary_data = {
 	omega_x_r_z: 0,
 	g_0: 9.80665, # Accerlation due to gravity at sea level (in m/s^2)
 	h_0: 7200, # Density scale height (in m)
-	rho: rho_0 * sym.exp(-h/h_0),
+	h: r_vec_norm - R_E, # Absolute altitude above sea level (in m)
+	rho: rho_0 * sym.exp(-h/h_0), # Atmospheric density (in kg/m^3)
 	rho_0: 1.225, # Atmospheric density at sea level (in kg/m^3)
 	omega_E: 7.29211585e-5, # Angular velocity of earth relative to inertial space (in rad/s)
 	m_tot_S: 19290, # Total mass of solid boosters (in kg)

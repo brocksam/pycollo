@@ -269,11 +269,62 @@ class OptimalControlProblem():
 			state_variables=state_variables)
 		return new_phase
 
-	def new_phase_like(self):
-		pass
+	def new_phase_like(self, like, *, 
+			copy_state_variables=True,
+			copy_control_variables=True,
+			copy_state_equations=True,
+			copy_path_constraints=True,
+			copy_integrand_functions=True,
+			copy_state_endpoint_constraints=True,
+			copy_bounds=True,
+			copy_initial_mesh=True,
+			copy_scaling=False,
+			copy_initial_guess=False,
+			):
+		new_phase = Phase(optimal_control_problem=self)
 
-	def new_phases_like(self):
-		pass
+		if copy_state_variables:
+			new_phase.state_variables = like.state_variables
+			if copy_bounds:
+				new_phase.bounds.state_variables = like.bounds.state_variables
+
+		if copy_control_variables:
+			new_phase.control_variables = like.control_variables
+			if copy_bounds:
+				new_phase.bounds.control_variables = like.bounds.control_variables
+
+		if copy_state_equations:
+			new_phase.state_equations = like.state_equations
+
+		if copy_path_constraints:
+			new_phase.path_constraints = like.path_constraints
+			if copy_bounds:
+				new_phase.bounds.path_constraints = like.bounds.path_constraints
+
+		if copy_integrand_functions:
+			new_phase.integrand_functions = like.integrand_functions
+			if copy_bounds:
+				new_phase.bounds.integral_variables = like.bounds.integral_variables
+
+		if copy_state_endpoint_constraints:
+			new_phase.state_endpoint_constraints = like.state_endpoint_constraints
+			if copy_bounds:
+				new_phase.bounds.state_endpoint_constraints = like.bounds.state_endpoint_constraints
+
+		return new_phase
+
+	def new_phases_like(self, like, number, **kwargs) -> Tuple[Phase, ...]:
+		"""Creates multiple new phases like an already instantiated phase.
+
+		For a list of key word arguments and default values see the docstring 
+		for the `OptimalControlProblem.new_phase_like` method.
+
+		Returns:
+			The newly instantiated and associated phases.
+		"""
+		new_phases = (self.new_phase_like(like, **kwargs)
+			for _ in range(int(number)))
+		return new_phases
 
 	@property
 	def number_phases(self) -> int:
@@ -511,18 +562,17 @@ class OptimalControlProblem():
 		self._is_initialised = False
 		self._aux_data_user = dict(aux_data)
 
-	# @property
-	# def bounds(self):
-	# 	return self._bounds
+	@property
+	def endpoint_bounds(self):
+		return self._endpoint_bounds
 	
-	# @bounds.setter
-	# def bounds(self, bounds):
-	# 	self._is_initialised = False
-	# 	if bounds is None:
-	# 		self._bounds = Bounds(optimal_control_problem=self)
-	# 	else:
-	# 		self._bounds = bounds
-	# 		self._bounds._ocp = self
+	@endpoint_bounds.setter
+	def endpoint_bounds(self, bounds):
+		if bounds is None:
+			self._endpoint_bounds = EndpointBounds(optimal_control_problem=self)
+		else:
+			self._endpoint_bounds = bounds
+			self._endpoint_bounds._ocp = self
 
 	@property
 	def scaling(self):

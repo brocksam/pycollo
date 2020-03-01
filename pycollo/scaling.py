@@ -7,7 +7,18 @@ class EndpointScaling:
 
 
 class PhaseScaling:
-	pass
+	
+	def __init__(self, phase):
+
+		self.phase = phase
+
+	@property
+	def phase(self):
+		return self._phase
+	
+	@phase.setter
+	def phase(self, phase):
+		self._phase = phase
 
 
 class Scaling:
@@ -17,7 +28,6 @@ class Scaling:
 		self._ocp = optimal_control_problem
 		self._GENERATE_DISPATCHER = {
 			None: self._generate_none,
-			'automatic': self._generate_bounds,
 			'user': self._generate_user,
 			'bounds': self._generate_bounds,
 			'guess': self._generate_guess,

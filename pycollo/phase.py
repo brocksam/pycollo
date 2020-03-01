@@ -10,6 +10,7 @@ from typing import (Optional, )
 
 import sympy as sym
 
+from .bounds import PhaseBounds
 from .processed_property import processed_property
 from .typing import (OptionalSymsType, TupleSymsType)
 from .utils import (check_sym_name_clash, format_as_named_tuple)
@@ -331,6 +332,17 @@ class Phase:
 	@property
 	def number_state_endpoint_constraints(self):
 		return len(self._y_b_cons_user)
+
+	@property
+	def bounds(self):
+		return self._bounds
+	
+	@bounds.setter
+	def bounds(self, bounds):
+		if bounds is None:
+			self._bounds = PhaseBounds(phase=self)
+		else:
+			self._bounds = bounds
 
 	def __str__(self):
 		string = (f"Phase {self.phase_number} of {self.optimal_control_problem}")

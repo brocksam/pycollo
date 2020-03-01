@@ -6,6 +6,27 @@ import sympy as sym
 
 import pycollo.utils as pu
 
+
+class EndpointBounds:
+	pass
+
+
+class PhaseBounds:
+	
+	def __init__(self, phase):
+
+		self.phase = phase
+
+	@property
+	def phase(self):
+		return self._phase
+	
+	@phase.setter
+	def phase(self, phase):
+		self._phase = phase
+
+
+
 class Bounds():
 
 	INF = 1e19

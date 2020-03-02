@@ -10,12 +10,12 @@ part of Pycollo.
 
 
 from collections import namedtuple
-from typing import (Iterable, NamedTuple, Tuple, Union)
+from typing import (Iterable, NamedTuple, Optional, Tuple, Union)
 
 import sympy as sym
 
 
-OptionalBoundsType = Optional[Iterable[Union[None, float, Iterable[float, float]]]]
+OptionalBoundsType = Optional[Iterable[Union[None, float, Iterable[float]]]]
 """For user-supplied numerical bounds."""
 
 OptionalSymsType = Union[None, sym.Symbol, Iterable[sym.Symbol]]

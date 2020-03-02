@@ -1,30 +1,105 @@
 from numbers import Number
+from typing import (Iterable, Optional, Union)
 
 import numpy as np
 import scipy.optimize as optimize
 import sympy as sym
 
-import pycollo.utils as pu
-
+from .typing import OptionalBoundsType
+from .utils import supported_iter_types 
 
 class EndpointBounds:
 	pass
 
 
 class PhaseBounds:
+	"""Bounds on variables and constraints associated with a phase.
+
+	This class currently behaves like a data class, however additional 
+	functionality will be added in the future to support robust checking of the 
+	user-supplied values for the bounds. 
+
+	Intended behaviour will be::
+
+		* None values will be treated as no bounds, i.e. ['-inf', 'inf'].
+		* Single values will be treated as equal lower and upper bounds.
+		* Mappings will be accepted for `state_variables`, `control_variables`, 
+			`initial_state_constraints` and `final_state_constraints`.
+		* Keys in the mappings should be the strings of the corresponding 
+			`state_variables` or `control_variables` for the phase.
+		* 'inf' values will be replaced by a large floating point value so that 
+			scaling can be done automatically.
+		* The 'inf' replacement value can be changed in 
+			`OptimalControlProblem.settings.inf_value`, the default is 1e19.
+		* If a :obj:`np.ndarray` with size = (2, 2) is passed as a value then 
+			the first dimension will be treated as corresponding to the 
+			variable or constraint to be bounded.
+		* If iterables are passed then they may contain a combination of None,
+			single numerical values, and pairs of numerical values
+
+	Note:
+		* 'inf' values should be avoided where possible in order to give better 
+			automatic scaling.
+
+	Attributes:
+		phase: The phase with which these bounds will be associated. Default 
+			value is None.
+		initial_time: Bounds on when the phase starts. Default value is None.
+		final_time: Bounds on when the phase ends.  Default value is None.
+		state_variables: Bounds on the phase's state variables. Default value 
+			is None.
+		control_variables: Bounds on the phase's control variables. Default 
+			value is None.
+		integral_variables: Bounds on the phase's integral variables. Default 
+			value is None.
+		path_constraints: Bounds on the phase's path constraints. Default value 
+			is None.
+		initial_state_constraints: Bounds on the phase's state variables at the 
+			initial time. Default value is None.
+		final_state_constraints: Bounds on the phase's state variables at the 
+			final time. Default value is None.
+	"""
 	
-	def __init__(self, phase):
+	def __init__(self, phase: Phase, *, 
+			initial_time: Optional[float] = None, 
+			final_time: Optional[float] = None, 
+			state_variables: OptionalBoundsType = None, 
+			control_variables: OptionalBoundsType = None,
+			integral_variables: OptionalBoundsType = None,
+			path_constraints: OptionalBoundsType = None,
+			initial_state_constraints: OptionalBoundsType = None,
+			final_state_constraints: OptionalBoundsType = None,
+			):
+		"""Bounds on variables and constraints associated with a phase.
+
+		Args:
+			phase: The phase with which these bounds will be associated.
+			initial_time: Bounds on when the phase starts. Default value is 
+				None.
+			final_time: Bounds on when the phase ends.  Default value is None.
+			state_variables: Bounds on the phase's state variables. Default 
+				value is None.
+			control_variables: Bounds on the phase's control variables. Default 
+				value is None.
+			integral_variables: Bounds on the phase's integral variables. 
+				Default value is None.
+			path_constraints: Bounds on the phase's path constraints. Default 
+				value is None.
+			initial_state_constraints: Bounds on the phase's state variables at
+				the initial time. Default value is None.
+			final_state_constraints: Bounds on the phase's state variables at
+				the final time. Default value is None.
+		"""
 
 		self.phase = phase
-
-	@property
-	def phase(self):
-		return self._phase
-	
-	@phase.setter
-	def phase(self, phase):
-		self._phase = phase
-
+		self.initial_time = initial_time
+		self.final_time = final_time
+		self.state_variables = state_variables
+		self.control_variables = control_variables
+		self.integral_variables = integral_variables
+		self.path_constraints = path_constraints
+		self.initial_state_constraints = initial_state_constraints
+		self.final_state_constraints = final_state_constraints
 
 
 class Bounds():
@@ -553,120 +628,117 @@ class Bounds():
 
 		self._bounds_checked = True
 
-	@staticmethod
-	def kwarg_conflict_check(lower, upper, kwarg_str):
-		if lower is not None or upper is not None:
-			msg = (f"If the key-word argument `{kwarg_str}` is used then the key-word arguments `{kwarg_str}_lower` and `{kwarg_str}_upper` cannot be used.")
-			raise TypeError(msg)
-		return None
 
-	@staticmethod
-	def split_both_bounds_dict(bnds, bnd_str, syms, vec):
-		l = {}
-		u = {}
-		for bnd_sym, bnd_pair in bnds.items():
-			if isinstance(bnd_pair, pu.supported_iter_types):
-				if len(bnd_pair) != 2:
-					msg = (f"When values for lower and upper bounds are supplied together using a {dict} and the `Bounds.{bnd_str}` attribute, the  values must be a iterables of length 2: (`lower_bound`, `upper_bound`).")
-					raise ValueError(msg)
-			else:
-				try:
-					bnd_pair = np.array([bnd_pair, bnd_pair], dtype=np.float64)
-				except ValueError:
-					msg = (f"When values for lower and upper bounds are supplied together using a {dict} and the `Bounds.{bnd_str}` attribute, the  values must be a iterables of length 2: (`lower_bound`, `upper_bound`).")
-					raise ValueError(msg)
-			l.update({bnd_sym: bnd_pair[0]})
-			u.update({bnd_sym: bnd_pair[1]})
-		return l, u
+def kwarg_conflict_check(lower, upper, kwarg_str):
+	if lower is not None or upper is not None:
+		msg = (f"If the key-word argument `{kwarg_str}` is used then the key-word arguments `{kwarg_str}_lower` and `{kwarg_str}_upper` cannot be used.")
+		raise TypeError(msg)
+	return None
 
-	@staticmethod
-	def split_both_bounds_iter(bnds, bnd_str, syms, vec):
+def split_both_bounds_dict(bnds, bnd_str, syms, vec):
+	l = {}
+	u = {}
+	for bnd_sym, bnd_pair in bnds.items():
+		# fromnbnd_paiimport supported_iter_types supported_iter_types):
+			if len(bnd_pair) != 2:
+				msg = (f"When values for lower and upper bounds are supplied together using a {dict} and the `Bounds.{bnd_str}` attribute, the  values must be a iterables of length 2: (`lower_bound`, `upper_bound`).")
+				raise ValueError(msg)
+		else:
+			try:
+				bnd_pair = np.array([bnd_pair, bnd_pair], dtype=np.float64)
+			except ValueError:
+				msg = (f"When values for lower and upper bounds are supplied together using a {dict} and the `Bounds.{bnd_str}` attribute, the  values must be a iterables of length 2: (`lower_bound`, `upper_bound`).")
+				raise ValueError(msg)
+		l.update({bnd_sym: bnd_pair[0]})
+		u.update({bnd_sym: bnd_pair[1]})
+	return l, u
+
+
+def split_both_bounds_iter(bnds, bnd_str, syms, vec):
 		
-		if vec is False:
-			if len(bnds) != 2:
-				msg = (f"Bounds supplied to `Bounds.{bnd_str}` of type {type(bnds)} must be of length 2.")
+	if vec is False:
+		if len(bnds) != 2:
+			msg = (f"Bounds supplied to `Bounds.{bnd_str}` of type {type(bnds)} must be of length 2.")
+			raise ValueError(msg)
+		return float(bnds[0]), float(bnds[1])
+	else:
+		bnds = np.array(bnds)
+		if bnds.ndim == 2:
+			if bnds.shape[1] != 2:
+				msg = (f"Bounds supplied to `Bounds.{bnd_str}` of type {type(bnds)} must be a two-dimensional iterable with first dimension of length 2. Current dimensions are: {bnds.shape}.")
 				raise ValueError(msg)
-			return float(bnds[0]), float(bnds[1])
-		else:
-			bnds = np.array(bnds)
-			if bnds.ndim == 2:
-				if bnds.shape[1] != 2:
-					msg = (f"Bounds supplied to `Bounds.{bnd_str}` of type {type(bnds)} must be a two-dimensional iterable with first dimension of length 2. Current dimensions are: {bnds.shape}.")
-					raise ValueError(msg)
-			elif bnds.ndim > 2:
-				msg = (f"Bounds supplied to `Bounds.{bnd_str}` of type {type(bnds)} must be a two-dimensional iterable. The currently supplied iterable's dimensions are: {bnds.shape}.")
-				raise ValueError(msg)
-			bnds = np.array(bnds, dtype=float).flatten().reshape((-1, 2), order='C')
-			return bnds[:, 0], bnds[:, 1]
+		elif bnds.ndim > 2:
+			msg = (f"Bounds supplied to `Bounds.{bnd_str}` of type {type(bnds)} must be a two-dimensional iterable. The currently supplied iterable's dimensions are: {bnds.shape}.")
+			raise ValueError(msg)
+		bnds = np.array(bnds, dtype=float).flatten().reshape((-1, 2), order='C')
+		return bnds[:, 0], bnds[:, 1]
 		
-	@staticmethod
-	def parse_single_bounds(bnds, bnd_str, syms=None, vec=True):
 
-		if vec is True:
-			if bnds is None:
-				return np.array([])
-			elif isinstance(bnds, dict):
-				for bnd_sym in bnds.keys():
-					if bnd_sym not in syms:
-						msg = (f"{bnd_sym} cannot be supplied as a key value for `Bounds.{bnd_str}_lower` and `Bounds.{bnd_str}_upper` as it is not a {bnd_str} variables in the optimal control problem.")
-						raise ValueError(msg)
-				try:
-					return {bnd_sym: float(bnd) for bnd_sym, bnd in bnds.items()}
-				except TypeError:
-					msg = (f"Dictionary values for `Bounds.{bnd_str}_lower` and `Bounds.{bnd_str}_upper` must be convertable into {float} objects.")
-					raise TypeError(msg)
-			elif isinstance(bnds, pu.supported_iter_types):
-				return np.array(bnds, dtype=np.float64)
-			else:
-				return np.array([bnds], dtype=np.float64)
+def parse_single_bounds(bnds, bnd_str, syms=None, vec=True):
 
-		else:
-			if isinstance(bnds, dict):
-				msg = (f"Value for `Bounds.{bnd_str}` cannot be of type {dict}.")
-				raise ValueError(msg)
-			else:
-				return None if bnds is None else float(bnds)
-
-	@classmethod
-	def parse_both_bounds(cls, bnds, bnd_str, syms=None, vec=True):
-
-		if vec is True:
-			if bnds is None:
-				return None, None
-			elif isinstance(bnds, dict):
-				return cls.split_both_bounds_dict(bnds, bnd_str, syms, vec)
-			elif isinstance(bnds, pu.supported_iter_types):
-				return cls.split_both_bounds_iter(bnds, bnd_str, syms, vec)
-			else:
-				return np.array([bnds], dtype=np.float64), np.array([bnds], dtype=np.float64)
-
-		else:
-			if isinstance(bnds, dict):
-				msg = (f"Value for `Bounds.{bnd_str}` cannot be of type {dict}.")
-				raise ValueError(msg)
-			elif isinstance(bnds, pu.supported_iter_types):
-				return cls.split_both_bounds_iter(bnds, bnd_str, syms, vec)
-			else:
-				return float(bnds), float(bnds)
-
-	@staticmethod
-	def return_user_bounds(l, u, bnd_str):
-		if type(l) is type(u):
-			if isinstance(l, np.ndarray):
-				try:
-					return np.array([l, u], dtype=np.float64).transpose()
-				except ValueError:
-					msg = (f"Values for `Bounds.{bnd_str}_lower` and `Bounds.{bnd_str}_upper` have been supplied as iterables of different length. Pycollo cannot infer which lower and upper bounds correspond to which {bnd_str} variables.")
+	if vec is True:
+		if bnds is None:
+			return np.array([])
+		elif isinstance(bnds, dict):
+			for bnd_sym in bnds.keys():
+				if bnd_sym not in syms:
+					msg = (f"{bnd_sym} cannot be supplied as a key value for `Bounds.{bnd_str}_lower` and `Bounds.{bnd_str}_upper` as it is not a {bnd_str} variables in the optimal control problem.")
 					raise ValueError(msg)
-			elif isinstance(l, dict):
-				merged = {}
-				sym_keys = set.union(set(l.keys()), set(u.keys()))
-				for k in sym_keys:
-					merged.update({k: (l.get(k), u.get(k))})
-				return merged
+			try:
+				return {bnd_sym: float(bnd) for bnd_sym, bnd in bnds.items()}
+			except TypeError:
+				msg = (f"Dictionary values for `Bounds.{bnd_str}_lower` and `Bounds.{bnd_str}_upper` must be convertable into {float} objects.")
+				raise TypeError(msg)
+		elif isinstance(bnds, pu.supported_iter_types):
+			return np.array(bnds, dtype=np.float64)
 		else:
-			msg = (f"Values for `Bounds.{bnd_str}_lower` and `Bounds.{bnd_str}_upper` have been supplied as iterables of different types. If lower and upper bounds for {bnd_str} are being supplied separately, please ensure that these are both either of type {dict} or type {np.ndarray}.")
-			raise TypeError(msg)
+			return np.array([bnds], dtype=np.float64)
+
+	else:
+		if isinstance(bnds, dict):
+			msg = (f"Value for `Bounds.{bnd_str}` cannot be of type {dict}.")
+			raise ValueError(msg)
+		else:
+			return None if bnds is None else float(bnds)
+
+def parse_both_bounds(bnds, bnd_str, syms=None, vec=True):
+
+	if vec is True:
+		if bnds is None:
+			return None, None
+		elif isinstance(bnds, dict):
+			return split_both_bounds_dict(bnds, bnd_str, syms, vec)
+		elif isinstance(bnds, pu.supported_iter_types):
+			return split_both_bounds_iter(bnds, bnd_str, syms, vec)
+		else:
+			return np.array([bnds], dtype=np.float64), np.array([bnds], dtype=np.float64)
+
+	else:
+		if isinstance(bnds, dict):
+			msg = (f"Value for `Bounds.{bnd_str}` cannot be of type {dict}.")
+			raise ValueError(msg)
+		elif isinstance(bnds, pu.supported_iter_types):
+			return split_both_bounds_iter(bnds, bnd_str, syms, vec)
+		else:
+			return float(bnds), float(bnds)
+
+def return_user_bounds(l, u, bnd_str):
+	if type(l) is type(u):
+		if isinstance(l, np.ndarray):
+			try:
+				return np.array([l, u], dtype=np.float64).transpose()
+			except ValueError:
+				msg = (f"Values for `Bounds.{bnd_str}_lower` and `Bounds.{bnd_str}_upper` have been supplied as iterables of different length. Pycollo cannot infer which lower and upper bounds correspond to which {bnd_str} variables.")
+				raise ValueError(msg)
+		elif isinstance(l, dict):
+			merged = {}
+			sym_keys = set.union(set(l.keys()), set(u.keys()))
+			for k in sym_keys:
+				merged.update({k: (l.get(k), u.get(k))})
+			return merged
+	else:
+		msg = (f"Values for `Bounds.{bnd_str}_lower` and `Bounds.{bnd_str}_upper` have been supplied as iterables of different types. If lower and upper bounds for {bnd_str} are being supplied separately, please ensure that these are both either of type {dict} or type {np.ndarray}.")
+		raise TypeError(msg)
 	
 		
 		

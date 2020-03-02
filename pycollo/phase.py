@@ -11,7 +11,10 @@ from typing import (Optional, )
 import sympy as sym
 
 from .bounds import PhaseBounds
+from .guess import PhaseGuess
+from .mesh import PhaseMesh
 from .processed_property import processed_property
+from .scaling import PhaseScaling
 from .typing import (OptionalSymsType, TupleSymsType)
 from .utils import (check_sym_name_clash, format_as_named_tuple)
 
@@ -343,6 +346,39 @@ class Phase:
 			self._bounds = PhaseBounds(phase=self)
 		else:
 			self._bounds = bounds
+
+	@property
+	def scaling(self):
+		return self._scaling
+	
+	@scaling.setter
+	def scaling(self, scaling):
+		if scaling is None:
+			self._scaling = PhaseScaling(phase=self)
+		else:
+			self._scaling = scaling
+
+	@property
+	def initial_mesh(self):
+		return self._initial_mesh
+	
+	@initial_mesh.setter
+	def initial_mesh(self, initial_mesh):
+		if initial_mesh is None:
+			self._initial_mesh = PhaseMesh(phase=self)
+		else:
+			self._initial_mesh = initial_mesh
+
+	@property
+	def initial_guess(self):
+		return self._initial_guess
+	
+	@initial_guess.setter
+	def initial_guess(self, initial_guess):
+		if initial_guess is None:
+			self._initial_guess = PhaseGuess(phase=self)
+		else:
+			self._initial_guess = initial_guess
 
 	def __str__(self):
 		string = (f"Phase {self.phase_number} of {self.optimal_control_problem}")

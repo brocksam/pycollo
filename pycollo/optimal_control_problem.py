@@ -45,7 +45,7 @@ import scipy.sparse as sparse
 import sympy as sym
 import sympy.physics.mechanics as me
 
-from .bounds import Bounds
+from .bounds import EndpointBounds
 from .expression_graph import ExpressionGraph
 from .guess import Guess
 from .iteration import Iteration
@@ -68,15 +68,15 @@ class OptimalControlProblem():
 	Attributes:
 	"""
 
-	_t0_USER = sym.Symbol('t0')
-	_tF_USER = sym.Symbol('tF')
-	_t0 = sym.Symbol('_t0')
-	_tF = sym.Symbol('_tF')
+	# _t0_USER = sym.Symbol('t0')
+	# _tF_USER = sym.Symbol('tF')
+	# _t0 = sym.Symbol('_t0')
+	# _tF = sym.Symbol('_tF')
 
-	_STRETCH = 0.5 * (_tF - _t0)
-	_SHIFT = 0.5 * (_t0 + _tF)
+	# _STRETCH = 0.5 * (_tF - _t0)
+	# _SHIFT = 0.5 * (_t0 + _tF)
 
-	_dSTRETCH_dt = np.array([-0.5, 0.5])
+	# _dSTRETCH_dt = np.array([-0.5, 0.5])
 
 	def __init__(self, 
 			name, 

@@ -1,22 +1,38 @@
 from typing import Optional
 
+from .mesh import PhaseMesh
+
+
 class Settings():
 
-	_COLLOCATION_MATRIX_FORMS = {'differential', 'integral'}
-	_SCALING_OPTIONS = {None, 'user', 'guess', 'bounds'}
-	_NLP_SOLVERS = {'ipopt'}
-	_LINEAR_SOLVERS = {'mumps', 'ma57'}
-	_QUADRATURE_METHODS = {'gauss', 'lobatto', 'radau'}
+	_COLLOCATION_MATRIX_FORMS = {"differential", "integral"}
+	_SCALING_OPTIONS = {None, "user", "guess", "bounds"}
+	_NLP_SOLVERS = {"ipopt", "worhp", "snopt", "knitro"}
+	_LINEAR_SOLVERS = {"mumps", "ma57"}
+	_QUADRATURE_METHODS = {"gauss", "lobatto", "radau"}
 	_DERIVATIVE_LEVELS = {1, 2}
 
-	def __init__(self, *, optimal_control_problem=None, 
-		collocation_matrix_form='integral', nlp_solver='ipopt', 
-		linear_solver='mumps', nlp_tolerance=1e-10, max_nlp_iterations=2000, 
-		quadrature_method='lobatto', derivative_level=2, max_mesh_iterations=10, 
-		mesh_tolerance=1e-8, collocation_points_min=4, collocation_points_max=10, 
-		display_mesh_refinement_info=True, display_mesh_result_info=False, 
-		display_mesh_result_graph=False, scaling_method='bounds', 
-		update_scaling=True, number_scaling_samples=0, scaling_weight=0.8):
+	def __init__(self, *, 
+			optimal_control_problem=None, 
+			collocation_matrix_form="integral", 
+			nlp_solver="ipopt", 
+			linear_solver="mumps", 
+			nlp_tolerance=1e-8, 
+			max_nlp_iterations=2000, 
+			quadrature_method="lobatto", 
+			derivative_level=2, 
+			max_mesh_iterations=10, 
+			mesh_tolerance=1e-7, 
+			collocation_points_min=4, 
+			collocation_points_max=10, 
+			display_mesh_refinement_info=True, 
+			display_mesh_result_info=False, 
+			display_mesh_result_graph=False, 
+			scaling_method="bounds", 
+			update_scaling=True, 
+			number_scaling_samples=100, 
+			scaling_weight=0.8,
+			):
 
 		# Optimal Control Problem
 		self.ocp = optimal_control_problem
@@ -36,6 +52,9 @@ class Settings():
 		self.collocation_points_max = collocation_points_max
 		self.mesh_tolerance = mesh_tolerance
 		self.max_mesh_iterations = max_mesh_iterations
+		self.default_number_mesh_sections = PhaseMesh._DEFAULT_NUMBER_MESH_SECTIONS
+		self.default_mesh_section_fractions = PhaseMesh._DEFAULT_MESH_SECTION_SIZES
+		self.default_number_mesh_section_nodes = PhaseMesh._DEFAULT_NUMBER_MESH_SECTION_NODES
 
 		# Scaling
 		self.scaling_method = scaling_method
@@ -167,7 +186,8 @@ class Settings():
 	def quadrature_method(self, method):
 		method = method.casefold()
 		if method not in self._QUADRATURE_METHODS:
-			msg = ("The quadrature method of '{}' is not a valid argument string.")
+			msg = (f"The quadrature method of '{method}' is not a valid "
+				f"argument string.")
 			raise ValueError(msg.format(method))
 		self._quadrature_method = method
 

@@ -15,6 +15,9 @@ from typing import (Iterable, NamedTuple, Tuple, Union)
 import sympy as sym
 
 
+OptionalBoundsType = Optional[Iterable[Union[None, float, Iterable[float, float]]]]
+"""For user-supplied numerical bounds."""
+
 OptionalSymsType = Union[None, sym.Symbol, Iterable[sym.Symbol]]
 """For user-supplied symbols for variables."""
 

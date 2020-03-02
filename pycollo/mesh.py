@@ -96,6 +96,12 @@ class PhaseMesh:
 			raise ValueError(msg)
 		self._num_mesh_sec_nodes = num_nodes
 
+	def __repr__(self):
+		string = (f"PhaseMesh(number_mesh_sections={self._num_mesh_secs}, "
+			f"mesh_section_sizes={self._mesh_sec_sizes}, "
+			f"number_mesh_section_nodes={self._num_mesh_sec_nodes})")
+		print(string)
+
 
 
 class Mesh:

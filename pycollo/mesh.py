@@ -1,7 +1,104 @@
+from typing import (Iterable, Optional, )
+
 import numpy as np
 import scipy.sparse as sparse
 
-class Mesh():
+
+class PhaseMesh:
+
+	_DEFAULT_NUMBER_MESH_SECTIONS = 10
+	_DEFAULT_MESH_SECTION_SIZES = None
+	_DEFAULT_NUMBER_MESH_SECTION_NODES = 4
+	
+	def __init__(self, phase: "Phase", *, 
+			number_mesh_sections: Optional[int] = None,
+			mesh_section_sizes: Optional[Iterable[float]] = None,
+			number_mesh_section_nodes: Optional[int] = None,
+			):
+
+		self.phase = phase
+
+		self._mesh_sec_fracs = None
+
+		if number_mesh_sections is None:
+			try:
+				self.number_mesh_sections = (
+					self.phase.optimal_control_problem.settings.default_number_mesh_sections)
+			except AttributeError:
+				self.number_mesh_sections = self._DEFAULT_NUMBER_MESH_SECTIONS
+		else:
+			self.number_mesh_sections = number_mesh_sections
+
+		if mesh_section_sizes is None:
+			try:
+				self.mesh_section_sizes = (
+					self.phase.optimal_control_problem.settings.default_mesh_section_sizes)
+			except AttributeError:
+				self.mesh_section_sizes = self._DEFAULT_MESH_SECTION_SIZES
+		else:
+			self.mesh_section_sizes = mesh_section_sizes
+
+		if number_mesh_section_nodes is None:
+			try:
+				self.number_mesh_section_nodes = (
+					self.phase.optimal_control_problem.settings.default_number_mesh_section_nodes)
+			except AttributeError:
+				self.number_mesh_section_nodes = self._DEFAULT_NUMBER_MESH_SECTION_NODES
+		else:
+			self.number_mesh_section_nodes = number_mesh_section_nodes
+
+	@property
+	def number_mesh_sections(self):
+		return self._num_mesh_secs
+	
+	@number_mesh_sections.setter
+	def number_mesh_sections(self, num_mesh_secs):
+		self._num_mesh_secs = int(num_mesh_secs)
+		self._num_mesh_endpoints = self._num_mesh_secs + 1
+
+		if (self._mesh_sec_fracs is not None 
+				and (len(self._mesh_sec_fracs) != self._num_mesh_secs)):
+			self.mesh_section_fractions = None
+
+	@property
+	def mesh_section_sizes(self):
+		return self._mesh_sec_sizes
+	
+	@mesh_section_sizes.setter
+	def mesh_section_sizes(self, sizes):
+		if sizes is None:
+			sizes = np.ones(self._num_mesh_secs) / self._num_mesh_secs
+		if len(sizes) != self._num_mesh_secs:
+			msg = (f"Mesh section sizes must be an iterable of length "
+				f"{self._num_mesh_secs} (i.e. matching the number of mesh "
+				f"sections).")
+			raise ValueError(msg)
+		sizes = np.array(sizes)
+		sizes = sizes / sizes.sum()
+		self._mesh_sec_sizes = sizes
+
+	@property
+	def number_mesh_section_nodes(self):
+		return self._num_mesh_sec_nodes
+	
+	@number_mesh_section_nodes.setter
+	def number_mesh_section_nodes(self, num_nodes):
+		try:
+			num_nodes = int(num_nodes)
+		except TypeError:
+			num_nodes = np.array([int(val) for val in num_nodes], dtype=int)
+		else:
+			num_nodes = np.ones(self._num_mesh_secs, dtype=int) * num_nodes
+		if len(num_nodes) != self._num_mesh_secs:
+			msg = (f"Number of mesh section nodes must be an interable of "
+				f"length {self._num_mesh_secs} (i.e. matching the number of "
+				f"mesh sections).")
+			raise ValueError(msg)
+		self._num_mesh_sec_nodes = num_nodes
+
+
+
+class Mesh:
 	"""
 	A mesh class describing the temporal transcription of the problem.
 

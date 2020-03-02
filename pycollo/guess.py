@@ -2,7 +2,16 @@ from numbers import Number
 
 import numpy as np
 
-class Guess():
+
+class PhaseGuess:
+	
+	def __init__(self, phase: "Phase"):
+
+		self.phase = phase
+
+
+
+class Guess:
 	
 	def __init__(self, *, optimal_control_problem=None, time=None, state=None, control=None, integral=None, parameter=None, guess_type='default', state_endpoints_override=False, auto_bound=False):
 

@@ -14,9 +14,14 @@ from typing import (Iterable, NamedTuple, Optional, Tuple, Union)
 
 import sympy as sym
 
+SympyType = Union[sym.Symbol, sym.Expr]
+"""For Sympy symbols and expressions."""
 
 OptionalBoundsType = Optional[Iterable[Union[None, float, Iterable[float]]]]
 """For user-supplied numerical bounds."""
+
+OptionalExprsType = Union[None, SympyType, Iterable[SympyType]]
+"""For user-supplied symbols/equations for functions."""
 
 OptionalSymsType = Union[None, sym.Symbol, Iterable[sym.Symbol]]
 """For user-supplied symbols for variables."""

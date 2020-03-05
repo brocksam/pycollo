@@ -3,7 +3,14 @@ import scipy.sparse as sparse
 
 
 class EndpointScaling:
-	pass
+	
+	def __init__(self, optimal_control_problem):
+
+		self._ocp = optimal_control_problem
+
+	@property
+	def optimal_control_problem(self):
+		return self._ocp
 
 
 class PhaseScaling:
@@ -12,6 +19,12 @@ class PhaseScaling:
 
 		self.phase = phase
 
+		self.time = 1
+		self.state_variables = 1
+		self.control_variables = 1
+		self.integral_variables = 1
+		self.path_constraints = 1
+
 	@property
 	def phase(self):
 		return self._phase
@@ -19,6 +32,10 @@ class PhaseScaling:
 	@phase.setter
 	def phase(self, phase):
 		self._phase = phase
+
+	def __repr__(self):
+		string = (f"PhaseScaling(phase={self.phase}, )")
+		print(string)
 
 
 class Scaling:

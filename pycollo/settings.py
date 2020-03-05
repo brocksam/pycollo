@@ -52,6 +52,7 @@ class Settings():
 		self.collocation_points_max = collocation_points_max
 		self.mesh_tolerance = mesh_tolerance
 		self.max_mesh_iterations = max_mesh_iterations
+		# TODO: Can these be refactored to default values for kwargs?
 		self.default_number_mesh_sections = PhaseMesh._DEFAULT_NUMBER_MESH_SECTIONS
 		self.default_mesh_section_fractions = PhaseMesh._DEFAULT_MESH_SECTION_SIZES
 		self.default_number_mesh_section_nodes = PhaseMesh._DEFAULT_NUMBER_MESH_SECTION_NODES

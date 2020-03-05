@@ -26,7 +26,8 @@ supported_iter_types = (tuple, list, np.ndarray)
 def format_as_named_tuple(
         iterable: OptionalSymsType, 
         use_named: bool = True, 
-        use_keys: Optional[NamedTuple] = None) -> TupleSymsType:
+        named_keys: Optional[NamedTuple] = None,
+        sympify: bool = True) -> TupleSymsType:
     """Formats user supplied arguments as a named tuple."""
     
     if not iterable:
@@ -36,21 +37,19 @@ def format_as_named_tuple(
     except TypeError:
         iterable = (iterable, )
 
-    symbols = [sym.sympify(symbol) for symbol in iterable]
-    if use_named:
-        if use_keys is not None:
-            try:
-                named_tuple_keys = use_keys._fields
-            except AttributeError:
-                return ()
-        else:
-            named_tuple_keys = [str(symbol) for symbol in symbols]
-        NamedTuple = collections.namedtuple('NamedTuple', named_tuple_keys)
-        formatted_symbols = NamedTuple(*symbols)
+    if sympify:
+        entries = [sym.sympify(entry) for entry in iterable]
     else:
-        formatted_symbols = tuple(symbols)
+        entries = iterable
+    if use_named:
+        if named_keys is None:
+            named_keys = [str(entry) for entry in entries]
+        NamedTuple = collections.namedtuple('NamedTuple', named_keys)
+        formatted_entries = NamedTuple(*entries)
+    else:
+        formatted_entries = tuple(entries)
     
-    return formatted_symbols
+    return formatted_entries
 
 
 def check_sym_name_clash(syms: TupleSymsType) -> None:

@@ -8,7 +8,7 @@ class PhaseGuess:
 	def __init__(self, phase: "Phase"):
 
 		self.phase = phase
-
+		self.state_endpoints_override = True
 
 
 class Guess:

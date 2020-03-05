@@ -9,7 +9,15 @@ from .typing import OptionalBoundsType
 from .utils import supported_iter_types 
 
 class EndpointBounds:
-	pass
+	
+	def __init__(self, optimal_control_problem):
+
+		self._ocp = optimal_control_problem
+
+	@property
+	def optimal_control_problem(self):
+		return self._ocp
+	
 
 
 class PhaseBounds:

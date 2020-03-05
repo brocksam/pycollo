@@ -42,15 +42,20 @@ D_x, D_y, D_z = sym.symbols('D_x D_y D_z')
 T, xi, C_D, S_rho, omega_E = sym.symbols('T xi C_D S_rho omega_E')
 v_r_x, v_r_y, v_r_z = sym.symbols('v_r_x v_r_y v_r_z')
 omega_x_r_x, omega_x_r_y, omega_x_r_z = sym.symbols('omega_x_r_x omega_x_r_y omega_x_r_z')
-mu, R_E, psi_L, g_0 = sym.symbols('mu R_E psi_L g_0')
-r_vec_norm, u_vec_norm, v_vec_norm = sym.symbols('r_vec_norm u_vec_norm v_vec_norm')
+mu, R_E, psi_L, g_0, h_0, h, rho, rho_0 = sym.symbols('mu R_E psi_L g_0 h_0 h rho rho_0')
+r_vec_norm, u_vec_norm, v_vec_norm, v_r_vec_norm = sym.symbols('r_vec_norm u_vec_norm v_vec_norm v_r_vec_norm')
 T_S, T_1, T_2 = sym.symbols('T_S T_1 T_2')
 I_S, I_1, I_2 = sym.symbols('I_S I_1 I_2')
+m_tot_S, m_tot_1, m_tot_2, m_payload = sym.symbols('m_tot_S m_tot_1 m_tot_2 m_payload')
+m_prop_S, m_prop_1, m_prop_2 = sym.symbols('m_prop_S m_prop_1 m_prop_2')
+m_struct_S, m_struct_1, m_struct_2 = sym.symbols('m_struct_S m_struct_1 m_struct_2')
+tau_burn_S, tau_burn_1, tau_burn_2 = sym.symbols('tau_burn_S tau_burn_1 tau_burn_2')
+T_eng_S, T_eng_1, T_eng_2 = sym.symbols('T_eng_S T_eng_1 T_eng_2')
 
 problem = pycollo.OptimalControlProblem(
 	name='Multi-stage launch vehicle ascent problem')
 
-phase_A = problem.new_phase()
+phase_A = problem.new_phase('A')
 phase_A.state_variables = [
 	r_x,   	# Cartesian x-vector position relative to the centre of the earth 
 			#     using earth-centered inertial (ECI) coordinates (in m)
@@ -60,6 +65,12 @@ phase_A.state_variables = [
 	v_y,   	# Cartesian y-vector velocity using ECI coordinates (in m/s)
 	v_z,   	# Cartesian z-vector velocity using ECI coordinates (in m/s)
 	m,     	# Total mass (in kg)
+	]
+
+phase_A.control_variables = [
+	u_x,
+	u_y,
+	u_z
 	]
 
 phase_A.state_equations = [
@@ -77,35 +88,45 @@ phase_A.path_constraints = [
 	r_vec_norm,
 	]
 
-phase_A.state_endpoint_constraints = [
-	phase_A.initial_state_variables.r_x,
-	phase_A.initial_state_variables.r_y,
-	phase_A.initial_state_variables.r_z,
-	phase_A.initial_state_variables.v_z,
-	phase_A.initial_state_variables.v_z,
-	phase_A.initial_state_variables.v_z,
-	phase_A.initial_state_variables.m,
-	]
-
 phase_A.bounds.initial_time = 0
 phase_A.bounds.final_time = [75.2, 75.2]
-phase_A.bounds.state_variables = [
-	
-	]
-path_A.bounds.control_variables = [
-	
-	]
+phase_A.bounds.state_variables = {
+	r_x: [-2 * R_E, 2 * R_E],
+	r_z: [-2 * R_E, 2 * R_E],
+	r_y: [-2 * R_E, 2 * R_E],
+	v_z: [-10000, 10000],
+	v_x: [-10000, 10000],
+	v_y: [-10000, 10000],
+	m: [9*m_tot_S + m_tot_1 + m_tot_2 + m_payload, phase_A.initial_state_variables.m 
+		- (6*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1)]
+	}
+phase_A.bounds.control_variables = {
+	u_x: [-10, 10],
+	u_y: [-10, 10],
+	u_z: [-10, 10],
+	}
 phase_A.bounds.path_constraints = [
 	1,
 	[R_E, 'inf'],
 	]
-phase_A.bounds.state_endpoint_constraints = [
-	0,
-	0,
-	0,
-	R_E*sym.cos(psi_L),
-	0,
-	R_E*sym.sin(psi_L),
+phase_A.bounds.initial_state_constraints = {
+	r_x: R_E*sym.cos(psi_L),
+	r_y: 0,
+	r_z: R_E*sym.sin(psi_L),
+	v_x: 0,
+	v_y: - omega_E*R_E*sym.cos(psi_L),
+	v_z: 0,
+	m: 9*m_tot_S + m_tot_1 + m_tot_2 + m_payload,
+	}
+
+phase_A.guess.time = [0.0, 75.2]
+phase_A.guess.state_variables = {
+	r_x: [],
+	}
+phase_A.guess.control = [
+	[0, 0],
+	[1, 1],
+	[0, 0],
 	]
 
 phase_A.auxiliary_data = {
@@ -113,7 +134,13 @@ phase_A.auxiliary_data = {
 	xi: (1/g_0) * (6*T_S/I_S + T_1/I_1),
 	}
 
-phase_B, phase_C, phase_D = problem.new_phases_like(number=3, like=phase_A,
+# print('\n\n\n')
+# print(phase_A.scaling)
+# raise NotImplementedError
+
+phase_B, phase_C, phase_D = problem.new_phases_like(number=3, 
+	phase_for_copying=phase_A,
+	names=['B', 'C', 'D'],
 	copy_state_variables=True,
 	copy_control_variables=True,
 	copy_state_equations=True,
@@ -121,41 +148,37 @@ phase_B, phase_C, phase_D = problem.new_phases_like(number=3, like=phase_A,
 	copy_integrand_functions=True,
 	copy_state_endpoint_constraints=False,
 	copy_bounds=True,
-	copy_initial_mesh=True,
+	copy_mesh=True,
 
 	)
 
-print('\n\n\n')
-raise NotImplementedError
-
 # PHASE 2
 
-phase_B.bounds.initial_time = phase_A.bounds_final_time
+phase_B.bounds.initial_time = phase_A.bounds.final_time
 
 phase_B.auxiliary_data = {
-	T: 3*T_S + T1,
-	xi: (1/g_0) * (3*T_S/I_S + T1/I_1),
+	T: 3*T_S + T_1,
+	xi: (1/g_0) * (3*T_S/I_S + T_1/I_1),
 	}
 
 # PHASE 3
 
 phase_C.auxiliary_data = {
-	T: T1,
-	xi: T1/(g_0*I_1),
+	T: T_1,
+	xi: T_1/(g_0*I_1),
 	}
 
 # PHASE 4
 
 phase_D.auxiliary_data = {
-	T: T2,
-	xi: T2/(g_0*I_2),
+	T: T_2,
+	xi: T_2/(g_0*I_2),
 	}
 
 problem.objective_function = problem.phases[2].final_state_variables.m
 
 problem.endpoint_constraints = [
 	phase_D.final_time_variable - phase_D.initial_time_variable,
-	phase_A.initial_state_variables.m,
 	(phase_A.final_state_variables.m - phase_A.initial_state_variables.m 
 		+ 6*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1),
 	(phase_B.initial_state_variables.m - phase_A.final_state_variables.m 
@@ -172,7 +195,6 @@ problem.endpoint_constraints = [
 
 problem.bounds.endpoint_constraints = [
 	961 - 261,
-	9*m_tot_S + m_tot_1 + m_tot_2 + m_payload,
 	0,
 	0,
 	0,
@@ -187,9 +209,9 @@ problem.auxiliary_data = {
 	r_vec_norm: sym.sqrt(r_x**2 + r_y**2 + r_z**2), # Absolute position (in m)
 	v_vec_norm: sym.sqrt(v_x**2 + v_y**2 + v_z**2), # Absolute velocity (in m/s)
 	u_vec_norm: sym.sqrt(u_x**2 + u_y**2 + u_z**2), # Absolute control (in N)
-	D_x: - 0.5 * C_D * S_pho * v_r_vec_norm * v_r_x,
-	D_y: - 0.5 * C_D * S_pho * v_r_vec_norm * v_r_y,
-	D_z: - 0.5 * C_D * S_pho * v_r_vec_norm * v_r_z,
+	D_x: - 0.5 * C_D * S_rho * v_r_vec_norm * v_r_x, # Drag for in x-direction (in N)
+	D_y: - 0.5 * C_D * S_rho * v_r_vec_norm * v_r_y, # Drag for in y-direction (in N)
+	D_z: - 0.5 * C_D * S_rho * v_r_vec_norm * v_r_z, # Drag for in z-direction (in N)
 	C_D: 0.5, # Coefficient of drag (nondimensional)
 	S_rho: 4*np.pi, # Surface area (in m^2)
 	v_r_vec_norm: sym.sqrt(v_r_x**2 + v_r_y**2 + v_r_z**2),
@@ -229,3 +251,4 @@ problem.auxiliary_data = {
 problem.settings.nlp_tolerance = 10e-7
 problem.settings.mesh_tolerance = 10e-6
 problem.settings.maximise_objective = True
+problem.settings.backend = "casadi" # problem.settings.backend = "pycollo"

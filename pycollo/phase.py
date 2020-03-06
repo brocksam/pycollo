@@ -6,7 +6,7 @@ Classes:
 
 
 import itertools
-from typing import (Optional, )
+from typing import (Optional, Tuple)
 
 import sympy as sym
 
@@ -167,6 +167,7 @@ class Phase:
 			copy_guess: bool = True,
 			):
 
+		self._check_variables_and_equations()
 		new_phase = Phase(name, 
 			optimal_control_problem=self.optimal_control_problem)
 
@@ -391,40 +392,72 @@ class Phase:
 				named_keys=named_keys)
 
 	@property
-	def number_state_variables(self):
+	def number_state_variables(self) -> int:
+		"""Integer number of state variables in the phase."""
 		return len(self._y_vars_user)
 
 	@property
-	def control_variables(self):
+	def control_variables(self) -> TupleSymsType:
+		"""Symbols for this phase's control variables in order added by user.
+
+		The user may supply either a single symbol or an iterable of symbols. 
+		The supplied argument is handled by the `format_as_tuple` method from 
+		the `utils` module.
+		"""
 		return self._u_vars_user
 
 	@control_variables.setter
-	def control_variables(self, u_vars):
+	def control_variables(self, u_vars: OptionalSymsType):
 		self._u_vars_user = format_as_named_tuple(u_vars)
 		_ = check_sym_name_clash(self._u_vars_user)
 
 	@property
-	def number_control_variables(self):
+	def number_control_variables(self) -> int:
+		"""Integer number of control variables in the phase."""
 		return len(self._u_vars_user)
 
 	@property
-	def integral_variables(self):
+	def integral_variables(self) -> TupleSymsType:
+		"""Symbols for this phase's integral variables.
+
+		These symbols are auto generated as required by the user-supplied 
+		integrand functions.
+		"""
 		return self._q_vars_user
 
 	@property
-	def number_integral_variables(self):
+	def number_integral_variables(self) -> int:
+		"""Integer number of integral variables in the phase."""
 		return len(self._q_vars_user)
 
 	@property
-	def state_equations(self):
+	def state_equations(self) -> Tuple[sym.Expr, ...]:
+		"""User-supplied dynamical equations in the phase.
+
+		These equations are the dynamical equations associated with each of the 
+		state variables in the phase. There should therefore be exactly one 
+		state equation for each dynamics symbol.
+
+		State equations can be supplied in a compact form by the user defining additional auxiliary symbols and 
+		"""
 		return self._y_eqns_user
 
 	@state_equations.setter
-	def state_equations(self, y_eqns):
-		self._y_eqns_user = format_as_named_tuple(y_eqns, use_named=False)
+	def state_equations(self, y_eqns: OptionalExprsType):
+		try:
+			named_keys = self._y_vars_user._fields
+		except AttributeError:
+			named_keys = ()
+		self._y_eqns_user = format_as_named_tuple(y_eqns, use_named=True, 
+			named_keys=named_keys)
 
 	@property
-	def number_state_equations(self):
+	def number_state_equations(self) -> int:
+		"""Integer number of state equations in the phase.
+
+		Should be the same as the number of state variables, i.e. there should 
+		be a direct mapping between the two.
+		"""
 		return len(self._y_eqns_user)
 
 	@property
@@ -496,6 +529,81 @@ class Phase:
 			self._guess = PhaseGuess(phase=self)
 		else:
 			self._guess = guess
+
+	def _check_variables_and_equations(self):
+
+		try:
+			set_state_variables_keys = set(self.state_variables._fields)
+		except AttributeError:
+			set_state_variables_keys = set()
+
+		try:
+			set_state_equations_keys = set(self.state_equations._fields)
+		except AttributeError:
+			set_state_equations_keys = set()
+
+		if set_state_variables_keys != set_state_equations_keys:
+
+			intersection = set_state_variables_keys.intersection(
+				set_state_equations_keys)
+			spacer = "', '"
+			msg_other = []
+
+			if len(set_state_variables_keys) != len(set_state_equations_keys):
+				if len(set_state_variables_keys) == 1:
+					msg_vars_len = (f"{len(set_state_variables_keys)} state "
+						f"variable is")
+				else:
+					msg_vars_len = (f"{len(set_state_variables_keys)} state "
+						f"variables are")
+				if len(set_state_equations_keys) == 1:
+					msg_eqns_len = (f"{len(set_state_equations_keys)} state "
+						f"equation is")
+				else:
+					msg_eqns_len = (f"{len(set_state_equations_keys)} state "
+						f"equations are")
+				msg_len = (f"{msg_vars_len} defined while {msg_eqns_len} "
+					f"supplied")
+				msg_other.append(msg_len)
+
+			only_in_variables = set_state_variables_keys.difference(intersection)
+			if only_in_variables:
+				immutable_only_in_variables = list(only_in_variables)
+				if len(only_in_variables) == 1:
+					msg_vars = (f"the state variable "
+						f"'{immutable_only_in_variables[0]}' is defined "
+						f"without a state equation")
+				else:
+					msg_vars = (f"the state variables "
+						f"'{spacer.join(immutable_only_in_variables[:-1])}' "
+						f"and '{immutable_only_in_variables[-1]}' are defined "
+						f"without state equations")
+				msg_other.append(msg_vars)
+
+			only_in_equations = set_state_equations_keys.difference(intersection)
+			if only_in_equations:
+				if len(only_in_equations) == 1:
+					immutable_only_in_equations = list(only_in_equations)
+					msg_eqns = (f"a state derivative is supplied for "
+						f"'{immutable_only_in_equations[0]}' which is not a "
+						f"state variable")
+				else: 
+					msg_eqns = (f"state derivatives are supplied for "
+						f"'{spacer.join(immutable_only_in_equations[:-1])}' "
+						f"and '{immutable_only_in_equations[-1]}' which are "
+						f"not defined as state variables")
+				msg_other.append(msg_eqns)
+
+			msg = ("A state equation must be supplied for each state variable "
+				f"in each phase. Currently in phase '{self.name}'")
+			if len(msg_other) == 1:
+				full_msg = (f"{msg}, {msg_other[0]}.")
+			else:
+				full_msg = (f"{msg}: {'; '.join(msg_other[:-1])}; and "
+					f"{msg_other[-1]}.")
+			raise ValueError(full_msg)
+
+		
 
 	def __str__(self):
 		string = (f"Phase {self.phase_number} of {self.optimal_control_problem}")

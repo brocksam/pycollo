@@ -433,7 +433,7 @@ class Phase:
 
 	@path_constraints.setter
 	def path_constraints(self, c_cons):
-		self._c_cons_user = format_as_named_tuple(c_cons)
+		self._c_cons_user = format_as_named_tuple(c_cons, use_named=False)
 
 	@property
 	def number_path_constraints(self):
@@ -445,7 +445,7 @@ class Phase:
 
 	@integrand_functions.setter
 	def integrand_functions(self, integrands):
-		self._q_funcs_user = format_as_named_tuple(integrands)
+		self._q_funcs_user = format_as_named_tuple(integrands, use_named=False)
 		self._q_vars_user = tuple(sym.Symbol(f'q{i_q}_P{self._phase_suffix}') 
 			for i_q, _ in enumerate(self._q_funcs_user))
 

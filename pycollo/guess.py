@@ -9,6 +9,13 @@ class PhaseGuess:
 
 		self.phase = phase
 		self.state_endpoints_override = True
+		self.auto_bound = True
+		self.guess_type = None
+
+		self.time = []
+		self.state_variables = []
+		self.control_variables = []
+		self.integral_variables = []
 
 
 class Guess:

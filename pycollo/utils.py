@@ -36,6 +36,12 @@ def format_as_named_tuple(
         iter(iterable)
     except TypeError:
         iterable = (iterable, )
+    else:
+        try:
+            named_keys = iterable.keys()
+            iterable = iterable.values()
+        except:
+            pass
 
     if sympify:
         entries = [sym.sympify(entry) for entry in iterable]
@@ -94,6 +100,20 @@ def dict_merge(*dicts: Iterable[Mapping]) -> dict:
     for d in dicts:
         merged.update(d)
     return merged
+
+
+def console_out(msg, heading=False, subheading=False):
+    if heading:
+        msg_len = len(msg)
+        seperator = '=' * msg_len
+        output_msg = (f"\n{seperator}\n{msg}\n{seperator}\n")
+    elif subheading:
+        msg_len = len(msg)
+        seperator = '-' * msg_len
+        output_msg = (f"\n{msg}\n{seperator}")
+    else:
+        output_msg = msg
+    print(output_msg)
 
 
 def parse_arg_type(arg, arg_name_str, arg_type):

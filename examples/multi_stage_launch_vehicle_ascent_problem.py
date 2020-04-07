@@ -44,13 +44,13 @@ v_r_x, v_r_y, v_r_z = sym.symbols('v_r_x v_r_y v_r_z')
 omega_x_r_x, omega_x_r_y, omega_x_r_z = sym.symbols('omega_x_r_x omega_x_r_y omega_x_r_z')
 mu, R_E, psi_L, g_0, h_0, h, rho, rho_0 = sym.symbols('mu R_E psi_L g_0 h_0 h rho rho_0')
 r_vec_norm, u_vec_norm, v_vec_norm, v_r_vec_norm = sym.symbols('r_vec_norm u_vec_norm v_vec_norm v_r_vec_norm')
-T_S, T_1, T_2 = sym.symbols('T_S T_1 T_2')
 I_S, I_1, I_2 = sym.symbols('I_S I_1 I_2')
 m_tot_S, m_tot_1, m_tot_2, m_payload = sym.symbols('m_tot_S m_tot_1 m_tot_2 m_payload')
 m_prop_S, m_prop_1, m_prop_2 = sym.symbols('m_prop_S m_prop_1 m_prop_2')
 m_struct_S, m_struct_1, m_struct_2 = sym.symbols('m_struct_S m_struct_1 m_struct_2')
 tau_burn_S, tau_burn_1, tau_burn_2 = sym.symbols('tau_burn_S tau_burn_1 tau_burn_2')
 T_eng_S, T_eng_1, T_eng_2 = sym.symbols('T_eng_S T_eng_1 T_eng_2')
+T_over_m = sym.Symbol('T_over_m')
 
 problem = pycollo.OptimalControlProblem(
 	name='Multi-stage launch vehicle ascent problem')
@@ -73,15 +73,15 @@ phase_A.control_variables = [
 	u_z
 	]
 
-phase_A.state_equations = [
-	v_x,
-	v_y,
-	v_z,
-	- (mu/(r_vec_norm**3))*r_x + (T/m)*u_x + (1/m)*D_x,
-	- (mu/(r_vec_norm**3))*r_y + (T/m)*u_y + (1/m)*D_y,
-	- (mu/(r_vec_norm**3))*r_z + (T/m)*u_z + (1/m)*D_z,
-	- xi,
-	]
+phase_A.state_equations = {
+	r_x: v_x,
+	r_y: v_y,
+	r_z: v_z,
+	v_x: - (mu/(r_vec_norm**3))*r_x + (T_over_m)*u_x + (1/m)*D_x,
+	v_y: - (mu/(r_vec_norm**3))*r_y + (T_over_m)*u_y + (1/m)*D_y,
+	v_z: - (mu/(r_vec_norm**3))*r_z + (T_over_m)*u_z + (1/m)*D_z,
+	m: - xi,
+	}
 
 phase_A.path_constraints = [
 	u_vec_norm,
@@ -130,8 +130,8 @@ phase_A.guess.control = [
 	]
 
 phase_A.auxiliary_data = {
-	T: 6*T_S + T_1,
-	xi: (1/g_0) * (6*T_S/I_S + T_1/I_1),
+	T: 6*T_eng_S + T_eng_1,
+	xi: (1/g_0) * (6*T_eng_S/I_S + T_eng_1/I_1),
 	}
 
 # print('\n\n\n')
@@ -149,7 +149,6 @@ phase_B, phase_C, phase_D = problem.new_phases_like(number=3,
 	copy_state_endpoint_constraints=False,
 	copy_bounds=True,
 	copy_mesh=True,
-
 	)
 
 # PHASE 2
@@ -157,22 +156,22 @@ phase_B, phase_C, phase_D = problem.new_phases_like(number=3,
 phase_B.bounds.initial_time = phase_A.bounds.final_time
 
 phase_B.auxiliary_data = {
-	T: 3*T_S + T_1,
-	xi: (1/g_0) * (3*T_S/I_S + T_1/I_1),
+	T: 3*T_eng_S + T_eng_1,
+	xi: (1/g_0) * (3*T_eng_S/I_S + T_eng_1/I_1),
 	}
 
 # PHASE 3
 
 phase_C.auxiliary_data = {
-	T: T_1,
-	xi: T_1/(g_0*I_1),
+	T: T_eng_1,
+	xi: T_eng_1/(g_0*I_1),
 	}
 
 # PHASE 4
 
 phase_D.auxiliary_data = {
-	T: T_2,
-	xi: T_2/(g_0*I_2),
+	T: T_eng_2,
+	xi: T_eng_2/(g_0*I_2),
 	}
 
 problem.objective_function = problem.phases[2].final_state_variables.m
@@ -246,9 +245,14 @@ problem.auxiliary_data = {
 	tau_burn_1: 261, # Burn time of stage 1 (in s)
 	tau_burn_2: 700, # Burn time of stage 2 (in s)
 	m_payload: 4146, # Mass of payload (in kg)
+	T_over_m: T/m,
 	}
 
 problem.settings.nlp_tolerance = 10e-7
 problem.settings.mesh_tolerance = 10e-6
 problem.settings.maximise_objective = True
-problem.settings.backend = "casadi" # problem.settings.backend = "pycollo"
+problem.settings.backend = "pycollo"
+
+problem.initialise()
+
+

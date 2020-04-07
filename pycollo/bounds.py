@@ -111,7 +111,96 @@ class PhaseBounds:
 		self.initial_state_constraints = initial_state_constraints
 		self.final_state_constraints = final_state_constraints
 
+	def _check_bounds(self):
 
+		ocp = self.phase.optimal_control_problem
+
+		# State
+		y_vars = self.phase.state_variables
+		y_vars = y_vars._fields if y_vars else ()
+
+
+		print(self.state_variables)
+		print(y_vars)
+
+		print('\n\n\n')
+
+		self._y_l, self._y_u = parse_bounds_to_np_array(self.state, self._ocp._y_vars_user, 'state')
+		self._y_needed = compare_lower_and_upper(self._y_l, self._y_u, 'state')
+		self._y_b_needed = np.repeat(self._y_needed, 2)
+
+		self._y_l_needed = self._y_l[self._y_needed.astype(bool)]
+		self._y_u_needed = self._y_u[self._y_needed.astype(bool)]
+
+		# # Control
+		# self._u_l, self._u_u = parse_bounds_to_np_array(self.control, self._ocp._u_vars_user, 'control')
+		# self._u_needed = compare_lower_and_upper(self._u_l, self._u_u, 'control')
+
+		# self._u_l_needed = self._u_l[self._u_needed.astype(bool)]
+		# self._u_u_needed = self._u_u[self._u_needed.astype(bool)]
+
+		# # Integral
+		# if self.infer_bounds:
+		# 	raise NotImplementedError
+		# 	self.integral = infer_bound(self.integral, self._ocp._q_vars_user, self._ocp._q_funcs_user, aux_data, aux_subs, 'integral')
+		# self._q_l, self._q_u = parse_bounds_to_np_array(self.integral, self._ocp._q_vars_user, 'integral')
+		# self._q_needed = compare_lower_and_upper(self._q_l, self._q_u, 'integral')
+
+		# self._q_l_needed = self._q_l[self._q_needed.astype(bool)]
+		# self._q_u_needed = self._q_u[self._q_needed.astype(bool)]
+
+		# # Time
+		# _ = parse_bounds_to_np_array(np.array([[self._t0_l, self._tF_l], [self._t0_u, self._tF_u]], dtype=np.float64), self._ocp._t_vars_user, 'time')
+		# if self._t0_l > self._t0_u:
+		# 	msg = (f"The upper bound for `Bounds.initial_time` ({self._t0_u}) must be greater than the lower bound ({self._t0_l}).")
+		# 	raise ValueError(msg)
+		# elif self._tF_l > self._tF_u:
+		# 	msg = (f"The upper bound for `Bounds.final_time` ({self._tF_u}) must be greater than the lower bound ({self._tF_l}).")
+		# 	raise ValueError(msg)
+		# elif self._t0_l > self._tF_l:
+		# 	msg = (f"The lower bound for `Bounds.initial_time` ({self._t0_l}) must be less than the lower bound for `Bounds.final_time` ({self._tF_l}).")
+		# 	raise ValueError(msg)
+		# elif self._t0_u > self._tF_u:
+		# 	msg = (f"The upper bound for `Bounds.initial_time` ({self._t0_u}) must be less than the upper bound for `Bounds.final_time` ({self._tF_u}).")
+		# 	raise ValueError(msg)
+		# else:
+		# 	self._t0_l = self.initial_time_lower
+		# 	self._t0_u = self.initial_time_upper
+		# 	self._tF_l = self.final_time_lower
+		# 	self._tF_u = self.final_time_upper
+		# 	self._t_l = np.array([self._t0_l, self._tF_l]).flatten()
+		# 	self._t_u = np.array([self._t0_u, self._tF_u]).flatten()
+		# self._t_needed = compare_lower_and_upper([self._t0_l, self._tF_l], [self._t0_u, self._tF_u], 'time')
+
+		# self._t_l_needed = self._t_l[self._t_needed.astype(bool)]
+		# self._t_u_needed = self._t_u[self._t_needed.astype(bool)]
+
+		# # Parameter
+		# self._s_l, self._s_u = parse_bounds_to_np_array(self.parameter, self._ocp._s_vars_user, 'parameter')
+		# self._s_needed = compare_lower_and_upper(self._s_l, self._s_u, 'parameter')
+
+		# self._s_l_needed = self._s_l[self._s_needed.astype(bool)]
+		# self._s_u_needed = self._s_u[self._s_needed.astype(bool)]
+
+		# self._x_needed = np.concatenate([self._y_needed, self._u_needed, self._q_needed, self._t_needed, self._s_needed])
+		# self._x_b_needed = np.concatenate([self._y_b_needed, self._q_needed, self._t_needed, self._s_needed])
+
+		# # Path
+		# if self.infer_bounds:
+		# 	if self._ocp._c_cons_user:
+		# 		raise NotImplementedError
+		# self._c_l, self._c_u = parse_bounds_to_np_array(self.path, self._ocp._c_cons_user, 'path constraint')
+		# _ = compare_lower_and_upper(self._c_l, self._c_u, 'path constraint')
+
+		# # Boundary
+		# self._y_b_l, self._y_b_u = parse_bounds_to_np_array(self.state_endpoint, self._ocp._y_b_cons_user, 'state_endpoint_constraint')
+		# _ = compare_lower_and_upper(self._b_l, self._b_u, 'state_endpoint_constraint')
+
+		# # Boundary
+		# self._b_l, self._b_u = parse_bounds_to_np_array(self.boundary, self._ocp._b_cons_user, 'boundary constraint')
+		# _ = compare_lower_and_upper(self._b_l, self._b_u, 'boundary constraint')
+
+		# self._bounds_checked = True
 
 
 

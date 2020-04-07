@@ -45,6 +45,7 @@ import scipy.sparse as sparse
 import sympy as sym
 import sympy.physics.mechanics as me
 
+from .backend import backend_dispatcher
 from .bounds import EndpointBounds
 from .expression_graph import ExpressionGraph
 from .guess import Guess
@@ -56,7 +57,7 @@ from .quadrature import Quadrature
 from .typing import (OptionalSymsType, TupleSymsType)
 from .scaling import EndpointScaling
 from .settings import Settings
-from .utils import (check_sym_name_clash, format_as_named_tuple)
+from .utils import (check_sym_name_clash, console_out, format_as_named_tuple)
 
 
 __all__ = ["OptimalControlProblem"]
@@ -281,23 +282,6 @@ class OptimalControlProblem():
 			self._scaling = scaling
 			self._scaling._ocp = self
 
-	# @property
-	# def initial_guess(self):
-	# 	return self._initial_guess
-	
-	# @initial_guess.setter
-	# def initial_guess(self, guess):
-	# 	self._is_initialised = False
-	# 	if guess is None:
-	# 		self._initial_guess = Guess(optimal_control_problem=self)
-	# 	else:
-	# 		self._initial_guess = guess
-	# 		self._initial_guess._ocp = self
-
-	# @property
-	# def initial_mesh(self):
-	# 	return self._mesh_iterations[0]._mesh
-
 	@property
 	def mesh_iterations(self):
 		return self._mesh_iterations
@@ -322,29 +306,58 @@ class OptimalControlProblem():
 	def solution(self):
 		return self._mesh_iterations[-1].solution
 
-	@staticmethod
-	def _console_out_message_heading(msg):
-		msg_len = len(msg)
-		seperator = '=' * msg_len
-		output_msg = f"\n{seperator}\n{msg}\n{seperator}\n"
-		print(output_msg)
-
 	def initialise(self):
 		"""Initialise the optimal control problem before solving.
 
 		The initialisation of the optimal control problem involves the 
 		following stages:
 
-		- Determine the set of user-defined variables that are allowed in the 
-		  continuous and endpoint functions.
-		
+			* 1. Check that for each phase there are the same number of state 
+				variables as there are state equations.
+			* 2. Check that for each phase the user-supplied bounds are 
+				permissible, and check point bounds on optimal control problem.
+			* 3. Process bounds that need processing.
 
 		"""
+		self._console_out_initialisation_message()
+		self._check_variables_and_equations()
+		self._initialise_backend()
+		# self._check_problem_and_phase_bounds()
+		# self._initialise_scaling()
+		# self._initialise_quadrature()
+		# self._check_initial_guess()
 
-		ocp_initialisation_time_start = timer()
-		eom_msg = 'Initialising optimal control problem.'
-		self._console_out_message_heading(eom_msg)
-		self._check_state_equation_for_each_state_variable()
+	def _console_out_initialisation_message(self):
+		msg = "Initialising optimal control problem."
+		console_out(msg, heading=True)
+
+	def _check_variables_and_equations(self):
+		for phase in self.phases:
+			phase._check_variables_and_equations()
+		msg = "Phase variables and equations checked."
+		console_out(msg)
+
+	def _initialise_backend(self):
+		self._backend = backend_dispatcher[self.settings.backend](self)
+		msg = "Backend initialised."
+		console_out(msg)
+
+	def _check_problem_and_phase_bounds(self):
+		for phase in self.phases:
+			phase.bounds._check_bounds()
+		self.bounds._bounds_check()
+		msg = "Bounds checked."
+		console_out(msg)
+
+	
+
+
+
+
+
+
+
+	def _initialise(self):
 		self._check_user_supplied_bounds()
 		self._generate_scaling()
 		self._generate_expression_graph()
@@ -359,13 +372,6 @@ class OptimalControlProblem():
 		self._ocp_initialisation_time = (ocp_initialisation_time_stop 
 			- ocp_initialisation_time_start)
 		self._is_initialised = True
-
-	def _check_state_equation_for_each_state_variable(self):
-		if self.number_state_variables != self.number_state_equations:
-			msg = ("A state equation must be supplied for each state variable. "
-				f"Currently {self.number_state_equations} state equations are "
-				f"supplied for {self.number_state_variables} state variables.")
-			raise ValueError(msg)
 
 	def _check_user_supplied_bounds(self):
 		self._bounds._bounds_check()
@@ -405,113 +411,113 @@ class OptimalControlProblem():
 		self._scaling._generate()
 		print('Scaling generated.')
 
-	def _generate_pycollo_symbols(self):
-		self._aux_data = {}
-		self._generate_pycollo_y_vars()
-		self._generate_pycollo_u_vars()
-		self._generate_pycollo_q_vars()
-		self._generate_pycollo_t_vars()
-		self._generate_pycollo_s_vars()
-		self._collect_pycollo_x_vars()
-		print('Pycollo symbols generated.')
+	# def _generate_pycollo_symbols(self):
+	# 	self._aux_data = {}
+	# 	self._generate_pycollo_y_vars()
+	# 	self._generate_pycollo_u_vars()
+	# 	self._generate_pycollo_q_vars()
+	# 	self._generate_pycollo_t_vars()
+	# 	self._generate_pycollo_s_vars()
+	# 	self._collect_pycollo_x_vars()
+	# 	print('Pycollo symbols generated.')
 
-	def _generate_pycollo_y_vars(self):
-		y_vars = [sym.Symbol(f'_y{i_y}') 
-			for i_y, _ in enumerate(self._y_vars_user)]
-		self._y_vars = sym.Matrix([y 
-			for y, y_needed in zip(y_vars, self._bounds._y_needed) 
-			if y_needed])
-		if not self._y_vars:
-			self._y_vars = sym.Matrix.zeros(0, 1)
-		self._num_y_vars = self._y_vars.shape[0]
-		self._y_t0 = sym.Matrix([sym.Symbol(f'{y}_t0') 
-			for y in self._y_vars])
-		self._y_tF = sym.Matrix([sym.Symbol(f'{y}_tF') 
-			for y in self._y_vars])
-		self._y_b_vars = sym.Matrix(list(itertools.chain.from_iterable(y 
-			for y in zip(self._y_t0, self._y_tF))))
-		self._aux_data.update({y: value 
-			for y, y_needed, value in zip(
-				y_vars, self._bounds._y_needed, self._bounds._y_l) 
-			if not y_needed})
+	# def _generate_pycollo_y_vars(self):
+	# 	y_vars = [sym.Symbol(f'_y{i_y}') 
+	# 		for i_y, _ in enumerate(self._y_vars_user)]
+	# 	self._y_vars = sym.Matrix([y 
+	# 		for y, y_needed in zip(y_vars, self._bounds._y_needed) 
+	# 		if y_needed])
+	# 	if not self._y_vars:
+	# 		self._y_vars = sym.Matrix.zeros(0, 1)
+	# 	self._num_y_vars = self._y_vars.shape[0]
+	# 	self._y_t0 = sym.Matrix([sym.Symbol(f'{y}_t0') 
+	# 		for y in self._y_vars])
+	# 	self._y_tF = sym.Matrix([sym.Symbol(f'{y}_tF') 
+	# 		for y in self._y_vars])
+	# 	self._y_b_vars = sym.Matrix(list(itertools.chain.from_iterable(y 
+	# 		for y in zip(self._y_t0, self._y_tF))))
+	# 	self._aux_data.update({y: value 
+	# 		for y, y_needed, value in zip(
+	# 			y_vars, self._bounds._y_needed, self._bounds._y_l) 
+	# 		if not y_needed})
 
-	def _generate_pycollo_u_vars(self):
-		u_vars = [sym.Symbol(f'_u{i_u}') 
-			for i_u, _ in enumerate(self._u_vars_user)]
-		self._u_vars = sym.Matrix([u 
-			for u, u_needed in zip(u_vars, self._bounds._u_needed) 
-			if u_needed])
-		if not self._u_vars:
-			self._u_vars = sym.Matrix.zeros(0, 1)
-		self._num_u_vars = self._u_vars.shape[0]
-		self._aux_data.update({u: value 
-			for u, u_needed, value in zip(
-				u_vars, self._bounds._u_needed, self._bounds._u_l) 
-			if not u_needed})
+	# def _generate_pycollo_u_vars(self):
+	# 	u_vars = [sym.Symbol(f'_u{i_u}') 
+	# 		for i_u, _ in enumerate(self._u_vars_user)]
+	# 	self._u_vars = sym.Matrix([u 
+	# 		for u, u_needed in zip(u_vars, self._bounds._u_needed) 
+	# 		if u_needed])
+	# 	if not self._u_vars:
+	# 		self._u_vars = sym.Matrix.zeros(0, 1)
+	# 	self._num_u_vars = self._u_vars.shape[0]
+	# 	self._aux_data.update({u: value 
+	# 		for u, u_needed, value in zip(
+	# 			u_vars, self._bounds._u_needed, self._bounds._u_l) 
+	# 		if not u_needed})
 
-	def _generate_pycollo_q_vars(self):
-		q_vars = sym.Matrix(self._q_vars_user)
-		self._q_vars = sym.Matrix([q 
-			for q, q_needed in zip(q_vars, self._bounds._q_needed) 
-			if q_needed])
-		if not self._q_vars:
-			self._q_vars = sym.Matrix.zeros(0, 1)
-		self._num_q_vars = self._q_vars.shape[0]
-		self._aux_data.update({q: value 
-			for q, q_needed, value in zip(
-				q_vars, self._bounds._q_needed, self._bounds._q_l) 
-			if not q_needed})
+	# def _generate_pycollo_q_vars(self):
+	# 	q_vars = sym.Matrix(self._q_vars_user)
+	# 	self._q_vars = sym.Matrix([q 
+	# 		for q, q_needed in zip(q_vars, self._bounds._q_needed) 
+	# 		if q_needed])
+	# 	if not self._q_vars:
+	# 		self._q_vars = sym.Matrix.zeros(0, 1)
+	# 	self._num_q_vars = self._q_vars.shape[0]
+	# 	self._aux_data.update({q: value 
+	# 		for q, q_needed, value in zip(
+	# 			q_vars, self._bounds._q_needed, self._bounds._q_l) 
+	# 		if not q_needed})
 
-	def _generate_pycollo_t_vars(self):
-		t_vars = [self._t0, self._tF]
-		self._t_vars = sym.Matrix([t 
-			for t, t_needed in zip(t_vars, self._bounds._t_needed) 
-			if t_needed])
-		if not self._t_vars:
-			self._t_vars = sym.Matrix.zeros(0, 1)
-		self._num_t_vars = self._t_vars.shape[0]
-		if not self._bounds._t_needed[0]:
-			self._aux_data.update({self._t0: self._bounds._t0_l})
-		if not self._bounds._t_needed[1]:
-			self._aux_data.update({self._tF: self._bounds._tF_l})
+	# def _generate_pycollo_t_vars(self):
+	# 	t_vars = [self._t0, self._tF]
+	# 	self._t_vars = sym.Matrix([t 
+	# 		for t, t_needed in zip(t_vars, self._bounds._t_needed) 
+	# 		if t_needed])
+	# 	if not self._t_vars:
+	# 		self._t_vars = sym.Matrix.zeros(0, 1)
+	# 	self._num_t_vars = self._t_vars.shape[0]
+	# 	if not self._bounds._t_needed[0]:
+	# 		self._aux_data.update({self._t0: self._bounds._t0_l})
+	# 	if not self._bounds._t_needed[1]:
+	# 		self._aux_data.update({self._tF: self._bounds._tF_l})
 
-	def _generate_pycollo_s_vars(self):
-		s_vars = [sym.Symbol(f'_s{i_s}') 
-			for i_s, _ in enumerate(self._s_vars_user)]
-		self._s_vars = sym.Matrix([s 
-			for s, s_needed in zip(s_vars, self._bounds._s_needed) 
-			if s_needed])
-		if not self._s_vars:
-			self._s_vars = sym.Matrix.zeros(0, 1)
-		self._num_s_vars = self._s_vars.shape[0]
-		self._aux_data.update({s: value 
-			for s, s_needed, value in zip(
-				s_vars, self._bounds._s_needed, self._bounds._s_l) 
-			if not s_needed})
+	# def _generate_pycollo_s_vars(self):
+	# 	s_vars = [sym.Symbol(f'_s{i_s}') 
+	# 		for i_s, _ in enumerate(self._s_vars_user)]
+	# 	self._s_vars = sym.Matrix([s 
+	# 		for s, s_needed in zip(s_vars, self._bounds._s_needed) 
+	# 		if s_needed])
+	# 	if not self._s_vars:
+	# 		self._s_vars = sym.Matrix.zeros(0, 1)
+	# 	self._num_s_vars = self._s_vars.shape[0]
+	# 	self._aux_data.update({s: value 
+	# 		for s, s_needed, value in zip(
+	# 			s_vars, self._bounds._s_needed, self._bounds._s_l) 
+	# 		if not s_needed})
 
-	def _collect_pycollo_x_vars(self):
-		self._x_vars = sym.Matrix([
-			self._y_vars, 
-			self._u_vars, 
-			self._q_vars, 
-			self._t_vars, 
-			self._s_vars,
-			])
-		self._num_vars = self._x_vars.shape[0]
-		self._num_vars_tuple = (
-			self._num_y_vars, 
-			self._num_u_vars, 
-			self._num_q_vars, 
-			self._num_t_vars, 
-			self._num_s_vars,
-			)
-		self._x_b_vars = sym.Matrix([
-			self._y_b_vars, 
-			self._q_vars, 
-			self._t_vars, 
-			self._s_vars,
-			])
-		self._num_point_vars = self._x_b_vars.shape[0]
+	# def _collect_pycollo_x_vars(self):
+	# 	self._x_vars = sym.Matrix([
+	# 		self._y_vars, 
+	# 		self._u_vars, 
+	# 		self._q_vars, 
+	# 		self._t_vars, 
+	# 		self._s_vars,
+	# 		])
+	# 	self._num_vars = self._x_vars.shape[0]
+	# 	self._num_vars_tuple = (
+	# 		self._num_y_vars, 
+	# 		self._num_u_vars, 
+	# 		self._num_q_vars, 
+	# 		self._num_t_vars, 
+	# 		self._num_s_vars,
+	# 		)
+	# 	self._x_b_vars = sym.Matrix([
+	# 		self._y_b_vars, 
+	# 		self._q_vars, 
+	# 		self._t_vars, 
+	# 		self._s_vars,
+	# 		])
+	# 	self._num_point_vars = self._x_b_vars.shape[0]
 
 	def _check_user_supplied_initial_guess(self):
 		self._initial_guess._guess_check()
@@ -1072,7 +1078,7 @@ class OptimalControlProblem():
 		# print('\n\n\n')
 		# raise NotImplementedError
 
-	def solve(self, display_progress=False):
+	def solve_old(self, display_progress=False):
 		"""Solve the optimal control problem.
 
 		If the initialisation flag is not set to True then the initialisation 

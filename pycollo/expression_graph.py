@@ -10,6 +10,7 @@ import numpy as np
 import sympy as sym
 
 from .node import Node
+from .utils import console_out
 
 """
 
@@ -33,83 +34,77 @@ Notes:
 
 class ExpressionGraph:
 
-	def __init__(self, ocp, problem_variables_user, problem_variables, 
-		auxiliary_information, objective, constraints):
+	def __init__(self, ocp, problem_variables, objective, constraints, 
+			auxiliary_information):
 
 		self.ocp = ocp
+		self.phases = ocp.p
+		self.console_out_begin_expression_graph_creation()		
+		self.initialise_node_symbol_number_counters()
+		self.initialise_node_mappings()
+		self.initialise_problem_variable_information(problem_variables)
+		self.initialise_default_singleton_number_nodes()
+		self.initialise_auxiliary_constant_nodes(auxiliary_information)
+		self.initialise_time_normalisation_nodes()
+		self.initialise_auxiliary_intermediate_nodes()
 
-		self._initialise_node_symbol_number_counters()
-		self._initialise_node_mappings()
-
-		self._initialise_problem_variable_information(problem_variables, 
-			problem_variables_user)
-
-		self._initialise_default_singleton_number_nodes()
-		self._initialise_auxiliary_constant_nodes(auxiliary_information)
-		self._initialise_auxiliary_intermediate_nodes()
-
-		self._form_time_normalisation_function()
+		self._form_time_normalisation_functions()
 		self._form_objective_function_and_derivatives(objective)
 		self._form_constraints_and_derivatives(constraints)
 		self._form_lagrangian_and_derivatives()
 
-	def _initialise_node_symbol_number_counters(self):
+	def console_out_begin_expression_graph_creation(self):
+		msg = (f"Beginning expression graph creation.")
+		console_out(msg)
+
+	def initialise_node_symbol_number_counters(self):
 		self._number_node_num_counter = itertools.count()
 		self._constant_node_num_counter = itertools.count()
 		self._intermediate_node_num_counter = itertools.count()
 	
-	def _initialise_node_mappings(self):
+	def initialise_node_mappings(self):
 		self._variable_nodes = {}
 		self._number_nodes = {}
 		self._constant_nodes = {}
 		self._intermediate_nodes = {}
 		self._precomputable_nodes = {}
 
-	def _initialise_problem_variable_information(self, x_vars, x_vars_user):
-		self._initialise_problem_variable_attributes(x_vars, x_vars_user)
-		self._initialise_problem_variable_nodes()
+	def initialise_problem_variable_information(self, x_vars):
+		self.initialise_problem_variable_attributes(x_vars)
+		self.initialise_problem_variable_nodes()
 
-	def _initialise_problem_variable_attributes(self, x_vars, x_vars_user):
+	def initialise_problem_variable_attributes(self, x_vars):
 		x_continuous, x_endpoint = x_vars
-		x_continuous_user, x_endpoint_user = x_vars_user
 
 		self.problem_variables_continuous = OrderedSet(x_continuous)
 		self.problem_variables_endpoint = OrderedSet(x_endpoint)
-		self.problem_variables_continuous_user = OrderedSet(x_continuous_user)
-		self.problem_variables_endpoint_user = OrderedSet(x_endpoint_user)
-		
-		self.user_to_pycollo_problem_variables_mapping_in_order = {
-			**dict(zip(self.problem_variables_continuous_user, 
-				self.problem_variables_continuous)),
-			**dict(zip(self.problem_variables_endpoint_user, 
-				self.problem_variables_endpoint)),
-			}
+		self.problem_variables = OrderedSet(x_continuous + x_endpoint)
 
 		self.lagrange_syms = ()
 
-	def _initialise_problem_variable_nodes(self):
+	def initialise_problem_variable_nodes(self):
 		self.time_function_variable_nodes = set()
 
 		self._continuous_variable_nodes = []
-		for x_var_user in self.problem_variables_continuous_user:
-			node = Node(x_var_user, self)
+		for x_var in self.problem_variables_continuous:
+			node = Node(x_var, self)
 			self._continuous_variable_nodes.append(node)
-			if str(node.symbol)[1] in ('y', 'u'):
+			if str(node.symbol)[1] in {"y", "u"}:
 				self.time_function_variable_nodes.add(node)
 
 		self._endpoint_variable_nodes = []
-		for x_b_var_user in self.problem_variables_endpoint_user:
-			node = Node(x_b_var_user, self)
+		for x_b_var in self.problem_variables_endpoint:
+			node = Node(x_b_var, self)
 			self._endpoint_variable_nodes.append(node)
 
-	def _initialise_default_singleton_number_nodes(self):
+	def initialise_default_singleton_number_nodes(self):
 		self._zero_node = Node(0, self)
 		self._one_node = Node(1, self)
 		two_node = Node(2, self)
 		neg_one_node = Node(-1, self)
 		half_node = Node(0.5, self)
 
-	def _initialise_auxiliary_constant_nodes(self, aux_info):
+	def initialise_auxiliary_constant_nodes(self, aux_info):
 		self.user_symbol_to_expression_auxiliary_mapping = {}
 		self._user_constants = OrderedSet()
 		for key, value in aux_info.items():
@@ -121,51 +116,56 @@ class ExpressionGraph:
 				self._user_constants.add(key)
 				node = Node(key, self, value=value)
 
-	def _initialise_auxiliary_intermediate_nodes(self):
-		self._stretch_node = Node(self.ocp._STRETCH, self)
+	def initialise_time_normalisation_nodes(self):
+		self._t_norm_nodes = tuple(Node(p.t_norm, self) 
+			for p in self.phases)
+
+	def initialise_auxiliary_intermediate_nodes(self):
 		iterable = self.user_symbol_to_expression_auxiliary_mapping.items()
 		for node_symbol, node_expr in iterable:
 			_ = Node(node_symbol, self, equation=node_expr)
 
-	def _form_time_normalisation_function(self):
-		self._form_function_and_derivative(
-			func=self.ocp._STRETCH,
-			wrt=None,
-			order=0,
-			func_abrv='t_norm',
-			init_func=True,
-			completion_msg='time normalisation'
-			)
+	def _form_time_normalisation_functions(self):
+		for p in self.phases:
+			self._form_function_and_derivative(
+				func=p.t_norm,
+				wrt=None,
+				order=0,
+				func_abrv=f"t_norm_P{p.i}",
+				init_func=True,
+				completion_msg=f"time normalisation of phase #{p.i}",
+				)
 
 	def _form_objective_function_and_derivatives(self, objective):
 		self._form_function_and_derivative(
 			func=objective,
 			wrt=self._endpoint_variable_nodes,
 			order=1, 
-			func_abrv='J',
+			func_abrv="J",
 			init_func=True,
-			completion_msg='objective gradient',
+			completion_msg="objective gradient",
 			)
 
 	def _form_constraints_and_derivatives(self, constraints):
 
 		def form_continuous(continuous_constraints):
 			form_function_and_derivative(func=continuous_constraints,
-				wrt=self._continuous_variable_nodes, func_abrv='c',
-				completion_msg='Jacobian of the continuous constraints')
+				wrt=self._continuous_variable_nodes, func_abrv="c",
+				completion_msg="Jacobian of the continuous constraints")
 
 		def form_endpoint(endpoint_constraints):
 			form_function_and_derivative(func=endpoint_constraints,
-				wrt=self._endpoint_variable_nodes, func_abrv='b',
-				completion_msg='Jacobian of the endpoint constraints')
+				wrt=self._endpoint_variable_nodes, func_abrv="b",
+				completion_msg="Jacobian of the endpoint constraints")
 
 		form_function_and_derivative = functools.partial(
 			self._form_function_and_derivative, order=1, init_func=True)
 
-		y_eqns, c_cons, q_funcs, y_b_cons, b_cons = constraints
-		continuous_constraints = sym.Matrix(y_eqns + c_cons + q_funcs)
-		endpoint_constraints = sym.Matrix(y_b_cons + b_cons)
-		
+		continuous_constraints = sym.Matrix(
+			constraints[self.ocp.c_continuous_slice])
+		endpoint_constraints = sym.Matrix(
+			constraints[self.ocp.c_endpoint_slice])
+
 		form_continuous(continuous_constraints)
 		form_endpoint(endpoint_constraints)
 
@@ -173,18 +173,20 @@ class ExpressionGraph:
 
 		def form_objective(L_J):
 			form_function_and_derivative(func=L_J,
-				wrt=self._endpoint_variable_nodes, func_abrv='L_J',
-				completion_msg='Hessian of the objective Lagrangian')
+				wrt=self._endpoint_variable_nodes, func_abrv="L_J",
+				completion_msg="Hessian of the objective Lagrangian")
 
-		def form_defect(L_defect):
-			self.ddL_zeta_dxdx = []
-			self.ddL_zeta_dxdx_nodes = []
-			self.ddL_zeta_dxdx_precomputable = set()
-			self.ddL_zeta_dxdx_dependent_tiers = {}
+		self.ddL_zeta_dxdx = []
+		self.ddL_zeta_dxdx_nodes = []
+		self.ddL_zeta_dxdx_precomputable = set()
+		self.ddL_zeta_dxdx_dependent_tiers = {}
+
+		def form_defect(L_defect, phase_i):
+			
 			for i, L_zeta in enumerate(L_defect):
 				form_function_and_derivative(func=L_zeta,
-					wrt=self._continuous_variable_nodes, func_abrv='L_zeta_temp',
-					completion_msg=f'Hessian of the defect Lagrangian #{i}')
+					wrt=self._continuous_variable_nodes, func_abrv=f"L_zeta_temp",
+					completion_msg=f"Hessian of the defect Lagrangian #{i} in phase #{phase_i}")
 				self.ddL_zeta_dxdx.append(self.ddL_zeta_temp_dxdx)
 				self.ddL_zeta_dxdx_nodes.append(self.ddL_zeta_temp_dxdx_nodes)
 				self.ddL_zeta_dxdx_precomputable.update(
@@ -195,15 +197,16 @@ class ExpressionGraph:
 					except KeyError:
 						self.ddL_zeta_dxdx_dependent_tiers[tier] = nodes
 
-		def form_path(L_path):
-			self.ddL_gamma_dxdx = []
-			self.ddL_gamma_dxdx_nodes = []
-			self.ddL_gamma_dxdx_precomputable = set()
-			self.ddL_gamma_dxdx_dependent_tiers = {}
+		self.ddL_gamma_dxdx = []
+		self.ddL_gamma_dxdx_nodes = []
+		self.ddL_gamma_dxdx_precomputable = set()
+		self.ddL_gamma_dxdx_dependent_tiers = {}
+
+		def form_path(L_path, phase_i):
 			for i, L_gamma in enumerate(L_path):
 				form_function_and_derivative(func=L_gamma,
-					wrt=self._continuous_variable_nodes, func_abrv='L_gamma_temp',
-					completion_msg=f'Hessian of the path Lagrangian #{i}')
+					wrt=self._continuous_variable_nodes, func_abrv=f"L_gamma_temp",
+					completion_msg=f"Hessian of the path Lagrangian #{i} in phase #{phase_i}")
 				self.ddL_gamma_dxdx.append(self.ddL_gamma_temp_dxdx)
 				self.ddL_gamma_dxdx_nodes.append(self.ddL_gamma_temp_dxdx_nodes)
 				self.ddL_gamma_dxdx_precomputable.update(
@@ -214,15 +217,16 @@ class ExpressionGraph:
 					except KeyError:
 						self.ddL_gamma_dxdx_dependent_tiers[tier] = nodes
 
-		def form_integral(L_integral):
-			self.ddL_rho_dxdx = []
-			self.ddL_rho_dxdx_nodes = []
-			self.ddL_rho_dxdx_precomputable = set()
-			self.ddL_rho_dxdx_dependent_tiers = {}
+		self.ddL_rho_dxdx = []
+		self.ddL_rho_dxdx_nodes = []
+		self.ddL_rho_dxdx_precomputable = set()
+		self.ddL_rho_dxdx_dependent_tiers = {}
+
+		def form_integral(L_integral, phase_i):
 			for i, L_rho in enumerate(L_integral):
 				form_function_and_derivative(func=L_rho,
-					wrt=self._continuous_variable_nodes, func_abrv='L_rho_temp',
-					completion_msg=f'Hessian of the integral Lagrangian #{i}')
+					wrt=self._continuous_variable_nodes, func_abrv=f"L_rho_temp",
+					completion_msg=f"Hessian of the integral Lagrangian #{i} in phase #{phase_i}")
 				self.ddL_rho_dxdx.append(self.ddL_rho_temp_dxdx)
 				self.ddL_rho_dxdx_nodes.append(self.ddL_rho_temp_dxdx_nodes)
 				self.ddL_rho_dxdx_precomputable.update(
@@ -240,8 +244,8 @@ class ExpressionGraph:
 			self.ddL_b_dxbdxb_dependent_tiers = {}
 			for i, L_b in enumerate(L_endpoint):
 				form_function_and_derivative(func=L_b,
-					wrt=self._endpoint_variable_nodes, func_abrv='L_b_temp',
-					completion_msg='Hessian of the endpoint Lagrangian')
+					wrt=self._endpoint_variable_nodes, func_abrv="L_b_temp",
+					completion_msg=f"Hessian of the endpoint Lagrangian #{i}")
 				self.ddL_b_dxbdxb.append(self.ddL_b_temp_dxbdxb)
 				self.ddL_b_dxbdxb_nodes.append(self.ddL_b_temp_dxbdxb_nodes)
 				self.ddL_b_dxbdxb_precomputable.update(
@@ -270,39 +274,36 @@ class ExpressionGraph:
 		form_function_and_derivative = functools.partial(
 			self._form_function_and_derivative, order=2, init_func=False)
 
-		sigma = sym.symbols('_sigma')
+		sigma = sym.symbols("_sigma")
 		self.ocp.sigma = sigma
 
-		L_syms = [sym.symbols(f'_lambda_{n}') for n in range(self.ocp._num_c)]
+		L_syms = [sym.symbols(f"_lambda_{n}") for n in range(self.ocp.num_c)]
 		self.ocp.lagrange_syms = L_syms
 
 		self.lagrange_syms = tuple([sigma] + L_syms)
 		for L_sym in self.lagrange_syms:
 			_ = Node(L_sym, self)
 
-		c_defect_slice = self.ocp._c_defect_slice
-		c_path_slice = self.ocp._c_path_slice
-		c_integral_slice = self.ocp._c_integral_slice
-		c_endpoint_slice = self.ocp._c_boundary_slice
-
 		L_objective = sigma * self.J
-		L_defect_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
-			for c in self.c[c_defect_slice])
-			if c_defect_slice.start != c_defect_slice.stop else [0])
-		L_path_terms = sym.Matrix(tuple(c 
-			for c in self.c[c_path_slice]) 
-			if c_path_slice.start != c_path_slice.stop else [0])
-		L_integral_terms = sym.Matrix(tuple(self._stretch_node.symbol*c 
-			for c in self.c[c_integral_slice])
-			if c_integral_slice.start != c_integral_slice.stop else [0])
-		L_endpoint_terms = sym.Matrix(tuple(b 
-			for b in self.b)
-			if self.b else [0])
-
 		form_objective(L_objective)
-		form_defect(L_defect_terms)
-		form_path(L_path_terms)
-		form_integral(L_integral_terms)
+
+		for phase, t_norm_node in zip(self.phases, self._t_norm_nodes):
+			L_defect_terms = sym.Matrix(tuple(t_norm_node.symbol*zeta 
+				for zeta in phase.zeta)
+				if phase.num_c_defect != 0 else [0])
+			L_path_terms = sym.Matrix(tuple(gamma 
+				for gamma in phase.gamma) 
+				if phase.num_c_path != 0 else [0])
+			L_integral_terms = sym.Matrix(tuple(t_norm_node.symbol*rho 
+				for rho in phase.rho)
+				if phase.num_c_integral != 0 else [0])
+			form_defect(L_defect_terms, phase.i)
+			form_path(L_path_terms, phase.i)
+			form_integral(L_integral_terms, phase.i)
+
+		L_endpoint_terms = sym.Matrix(tuple(beta
+			for beta in self.ocp.beta)
+			if self.b else [0])
 		form_endpoint(L_endpoint_terms)
 
 		make_L_matrices_lower_triangular()
@@ -311,9 +312,9 @@ class ExpressionGraph:
 
 		def create_derivative_abbreviation(wrt, func_abrv):
 			if wrt is self._continuous_variable_nodes:
-				wrt_abrv = 'x'
+				wrt_abrv = "x"
 			elif wrt is self._endpoint_variable_nodes:
-				wrt_abrv = 'xb'
+				wrt_abrv = "xb"
 
 			if order == 1:
 				return f"d{func_abrv}_d{wrt_abrv}"
@@ -347,7 +348,9 @@ class ExpressionGraph:
 			deriv_abrv = create_derivative_abbreviation(wrt, func_abrv)
 			self = add_to_namespace(self, init_args, deriv_abrv)
 
-		completion_msg = f"Symbolic {completion_msg} calculated."
+		if completion_msg is not None:
+			completion_msg = f"Symbolic {completion_msg} calculated."
+			console_out(completion_msg)
 
 	def _initialise_function(self, expr):
 
@@ -506,14 +509,14 @@ class ExpressionGraph:
 
 	def __str__(self):
 		cls_name = self.__class__.__name__
-		return (f"{cls_name}(({self.problem_variables_continuous_user}, "
-			f"{self.problem_variables_endpoint_user}))")
+		return (f"{cls_name}(({self.problem_variables_continuous}, "
+			f"{self.problem_variables_endpoint}))")
 
 	def __repr__(self):
 		cls_name = self.__class__.__name__
-		return (f"{cls_name}(problem_variables_user="
-			f"({self.problem_variables_continuous_user}, "
-			f"{self.problem_variables_endpoint_user}))")
+		return (f"{cls_name}(problem_variables="
+			f"({self.problem_variables_continuous}, "
+			f"{self.problem_variables_endpoint}))")
 
 
 
@@ -522,12 +525,12 @@ class ExpressionGraph:
 
 
 def kill():
-		print('\n\n')
+		print("\n\n")
 		raise ValueError
 
 def cout(*args):
-	print('\n\n')
+	print("\n\n")
 	for arg in args:
-		print(f'{arg}\n')
+		print(f"{arg}\n")
 
 

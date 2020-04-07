@@ -57,7 +57,7 @@ class Node(metaclass=Cached):
 		self.equation = equation
 
 	def _set_node_type_stateful_object(self):
-		if self.graph.user_to_pycollo_problem_variables_mapping_in_order.get(self.key) is not None:
+		if self.key in self.graph.problem_variables:
 			self._type = VariableNode
 		elif self.key in self.graph.lagrange_syms:
 			self._type = VariableNode
@@ -321,8 +321,7 @@ class VariableNode(RootNode):
 
 	@staticmethod
 	def _create_or_get_new_node_symbol(node_instance):
-		symbol = node_instance.graph.user_to_pycollo_problem_variables_mapping_in_order.get(node_instance.key, node_instance.key)
-		return symbol
+		return node_instance.key
 
 	@staticmethod
 	def _get_derivative_wrt(node_instance, wrt):

@@ -116,6 +116,23 @@ def console_out(msg, heading=False, subheading=False):
     print(output_msg)
 
 
+def fast_sympify(arg):
+    if not isinstance(arg, sym.Expr):
+        return sym.sympify(arg)
+    return arg
+
+
+def format_multiple_items_for_output(items, wrapping_char="'"):
+    items = [str(item) for item in items]
+    if len(items) == 1:
+        return f"'{items[0]}'"
+    else:
+        pad = f"{wrapping_char}, {wrapping_char}"
+        return (f"{wrapping_char}{pad.join(items[:-1])}{wrapping_char} "
+            f"and {wrapping_char}{items[-1]}{wrapping_char}")
+
+
+
 def parse_arg_type(arg, arg_name_str, arg_type):
     if not isinstance(arg, arg_type):
         msg = (f"`{arg_name_str}` must be a {arg_type}. {arg} of type {type(arg)} is not a valid argument.")

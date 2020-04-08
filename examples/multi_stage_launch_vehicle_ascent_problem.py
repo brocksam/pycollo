@@ -252,6 +252,7 @@ problem.settings.nlp_tolerance = 10e-7
 problem.settings.mesh_tolerance = 10e-6
 problem.settings.maximise_objective = True
 problem.settings.backend = "pycollo"
+problem.settings.scaling_method = None
 
 problem.initialise()
 

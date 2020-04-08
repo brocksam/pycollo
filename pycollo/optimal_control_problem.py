@@ -323,8 +323,8 @@ class OptimalControlProblem():
 		self._check_variables_and_equations()
 		self._initialise_backend()
 		# self._check_problem_and_phase_bounds()
-		# self._initialise_scaling()
-		# self._initialise_quadrature()
+		self._initialise_scaling()
+		self._initialise_quadrature()
 		# self._check_initial_guess()
 
 	def _console_out_initialisation_message(self):
@@ -349,6 +349,19 @@ class OptimalControlProblem():
 		msg = "Bounds checked."
 		console_out(msg)
 
+	def _initialise_scaling(self):
+		# self.scaling._generate()
+		# for phase in self.phases:
+		# 	phase.scaling._generate()
+		self._backend.create_scaling()
+		msg = "Problem scaling initialised."
+		console_out(msg)
+
+	def _initialise_quadrature(self):
+		raise NotImplementedError
+		self._backend.create_quadrature()
+		msg = "Quadrature scheme initialised."
+		console_out(msg)
 	
 
 

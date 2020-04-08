@@ -118,7 +118,7 @@ class PycolloPhaseData:
 			self.ocp_backend.aux_data_phase_dependent)
 		for user_sym, user_eqn in per_phase_aux_data.items():
 			phase_sym = sym.Symbol(f"_p_{user_sym}_P{self.i}")
-			self.aux_data[phase_sym] = user_eqn
+			self.aux_data[phase_sym] = fast_sympify(user_eqn)
 			self.user_phase_aux_data_mapping[user_sym] = phase_sym
 
 	def check_all_user_phase_aux_data_supplied(self):
@@ -402,7 +402,7 @@ class Sympy(Backend):
 
 
 backend_dispatcher = {
-	'pycollo': Pycollo,
-	'casadi': Casadi,
-	'sympy': Sympy,
+	"pycollo": Pycollo,
+	"casadi": Casadi,
+	"sympy": Sympy,
 	}

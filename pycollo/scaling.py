@@ -1,29 +1,59 @@
+import abc
+
 import numpy as np
 import scipy.sparse as sparse
 
 
-class EndpointScaling:
+class ScalingABC(abc.ABC):
+
+	_NONE_SCALING_DEFAULT = 1
+	_STRETCH_DEFAULT = 1
+	_SHIFT_DEFAULT = 0
+	_METHOD_OPTIONS = {"default", "bounds", "user", "guess", "none", None}
+	_METHOD_DEFAULT = "bounds"
+	_UPDATE_DEFAULT = True
+	_NUMBER_SAMPLES_DEFAULT = 100
+	_UPDATE_WEIGHT_DEFAULT = 0.8
+
+	@abc.abstractmethod
+	def optimal_control_problem(self): pass
+
+
+
+class EndpointScaling(ScalingABC):
 	
 	def __init__(self, optimal_control_problem):
 
 		self._ocp = optimal_control_problem
 
+		self.parameter_variables = self._NONE_SCALING_DEFAULT
+		self.endpoint_constraints = self._NONE_SCALING_DEFAULT
+
 	@property
 	def optimal_control_problem(self):
 		return self._ocp
 
+	def __repr__(self):
+		cls_name = self.__class__.__name__
+		string = (f"{cls_name}(optimal_control_problem={self._ocp}, )")
+		return string
 
-class PhaseScaling:
+
+class PhaseScaling(ScalingABC):
 	
 	def __init__(self, phase):
 
 		self.phase = phase
 
-		self.time = 1
-		self.state_variables = 1
-		self.control_variables = 1
-		self.integral_variables = 1
-		self.path_constraints = 1
+		self.time = self._NONE_SCALING_DEFAULT
+		self.state_variables = self._NONE_SCALING_DEFAULT
+		self.control_variables = self._NONE_SCALING_DEFAULT
+		self.integral_variables = self._NONE_SCALING_DEFAULT
+		self.path_constraints = self._NONE_SCALING_DEFAULT
+
+	@property
+	def optimal_control_problem(self):
+		return self.phase.optimal_control_problem
 
 	@property
 	def phase(self):
@@ -33,40 +63,43 @@ class PhaseScaling:
 	def phase(self, phase):
 		self._phase = phase
 
+	def _generate_bounds(self):
+		raise NotImplementedError
+
+	def _generate_guess(self):
+		raise NotImplementedError
+
+	def _generate_none(self):
+		num_needed = self.optimal_control_problem._backend.num_s_vars
+		shift = self._SHIFT_DEFAULT * np.ones(num_needed)
+		stretch = self._STRETCH_DEFAULT * np.ones(num_needed)
+		return shift, stretch
+
+	def _generate_user(self):
+		raise NotImplementedError
+
 	def __repr__(self):
-		string = (f"PhaseScaling(phase={self.phase}, )")
-		print(string)
+		cls_name = self.__class__.__name__
+		string = (f"{cls_name}(phase={self.phase}, )")
+		return string
 
 
 class Scaling:
 
-	def __init__(self, optimal_control_problem):
+	def __init__(self, backend):
 
-		self._ocp = optimal_control_problem
+		self.backend = backend
+		self.ocp = backend.ocp
 		self._GENERATE_DISPATCHER = {
 			None: self._generate_none,
-			'user': self._generate_user,
-			'bounds': self._generate_bounds,
-			'guess': self._generate_guess,
+			"user": self._generate_user,
+			"bounds": self._generate_bounds,
+			"guess": self._generate_guess,
 			}
 
-	@property
-	def optimal_control_problem(self):
-		return self._ocp
-	
-	@property
-	def bounds(self):
-		return self._ocp.bounds
-
 	def _generate(self):
-		scaling_method = self.optimal_control_problem.settings.scaling_method
-		self.x_shift, self.x_stretch = self._GENERATE_DISPATCHER[scaling_method]()
-
-	def _generate_none(self):
-		needed = self.bounds._x_needed[self.bounds._x_needed.astype(bool)]
-		shift = np.zeros_like(needed)
-		stretch = np.ones_like(needed)
-		return shift, stretch
+		method = self.optimal_control_problem.settings.scaling_method
+		self.x_shift, self.x_stretch = self._GENERATE_DISPATCHER[method]()
 
 	def _generate_bounds(self):
 		x_l = np.concatenate([self.bounds._y_l_needed, self.bounds._u_l_needed, self.bounds._q_l_needed, -0.5*np.ones_like(self.bounds._t_l_needed), self.bounds._s_l_needed])
@@ -77,6 +110,12 @@ class Scaling:
 
 	def _generate_guess(self):
 		raise NotImplementedError
+
+	def _generate_none(self):
+		num_needed = self.backend.num_vars
+		shift = self._SHIFT_DEFAULT * np.ones(num_needed)
+		stretch = self._STRETCH_DEFAULT * np.ones(num_needed)
+		return shift, stretch
 
 	def _generate_user(self):
 		raise NotImplementedError

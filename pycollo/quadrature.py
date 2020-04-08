@@ -3,10 +3,10 @@ import scipy.interpolate as interpolate
 
 class Quadrature:
 
-	def __init__(self, *, optimal_control_problem=None):
+	def __init__(self, backend):
 
 		# Optimal Control Problem
-		self._ocp = optimal_control_problem
+		self.backend = backend
 		self._polynomials = {}
 		self._quadrature_points = {}
 		self._quadrature_weights = {}

@@ -4,23 +4,38 @@ from .mesh import PhaseMesh
 from .scaling import ScalingABC
 
 
+FIRST_ORDER = 1
+SECOND_ORDER = 2
+DIFFERENTIAL_FORM = "differential"
+INTEGRAL_FORM = "integral"
+IPOPT = "ipopt"
+WORHP = "worhp"
+SNOPT = "snopt"
+KNITRO = "knitro"
+MUMPS = "mumps"
+MA57 = "ma57"
+GUASS = "gauss"
+LOBATTO = "lobatto"
+RADAU = "radau"
+
+
 class Settings():
 
-	_COLLOCATION_MATRIX_FORMS = {"differential", "integral"}
-	_NLP_SOLVERS = {"ipopt", "worhp", "snopt", "knitro"}
-	_LINEAR_SOLVERS = {"mumps", "ma57"}
-	_QUADRATURE_METHODS = {"gauss", "lobatto", "radau"}
-	_DERIVATIVE_LEVELS = {1, 2}
+	_COLLOCATION_MATRIX_FORMS = {DIFFERENTIAL_FORM, INTEGRAL_FORM}
+	_NLP_SOLVERS = {IPOPT, WORHP, SNOPT, KNITRO}
+	_LINEAR_SOLVERS = {MUMPS, MA57}
+	_QUADRATURE_METHODS = {GUASS, LOBATTO, RADAU}
+	_DERIVATIVE_LEVELS = {FIRST_ORDER, SECOND_ORDER}
 
 	def __init__(self, *, 
 			optimal_control_problem=None, 
-			collocation_matrix_form="integral", 
-			nlp_solver="ipopt", 
-			linear_solver="mumps", 
+			collocation_matrix_form=INTEGRAL_FORM, 
+			nlp_solver=IPOPT, 
+			linear_solver=MUMPS, 
 			nlp_tolerance=1e-8, 
 			max_nlp_iterations=2000, 
-			quadrature_method="lobatto", 
-			derivative_level=2, 
+			quadrature_method=LOBATTO, 
+			derivative_level=SECOND_ORDER, 
 			max_mesh_iterations=10, 
 			mesh_tolerance=1e-7, 
 			collocation_points_min=4, 
@@ -152,12 +167,12 @@ class Settings():
 	
 	@linear_solver.setter
 	def linear_solver(self, linear_solver):
-		if self.nlp_solver == 'ipopt':
+		if self.nlp_solver == IPOPT:
 			if linear_solver not in self._LINEAR_SOLVERS:
 				msg = ("{} is not a valid linear solver.")
 				raise ValueError(msg.format(linear_solver))
 			self._linear_solver = linear_solver
-		elif self.nlp_solver == 'snopt':
+		elif self.nlp_solver == SNOPT:
 			msg = ("SNOPT is not currently supported. Please use IPOPT as the NLP solver.")
 			raise NotImplementedError(msg)
 

@@ -1,12 +1,12 @@
 from typing import Optional
 
 from .mesh import PhaseMesh
+from .scaling import ScalingABC
 
 
 class Settings():
 
 	_COLLOCATION_MATRIX_FORMS = {"differential", "integral"}
-	_SCALING_OPTIONS = {None, "user", "guess", "bounds"}
 	_NLP_SOLVERS = {"ipopt", "worhp", "snopt", "knitro"}
 	_LINEAR_SOLVERS = {"mumps", "ma57"}
 	_QUADRATURE_METHODS = {"gauss", "lobatto", "radau"}
@@ -28,10 +28,10 @@ class Settings():
 			display_mesh_refinement_info=True, 
 			display_mesh_result_info=False, 
 			display_mesh_result_graph=False, 
-			scaling_method="bounds", 
-			update_scaling=True, 
-			number_scaling_samples=100, 
-			scaling_weight=0.8,
+			scaling_method=ScalingABC._METHOD_DEFAULT, 
+			update_scaling=ScalingABC._UPDATE_DEFAULT, 
+			number_scaling_samples=ScalingABC._NUMBER_SAMPLES_DEFAULT, 
+			scaling_update_weight=ScalingABC._UPDATE_WEIGHT_DEFAULT,
 			):
 
 		# Optimal Control Problem
@@ -61,7 +61,7 @@ class Settings():
 		self.scaling_method = scaling_method
 		self.update_scaling = update_scaling
 		self.number_scaling_samples = number_scaling_samples
-		self.scaling_weight = scaling_weight
+		self.scaling_update_weight = scaling_update_weight
 
 		# Output information
 		self.display_mesh_refinement_info = display_mesh_refinement_info
@@ -76,39 +76,43 @@ class Settings():
 	def scaling_method(self, method: Optional[str]):
 		if method is not None:
 			method = method.casefold()
-		if method not in self._SCALING_OPTIONS:
+		if method not in ScalingABC._METHOD_OPTIONS:
 			msg = (f"{method} is not a valid scaling option.")
 			raise ValueError(msg)
+		elif method == "default":
+			method = ScalingABC._METHOD_DEFAULT
+		elif method == "none":
+			method = None
 		self._scaling_method = method
 
 	@property
-	def update_scaling(self):
+	def update_scaling(self) -> bool:
 		return self._update_scaling
 	
 	@update_scaling.setter
-	def update_scaling(self, do_update):
+	def update_scaling(self, do_update: bool):
 		do_update = bool(do_update)
 		self._update_scaling = do_update
 
 	@property
-	def scaling_weight(self):
-		return self._scaling_weight
+	def scaling_update_weight(self) -> float:
+		return self._scaling_update_weight
 	
-	@scaling_weight.setter
-	def scaling_weight(self, weight):
+	@scaling_update_weight.setter
+	def scaling_update_weight(self, weight: float):
 		weight = float(weight)
 		if weight < 0 or weight > 1:
-			msg = (f'Scaling weight must be a number between 0 and 1. {weight} '
-				'is invalid.')
+			msg = (f"Scaling update weight must be a number between 0 and 1. "
+				f"{weight} is invalid.")
 			raise ValueError(msg)
-		self._scaling_weight = weight
+		self._scaling_update_weight = weight
 
 	@property
-	def number_scaling_samples(self):
+	def number_scaling_samples(self) -> int:
 		return self._number_scaling_samples
 	
 	@number_scaling_samples.setter
-	def number_scaling_samples(self, num):
+	def number_scaling_samples(self, num: int):
 		num = int(num)
 		if num < 0:
 			msg = (f'Number of scaling samples must be an integer greater than '

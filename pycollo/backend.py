@@ -5,6 +5,8 @@ import itertools
 import sympy as sym
 
 from .expression_graph import ExpressionGraph
+from .quadrature import Quadrature
+from .scaling import Scaling
 from .utils import (console_out, dict_merge, fast_sympify, 
 	format_multiple_items_for_output)
 
@@ -121,16 +123,9 @@ class PycolloPhaseData:
 
 	def check_all_user_phase_aux_data_supplied(self):
 		self_aux_user_keys = set(self.user_phase_aux_data_mapping.keys())
-		not_supplied_symbols = self.ocp_backend.user_aux_data_syms.difference(
+		missing_syms = self.ocp_backend.user_aux_data_syms.difference(
 			self_aux_user_keys)
-		if not_supplied_symbols:
-			formatted_syms = format_multiple_items_for_output(
-				not_supplied_symbols)
-			msg = (f"Phase-dependent auxiliary data must be supplied for "
-				f"all phase-dependent symbols in each phase. Please supply "
-				f"auxiliary data for {formatted_syms} in {self.ocp_phase.name} "
-				f"(phase index: {self.i}).")
-			raise ValueError(msg)
+		self.missing_user_phase_aux_data_syms = missing_syms
 
 	def collect_variables_substitutions(self):
 		vars_subs = dict(zip(self.x_vars_user, self.x_vars))
@@ -146,6 +141,7 @@ class PycolloPhaseData:
 		self.preprocess_path_constraints()
 		self.preprocess_integral_constraints()
 		self.collect_constraints()
+		self.check_all_needed_user_phase_aux_data_supplied()
 
 	def preprocess_defect_constraints(self):
 		self.zeta = tuple(y_eqn.xreplace(self.all_subs_mappings)
@@ -172,10 +168,29 @@ class PycolloPhaseData:
 			self.c_defect_slice.stop + self.num_c_path)
 		self.c_integral_slice = slice(self.c_path_slice.stop, self.num_c)
 
+	def check_all_needed_user_phase_aux_data_supplied(self):
+		needed_syms = {s for c in self.c for s in c.free_symbols}
+		missing_syms = needed_syms.intersection(
+			self.missing_user_phase_aux_data_syms)
+		if missing_syms:
+			self.raise_needed_user_phases_aux_data_missing_error(missing_syms)
+
+	def raise_needed_user_phases_aux_data_missing_error(self, missing_syms):
+		formatted_syms = format_multiple_items_for_output(missing_syms)
+		msg = (f"Phase-dependent auxiliary data must be supplied for "
+			f"all phase-dependent symbols in each phase. Please supply "
+			f"auxiliary data for {formatted_syms} in {self.ocp_phase.name} "
+			f"(phase index: {self.i}).")
+		raise ValueError(msg)
+
 
 class Backend(ABC):
-	pass
+	
+	def create_scaling(self):
+		self.scaling = Scaling(self)
 
+	def create_quadrature(self):
+		self.quadrature = Quadrature(self)
 
 
 class Pycollo(Backend):
@@ -315,6 +330,7 @@ class Pycollo(Backend):
 	def collect_variables(self):
 		continuous_vars = (tuple(itertools.chain.from_iterable(p.x_vars 
 			for p in self.p)) + self.s_vars)
+		self.num_vars = len(continuous_vars)
 		endpoint_vars = (tuple(itertools.chain.from_iterable(p.x_point_vars 
 			for p in self.p)) + self.s_vars)
 		variables = (continuous_vars, endpoint_vars)

@@ -122,8 +122,8 @@ def fast_sympify(arg):
     return arg
 
 
-def format_multiple_items_for_output(items, wrapping_char="'"):
-    items = [str(item) for item in items]
+def format_multiple_items_for_output(items, wrapping_char="'", *, prefix_char=""):
+    items = [f"{prefix_char}{item}" for item in items]
     if len(items) == 1:
         return f"'{items[0]}'"
     else:

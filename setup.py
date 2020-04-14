@@ -12,7 +12,7 @@ setup(
     license='All Rights Reserved',
     description=('General purpose optimal control package using collocation methods.'),
     long_description=open('README.rst').read(),
-    python_requires='>=3.8',
+    python_requires='>=3.7',
     install_requires=['numpy>=1.15',
         'scipy>=1.2',
         'sympy>=1.3',

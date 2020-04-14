@@ -4,12 +4,17 @@ import itertools
 
 import sympy as sym
 
+from .bounds import Bounds
 from .expression_graph import ExpressionGraph
 from .quadrature import Quadrature
 from .scaling import Scaling
 from .utils import (console_out, dict_merge, fast_sympify, 
 	format_multiple_items_for_output)
 
+
+CASADI = "casadi"
+PYCOLLO = "pycollo"
+SYMPY = "sympy"
 
 
 class PycolloPhaseData:
@@ -184,7 +189,13 @@ class PycolloPhaseData:
 		raise ValueError(msg)
 
 
-class Backend(ABC):
+class BackendABC(ABC):
+
+	_DEFAULT_BACKEND = PYCOLLO
+	_BACKENDS = {PYCOLLO}
+
+	def create_bounds(self):
+		self.bounds = Bounds(self)
 	
 	def create_scaling(self):
 		self.scaling = Scaling(self)
@@ -193,7 +204,7 @@ class Backend(ABC):
 		self.quadrature = Quadrature(self)
 
 
-class Pycollo(Backend):
+class Pycollo(BackendABC):
 	
 	def __init__(self, ocp):
 		self.ocp = ocp
@@ -387,14 +398,14 @@ class Pycollo(Backend):
 
 
 
-class Casadi(Backend):
+class Casadi(BackendABC):
 
 	def __init__(self, ocp):
 		raise NotImplementedError
 
 
 
-class Sympy(Backend):
+class Sympy(BackendABC):
 
 	def __init__(self, ocp):
 		raise NotImplementedError
@@ -402,7 +413,7 @@ class Sympy(Backend):
 
 
 backend_dispatcher = {
-	"pycollo": Pycollo,
-	"casadi": Casadi,
-	"sympy": Sympy,
+	PYCOLLO: Pycollo,
+	CASADI: Casadi,
+	SYMPY: Sympy,
 	}

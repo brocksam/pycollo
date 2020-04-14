@@ -507,9 +507,6 @@ class PhaseBounds(BoundsABC):
 		bnds = []
 		for bnd_i, bnd in enumerate(bnds_info.user_bnds):
 			bnd_info = BoundsInfo(bnd, None, bnds_info.bnds_type, bnd_i)
-			if not isinstance(bnd, (Number, sym.Expr)):
-				bnd_info = self._process_potential_dual_value_to_single_value(
-					bnd_info, p_info)
 			self._check_user_bound_missing(bnd_info, p_info)
 			bnd = self._as_lower_upper_pair(bnd_info, p_info)
 			bnds.append(bnd)
@@ -580,6 +577,9 @@ class PhaseBounds(BoundsABC):
 			else:
 				msg = (f"A bound value of {bnd} is not supported.")
 				raise NotImplementedError(msg)
+		elif not isinstance(bnd, (Number, sym.Expr)):
+			bnd_info = self._process_potential_dual_value_to_single_value(
+				bnd_info, p_info)
 		bnd = fast_sympify(bnd).xreplace(self._backend.all_subs_mappings)
 		node = Node(bnd, self._expr_graph)
 		if not node.is_precomputable:

@@ -1,7 +1,10 @@
 from typing import Optional
 
+from .backend import BackendABC
+from .bounds import BoundsABC
 from .mesh import PhaseMesh
 from .scaling import ScalingABC
+from .utils import format_multiple_items_for_output
 
 
 FIRST_ORDER = 1
@@ -47,6 +50,14 @@ class Settings():
 			update_scaling=ScalingABC._UPDATE_DEFAULT, 
 			number_scaling_samples=ScalingABC._NUMBER_SAMPLES_DEFAULT, 
 			scaling_update_weight=ScalingABC._UPDATE_WEIGHT_DEFAULT,
+			inf_value=BoundsABC._NUMERICAL_INF_DEFAULT,
+			assume_inf_bounds=BoundsABC._ASSUME_INF_BOUNDS_DEFAULT,
+			remove_constant_variables=BoundsABC._REMOVE_CONST_VARS_DEFAULT,
+			override_endpoint_bounds=BoundsABC._OVERRIDE_ENDPOINTS_DEFAULT,
+			bound_clash_tolerance=BoundsABC._BOUND_CLASH_TOLERANCE_DEFAULT,
+			maximise_objective=True,
+			backend=BackendABC._DEFAULT_BACKEND,
+
 			):
 
 		# Optimal Control Problem
@@ -82,6 +93,19 @@ class Settings():
 		self.display_mesh_refinement_info = display_mesh_refinement_info
 		self.display_mesh_result_info = display_mesh_result_info
 		self.display_mesh_result_graph = display_mesh_result_graph
+
+		# Bounds
+		self.inf_value = inf_value
+		self.assume_inf_bounds = assume_inf_bounds
+		self.remove_constant_variables = remove_constant_variables
+		self.override_endpoint_bounds = override_endpoint_bounds
+		self.bound_clash_tolerance = bound_clash_tolerance
+
+		# Backend
+		self.backend = backend
+
+		# Other
+		self.maximise_objective = maximise_objective
 
 	@property
 	def scaling_method(self) -> Optional[str]:
@@ -169,11 +193,12 @@ class Settings():
 	def linear_solver(self, linear_solver):
 		if self.nlp_solver == IPOPT:
 			if linear_solver not in self._LINEAR_SOLVERS:
-				msg = ("{} is not a valid linear solver.")
-				raise ValueError(msg.format(linear_solver))
+				msg = (f"{linear_solver} is not a valid linear solver.")
+				raise ValueError(msg)
 			self._linear_solver = linear_solver
 		elif self.nlp_solver == SNOPT:
-			msg = ("SNOPT is not currently supported. Please use IPOPT as the NLP solver.")
+			msg = ("SNOPT is not currently supported. Please use IPOPT as the "
+				f"NLP solver.")
 			raise NotImplementedError(msg)
 
 	@property
@@ -183,8 +208,9 @@ class Settings():
 	@nlp_tolerance.setter
 	def nlp_tolerance(self, tolerance):
 		if tolerance <= 0:
-			msg = ("Tolerance for the NLP must be a postive real number. {} is invalid.")
-			raise ValueError(msg.format(tolerance))
+			msg = (f"Tolerance for the NLP must be a postive real number. "
+				f"{tolerance} is invalid.")
+			raise ValueError(msg)
 		self._nlp_tolerance = tolerance
 
 	@property
@@ -208,7 +234,7 @@ class Settings():
 		if method not in self._QUADRATURE_METHODS:
 			msg = (f"The quadrature method of '{method}' is not a valid "
 				f"argument string.")
-			raise ValueError(msg.format(method))
+			raise ValueError(msg)
 		self._quadrature_method = method
 
 	@property
@@ -298,5 +324,20 @@ class Settings():
 	@display_mesh_result_graph.setter
 	def display_mesh_result_graph(self, val):
 		self._display_mesh_result_graph = bool(val)
+
+	@property
+	def backend(self):
+		return self._backend
+	
+	@backend.setter
+	def backend(self, backend):
+		backend = backend.casefold()
+
+		if backend not in BackendABC._BACKENDS:
+			valid_options = format_multiple_items_for_output(BackendABC._BACKENDS)
+			msg = (f"{backend} is not a valid backend option. Please choose "
+				f"from {valid_options}.")
+			raise ValueError(msg)
+		self._backend = backend
 
 

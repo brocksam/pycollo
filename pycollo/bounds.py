@@ -194,7 +194,7 @@ class PhaseBounds(BoundsABC):
 		return q_bnds
 
 	def _process_path_cons(self, p_info):
-		
+		pass
 
 	def _process_time_vars(self, p_info):
 		user_bnds = self.time_variables

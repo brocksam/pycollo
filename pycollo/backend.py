@@ -226,6 +226,7 @@ class Pycollo(BackendABC):
 			for i_s, _ in enumerate(self.ocp._s_vars_user))
 		self.num_s_vars = len(self.s_vars)
 		self.s_vars_subs_mappings = dict(zip(self.ocp._s_vars_user, self.s_vars))
+		self.s_vars_user = self.ocp._s_vars_user
 
 	def create_phase_backends(self):
 		self.p = tuple(PycolloPhaseData(self, phase) 

@@ -4,7 +4,7 @@ import sympy as sym
 import sympy.physics.mechanics as me
 
 try:
-	from pycollo import (OptimalControlProblem, )
+	import pycollo
 except ModuleNotFoundError:
 	from ..optimal_control_problem import OptimalControlProblem
 

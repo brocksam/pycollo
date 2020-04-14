@@ -126,7 +126,7 @@ class EndpointBounds(BoundsABC):
 		return bnds
 
 	def _process_single_value_bounds_instance(self, bnds_info):
-		if not isinstance(bnds_info.user_bnds, {float, sym.Expr}):
+		if not isinstance(bnds_info.user_bnds, (Number, sym.Expr)):
 			msg = ()
 			raise TypeError(msg)
 		bnds_info = bnds_info._replace(user_bnds=[bnds_info.user_bnds]*2)
@@ -507,13 +507,32 @@ class PhaseBounds(BoundsABC):
 		bnds = []
 		for bnd_i, bnd in enumerate(bnds_info.user_bnds):
 			bnd_info = BoundsInfo(bnd, None, bnds_info.bnds_type, bnd_i)
+			if not isinstance(bnd, (Number, sym.Expr)):
+				bnd_info = self._process_potential_dual_value_to_single_value(
+					bnd_info, p_info)
 			self._check_user_bound_missing(bnd_info, p_info)
 			bnd = self._as_lower_upper_pair(bnd_info, p_info)
 			bnds.append(bnd)
 		return bnds
 
+	def _process_potential_dual_value_to_single_value(self, bnd_info, p_info):
+		bnd = bnd_info.user_bnds
+		msg = (f"Single bounds in this form ('{bnd}') are not supported.")
+		is_list = isinstance(bnd, supported_iter_types)
+		if not is_list:
+			raise TypeError(msg)
+		is_len_2 = len(bnd) == 2
+		if not is_len_2:
+			raise ValueError(msg)
+		is_pair_same = bnd[0] == bnd[1]
+		if not is_pair_same:
+			raise ValueError(msg)
+		bnd = bnd[0]
+		bnd_info = bnd_info._replace(user_bnds=bnd)
+		return bnd_info
+
 	def _process_single_value_bounds_instance(self, bnds_info, p_info):
-		if not isinstance(bnds_info.user_bnds, {float, sym.Expr}):
+		if not isinstance(bnds_info.user_bnds, (Number, sym.Expr)):
 			msg = ()
 			raise TypeError(msg)
 		bnds_info = bnds_info._replace(user_bnds=[bnds_info.user_bnds]*2)

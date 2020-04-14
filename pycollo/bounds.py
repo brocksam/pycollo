@@ -1,3 +1,5 @@
+from abc import (ABC, abstractmethod)
+from collections import namedtuple
 from numbers import Number
 from typing import (Iterable, Optional, Union)
 
@@ -5,10 +7,31 @@ import numpy as np
 import scipy.optimize as optimize
 import sympy as sym
 
+from .node import Node
 from .typing import OptionalBoundsType
-from .utils import supported_iter_types 
+from .utils import (fast_sympify, format_multiple_items_for_output, 
+	supported_iter_types)
 
-class EndpointBounds:
+
+__all__ = ["EndpointBounds", "PhaseBounds"]
+
+
+class BoundsABC(ABC):
+
+	_NUMERICAL_INF_DEFAULT = 1e20
+	_ASSUME_INF_BOUNDS_DEFAULT = True
+	_REMOVE_CONST_VARS_DEFAULT = True
+	_OVERRIDE_ENDPOINTS_DEFAULT = True
+	_BOUND_CLASH_TOLERANCE_DEFAULT = 1e-6
+
+	@abstractmethod
+	def optimal_control_problem(self): pass
+
+	@abstractmethod
+	def _process_and_check_user_values(self): pass
+
+
+class EndpointBounds(BoundsABC):
 	
 	def __init__(self, optimal_control_problem):
 
@@ -18,9 +41,18 @@ class EndpointBounds:
 	def optimal_control_problem(self):
 		return self._ocp
 	
+	def _process_and_check_user_values(self):
+		raise NotImplementedError
 
 
-class PhaseBounds:
+phase_info_fields = ("name", "index", "backend")
+PhaseInfo = namedtuple("PhaseInfo", phase_info_fields)
+
+bounds_info_fields = ("user_bnds", "user_syms", "bnds_type", "num")
+BoundsInfo = namedtuple("BoundsInfo", bounds_info_fields)
+
+
+class PhaseBounds(BoundsABC):
 	"""Bounds on variables and constraints associated with a phase.
 
 	This class currently behaves like a data class, however additional 
@@ -111,26 +143,232 @@ class PhaseBounds:
 		self.initial_state_constraints = initial_state_constraints
 		self.final_state_constraints = final_state_constraints
 
-	def _check_bounds(self):
+	@property
+	def optimal_control_problem(self):
+		return self.phase.optimal_control_problem
 
-		ocp = self.phase.optimal_control_problem
-
-		# State
-		y_vars = self.phase.state_variables
-		y_vars = y_vars._fields if y_vars else ()
-
-
-		print(self.state_variables)
-		print(y_vars)
-
+	def _process_and_check_user_values(self, phase_backend):
+		self._backend = phase_backend
+		self._expr_graph = phase_backend.ocp_backend.expression_graph
+		self._INF = self.optimal_control_problem.settings.inf_value
+		p_info = self._get_phase_info(phase_backend)
+		y_bnds = self._process_state_vars(p_info)
+		u_bnds = self._process_control_vars(p_info)
+		q_bnds = self._process_integral_vars(p_info)
+		p_cons = self._process_path_cons(p_info)
+		t_bnds = self._process_time_vars(p_info)
 		print('\n\n\n')
+		raise NotImplementedError
 
-		self._y_l, self._y_u = parse_bounds_to_np_array(self.state, self._ocp._y_vars_user, 'state')
-		self._y_needed = compare_lower_and_upper(self._y_l, self._y_u, 'state')
-		self._y_b_needed = np.repeat(self._y_needed, 2)
+	def _get_phase_info(self, phase_backend):
+		phase_name = phase_backend.ocp_phase.name
+		phase_index = phase_backend.ocp_phase.phase_number
+		phase_info = PhaseInfo(phase_name, phase_index, phase_backend)
+		return phase_info
 
-		self._y_l_needed = self._y_l[self._y_needed.astype(bool)]
-		self._y_u_needed = self._y_u[self._y_needed.astype(bool)]
+	def _process_state_vars(self, p_info):
+		user_bnds = self.state_variables
+		user_syms = p_info.backend.y_vars_user
+		bnds_type = "state variable"
+		num_expected = p_info.backend.num_y_vars
+		bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expected)
+		y_bnds = self._process_single_type_of_values(bnds_info, p_info)
+		return y_bnds
+
+	def _process_control_vars(self, p_info):
+		user_bnds = self.control_variables
+		user_syms = p_info.backend.u_vars_user
+		bnds_type = "control variable"
+		num_expected = p_info.backend.num_u_vars
+		bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expected)
+		u_bnds = self._process_single_type_of_values(bnds_info, p_info)
+		return u_bnds
+
+	def _process_integral_vars(self, p_info):
+		user_bnds = self.integral_variables
+		user_syms = p_info.backend.q_vars_user
+		bnds_type = "integral variable"
+		num_expected = p_info.backend.num_q_vars
+		bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expected)
+		q_bnds = self._process_single_type_of_values(bnds_info, p_info)
+		return q_bnds
+
+	def _process_path_cons(self, p_info):
+		
+
+	def _process_time_vars(self, p_info):
+		user_bnds = self.time_variables
+		user_syms = p_info.backend.t_vars_user
+		bnds_type = "time variable"
+		num_expected = p_info.backend.num_t_vars
+		bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expected)
+		q_bnds = self._process_single_type_of_values(bnds_info, p_info)
+		return q_bnds
+
+	def _process_single_type_of_values(self, bnds_info, p_info):
+		"""
+		A single bound can either be a single value or a pair of values. If a 
+		single value is supplied then the lower and upper bound are set equal. 
+		For optimal control problem variables, if the lower and upper bound are 
+		equal then that variable shouldn't be treated as an optimal control 
+		problem variable. Pycollo should provide an option to automatically 
+		override this and instead treat the variable as an auxiliary constant, 
+		or raise an informative error to the user. If a pair of values are 
+		supplied then the first value is the lower bound and the second value 
+		is the upper bound. The lower bound must be less than or equal to the 
+		upper bound (within a tolerance than can be set in the settings module).
+
+		There are 3 options:
+			1. The bounds are a mapping with the key being something sensible;
+			2. The bounds are an iterable; and
+			3. The bounds are a single value.
+		"""
+		if isinstance(bnds_info.user_bnds, dict):
+			bnds = self._process_mapping_bounds_instance(bnds_info, p_info)
+		elif bnds_info.user_bnds is None:
+			bnds = self._process_none_bounds_instance(bnds_info, p_info)
+		else:
+			raise NotImplementedError
+		bnds = self._check_lower_against_upper(bnds, bnds_info, p_info)
+		return bnds
+
+	def _process_mapping_bounds_instance(self, bnds_info, p_info):
+		if bnds_info.user_syms is None:
+			msg = f"Can't use mapping for {bnds_info.bnds_type} bounds."
+			raise TypeError(msg)
+		bnds = []
+		for bnd_i, user_sym in enumerate(bnds_info.user_syms):
+			bnd = bnds_info.user_bnds.get(user_sym)
+			bnd_info = BoundsInfo(bnd, user_sym, bnds_info.bnds_type, bnd_i)
+			self._check_user_bound_missing(bnd_info, p_info)
+			bnd = self._as_lower_upper_pair(bnd_info, p_info)
+			bnds.append(bnd)
+		return bnds
+
+	def _check_user_bound_missing(self, bnd_info, p_info):
+		ocp_settings = self.optimal_control_problem.settings
+		is_bnd_none = bnd_info.user_bnds is None
+		is_inf_assumed = ocp_settings.assume_inf_bounds
+		if is_bnd_none and not is_inf_assumed:
+			self._raise_user_bound_missing_error(bnd_info, p_info)
+
+	def _raise_user_bound_missing_error(self, bnd_info, p_info):
+		msg = (f"No bounds have been supplied for the {bnd_info.bnds_type} "
+			f"'{bnd_info.user_syms}' (index #{bnd_info.num}) in phase "
+			f"{p_info.name} (index #{p_info.index}).")
+		raise ValueError(msg)		
+
+	def _process_iterable_bounds_instance(self, bnds_info, p_info):
+		pass
+
+	def _process_single_value_bounds_instance(self, bnds_info, p_info):
+		pass
+
+	def _process_none_bounds_instance(self, bnds_info, p_info):
+		bnds = []
+		for bnd_i, user_sym in enumerate(bnds_info.user_syms):
+			bnd = None
+			bnd_info = BoundsInfo(bnd, user_sym, bnds_info.bnds_type, bnd_i)
+			self._check_user_bound_missing(bnd_info, p_info)
+			bnd = self._as_lower_upper_pair(bnd_info, p_info)
+			bnds.append(bnd)
+		return bnds
+
+	def _as_lower_upper_pair(self, bnd_info, p_info):
+		bnds = np.array(bnd_info.user_bnds).flatten()
+		if bnds.shape == (1, ):
+			both = "lower and upper bounds"
+			both_info = bnd_info._replace(user_bnds=bnds[0])
+			lower_bnd = self._get_bound_as_number(both_info, p_info, both)
+			upper_bnd = lower_bnd
+		elif bnds.shape == (2, ):
+			lower = "lower bound"
+			upper = "upper bound"
+			lower_info = bnd_info._replace(user_bnds=bnds[0])
+			upper_info = bnd_info._replace(user_bnds=bnds[1])
+			lower_bnd = self._get_bound_as_number(lower_info, p_info, lower)
+			upper_bnd = self._get_bound_as_number(upper_info, p_info, upper)
+		else:
+			raise ValueError
+		lower_bnd = - self._INF if lower_bnd is None else lower_bnd
+		upper_bnd = self._INF if upper_bnd is None else upper_bnd
+		return [lower_bnd, upper_bnd]
+
+	def _get_bound_as_number(self, bnd_info, p_info, lower_upper):
+		bnd = bnd_info.user_bnds
+		if bnd is None:
+			return bnd
+		bnd = fast_sympify(bnd).xreplace(self._backend.all_subs_mappings)
+		node = Node(bnd, self._expr_graph)
+		if not node.is_precomputable:
+			msg = (f"The user-supplied {lower_upper} for the {bnd_info.bnds_type} "
+				f"'{bnd_info.user_sym}' (index #{bnd_info.num}) in phase "
+				f"{p_info.name} (index #{p_info.index}) of '{bnd}' cannot be "
+				f"precomputed.")
+			raise ValueError(msg)
+		return node.value
+
+	def _check_lower_against_upper(self, bnds, bnds_info, p_info):
+		if not bnds:
+			return np.empty(shape=(0, 2), dtype=float)
+		bnds = np.array(bnds, dtype=float)
+		bnds = self._check_lower_same_as_upper_to_tol(bnds, bnds_info, p_info)
+		bnds = self._check_lower_less_than_upper(bnds, bnds_info, p_info)
+		return bnds
+
+	def _check_lower_same_as_upper_to_tol(self, bnds, bnds_info, p_info):
+		lower_bnds = bnds[:, 0]
+		upper_bnds = bnds[:, 1]
+		rtol = self.optimal_control_problem.settings.bound_clash_tolerance
+		are_same = np.isclose(lower_bnds, upper_bnds, rtol=rtol, atol=0.0)
+		if np.any(are_same):
+			msg = (f"Can't currently handle casting values constrained by "
+				f"bounds to constants.")
+			raise NotImplementedError(msg)
+		mean_bnds = (lower_bnds + upper_bnds)/2
+		bnds[are_same, 0] = mean_bnds[are_same]
+		bnds[are_same, 1] = mean_bnds[are_same]
+		bnds = self._extract_variables_to_constants(bnds, bnds_info, p_info)
+		return bnds
+
+	def _check_lower_less_than_upper(self, bnds, bnds_info, p_info):
+		lower_bnds = bnds[:, 0]
+		upper_bnds = bnds[:, 1]
+		lower_less_than_upper = lower_bnds <= upper_bnds
+		all_less_than = np.all(lower_less_than_upper)
+		if not all_less_than:
+			error_indices = np.flatnonzero(~lower_less_than_upper)
+			error_syms = np.array(bnds_info.user_syms)[error_indices]
+			plural_needed = len(error_indices) > 1
+			bound_plural = "bounds" if plural_needed else "bound"
+			index_plural = "indices" if plural_needed else "index"
+			bnds_type_plural = f"{bnds_info.bnds_type}{'s' if plural_needed else ''}"
+			user_syms_formatted = format_multiple_items_for_output(error_syms)
+			user_indices_formatted = format_multiple_items_for_output(
+				error_indices, wrapping_char="", prefix_char="#")
+			lower_bnds_formatted = format_multiple_items_for_output(
+				lower_bnds[error_indices])
+			upper_bnds_formatted = format_multiple_items_for_output(
+				upper_bnds[error_indices])
+			msg = (f"The user-supplied upper {bound_plural} for the "
+				f"{bnds_type_plural} {user_syms_formatted} ({index_plural} "
+				f"{user_indices_formatted}) in phase {p_info.name} (index "
+				f"#{p_info.index}) of {upper_bnds_formatted} cannot be less "
+				f"than the user-supplied lower {bound_plural} of "
+				f"{lower_bnds_formatted}.")
+			raise ValueError(msg)
+		return bnds
+
+	def _extract_variables_to_constants(self, bnds, bnds_info, p_info):
+		# self.optimal_control_problem.settings.remove_constant_variables
+		return bnds
+
+		# self._y_l, self._y_u = parse_bounds_to_np_array(self.state, self._ocp._y_vars_user, 'state')
+		# self._y_needed = compare_lower_and_upper(self._y_l, self._y_u, 'state')
+		# self._y_b_needed = np.repeat(self._y_needed, 2)
+
+		# self._y_l_needed = self._y_l[self._y_needed.astype(bool)]
+		# self._y_u_needed = self._y_u[self._y_needed.astype(bool)]
 
 		# # Control
 		# self._u_l, self._u_u = parse_bounds_to_np_array(self.control, self._ocp._u_vars_user, 'control')
@@ -212,6 +450,19 @@ class PhaseBounds:
 
 
 
+def replace_symbol_with_numeric_value(expression_graph, symbol):
+
+	return num_val
+
+
+
+
+class Bounds:
+
+	def __init__(self, ocp_backend):
+		self.ocp_backend = ocp_backend
+		for p in self.ocp_backend.p:
+			p.ocp_phase.bounds._process_and_check_user_values(p)
 
 
 

@@ -4,13 +4,20 @@ import numpy as np
 import scipy.sparse as sparse
 
 
+DEFAULT = "default"
+BOUNDS = "bounds"
+USER = "user"
+GUESS = "guess"
+NONE = "none"
+
+
 class ScalingABC(abc.ABC):
 
 	_NONE_SCALING_DEFAULT = 1
 	_STRETCH_DEFAULT = 1
 	_SHIFT_DEFAULT = 0
-	_METHOD_OPTIONS = {"default", "bounds", "user", "guess", "none", None}
-	_METHOD_DEFAULT = "bounds"
+	_METHOD_OPTIONS = {DEFAULT, BOUNDS, USER, GUESS, NONE, None}
+	_METHOD_DEFAULT = BOUNDS
 	_UPDATE_DEFAULT = True
 	_NUMBER_SAMPLES_DEFAULT = 100
 	_UPDATE_WEIGHT_DEFAULT = 0.8
@@ -92,9 +99,9 @@ class Scaling:
 		self.ocp = backend.ocp
 		self._GENERATE_DISPATCHER = {
 			None: self._generate_none,
-			"user": self._generate_user,
-			"bounds": self._generate_bounds,
-			"guess": self._generate_guess,
+			USER: self._generate_user,
+			BOUNDS: self._generate_bounds,
+			GUESS: self._generate_guess,
 			}
 
 	def _generate(self):

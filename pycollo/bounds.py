@@ -71,7 +71,7 @@ class EndpointBounds(BoundsABC):
 
 	def _process_endpoint_cons(self):
 		user_bnds = self.endpoint_constraints
-		user_syms = None
+		user_syms = [None] * self._backend.num_c_endpoint
 		bnds_type = "endpoint constraints"
 		num_expected = self._backend.num_c_endpoint
 		bnds_info = BoundsInfo(
@@ -92,7 +92,7 @@ class EndpointBounds(BoundsABC):
 		return bnds, needed
 
 	def _process_mapping_bounds_instance(self, bnds_info):
-		if bnds_info.user_syms is None:
+		if any(user_sym is None for user_sym in bnds_info.user_syms):
 			msg = f"Can't use mapping for {bnds_info.bnds_type} bounds."
 			raise TypeError(msg)
 		bnds = []
@@ -379,7 +379,7 @@ class PhaseBounds(BoundsABC):
 
 	def _process_path_cons(self, p_info):
 		user_bnds = self.path_constraints
-		user_syms = None
+		user_syms = [None] * p_info.backend.num_c_path
 		bnds_type = "path constraints"
 		num_expected = p_info.backend.num_c_path
 		bnds_info = BoundsInfo(
@@ -437,14 +437,19 @@ class PhaseBounds(BoundsABC):
 			user_bnds, user_syms, bnds_type, num_expected, False)
 		y_tF_bnds, self._y_tF_needed = self._process_single_type_of_values(
 			bnds_info, p_info)
-		if self.optimal_control_problem.settings.override_endpoint_bounds:
-			y_tF_bnds = self._override_endpoint_bounds(y_tF_bnds)
-		self._y_tF_bnds = y_tF_bnds
+		self._y_tF_bnds = self._override_endpoint_bounds(y_tF_bnds)
 
 	def _override_endpoint_bounds(self, y_b_bnds):
+		override = self.optimal_control_problem.settings.override_endpoint_bounds
 		lower_is_less = y_b_bnds[:, 0] < self._y_bnds[:, 0]
+		if not override and np.any(lower_is_less):
+			msg = (f"")
+			raise ValueError(msg)
 		y_b_bnds[lower_is_less, 0] = self._y_bnds[lower_is_less, 0]
 		upper_is_more = y_b_bnds[:, 1] > self._y_bnds[:, 1]
+		if not override and np.any(upper_is_more):
+			msg = (f"")
+			raise ValueError(msg)
 		y_b_bnds[upper_is_more, 1] = self._y_bnds[upper_is_more, 1]
 		return y_b_bnds
 
@@ -478,7 +483,7 @@ class PhaseBounds(BoundsABC):
 		return bnds, needed
 
 	def _process_mapping_bounds_instance(self, bnds_info, p_info):
-		if bnds_info.user_syms is None:
+		if any(user_sym is None for user_sym in bnds_info.user_syms):
 			msg = f"Can't use mapping for {bnds_info.bnds_type} bounds."
 			raise TypeError(msg)
 		bnds = []

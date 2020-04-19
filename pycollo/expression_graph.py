@@ -488,7 +488,8 @@ class ExpressionGraph:
 			num_f = len(function_nodes)
 			derivative = sym.Matrix.zeros(num_f, num_e0)
 			for df_dei, delta_i in zip(df_de, delta_matrices):
-				derivative += df_dei*delta_i
+				if df_dei.shape != (0, 0):
+					derivative += df_dei*delta_i
 			return derivative
 
 		dependent_nodes_by_tier_collapsed = [wrt]

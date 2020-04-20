@@ -16,6 +16,7 @@ import sympy as sym
 from pycollo.guess import Guess
 from pycollo.mesh import Mesh
 from pycollo.scaling import IterationScaling
+from .utils import console_out
 
 class Iteration:
 
@@ -27,7 +28,13 @@ class Iteration:
 		self.index = index
 		self.number = index + 1
 		self._mesh = mesh
-		self._guess = guess
+
+		msg = f"Initialising mesh iteration #{self.number}."
+		console_out(msg, heading=True)
+
+		self.interpolate_guess_to_mesh(guess)
+
+		self.initialise()
 
 		# # Optimal control problem
 		# self._ocp = optimal_control_problem
@@ -60,9 +67,9 @@ class Iteration:
 	def mesh(self):
 		return self._mesh
 	
-	@property
-	def guess(self):
-		return self._guess
+	# @property
+	# def guess(self):
+	# 	return self._guess
 	
 	@property
 	def result(self):
@@ -96,68 +103,71 @@ class Iteration:
 	def solution(self):
 		return self._solution
 
-	def initialise(self):
+	def interpolate_guess_to_mesh(self, prev_guess):
 
-		def interpolate_to_new_mesh(num_vars, prev):
-			new_guess = np.empty((num_vars, self._mesh._N))
+		def interpolate_to_new_mesh(prev_tau, tau, num_vars, prev, N):
+			new_guess = np.empty((num_vars, N))
 			for index, row in enumerate(prev):
-				interp_func = interpolate.interp1d(prev_guess._tau, row)
-				new_guess[index, :] = interp_func(self._guess._tau)
+				interp_func = interpolate.interp1d(prev_tau, row)
+				new_guess[index, :] = interp_func(tau)
 			return new_guess
 
 		# Guess
-		self._guess = Guess(
-			optimal_control_problem=self._ocp)
-		self._guess._iteration = self
-		self._guess._mesh = self._mesh
-		self._mesh._guess = self._guess
-		self._guess._tau = self._mesh._tau
-		self._guess._t0 = prev_guess._t0
-		self._guess._tF = prev_guess._tF
-		self._guess._stretch = 0.5 * (self._guess._tF - self._guess._t0)
-		self._guess._shift = 0.5 * (self._guess._t0 + self._guess._tF)
-		self._guess._time = (self._mesh._tau * self._guess._stretch) + self._guess._shift
-		self._guess._y = interpolate_to_new_mesh(self._ocp._num_y_vars, prev_guess._y) if self._ocp._num_y_vars else np.array([])
-		self._guess._u = interpolate_to_new_mesh(self._ocp._num_u_vars, prev_guess._u) if self._ocp._num_u_vars else np.array([])
-		self._guess._q = prev_guess._q
-		self._guess._t = prev_guess._t
-		self._guess._s = prev_guess._s
-		print('Guess interpolated to iteration mesh.')
+		self.guess_tau = self.mesh.tau
+		self.guess_t0 = prev_guess.t0
+		self.guess_tF = prev_guess.tF
+		self.guess_stretch = [0.5 * (tF - t0) for t0, tF in zip(self.guess_t0, self.guess_tF)]
+		self.guess_shift = [0.5 * (t0 + tF) for t0, tF in zip(self.guess_t0, self.guess_tF)]
+		self.guess_time = [tau*stretch + shift for tau, stretch, shift in zip(self.guess_tau, self.guess_stretch, self.guess_shift)]
+		self.guess_y = [interpolate_to_new_mesh(prev_tau, tau, p.num_y_vars, prev_y, N) for prev_tau, tau, p, prev_y, N in zip(prev_guess.tau, self.guess_tau, self.backend.p, prev_guess.y, self.mesh.N)]
+		self.guess_u = [interpolate_to_new_mesh(prev_tau, tau, p.num_u_vars, prev_u, N) for prev_tau, tau, p, prev_u, N in zip(prev_guess.tau, self.guess_tau, self.backend.p, prev_guess.u, self.mesh.N)]
+		self.guess_q = prev_guess.q
+		self.guess_t = prev_guess.t
+		self.guess_s = prev_guess.s
+
+		msg = ("Guess interpolated to iteration mesh.")
+		console_out(msg)
+
+	def initialise(self):
+
+		pass
+
+		
 
 	def _initialise_iteration(self, prev_guess):
 
-		_ = self._display_mesh_iteration()
+		# _ = self._display_mesh_iteration()
 
-		initialisation_time_start = timer()
+		# initialisation_time_start = timer()
 
-		def interpolate_to_new_mesh(num_vars, prev):
-			new_guess = np.empty((num_vars, self._mesh._N))
-			for index, row in enumerate(prev):
-				interp_func = interpolate.interp1d(prev_guess._tau, row)
-				new_guess[index, :] = interp_func(self._guess._tau)
-			return new_guess
+		# def interpolate_to_new_mesh(num_vars, prev):
+		# 	new_guess = np.empty((num_vars, self._mesh._N))
+		# 	for index, row in enumerate(prev):
+		# 		interp_func = interpolate.interp1d(prev_guess._tau, row)
+		# 		new_guess[index, :] = interp_func(self._guess._tau)
+		# 	return new_guess
 
-		# Mesh
-		self._mesh._generate_mesh()
+		# # Mesh
+		# self._mesh._generate_mesh()
 
-		# Guess
-		self._guess = Guess(
-			optimal_control_problem=self._ocp)
-		self._guess._iteration = self
-		self._guess._mesh = self._mesh
-		self._mesh._guess = self._guess
-		self._guess._tau = self._mesh._tau
-		self._guess._t0 = prev_guess._t0
-		self._guess._tF = prev_guess._tF
-		self._guess._stretch = 0.5 * (self._guess._tF - self._guess._t0)
-		self._guess._shift = 0.5 * (self._guess._t0 + self._guess._tF)
-		self._guess._time = (self._mesh._tau * self._guess._stretch) + self._guess._shift
-		self._guess._y = interpolate_to_new_mesh(self._ocp._num_y_vars, prev_guess._y) if self._ocp._num_y_vars else np.array([])
-		self._guess._u = interpolate_to_new_mesh(self._ocp._num_u_vars, prev_guess._u) if self._ocp._num_u_vars else np.array([])
-		self._guess._q = prev_guess._q
-		self._guess._t = prev_guess._t
-		self._guess._s = prev_guess._s
-		print('Guess interpolated to iteration mesh.')
+		# # Guess
+		# self._guess = Guess(
+		# 	optimal_control_problem=self._ocp)
+		# self._guess._iteration = self
+		# self._guess._mesh = self._mesh
+		# self._mesh._guess = self._guess
+		# self._guess._tau = self._mesh._tau
+		# self._guess._t0 = prev_guess._t0
+		# self._guess._tF = prev_guess._tF
+		# self._guess._stretch = 0.5 * (self._guess._tF - self._guess._t0)
+		# self._guess._shift = 0.5 * (self._guess._t0 + self._guess._tF)
+		# self._guess._time = (self._mesh._tau * self._guess._stretch) + self._guess._shift
+		# self._guess._y = interpolate_to_new_mesh(self._ocp._num_y_vars, prev_guess._y) if self._ocp._num_y_vars else np.array([])
+		# self._guess._u = interpolate_to_new_mesh(self._ocp._num_u_vars, prev_guess._u) if self._ocp._num_u_vars else np.array([])
+		# self._guess._q = prev_guess._q
+		# self._guess._t = prev_guess._t
+		# self._guess._s = prev_guess._s
+		# print('Guess interpolated to iteration mesh.')
 
 		# Variables
 		self._num_y = self._ocp._num_y_vars * self._mesh._N

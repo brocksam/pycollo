@@ -100,7 +100,7 @@ class PhaseMesh:
 		string = (f"PhaseMesh(number_mesh_sections={self._num_mesh_secs}, "
 			f"mesh_section_sizes={self._mesh_sec_sizes}, "
 			f"number_mesh_section_nodes={self._num_mesh_sec_nodes})")
-		print(string)
+		return string
 
 
 
@@ -205,7 +205,7 @@ class Mesh:
 		self.N = []
 		self.mesh_index_boundaries = []
 		self.h_K = []
-		self.num_c_boundary_per_y = []
+		self.num_c_defect_per_y = []
 		self.W_matrix = []
 		self.sA_matrix = []
 		self.sD_matrix = []
@@ -218,7 +218,7 @@ class Mesh:
 			self.N.append(data[2])
 			self.mesh_index_boundaries.append(data[3])
 			self.h_K.append(data[4])
-			self.num_c_boundary_per_y.append(data[5])
+			self.num_c_defect_per_y.append(data[5])
 			self.W_matrix.append(data[6])
 			self.sA_matrix.append(data[7])
 			self.sD_matrix.append(data[8])

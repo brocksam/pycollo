@@ -24,7 +24,7 @@ phase_A.state_equations = {
 	y2: u0 / s0,
 	y3: u1 / s0,
 	}
-phase_A.path_constraints = [y0**2 + y1**2 - 1]
+phase_A.path_constraints = [sym.sqrt(y0**2 + y1**2) - 1]
 phase_A.integrand_functions = [u0**2, u1**2]
 phase_A.auxiliary_data = {}
 
@@ -103,7 +103,20 @@ problem.objective_function = (phase_A.integral_variables[0]
 	+ phase_B.integral_variables[0]
 	+ phase_B.integral_variables[1])
 
+problem.endpoint_constraints = [
+	phase_A.final_state_variables.y0 - phase_B.initial_state_variables.y0,
+	phase_A.final_state_variables.y1 - phase_B.initial_state_variables.y1,
+	phase_A.final_state_variables.y2 - phase_B.initial_state_variables.y2,
+	phase_A.final_state_variables.y3 - phase_B.initial_state_variables.y3,
+	]
+
 problem.bounds.parameter_variables = [[1, 2]]
+problem.bounds.endpoint_constraints = [
+	0,
+	0,
+	0,
+	0,
+	]
 
 problem.guess.parameter_variables = np.array([1.5])
 
@@ -120,8 +133,10 @@ problem.settings.collocation_points_max = 3
 
 phase_A.mesh.number_mesh_sections = 2
 phase_A.mesh.number_mesh_section_nodes = [2, 3]
+phase_A.mesh.mesh_section_sizes = [1/2, 1/2]
 phase_B.mesh.number_mesh_sections = 2
 phase_B.mesh.number_mesh_section_nodes = [3, 2]
+phase_B.mesh.mesh_section_sizes = [1/2, 1/2]
 
 problem.initialise()
 

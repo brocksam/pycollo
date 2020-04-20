@@ -18,29 +18,29 @@ class Quadrature:
 		self._A_index_arrays = {}
 
 	@property
-	def _settings(self):
-		return self._ocp._settings
+	def settings(self):
+		return self.backend.ocp.settings
 
 	@property
-	def _ocp(self):
-		return self._ocp_priv
+	def backend(self):
+		return self._backend
 
-	@_ocp.setter
-	def _ocp(self, ocp):
-		self._ocp_priv = ocp
-		self._order_range = list(range(self._settings._col_points_min, self._settings._col_points_max))
-		if self._settings._quadrature_method == 'lobatto':
-			self._quadrature_generator = self._lobatto_generator
-		elif self._settings._quadrature_method == 'radau':
-			self._quadrature_generator = self._radau_generator
-		elif self._settings._quadrature_method == 'gauss':
-			self._quadrature_generator = self._gauss_generator
+	@backend.setter
+	def backend(self, backend):
+		self._backend = backend
+		self.order_range = list(range(self.settings.collocation_points_min, self.settings.collocation_points_max))
+		if self.settings.quadrature_method == "lobatto":
+			self.quadrature_generator = self.lobatto_generator
+		elif self.settings.quadrature_method == "radau":
+			self.quadrature_generator = self.radau_generator
+		elif self.settings.quadrature_method == "gauss":
+			self.quadrature_generator = self.gauss_generator
 
 	def _retrive_or_generate_dict_value(self, quad_dict, order):
 		try:
 			quad_dict[order]
 		except KeyError:
-			self._quadrature_generator(order)
+			self.quadrature_generator(order)
 		return quad_dict[order]
 
 	def polynomials(self, order):
@@ -144,7 +144,7 @@ class Quadrature:
 		D_index_array.sort()
 		self._D_index_arrays.update({order: D_index_array})
 	
-	def _lobatto_generator(self, order):
+	def lobatto_generator(self, order):
 		num_interior_points = order - 1
 		coefficients = [0]*(num_interior_points)
 		coefficients.append(1)

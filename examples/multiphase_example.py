@@ -114,6 +114,7 @@ problem.settings.backend = "pycollo"
 problem.settings.scaling_method = "bounds"
 problem.settings.assume_inf_bounds = False
 problem.settings.inf_value = 1e16
+problem.settings.check_nlp_functions = True
 
 problem.initialise()
 

@@ -1,3 +1,5 @@
+import numpy as np
+
 from .numbafy import numbafy
 from .utils import console_out
 

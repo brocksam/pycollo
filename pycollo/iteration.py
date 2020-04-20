@@ -28,11 +28,7 @@ class Iteration:
 		self.index = index
 		self.number = index + 1
 		self._mesh = mesh
-
-		msg = f"Initialising mesh iteration #{self.number}."
-		console_out(msg, heading=True)
-
-		self.interpolate_guess_to_mesh(guess)
+		self.prev_guess = guess
 
 		self.initialise()
 
@@ -51,9 +47,6 @@ class Iteration:
 		
 		# # Result
 		# self._result = None
-
-	def _display_mesh_iteration(self):
-		print(f'\n\n\n==========================\nSolving Mesh Iteration {self.iteration_number}:\n==========================\n')
 
 	@property
 	def optimal_control_problem(self):
@@ -103,6 +96,21 @@ class Iteration:
 	def solution(self):
 		return self._solution
 
+	def initialise(self):
+		self.console_out_initialising_iteration()
+		self.interpolate_guess_to_mesh(self.prev_guess)
+		self.create_variable_constraint_numbers_slices()
+		self.generate_nlp_lambdas()
+		# self.generate_bounds()
+		# self.generate_scaling()
+		# self.reset_bounds()
+		# self.initialise_nlp()
+		self.check_nlp_functions()
+
+	def console_out_initialising_iteration(self):
+		msg = f"Initialising mesh iteration #{self.number}."
+		console_out(msg, heading=True)
+
 	def interpolate_guess_to_mesh(self, prev_guess):
 
 		def interpolate_to_new_mesh(prev_tau, tau, num_vars, prev, N):
@@ -128,11 +136,297 @@ class Iteration:
 		msg = ("Guess interpolated to iteration mesh.")
 		console_out(msg)
 
-	def initialise(self):
+	def create_variable_constraint_numbers_slices(self):
 
-		pass
+		self.num_y_per_phase = []
+		self.num_u_per_phase = []
+		self.num_q_per_phase = []
+		self.num_t_per_phase = []
+		self.num_x_per_phase = []
+		for p_backend, N in zip(self.backend.p, self.mesh.N):
+			num_y = p_backend.num_y_vars * N
+			num_u = p_backend.num_u_vars * N
+			num_q = p_backend.num_q_vars
+			num_t = p_backend.num_t_vars
+			num_x = num_y + num_u + num_q + num_t
+			self.num_y_per_phase.append(num_y)
+			self.num_u_per_phase.append(num_u)
+			self.num_q_per_phase.append(num_q)
+			self.num_t_per_phase.append(num_t)
+			self.num_x_per_phase.append(num_x)
+		self.num_y = sum(num_y for num_y in self.num_y_per_phase)
+		self.num_u = sum(num_u for num_u in self.num_u_per_phase)
+		self.num_q = sum(num_q for num_q in self.num_q_per_phase)
+		self.num_t = sum(num_t for num_t in self.num_t_per_phase)
+		self.num_s = self.backend.num_s_vars
+		self.num_x = self.num_y + self.num_u + self.num_q + self.num_t + self.num_s
 
-		
+		self.y_slices = []
+		self.u_slices = []
+		self.q_slices = []
+		self.t_slices = []
+		self.x_slices = []
+		total = 0
+		for num_y, num_u, num_q, num_t, num_x in zip(self.num_y_per_phase, self.num_u_per_phase, self.num_q_per_phase, self.num_t_per_phase, self.num_x_per_phase):
+			y_slice = slice(total, total + num_y)
+			u_slice = slice(y_slice.stop, y_slice.stop + num_u)
+			q_slice = slice(u_slice.stop, u_slice.stop + num_q)
+			t_slice = slice(q_slice.stop, q_slice.stop + num_t)
+			x_slice = slice(y_slice.start, t_slice.stop)
+			self.y_slices.append(y_slice)
+			self.u_slices.append(u_slice)
+			self.q_slices.append(q_slice)
+			self.t_slices.append(t_slice)
+			self.x_slices.append(x_slice)
+			total += num_x
+		self.s_slice = slice(self.num_x - self.num_s, self.num_x)
+
+		# self._yu_slice = slice(self._y_slice.start, self._u_slice.stop)
+		# self._qts_slice = slice(self._q_slice.start, self._s_slice.stop)
+		# self._yu_qts_split = self._yu_slice.stop
+
+		# # Constraints
+		# self._num_c_defect = self._ocp.number_state_equations * self._mesh._num_c_boundary_per_y
+		# self._num_c_path = self._ocp.number_path_constraints * self._mesh._N
+		# self._num_c_integral = self._ocp.number_integrand_functions
+		# self._num_c_boundary = self._ocp.number_state_endpoint_constraints + self._ocp.number_endpoint_constraints
+		# self._num_c = self._num_c_defect + self._num_c_path + self._num_c_integral + self._num_c_boundary
+
+		# self._c_lambda_dy_slice = slice(0, self._num_y)
+		# self._c_lambda_p_slice = slice(self._c_lambda_dy_slice.stop, self._c_lambda_dy_slice.stop + self._num_c_path*self._mesh._N)
+		# self._c_lambda_g_slice = slice(self._c_lambda_p_slice.stop, self._c_lambda_p_slice.stop + self._num_c_integral*self._mesh._N)
+
+		# self._c_defect_slice = slice(0, self._num_c_defect)
+		# self._c_path_slice = slice(self._c_defect_slice.stop, self._c_defect_slice.stop + self._num_c_path)
+		# self._c_integral_slice = slice(self._c_path_slice.stop, self._c_path_slice.stop + self._num_c_integral)
+		# self._c_boundary_slice = slice(self._c_integral_slice.stop, self._num_c)
+
+	def generate_nlp_lambdas(self):
+
+		self.generate_unscale_variables_lambda()
+		self.generate_continuous_variables_reshape_lambda()
+		self.generate_endpoint_variables_reshape_lambda()
+		self.generate_objective_lambda()
+
+	def generate_unscale_variables_lambda(self):
+
+		def unscale_x(x):
+			# x = self.scaling.x_stretch*(x - self.scaling.x_shift)
+			return x
+
+		self._unscale_x = unscale_x
+		msg = "Variable unscale lambda generated successfully."
+		console_out(msg)
+
+	def generate_continuous_variables_reshape_lambda(self):
+
+		def reshape_x(x):
+			x = self._unscale_x(x)
+			num_yu = self._ocp._num_y_vars + self._ocp._num_u_vars
+			yu_qts_split = self._q_slice.start
+			x_tuple = self._ocp._x_reshape_lambda(x, num_yu, yu_qts_split)
+			return x_tuple
+
+		self._reshape_x = reshape_x
+		msg = "Continuous variable reshape lambda generated successfully."
+		console_out(msg)
+
+	def generate_endpoint_variables_reshape_lambda(self):
+
+		self._x_endpoint_indices = []
+		for p_backend, x_slice, q_slice, t_slice, N in zip(self.backend.p, self.x_slices, self.q_slices, self.t_slices, self.mesh.N):
+			for i in range(p_backend.num_y_vars):
+				start = x_slice.start
+				i_y_t0 = start + i*N
+				i_y_tF = start + (i+1)*N - 1
+				self._x_endpoint_indices.append(i_y_t0)
+				self._x_endpoint_indices.append(i_y_tF)
+			self._x_endpoint_indices.extend(list(range(q_slice.start, q_slice.stop)))
+			self._x_endpoint_indices.extend(list(range(t_slice.start, t_slice.stop)))
+		self._x_endpoint_indices.extend(list(range(self.s_slice.start, self.s_slice.stop)))
+
+		def reshape_x_point(x):
+			x = self._unscale_x(x)
+			return self.backend.compiled_functions.x_reshape_lambda_point(x, self._x_endpoint_indices)
+
+		self._reshape_x_point = reshape_x_point
+		msg = "Endpoint variable reshape lambda generated successfully."
+		console_out(msg)
+
+	def generate_objective_lambda(self):
+
+		def objective(x):
+			x_tuple_point = self._reshape_x_point(x)
+			J = self.backend.compiled_functions.J_lambda(x_tuple_point)
+			return J
+
+		self._objective_lambda = objective
+		msg = "Objective function lambda generated successfully."
+		console_out(msg)
+
+	def generate_bounds(self):
+		self.generate_variable_bounds()
+		self.generate_constraint_bounds()
+		msg = "Mesh-specific bounds generated."
+		console_out(msg)
+
+	def generate_variable_bounds(self):
+
+		bnd_l = np.empty((self.num_x, ))
+		bnd_u = np.empty((self.num_x, ))
+
+		# y bounds
+		bnd_l[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_l_needed.reshape(1, -1)).flatten('F').squeeze()
+		bnd_u[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_u_needed.reshape(1, -1)).flatten('F').squeeze()
+
+		# u bounds
+		bnd_l[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_l_needed.reshape(1, -1)).flatten('F').squeeze()
+		bnd_u[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_u_needed.reshape(1, -1)).flatten('F').squeeze()
+
+		# q bounds
+		bnd_l[self._q_slice] = self._ocp._bounds._q_l_needed
+		bnd_u[self._q_slice] = self._ocp._bounds._q_u_needed
+
+		# t bounds
+		bnd_l[self._t_slice] = self._ocp._bounds._t_l_needed
+		bnd_u[self._t_slice] = self._ocp._bounds._t_u_needed
+
+		# s bounds
+		bnd_l[self._s_slice] = self._ocp._bounds._s_l_needed
+		bnd_u[self._s_slice] = self._ocp._bounds._s_u_needed
+
+		self._x_bnd_l = bnd_l
+		self._x_bnd_u = bnd_u
+
+	def generate_constraint_bounds(self):
+
+		bnd_l = np.zeros((self._num_c, ))
+		bnd_u = np.zeros((self._num_c, ))
+
+		# Path constraints bounds
+		bnd_l[self._c_path_slice] = (self._ocp._bounds._c_l * self._mesh._N).flatten()
+		bnd_u[self._c_path_slice] = (self._ocp._bounds._c_u * self._mesh._N).flatten()
+
+		# Boundary constrants bounds
+		bnd_l[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_l, self._ocp._bounds._b_l))
+		bnd_u[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_u, self._ocp._bounds._b_u))
+
+		self._c_bnd_l = bnd_l 
+		self._c_bnd_u = bnd_u
+
+	def generate_scaling(self):
+		self.scaling = IterationScaling(self)
+		self.scaling._generate()
+		msg = "Scaling generated."
+		console_out(msg)
+
+	def reset_bounds(self):
+		self.generate_variable_bounds()
+
+	def initialise_nlp(self):
+
+		if self.backend.ocp.settings.derivative_level == 1:
+			self._hessian_lambda = None
+			self._hessian_structure_lambda = None
+
+		if self.backend.ocp.settings.nlp_solver == "ipopt":
+
+			self._ipopt_problem = IPOPTProblem(
+				self._objective_lambda, 
+				self._gradient_lambda, 
+				self._constraint_lambda, 
+				self._jacobian_lambda, 
+				self._jacobian_structure_lambda,
+				self._hessian_lambda,
+				self._hessian_structure_lambda,
+				)
+
+			self._nlp_problem = ipopt.problem(
+				n=self._num_x,
+				m=self._num_c,
+				problem_obj=self._ipopt_problem,
+				lb=self._x_bnd_l,
+				ub=self._x_bnd_u,
+				cl=self._c_bnd_l,
+				cu=self._c_bnd_u)
+
+			self._nlp_problem.addOption('mu_strategy', 'adaptive')
+			self._nlp_problem.addOption('tol', self._ocp._settings.nlp_tolerance)
+			self._nlp_problem.addOption('max_iter', self._ocp._settings.max_nlp_iterations)
+			self._nlp_problem.addOption('print_level', 5)
+			# self._nlp_problem.addOption('nlp_scaling_method', 'gradient-based')
+
+			# self._nlp_problem.setProblemScaling(
+			# 	self.scaling.obj_scaling, 
+			# 	self.scaling.x_scaling,
+				# self.scaling.c_scaling,
+				# )
+
+		else:
+			raise NotImplementedError
+
+		msg = "NLP initialised successfully."
+		console_out(msg)
+
+	def check_nlp_functions(self):
+		if self.backend.ocp.settings.check_nlp_functions:
+			print('\n\n\n')
+			x_data = np.array(range(1, self.num_x+1), dtype=float)
+			# lagrange = np.array(range(self._num_c), dtype=float)
+			# obj_factor = 2.0
+			print(f"x Variables:\n{self.backend.x_vars}\n")
+			print(f"x Data:\n{x_data}\n")
+			# print(f"Lagrange Multipliers:\n{lagrange}\n")
+
+			J = self._objective_lambda(x_data)
+			print(f"J:\n{J}\n")
+
+			# g = self._gradient_lambda(x_data)
+			# print(f"g:\n{g}\n")
+
+			# c = self._constraint_lambda(x_data)
+			# print(f"c:\n{c}\n")
+
+			# G_struct = self._jacobian_structure_lambda()
+			# print(f"G Structure:\n{G_struct[0]}\n{G_struct[1]}")
+
+			# G = self._jacobian_lambda(x_data)
+			# print(f"G:\n{G}\n")
+
+			# if self._ocp.settings.derivative_level == 2:
+
+			# 	H_struct = self._hessian_structure_lambda()
+			# 	print(f"H Structure:\n{H_struct}\n")
+
+			# 	H = self._hessian_lambda(x_data, lagrange, obj_factor)
+			# 	print(f"H:\n{H}\n")
+
+			# 	sH = sparse.coo_matrix((H, (H_struct[0], H_struct[1])), shape=self._H_shape)
+			# 	sH = sparse.coo_matrix(np.tril(sH.toarray()))
+			# 	print(sH)
+			
+			print('\n\n\n')
+			raise NotImplementedError	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	def _initialise_iteration(self, prev_guess):
 
@@ -797,89 +1091,89 @@ class Iteration:
 
 		self._initialisation_time = initialisation_time_stop - initialisation_time_start
 
-	def _generate_x_bounds(self):
+	# def _generate_x_bounds(self):
 
-		bnd_l = np.empty((self._num_x, ))
-		bnd_u = np.empty((self._num_x, ))
+	# 	bnd_l = np.empty((self._num_x, ))
+	# 	bnd_u = np.empty((self._num_x, ))
 
-		# y bounds
-		bnd_l[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_l_needed.reshape(1, -1)).flatten('F').squeeze()
-		bnd_u[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_u_needed.reshape(1, -1)).flatten('F').squeeze()
+	# 	# y bounds
+	# 	bnd_l[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_l_needed.reshape(1, -1)).flatten('F').squeeze()
+	# 	bnd_u[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_u_needed.reshape(1, -1)).flatten('F').squeeze()
 
-		# u bounds
-		bnd_l[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_l_needed.reshape(1, -1)).flatten('F').squeeze()
-		bnd_u[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_u_needed.reshape(1, -1)).flatten('F').squeeze()
+	# 	# u bounds
+	# 	bnd_l[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_l_needed.reshape(1, -1)).flatten('F').squeeze()
+	# 	bnd_u[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_u_needed.reshape(1, -1)).flatten('F').squeeze()
 
-		# q bounds
-		bnd_l[self._q_slice] = self._ocp._bounds._q_l_needed
-		bnd_u[self._q_slice] = self._ocp._bounds._q_u_needed
+	# 	# q bounds
+	# 	bnd_l[self._q_slice] = self._ocp._bounds._q_l_needed
+	# 	bnd_u[self._q_slice] = self._ocp._bounds._q_u_needed
 
-		# t bounds
-		bnd_l[self._t_slice] = self._ocp._bounds._t_l_needed
-		bnd_u[self._t_slice] = self._ocp._bounds._t_u_needed
+	# 	# t bounds
+	# 	bnd_l[self._t_slice] = self._ocp._bounds._t_l_needed
+	# 	bnd_u[self._t_slice] = self._ocp._bounds._t_u_needed
 
-		# s bounds
-		bnd_l[self._s_slice] = self._ocp._bounds._s_l_needed
-		bnd_u[self._s_slice] = self._ocp._bounds._s_u_needed
+	# 	# s bounds
+	# 	bnd_l[self._s_slice] = self._ocp._bounds._s_l_needed
+	# 	bnd_u[self._s_slice] = self._ocp._bounds._s_u_needed
 
-		return bnd_l, bnd_u
+	# 	return bnd_l, bnd_u
 
-	def _generate_c_bounds(self):
+	# def _generate_c_bounds(self):
 
-		bnd_l = np.zeros((self._num_c, ))
-		bnd_u = np.zeros((self._num_c, ))
+	# 	bnd_l = np.zeros((self._num_c, ))
+	# 	bnd_u = np.zeros((self._num_c, ))
 
-		# Path constraints bounds
-		bnd_l[self._c_path_slice] = (self._ocp._bounds._c_l * self._mesh._N).flatten()
-		bnd_u[self._c_path_slice] = (self._ocp._bounds._c_u * self._mesh._N).flatten()
+	# 	# Path constraints bounds
+	# 	bnd_l[self._c_path_slice] = (self._ocp._bounds._c_l * self._mesh._N).flatten()
+	# 	bnd_u[self._c_path_slice] = (self._ocp._bounds._c_u * self._mesh._N).flatten()
 
-		# Boundary constrants bounds
-		bnd_l[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_l, self._ocp._bounds._b_l))
-		bnd_u[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_u, self._ocp._bounds._b_u))
+	# 	# Boundary constrants bounds
+	# 	bnd_l[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_l, self._ocp._bounds._b_l))
+	# 	bnd_u[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_u, self._ocp._bounds._b_u))
 
-		return bnd_l, bnd_u
+	# 	return bnd_l, bnd_u
 
-	def _initialise_nlp(self):
+	# def _initialise_nlp(self):
 
-		if self._ocp._settings.derivative_level == 1:
-			self._hessian_lambda = None
-			self._hessian_structure_lambda = None
+	# 	if self._ocp._settings.derivative_level == 1:
+	# 		self._hessian_lambda = None
+	# 		self._hessian_structure_lambda = None
 
-		if self._ocp._settings._nlp_solver == 'ipopt':
+	# 	if self._ocp._settings._nlp_solver == 'ipopt':
 
-			self._ipopt_problem = IPOPTProblem(
-				self._objective_lambda, 
-				self._gradient_lambda, 
-				self._constraint_lambda, 
-				self._jacobian_lambda, 
-				self._jacobian_structure_lambda,
-				self._hessian_lambda,
-				self._hessian_structure_lambda,
-				)
+	# 		self._ipopt_problem = IPOPTProblem(
+	# 			self._objective_lambda, 
+	# 			self._gradient_lambda, 
+	# 			self._constraint_lambda, 
+	# 			self._jacobian_lambda, 
+	# 			self._jacobian_structure_lambda,
+	# 			self._hessian_lambda,
+	# 			self._hessian_structure_lambda,
+	# 			)
 
-			self._nlp_problem = ipopt.problem(
-				n=self._num_x,
-				m=self._num_c,
-				problem_obj=self._ipopt_problem,
-				lb=self._x_bnd_l,
-				ub=self._x_bnd_u,
-				cl=self._c_bnd_l,
-				cu=self._c_bnd_u)
+	# 		self._nlp_problem = ipopt.problem(
+	# 			n=self._num_x,
+	# 			m=self._num_c,
+	# 			problem_obj=self._ipopt_problem,
+	# 			lb=self._x_bnd_l,
+	# 			ub=self._x_bnd_u,
+	# 			cl=self._c_bnd_l,
+	# 			cu=self._c_bnd_u)
 
-			self._nlp_problem.addOption('mu_strategy', 'adaptive')
-			self._nlp_problem.addOption('tol', self._ocp._settings.nlp_tolerance)
-			self._nlp_problem.addOption('max_iter', self._ocp._settings.max_nlp_iterations)
-			self._nlp_problem.addOption('print_level', 5)
-			# self._nlp_problem.addOption('nlp_scaling_method', 'gradient-based')
+	# 		self._nlp_problem.addOption('mu_strategy', 'adaptive')
+	# 		self._nlp_problem.addOption('tol', self._ocp._settings.nlp_tolerance)
+	# 		self._nlp_problem.addOption('max_iter', self._ocp._settings.max_nlp_iterations)
+	# 		self._nlp_problem.addOption('print_level', 5)
+	# 		# self._nlp_problem.addOption('nlp_scaling_method', 'gradient-based')
 
-			# self._nlp_problem.setProblemScaling(
-			# 	self.scaling.obj_scaling, 
-			# 	self.scaling.x_scaling,
-				# self.scaling.c_scaling,
-				# )
+	# 		# self._nlp_problem.setProblemScaling(
+	# 		# 	self.scaling.obj_scaling, 
+	# 		# 	self.scaling.x_scaling,
+	# 			# self.scaling.c_scaling,
+	# 			# )
 
-		else:
-			raise NotImplementedError
+	# 	else:
+	# 		raise NotImplementedError
 
 	def _solve(self):
 

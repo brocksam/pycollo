@@ -118,120 +118,166 @@ class Mesh:
 	_TAU_F = 1
 	_PERIOD = _TAU_F - _TAU_0
 
-	def __init__(self, *, optimal_control_problem=None, mesh_sections=10, mesh_section_fractions=None, mesh_collocation_points=4):
+	# def __init__(self, *, optimal_control_problem=None, mesh_sections=10, mesh_section_fractions=None, mesh_collocation_points=4):
+	def __init__(self, backend, phase_meshes):
 
-		# Optimal Control Problem
-		self._ocp = optimal_control_problem
-		self._iteration = None
-		self._guess = None
+		self.backend = backend
+		self.p = phase_meshes
+		self.settings = self.backend.ocp.settings
+		self.quadrature = self.backend.quadrature
 
-		self._mesh_sec_fracs = None
+		# # Optimal Control Problem
+		# self._ocp = optimal_control_problem
+		# self._iteration = None
+		# self._guess = None
 
-		# Mesh settings
-		self.mesh_sections = mesh_sections
-		self.mesh_section_fractions = mesh_section_fractions
-		self.mesh_collocation_points = mesh_collocation_points
+		# self._mesh_sec_fracs = None
 
-		self._stretch = None
-		self._shift = None
+		# # Mesh settings
+		# self.mesh_sections = mesh_sections
+		# self.mesh_section_fractions = mesh_section_fractions
+		# self.mesh_collocation_points = mesh_collocation_points
 
-	@property
-	def ocp(self):
-		return self._ocp
+		# self._stretch = None
+		# self._shift = None
 
-	@property
-	def mesh_sections(self):
-		return self._K
+		self.generate()
+
+	# @property
+	# def ocp(self):
+	# 	return self._ocp
+
+	# @property
+	# def mesh_sections(self):
+	# 	return self._K
 	
-	@mesh_sections.setter
-	def mesh_sections(self, mesh_sections):
-		self._K = int(mesh_sections)
-		self._Kplus1 = self._K + 1
+	# @mesh_sections.setter
+	# def mesh_sections(self, mesh_sections):
+	# 	self._K = int(mesh_sections)
+	# 	self._Kplus1 = self._K + 1
 
-		if self._mesh_sec_fracs is not None and len(self._mesh_sec_fracs) != self._K:
-			self.mesh_section_fractions = None
+	# 	if self._mesh_sec_fracs is not None and len(self._mesh_sec_fracs) != self._K:
+	# 		self.mesh_section_fractions = None
 
-	@property
-	def mesh_section_fractions(self):
-		return self._mesh_sec_fracs
+	# @property
+	# def mesh_section_fractions(self):
+	# 	return self._mesh_sec_fracs
 	
-	@mesh_section_fractions.setter
-	def mesh_section_fractions(self, fracs):
-		if fracs is None:
-			fracs = np.ones(self._K) / self._K
-		if len(fracs) != self._K:
-			msg = (f"Mesh section fractions must be an iterable of length {self._mesh_secs} (i.e. matching the number of mesh sections).")
-			raise ValueError(msg)
-		fracs = np.array(fracs)
-		fracs = fracs / fracs.sum()
-		self._mesh_sec_fracs = fracs
+	# @mesh_section_fractions.setter
+	# def mesh_section_fractions(self, fracs):
+	# 	if fracs is None:
+	# 		fracs = np.ones(self._K) / self._K
+	# 	if len(fracs) != self._K:
+	# 		msg = (f"Mesh section fractions must be an iterable of length {self._mesh_secs} (i.e. matching the number of mesh sections).")
+	# 		raise ValueError(msg)
+	# 	fracs = np.array(fracs)
+	# 	fracs = fracs / fracs.sum()
+	# 	self._mesh_sec_fracs = fracs
 
-	@property
-	def mesh_collocation_points(self):
-		return self._mesh_col_points
+	# @property
+	# def mesh_collocation_points(self):
+	# 	return self._mesh_col_points
 	
-	@mesh_collocation_points.setter
-	def mesh_collocation_points(self, col_points):
-		try:
-			col_points = int(col_points)
-		except TypeError:
-			col_points = np.array([int(val) for val in col_points], dtype=int)
-		else:
-			col_points = np.ones(self._K, dtype=int) * col_points
-		if len(col_points) != self._K:
-			msg = (f"Mesh collocation points must be an iterable of length {self._mesh_secs} (i.e. matching the number of mesh sections).")
-			raise ValueError(msg)
-		self._mesh_col_points = col_points
+	# @mesh_collocation_points.setter
+	# def mesh_collocation_points(self, col_points):
+	# 	try:
+	# 		col_points = int(col_points)
+	# 	except TypeError:
+	# 		col_points = np.array([int(val) for val in col_points], dtype=int)
+	# 	else:
+	# 		col_points = np.ones(self._K, dtype=int) * col_points
+	# 	if len(col_points) != self._K:
+	# 		msg = (f"Mesh collocation points must be an iterable of length {self._mesh_secs} (i.e. matching the number of mesh sections).")
+	# 		raise ValueError(msg)
+	# 	self._mesh_col_points = col_points
 
-	@property
-	def period(self):
-		return self._T
+	# @property
+	# def period(self):
+	# 	return self._T
 
-	@property
-	def _quadrature(self):
-		return self._ocp._quadrature
-	
-	# @profile
-	def _generate_mesh(self):#, t0, tF):
+	# @property
+	# def _quadrature(self):
+	# 	return self._ocp._quadrature
+
+	def generate(self):
+		self.tau = []
+		self.h = []
+		self.N = []
+		self.mesh_index_boundaries = []
+		self.h_K = []
+		self.num_c_boundary_per_y = []
+		self.W_matrix = []
+		self.sA_matrix = []
+		self.sD_matrix = []
+		self.A_index_array = []
+		self.D_index_array = []
+		for p in self.p:
+			data = self.generate_single_phase(p)
+			self.tau.append(data[0])
+			self.h.append(data[1])
+			self.N.append(data[2])
+			self.mesh_index_boundaries.append(data[3])
+			self.h_K.append(data[4])
+			self.num_c_boundary_per_y.append(data[5])
+			self.W_matrix.append(data[6])
+			self.sA_matrix.append(data[7])
+			self.sD_matrix.append(data[8])
+			self.A_index_array.append(data[9])
+			self.D_index_array.append(data[10])
+		# print(self.tau)
+		# print(self.h)
+		# print(self.N)
+		# print(self.mesh_index_boundaries)
+		# print(self.h_K)
+		# print(self.num_c_boundary_per_y)
+		# print(self.W_matrix)
+		# print(self.sA_matrix)
+		# print(self.sD_matrix)
+		# print(self.A_index_array)
+		# print(self.D_index_array)
+		# print('\n\n\n')
+		# raise NotImplementedError
+
+	def generate_single_phase(self, p):
 
 		# Check that the number of collocation points in each mesh sections is bounded by the minimum and maximum values set in settings.
-		for section, col_points in enumerate(self._mesh_col_points):
-			if col_points < self._ocp._settings._col_points_min:
-				msg = (f"The number of collocation points, {col_points}, in mesh section {section} must be greater than or equal to {self.ocp.settings._col_points_min}.")
+		for i_sec, col_points in enumerate(p.number_mesh_section_nodes):
+			if col_points < self.settings.collocation_points_min:
+				msg = (f"The number of collocation points, {col_points}, in mesh section {i_sec} must be greater than or equal to {self.ocp.settings._col_points_min}.")
 				raise ValueError(msg)
-			if col_points > self._ocp._settings._col_points_max:
-				msg = (f"The number of collocation points, {col_points}, in mesh section {section} must be less than or equal to {self._ocp._settings._col_points_max}.")
+			if col_points > self.settings.collocation_points_max:
+				msg = (f"The number of collocation points, {col_points}, in mesh section {i_sec} must be less than or equal to {self.ocp._settings._col_points_max}.")
 				raise ValueError(msg)
 
 		# Generate the mesh based on using the quadrature method defined by the problem's `Settings` class.
 		section_boundaries = [self._TAU_0]
-		for index, fraction in enumerate(self._mesh_sec_fracs):
+		for index, fraction in enumerate(p.mesh_section_sizes):
 			step = self._PERIOD * fraction
 			section_boundaries.append(section_boundaries[index] + step)
 		section_boundaries = np.array(section_boundaries)
 		section_lengths = np.diff(section_boundaries)
 
 		mesh = []
-		for section_num, (sec_start, sec_end, sec_num_points) in enumerate(zip(section_boundaries[:-1], section_boundaries[1:], self._mesh_col_points)):
-			points = self._quadrature.quadrature_point(sec_num_points, domain=[sec_start, sec_end])
-			if self._ocp._settings._quadrature_method == 'lobatto':
+		for section_num, (sec_start, sec_end, sec_num_points) in enumerate(zip(section_boundaries[:-1], section_boundaries[1:], p.number_mesh_section_nodes)):
+			points = self.quadrature.quadrature_point(sec_num_points, domain=[sec_start, sec_end])
+			if self.settings.quadrature_method == "lobatto":
 				points = points[:-1]
 			mesh.extend(list(points))
 		mesh.append(self._TAU_F)
 
-		self._tau = np.array(mesh)
-		self._h = np.diff(self._tau)
-		self._N = len(self._tau)
+		tau = np.array(mesh)
+		h = np.diff(tau)
+		N = len(tau)
 		
-		self._mesh_index_boundaries = np.insert(np.cumsum(self._mesh_col_points - 1), 0, 0)
-		self._h_K = np.diff(self._tau[self._mesh_index_boundaries])
+		mesh_index_boundaries = np.insert(np.cumsum(p.number_mesh_section_nodes - 1), 0, 0)
+		h_K = np.diff(tau[mesh_index_boundaries])
 
-		block_starts = self._mesh_index_boundaries[:-1]
-		self._num_c_boundary_per_y = int(self._mesh_index_boundaries[-1])
-		num_cols = self._mesh_index_boundaries[-1] + 1
-		matrix_dims = (self._num_c_boundary_per_y, num_cols)
+		block_starts = mesh_index_boundaries[:-1]
+		num_c_boundary_per_y = int(mesh_index_boundaries[-1])
+		num_cols = mesh_index_boundaries[-1] + 1
+		matrix_dims = (num_c_boundary_per_y, num_cols)
 
-		self._W_matrix = np.zeros(num_cols)
+		W_matrix = np.zeros(num_cols)
 
 		A_vals = []
 		A_row_inds = []
@@ -246,20 +292,20 @@ class Mesh:
 
 		num_A_nonzero = 0
 
-		for block_size, h_K, block_start in zip(self._mesh_col_points, self._h_K, block_starts):
+		for block_size, h_K, block_start in zip(p.number_mesh_section_nodes, h_K, block_starts):
 			row_slice = slice(block_start, block_start+block_size-1)
 			col_slice = slice(block_start, block_start+block_size)
-			A_block = self._quadrature.A_matrix(block_size) * h_K
+			A_block = self.quadrature.A_matrix(block_size) * h_K
 			A_vals_entry = A_block.flatten().tolist()
 			A_row_inds_entry = np.repeat(np.array(range(block_start, block_start+block_size-1)), block_size)
 			A_col_inds_entry = np.tile(np.array(range(block_start, block_start+block_size)), block_size-1)
 			A_vals.extend(A_vals_entry)
 			A_row_inds.extend(A_row_inds_entry)
 			A_col_inds.extend(A_col_inds_entry)
-			A_indicies = self._quadrature.A_index_array(block_size)
+			A_indicies = self.quadrature.A_index_array(block_size)
 			A_index_array.extend(A_indicies + num_A_nonzero)
 
-			D_block = self._quadrature.D_matrix(block_size)
+			D_block = self.quadrature.D_matrix(block_size)
 			nonzero = np.flatnonzero(D_block)
 			D_vals_entry = D_block.flatten()[nonzero].tolist()
 			D_row_inds_entry = np.repeat(np.array(range(block_start, block_start+block_size-1)), block_size)[nonzero]
@@ -267,15 +313,18 @@ class Mesh:
 			D_vals.extend(D_vals_entry)
 			D_row_inds.extend(D_row_inds_entry)
 			D_col_inds.extend(D_col_inds_entry)
-			D_index_array.extend(self._quadrature.D_index_array(block_size) + num_A_nonzero)
+			D_index_array.extend(self.quadrature.D_index_array(block_size) + num_A_nonzero)
 
-			self._W_matrix[col_slice] += self._quadrature.quadrature_weight(block_size) * h_K
+			W_matrix[col_slice] += self.quadrature.quadrature_weight(block_size) * h_K
 
 			num_A_nonzero = len(A_index_array)
 
-		self._sA_matrix = sparse.coo_matrix((A_vals, (A_row_inds, A_col_inds)), shape=matrix_dims).tocsr()
-		self._sD_matrix = sparse.coo_matrix((D_vals, (D_row_inds, D_col_inds)), shape=matrix_dims).tocsr()
+		sA_matrix = sparse.coo_matrix((A_vals, (A_row_inds, A_col_inds)), shape=matrix_dims).tocsr()
+		sD_matrix = sparse.coo_matrix((D_vals, (D_row_inds, D_col_inds)), shape=matrix_dims).tocsr()
 
-		self._A_index_array = np.array(A_index_array)
-		self._D_index_array = np.array(D_index_array)
+		A_index_array = np.array(A_index_array)
+		D_index_array = np.array(D_index_array)
+
+		data = (tau, h, N, mesh_index_boundaries, h_K, num_c_boundary_per_y, W_matrix, sA_matrix, sD_matrix, A_index_array, D_index_array)
+		return data
 

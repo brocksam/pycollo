@@ -103,14 +103,20 @@ class Scaling:
 			BOUNDS: self._generate_bounds,
 			GUESS: self._generate_guess,
 			}
+		self._generate()
 
 	def _generate(self):
-		method = self.optimal_control_problem.settings.scaling_method
+		method = self.ocp.settings.scaling_method
 		self.x_shift, self.x_stretch = self._GENERATE_DISPATCHER[method]()
 
 	def _generate_bounds(self):
-		x_l = np.concatenate([self.bounds._y_l_needed, self.bounds._u_l_needed, self.bounds._q_l_needed, -0.5*np.ones_like(self.bounds._t_l_needed), self.bounds._s_l_needed])
-		x_u = np.concatenate([self.bounds._y_u_needed, self.bounds._u_u_needed, self.bounds._q_u_needed, 0.5*np.ones_like(self.bounds._t_u_needed), self.bounds._s_u_needed])
+		x_l = self.backend.bounds.x_bnds_lower
+		x_u = self.backend.bounds.x_bnds_upper
+		for p, p_slice in zip(self.backend.p, self.backend.phase_variable_slices):
+			t_start = p_slice.start + p.t_slice.start
+			t_stop = p_slice.start + p.t_slice.stop
+			x_l[t_start:t_stop] = -0.5
+			x_u[t_start:t_stop] = 0.5
 		shift = 0.5 - x_u / (x_u - x_l)
 		stretch = 1 / (x_u - x_l)
 		return shift, stretch

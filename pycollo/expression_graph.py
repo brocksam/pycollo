@@ -48,10 +48,10 @@ class ExpressionGraph:
 		self.initialise_time_normalisation_nodes()
 		self.initialise_auxiliary_intermediate_nodes()
 
-		self._form_time_normalisation_functions()
-		self._form_objective_function_and_derivatives(objective)
-		self._form_constraints_and_derivatives(constraints)
-		self._form_lagrangian_and_derivatives()
+		# self._form_time_normalisation_functions()
+		# self._form_objective_function_and_derivatives(objective)
+		# self._form_constraints_and_derivatives(constraints)
+		# self._form_lagrangian_and_derivatives()
 
 	def console_out_begin_expression_graph_creation(self):
 		msg = (f"Beginning expression graph creation.")

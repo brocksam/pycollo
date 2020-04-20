@@ -5,6 +5,7 @@ Classes:
 """
 
 
+import copy
 import itertools
 from typing import (Optional, Tuple)
 
@@ -206,7 +207,7 @@ class Phase:
 			new_phase.bounds.state_endpoint_constraints = self.bounds.state_endpoint_constraints
 
 		if copy_mesh:
-			new_phase.mesh = self.mesh
+			new_phase.mesh = copy.deepcopy(self.mesh)
 
 		return new_phase
 

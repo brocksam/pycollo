@@ -115,6 +115,13 @@ problem.settings.scaling_method = "bounds"
 problem.settings.assume_inf_bounds = False
 problem.settings.inf_value = 1e16
 problem.settings.check_nlp_functions = True
+problem.settings.collocation_points_min = 2
+problem.settings.collocation_points_max = 3
+
+phase_A.mesh.number_mesh_sections = 2
+phase_A.mesh.number_mesh_section_nodes = [2, 3]
+phase_B.mesh.number_mesh_sections = 2
+phase_B.mesh.number_mesh_section_nodes = [3, 2]
 
 problem.initialise()
 

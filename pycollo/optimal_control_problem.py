@@ -392,8 +392,6 @@ class OptimalControlProblem():
 
 	def _initialise_first_mesh_iteration(self):
 		self._backend.create_mesh_iterations()
-		# self._backend.mesh_iterations[0].initialise()
-
 
 
 

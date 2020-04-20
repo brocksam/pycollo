@@ -12,7 +12,7 @@ class CompiledFunctions:
 		self.console_out_compiling_nlp_functions()
 		self.compile_reshape()
 		self.compile_objective()
-		# self.compile_objective_gradient()
+		self.compile_objective_gradient()
 		# self.compile_constraints()
 		# self.compile_jacobian_constraints()
 		# if self.ocp.settings.derivative_level == 2:
@@ -58,28 +58,47 @@ class CompiledFunctions:
 		self.J_lambda = objective_lambda
 		print('Objective function compiled.')
 
-	# def _compile_objective_gradient(self):
+	def compile_objective_gradient(self):
 
-	# 	def objective_gradient_lambda(x_tuple_point, N):
-	# 		g = dJ_dxb_lambda(*x_tuple_point, N)
-	# 		return g
+		def objective_gradient_lambda(x_tuple_point, p_N):
+			g_phases = []
+			for dJ_dxb, N in zip(dJ_dxb_phase_lambdas, p_N):
+				g_phases.append(dJ_dxb(*x_tuple_point, N))
+			g_endpoint = dJ_dxb_endpoint_lambda(*x_tuple_point)
+			g = np.concatenate(g_phases + [g_endpoint])
+			return g
 
-	# 	expr_graph = self._expression_graph
+		expr_graph = self.ocp_backend.expression_graph
 
-	# 	dJ_dxb_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.dJ_dxb,
-	# 		precomputable_nodes=expr_graph.dJ_dxb_precomputable,
-	# 		dependent_tiers=expr_graph.dJ_dxb_dependent_tiers,
-	# 		parameters=self._x_b_vars,
-	# 		return_dims=1, 
-	# 		N_arg=True, 
-	# 		endpoint=True, 
-	# 		ocp_num_vars=self._num_vars_tuple
-	# 		)
+		dJ_dxb_phase_lambdas = []
+		for p, p_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_endpoint_variable_slices):
+			dJ_dxb_phase_lambda = numbafy(
+				expression_graph=expr_graph,
+				expression=expr_graph.dJ_dxb[p_slice],
+				precomputable_nodes=expr_graph.dJ_dxb_precomputable,
+				dependent_tiers=expr_graph.dJ_dxb_dependent_tiers,
+				parameters=self.ocp_backend.x_point_vars,
+				return_dims=1, 
+				N_arg=True, 
+				endpoint=True, 
+				ocp_num_vars=p.num_each_vars,
+				)
+			dJ_dxb_phase_lambdas.append(dJ_dxb_phase_lambda)
 
-	# 	self._g_lambda = objective_gradient_lambda
-	# 	print('Objective gradient function compiled.')
+		dJ_dxb_endpoint_lambda = numbafy(
+			expression_graph=expr_graph,
+			expression=expr_graph.dJ_dxb[self.ocp_backend.endpoint_variable_slice],
+			precomputable_nodes=expr_graph.dJ_dxb_precomputable,
+			dependent_tiers=expr_graph.dJ_dxb_dependent_tiers,
+			parameters=self.ocp_backend.x_point_vars,
+			return_dims=1, 
+			N_arg=False, 
+			endpoint=False, 
+			# ocp_num_vars=p.num_each_vars,
+			)
+
+		self.g_lambda = objective_gradient_lambda
+		print('Objective gradient function compiled.')
 
 	# def _compile_constraints(self):
 		

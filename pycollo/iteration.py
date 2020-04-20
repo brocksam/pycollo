@@ -207,6 +207,7 @@ class Iteration:
 		self.generate_continuous_variables_reshape_lambda()
 		self.generate_endpoint_variables_reshape_lambda()
 		self.generate_objective_lambda()
+		self.generate_gradient_lambda()
 
 	def generate_unscale_variables_lambda(self):
 
@@ -263,6 +264,15 @@ class Iteration:
 		self._objective_lambda = objective
 		msg = "Objective function lambda generated successfully."
 		console_out(msg)
+
+	def generate_gradient_lambda(self):
+
+		def gradient(x):
+			x_tuple_point = self._reshape_x_point(x)
+			g = self.backend.compiled_functions.g_lambda(x_tuple_point, self.mesh.N)
+			return g
+
+		self._gradient_lambda = gradient
 
 	def generate_bounds(self):
 		self.generate_variable_bounds()
@@ -381,8 +391,8 @@ class Iteration:
 			J = self._objective_lambda(x_data)
 			print(f"J:\n{J}\n")
 
-			# g = self._gradient_lambda(x_data)
-			# print(f"g:\n{g}\n")
+			g = self._gradient_lambda(x_data)
+			print(f"g:\n{g}\n")
 
 			# c = self._constraint_lambda(x_data)
 			# print(f"c:\n{c}\n")

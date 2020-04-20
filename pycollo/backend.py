@@ -217,8 +217,8 @@ class PycolloPhaseData:
 			for y in zip(self.y_t0_vars, self.y_tF_vars)))
 		self.num_y_point_vars = len(self.y_point_vars)
 
-		self.num_each_vars = (self.num_y_vars + self.num_u_vars 
-			+ self.num_q_vars + self.num_t_vars)
+		self.num_each_vars = (self.num_y_vars, self.num_u_vars, 
+			self.num_q_vars, self.num_t_vars)
 		self.x_point_vars = (self.y_point_vars + self.q_vars 
 			+ self.t_vars)
 		self.num_point_vars = len(self.x_point_vars)
@@ -485,7 +485,9 @@ class Pycollo(BackendABC):
 		endpoint_vars = (tuple(itertools.chain.from_iterable(p.x_point_vars 
 			for p in self.p)) + self.s_vars)
 		self.x_point_vars = endpoint_vars
+		self.num_point_vars = len(endpoint_vars)
 		variables = (continuous_vars, endpoint_vars)
+
 		self.phase_variable_slices = []
 		start = 0
 		for p in self.p:
@@ -493,6 +495,16 @@ class Pycollo(BackendABC):
 			p_slice = slice(start, stop)
 			start = stop
 			self.phase_variable_slices.append(p_slice)
+		self.variable_slice = slice(self.num_vars - self.num_s_vars, self.num_vars)
+
+		self.phase_endpoint_variable_slices = []
+		start = 0
+		for p in self.p:
+			stop = start + p.num_point_vars
+			p_slice = slice(start, stop)
+			start = stop
+			self.phase_endpoint_variable_slices.append(p_slice)
+		self.endpoint_variable_slice = slice(self.num_point_vars - self.num_s_vars, self.num_point_vars)
 
 		objective = self.J
 		constraints = self.collect_constraints()

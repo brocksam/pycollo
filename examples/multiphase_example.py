@@ -66,7 +66,7 @@ phase_A.guess.control_variables = np.array([
 	[0, 0],
 	[0, 0],
 	])
-phase_A.guess_integral_variables = np.array([0, 0])
+phase_A.guess.integral_variables = np.array([0, 0])
 
 phase_B = problem.new_phase_like(
 	phase_for_copying=phase_A,
@@ -96,6 +96,7 @@ phase_B.guess.state_variables = np.array([
 	[0, 0],
 	[0, 0],
 	])
+phase_B.guess.integral_variables = np.array([0, 0])
 
 problem.objective_function = (phase_A.integral_variables[0] 
 	+ phase_A.integral_variables[1]

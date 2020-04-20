@@ -37,6 +37,9 @@ class BoundsABC(ABC):
 		needed = ~are_same
 		return needed
 
+	@abstractmethod
+	def _required_variable_bounds(self): pass
+
 
 class EndpointBounds(BoundsABC):
 	
@@ -55,7 +58,7 @@ class EndpointBounds(BoundsABC):
 	
 	def _process_and_check_user_values(self):
 		self._backend = self.optimal_control_problem._backend
-		self._expr_graph = self._backend.expression_graph
+		self._expr_graph_full = self._backend.expression_graph_full
 		self._INF = self.optimal_control_problem.settings.inf_value
 		self._process_parameter_vars()
 		self._process_endpoint_cons()
@@ -64,7 +67,7 @@ class EndpointBounds(BoundsABC):
 		user_bnds = self.parameter_variables
 		user_syms = self._backend.s_vars_user
 		bnds_type = "parameter variable"
-		num_expected = self._backend.num_s_vars
+		num_expected = self._backend.num_s_vars_full
 		bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expected)
 		self._s_bnds, self._s_needed = self._process_single_type_of_values(
 			bnds_info)
@@ -175,7 +178,7 @@ class EndpointBounds(BoundsABC):
 				msg = (f"A bound value of {bnd} is not supported.")
 				raise NotImplementedError(msg)
 		bnd = fast_sympify(bnd).xreplace(self._backend.all_subs_mappings)
-		node = Node(bnd, self._expr_graph)
+		node = Node(bnd, self._expr_graph_full)
 		if not node.is_precomputable:
 			msg = (f"The user-supplied {lower_upper} for the {bnd_info.bnds_type} "
 				f"'{bnd_info.user_sym}' (index #{bnd_info.num}) of '{bnd}' "
@@ -234,6 +237,11 @@ class EndpointBounds(BoundsABC):
 				f"{lower_bnds_formatted}.")
 			raise ValueError(msg)
 		return bnds
+
+	def _required_variable_bounds(self):
+		x_bnds = self._s_bnds[self._s_needed]
+		return x_bnds
+
 
 
 class PhaseBounds(BoundsABC):
@@ -333,7 +341,7 @@ class PhaseBounds(BoundsABC):
 
 	def _process_and_check_user_values(self, phase_backend):
 		self._backend = phase_backend
-		self._expr_graph = phase_backend.ocp_backend.expression_graph
+		self._expr_graph_full = phase_backend.ocp_backend.expression_graph_full
 		self._INF = self.optimal_control_problem.settings.inf_value
 		p_info = self._get_phase_info(phase_backend)
 		self._process_state_vars(p_info)
@@ -354,7 +362,7 @@ class PhaseBounds(BoundsABC):
 		user_bnds = self.state_variables
 		user_syms = p_info.backend.y_vars_user
 		bnds_type = "state variable"
-		num_expected = p_info.backend.num_y_vars
+		num_expected = p_info.backend.num_y_vars_full
 		bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expected)
 		self._y_bnds, self._y_needed = self._process_single_type_of_values(
 			bnds_info, p_info)
@@ -363,7 +371,7 @@ class PhaseBounds(BoundsABC):
 		user_bnds = self.control_variables
 		user_syms = p_info.backend.u_vars_user
 		bnds_type = "control variable"
-		num_expected = p_info.backend.num_u_vars
+		num_expected = p_info.backend.num_u_vars_full
 		bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expected)
 		self._u_bnds, self._u_needed = self._process_single_type_of_values(
 			bnds_info, p_info)
@@ -372,7 +380,7 @@ class PhaseBounds(BoundsABC):
 		user_bnds = self.integral_variables
 		user_syms = p_info.backend.q_vars_user
 		bnds_type = "integral variable"
-		num_expected = p_info.backend.num_q_vars
+		num_expected = p_info.backend.num_q_vars_full
 		bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expected)
 		self._q_bnds, self._q_needed = self._process_single_type_of_values(
 			bnds_info, p_info)
@@ -391,7 +399,7 @@ class PhaseBounds(BoundsABC):
 		user_bnds = [self.initial_time, self.final_time]
 		user_syms = p_info.backend.t_vars_user
 		bnds_type = "time variable"
-		num_expected = p_info.backend.num_t_vars
+		num_expected = p_info.backend.num_t_vars_full
 		bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expected)
 		self._t_bnds, self._t_needed = self._process_single_type_of_values(
 			bnds_info, p_info)
@@ -419,7 +427,7 @@ class PhaseBounds(BoundsABC):
 		user_bnds = self.initial_state_constraints
 		user_syms = p_info.backend.y_vars_user
 		bnds_type = "initial state constraint"
-		num_expected = p_info.backend.num_y_vars
+		num_expected = p_info.backend.num_y_vars_full
 		bnds_info = BoundsInfo(
 			user_bnds, user_syms, bnds_type, num_expected, False)
 		y_t0_bnds, self._y_t0_needed = self._process_single_type_of_values(
@@ -432,7 +440,7 @@ class PhaseBounds(BoundsABC):
 		user_bnds = self.final_state_constraints
 		user_syms = p_info.backend.y_vars_user
 		bnds_type = "final state constraint"
-		num_expected = p_info.backend.num_y_vars
+		num_expected = p_info.backend.num_y_vars_full
 		bnds_info = BoundsInfo(
 			user_bnds, user_syms, bnds_type, num_expected, False)
 		y_tF_bnds, self._y_tF_needed = self._process_single_type_of_values(
@@ -586,7 +594,7 @@ class PhaseBounds(BoundsABC):
 			bnd_info = self._process_potential_dual_value_to_single_value(
 				bnd_info, p_info)
 		bnd = fast_sympify(bnd).xreplace(self._backend.all_subs_mappings)
-		node = Node(bnd, self._expr_graph)
+		node = Node(bnd, self._expr_graph_full)
 		if not node.is_precomputable:
 			msg = (f"The user-supplied {lower_upper} for the {bnd_info.bnds_type} "
 				f"'{bnd_info.user_sym}' (index #{bnd_info.num}) in phase "
@@ -646,6 +654,14 @@ class PhaseBounds(BoundsABC):
 			raise ValueError(msg)
 		return bnds
 
+	def _required_variable_bounds(self):
+		y_bnds = self._y_bnds[self._y_needed]
+		u_bnds = self._u_bnds[self._u_needed]
+		q_bnds = self._q_bnds[self._q_needed]
+		t_bnds = self._t_bnds[self._t_needed]
+		x_bnds = np.vstack([y_bnds, u_bnds, q_bnds, t_bnds])
+		return x_bnds
+
 
 phase_info_fields = ("name", "index", "backend")
 PhaseInfo = namedtuple("PhaseInfo", phase_info_fields)
@@ -660,9 +676,72 @@ class Bounds:
 
 	def __init__(self, ocp_backend):
 		self.ocp_backend = ocp_backend
+		self.process_and_check_user_values()
+		self.collect_required_variable_bounds()
+		self.collect_required_state_variable_endpoint_bounds()
+		self.collect_constraint_bounds()
+		self.add_unrequired_variables_to_auxiliary_data()
+
+	def process_and_check_user_values(self):
 		for p in self.ocp_backend.p:
 			p.ocp_phase.bounds._process_and_check_user_values(p)
 		self.ocp_backend.ocp.bounds._process_and_check_user_values()
+
+	def collect_required_variable_bounds(self):
+		x_bnds = []
+		for p in self.ocp_backend.p:
+			p_bnds = p.ocp_phase.bounds
+			x_bnds.append(p_bnds._required_variable_bounds())
+		x_bnds.append(self.ocp_backend.ocp.bounds._required_variable_bounds())
+		self.x_bnds = np.vstack(x_bnds)
+
+	def collect_required_state_variable_endpoint_bounds(self):
+		y_t0_bnds = []
+		y_tF_bnds = []
+		for p in self.ocp_backend.p:
+			p_bnds = p.ocp_phase.bounds
+			y_t0_bnds.append(p_bnds._y_t0_bnds[p_bnds._y_needed])
+			y_tF_bnds.append(p_bnds._y_tF_bnds[p_bnds._y_needed])
+		self.y_t0_bnds = np.vstack(y_t0_bnds)
+		self.y_tF_bnds = np.vstack(y_tF_bnds)
+
+	@property
+	def x_bnds_lower(self):
+		return self.x_bnds[:, 0]
+
+	@property
+	def x_bnds_upper(self):
+		return self.x_bnds[:, 1]
+
+	def collect_constraint_bounds(self):
+		pass
+
+	def add_unrequired_variables_to_auxiliary_data(self):
+		self.aux_data = {}
+		for p in self.ocp_backend.p:
+			p_bnds = p.ocp_phase.bounds
+			self.aux_data.update({y: np.mean(value) 
+				for y, y_needed, value in zip(
+					p.y_vars_full, p_bnds._y_needed, p_bnds._y_bnds) 
+				if not y_needed})
+			self.aux_data.update({u: np.mean(value) 
+				for u, u_needed, value in zip(
+					p.u_vars_full, p_bnds._u_needed, p_bnds._u_bnds) 
+				if not u_needed})
+			self.aux_data.update({q: np.mean(value) 
+				for q, q_needed, value in zip(
+					p.q_vars_full, p_bnds._q_needed, p_bnds._q_bnds) 
+				if not q_needed})
+			self.aux_data.update({t: np.mean(value) 
+				for t, t_needed, value in zip(
+					p.t_vars_full, p_bnds._t_needed, p_bnds._t_bnds) 
+				if not t_needed})
+		prob_bnds = self.ocp_backend.ocp.bounds
+		self.aux_data.update({s: np.mean(value) 
+			for s, s_needed, value in zip(
+				self.ocp_backend.s_vars_full, prob_bnds._s_needed, prob_bnds._s_bnds) 
+			if not s_needed})
+	
 
 		
 		

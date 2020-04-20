@@ -1,4 +1,5 @@
 import numpy as np
+import sympy as sym
 
 from .numbafy import numbafy
 from .utils import console_out
@@ -13,7 +14,7 @@ class CompiledFunctions:
 		self.compile_reshape()
 		self.compile_objective()
 		self.compile_objective_gradient()
-		# self.compile_constraints()
+		self.compile_constraints()
 		# self.compile_jacobian_constraints()
 		# if self.ocp.settings.derivative_level == 2:
 		# 	self.compile_hessian_lagrangian()
@@ -24,11 +25,18 @@ class CompiledFunctions:
 
 	def compile_reshape(self):
 
-		def reshape_x(x, num_yu, yu_qts_split):
+		def reshape_x(x, y_slices, u_slices, q_slices, t_slices, s_slice, p_N):
 			x = np.array(x)
-			yu = x[:yu_qts_split].reshape(num_yu, -1)
-			qts = x[yu_qts_split:].reshape(len(x) - yu_qts_split, )
-			x_tuple = (*yu, *qts)
+			x_phase_tuples = []
+			for y_slice, u_slice, q_slice, t_slice, N in zip(y_slices, u_slices, q_slices, t_slices, p_N):
+				y = x[y_slice].reshape(-1, N)
+				u = x[u_slice].reshape(-1, N)
+				q = x[q_slice]
+				t = x[t_slice]
+				x_phase_tuple = (*y, *u, *q, *t)
+				x_phase_tuples.extend(x_phase_tuple)
+			s = x[s_slice]
+			x_tuple = (*x_phase_tuples, *s)
 			return x_tuple
 
 		def reshape_x_point(x, x_endpoint_indices):
@@ -100,88 +108,107 @@ class CompiledFunctions:
 		self.g_lambda = objective_gradient_lambda
 		print('Objective gradient function compiled.')
 
-	# def _compile_constraints(self):
+	def compile_constraints(self):
+
+		def phase_constraints_lambda(x_tuple, t_stretch_lambda, c_continuous_lambda, A, D, W, N, y_slice, q_slice, dy_slice, p_slice, g_slice):
+			stretch = t_stretch_lambda(*x_tuple)
+			c_continuous = c_continuous_lambda(*x_tuple, N)
+			y = np.vstack(x_tuple[y_slice])
+			q = np.array(x_tuple[q_slice])
+			dy = c_continuous[dy_slice].reshape((-1, N))
+			p = c_continuous[p_slice]
+			g = c_continuous[g_slice].reshape((-1, N))
+			c_defect = defect_constraints_lambda(y, dy, A, D, stretch)
+			c_path = path_constraints_lambda(p)
+			c_integral = integral_constraints_lambda(q, g, W, stretch)
+			c = np.concatenate([c_defect, c_path, c_integral])
+			return c
 		
-	# 	def defect_constraints_lambda(y, dy, A, D, stretch):
-	# 		return (D.dot(y.T) + stretch*A.dot(dy.T)).flatten(order='F')
+		def defect_constraints_lambda(y, dy, A, D, stretch):
+			return (D.dot(y.T) + stretch*A.dot(dy.T)).flatten(order='F')
 
-	# 	def path_constraints_lambda(p):
-	# 		return p
+		def path_constraints_lambda(p):
+			return p
 
-	# 	def integral_constraints_lambda(q, g, W, stretch):
-	# 		return q - stretch*np.matmul(g, W) if g.size else q
+		def integral_constraints_lambda(q, g, W, stretch):
+			return q - stretch*np.matmul(g, W) if g.size else q
 
-	# 	def endpoint_constraints_lambda(b):
-	# 		return b
+		def constraints_lambda(x_tuple, x_tuple_point, p_A, p_D, p_W, p_N, ocp_phase_y_slice, ocp_phase_q_slice, ocp_phase_dy_slice, ocp_phase_p_slice, ocp_phase_g_slice):#, N, ocp_y_slice, 
 
-	# 	def constraints_lambda(x_tuple, x_tuple_point, N, ocp_y_slice, 
-	# 			ocp_q_slice, num_c, dy_slice, p_slice, g_slice, defect_slice, 
-	# 			path_slice, integral_slice, boundary_slice, A, D, W):
-			
-	# 		y = np.vstack(x_tuple[ocp_y_slice])
-	# 		q = np.array(x_tuple[ocp_q_slice])
+			c = np.array([])
+			for t_stretch_lambda, c_continuous_lambda, A, D, W, N, y_slice, q_slice, dy_slice, p_slice, g_slice in zip(t_stretch_lambdas, c_continuous_lambdas, p_A, p_D, p_W, p_N, ocp_phase_y_slice, ocp_phase_q_slice, ocp_phase_dy_slice, ocp_phase_p_slice, ocp_phase_g_slice):
+				c_phase = phase_constraints_lambda(x_tuple, t_stretch_lambda, c_continuous_lambda, A, D, W, N, y_slice, q_slice, dy_slice, p_slice, g_slice)
+				c = np.concatenate([c, c_phase])
 
-	# 		stretch = t_stretch_lambda(*x_tuple)
-	# 		c_continuous = c_continuous_lambda(*x_tuple, N)
-	# 		c_endpoint = c_endpoint_lambda(*x_tuple_point, N)
+			c_endpoint = c_endpoint_lambda(*x_tuple_point)
+			c = np.concatenate([c, c_endpoint])
+			# dy = c_continuous[dy_slice].reshape((-1, N))
+			# p = c_continuous[p_slice]
+			# g = c_continuous[g_slice]
+			# b = c_endpoint
 
-	# 		dy = c_continuous[dy_slice].reshape((-1, N))
-	# 		p = c_continuous[p_slice]
-	# 		g = c_continuous[g_slice]
-	# 		b = c_endpoint
+			# c = np.empty(num_c)
+			# c[defect_slice] = defect_constraints_lambda(y, dy, A, D, stretch)
+			# c[path_slice] = path_constraints_lambda(p)
+			# c[integral_slice] = integral_constraints_lambda(q, g, W, stretch)
+			# c[boundary_slice] = endpoint_constraints_lambda(b)
 
-	# 		c = np.empty(num_c)
-	# 		c[defect_slice] = defect_constraints_lambda(y, dy, A, D, stretch)
-	# 		c[path_slice] = path_constraints_lambda(p)
-	# 		c[integral_slice] = integral_constraints_lambda(q, g, W, stretch)
-	# 		c[boundary_slice] = endpoint_constraints_lambda(b)
+			return c
 
-	# 		return c
+		expr_graph = self.ocp_backend.expression_graph
 
-	# 	expr_graph = self._expression_graph
+		t_stretch_lambdas = []
+		for p in self.ocp_backend.p:
+			t_norm = getattr(expr_graph, f"t_norm_P{p.i}")
+			t_norm_precomputable = getattr(expr_graph, f"t_norm_P{p.i}_precomputable")
+			t_norm_dependent_tiers = getattr(expr_graph, f"t_norm_P{p.i}_dependent_tiers")
+			t_stretch_lambda = numbafy(
+				expression_graph=expr_graph,
+				expression=t_norm, 
+				precomputable_nodes=t_norm_precomputable,
+				dependent_tiers=t_norm_dependent_tiers,
+				parameters=self.ocp_backend.x_vars, 
+				)
+			t_stretch_lambdas.append(t_stretch_lambda)
 
-	# 	t_stretch_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.t_norm, 
-	# 		precomputable_nodes=expr_graph.t_norm_precomputable,
-	# 		dependent_tiers=expr_graph.t_norm_dependent_tiers,
-	# 		parameters=self._x_vars, 
-	# 		)
+		c_continuous_lambdas = []
+		for p, p_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_constraint_slices):
+			c = sym.Matrix(expr_graph.c[p_slice])
+			c_continuous_lambda = numbafy(
+				expression_graph=expr_graph,
+				expression=c,
+				expression_nodes=expr_graph.c_nodes,
+				precomputable_nodes=expr_graph.c_precomputable,
+				dependent_tiers=expr_graph.c_dependent_tiers,
+				parameters=self.ocp_backend.x_vars,
+				return_dims=2, 
+				N_arg=True, 
+				ocp_num_vars=p.num_each_vars,
+				)
+			c_continuous_lambdas.append(c_continuous_lambda)
 
-	# 	c_continuous_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.c,
-	# 		expression_nodes=expr_graph.c_nodes,
-	# 		precomputable_nodes=expr_graph.c_precomputable,
-	# 		dependent_tiers=expr_graph.c_dependent_tiers,
-	# 		parameters=self._x_vars,
-	# 		return_dims=2, 
-	# 		N_arg=True, 
-	# 		ocp_num_vars=self._num_vars_tuple,
-	# 		)
+		c_endpoint_lambda = numbafy(
+			expression_graph=expr_graph,
+			expression=expr_graph.b,
+			precomputable_nodes=expr_graph.b_precomputable,
+			dependent_tiers=expr_graph.b_dependent_tiers,
+			parameters=self.ocp_backend.x_point_vars,
+			return_dims=1,
+			N_arg=False,
+			# ocp_num_vars=self._num_vars_tuple,
+			)
 
-	# 	c_endpoint_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.b,
-	# 		precomputable_nodes=expr_graph.b_precomputable,
-	# 		dependent_tiers=expr_graph.b_dependent_tiers,
-	# 		parameters=self._x_b_vars,
-	# 		return_dims=1,
-	# 		N_arg=True,
-	# 		ocp_num_vars=self._num_vars_tuple,
-	# 		)
+		# self._t_stretch_lambda = t_stretch_lambda
+		# self._dstretch_dt = [val 
+		# 	for val, t_needed in zip(self._dSTRETCH_dt, self._bounds._t_needed) 
+		# 	if t_needed]
+		# self._c_continuous_lambda = c_continuous_lambda
+		self.c_lambda = constraints_lambda
+		print('Constraints function compiled.')
 
-	# 	self._t_stretch_lambda = t_stretch_lambda
-	# 	self._dstretch_dt = [val 
-	# 		for val, t_needed in zip(self._dSTRETCH_dt, self._bounds._t_needed) 
-	# 		if t_needed]
-	# 	self._c_continuous_lambda = c_continuous_lambda
-	# 	self._c_lambda = constraints_lambda
-	# 	print('Constraints function compiled.')
-
-	# 	# print(expr_graph.c)
-	# 	# print('\n\n\n')
-	# 	# raise NotImplementedError
+		# print(expr_graph.c)
+		# print('\n\n\n')
+		# raise NotImplementedError
 
 	# def _compile_jacobian_constraints(self):
 

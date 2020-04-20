@@ -488,6 +488,17 @@ class Pycollo(BackendABC):
 		self.num_point_vars = len(endpoint_vars)
 		variables = (continuous_vars, endpoint_vars)
 
+		objective = self.J
+		constraints = self.collect_constraints()
+		aux_data = dict_merge(self.aux_data, *(p.aux_data for p in self.p), self.bounds.aux_data)
+		self.expression_graph = ExpressionGraph(self, variables, objective, 
+			constraints, aux_data)
+
+		self.expression_graph._form_time_normalisation_functions()
+		self.expression_graph._form_objective_function_and_derivatives(objective)
+		self.expression_graph._form_constraints_and_derivatives(constraints)
+		self.expression_graph._form_lagrangian_and_derivatives()
+
 		self.phase_variable_slices = []
 		start = 0
 		for p in self.p:
@@ -505,18 +516,6 @@ class Pycollo(BackendABC):
 			start = stop
 			self.phase_endpoint_variable_slices.append(p_slice)
 		self.endpoint_variable_slice = slice(self.num_point_vars - self.num_s_vars, self.num_point_vars)
-
-		objective = self.J
-		constraints = self.collect_constraints()
-		aux_data = dict_merge(self.aux_data, *(p.aux_data for p in self.p), self.bounds.aux_data)
-		self.expression_graph = ExpressionGraph(self, variables, objective, 
-			constraints, aux_data)
-
-		self.expression_graph._form_time_normalisation_functions()
-		self.expression_graph._form_objective_function_and_derivatives(objective)
-		self.expression_graph._form_constraints_and_derivatives(constraints)
-		self.expression_graph._form_lagrangian_and_derivatives()
-
 
 	
 

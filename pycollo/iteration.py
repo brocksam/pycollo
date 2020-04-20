@@ -186,12 +186,35 @@ class Iteration:
 		# self._yu_qts_split = self._yu_slice.stop
 
 		# # Constraints
-		# self._num_c_defect = self._ocp.number_state_equations * self._mesh._num_c_boundary_per_y
-		# self._num_c_path = self._ocp.number_path_constraints * self._mesh._N
-		# self._num_c_integral = self._ocp.number_integrand_functions
-		# self._num_c_boundary = self._ocp.number_state_endpoint_constraints + self._ocp.number_endpoint_constraints
-		# self._num_c = self._num_c_defect + self._num_c_path + self._num_c_integral + self._num_c_boundary
+		self.num_c_defect_per_phase = []
+		self.num_c_path_per_phase = []
+		self.num_c_integral_per_phase = []
+		self.num_c_per_phase = []
+		for p_backend, N, num_c_defect_per_y in zip(self.backend.p, self.mesh.N, self.mesh.num_c_defect_per_y):
+			num_c_defect = p_backend.num_c_defect * num_c_defect_per_y
+			num_c_path = p_backend.num_c_path * N
+			num_c_integral = p_backend.num_c_integral
+			num_c = num_c_defect + num_c_path + num_c_integral
+			self.num_c_defect_per_phase.append(num_c_defect)
+			self.num_c_path_per_phase.append(num_c_path)
+			self.num_c_integral_per_phase.append(num_c_integral)
+			self.num_c_per_phase.append(num_c)
+		self.num_c_defect = sum(num_c for num_c in self.num_c_defect_per_phase)
+		self.num_c_path = sum(num_c for num_c in self.num_c_path_per_phase)
+		self.num_c_integral = sum(num_c for num_c in self.num_c_integral_per_phase)
+		self.num_c_endpoint = self.backend.num_c_endpoint
+		self.num_c = self.num_c_defect + self.num_c_path + self.num_c_integral + self.num_c_endpoint
 
+		self.c_lambda_dy_slices = []
+		self.c_lambda_p_slices = []
+		self.c_lambda_g_slices = []
+		for num_y, num_c_path, num_c_integral, N in zip(self.num_y_per_phase, self.num_c_path_per_phase, self.num_c_integral_per_phase, self.mesh.N):
+			dy_slice = slice(0, num_y)
+			p_slice = slice(dy_slice.stop, dy_slice.stop + num_c_path)
+			g_slice = slice(p_slice.stop, p_slice.stop + num_c_integral * N)
+			self.c_lambda_dy_slices.append(dy_slice)
+			self.c_lambda_p_slices.append(p_slice)
+			self.c_lambda_g_slices.append(g_slice)
 		# self._c_lambda_dy_slice = slice(0, self._num_y)
 		# self._c_lambda_p_slice = slice(self._c_lambda_dy_slice.stop, self._c_lambda_dy_slice.stop + self._num_c_path*self._mesh._N)
 		# self._c_lambda_g_slice = slice(self._c_lambda_p_slice.stop, self._c_lambda_p_slice.stop + self._num_c_integral*self._mesh._N)
@@ -208,6 +231,7 @@ class Iteration:
 		self.generate_endpoint_variables_reshape_lambda()
 		self.generate_objective_lambda()
 		self.generate_gradient_lambda()
+		self.generate_constraints_lambda()
 
 	def generate_unscale_variables_lambda(self):
 
@@ -223,9 +247,15 @@ class Iteration:
 
 		def reshape_x(x):
 			x = self._unscale_x(x)
-			num_yu = self._ocp._num_y_vars + self._ocp._num_u_vars
-			yu_qts_split = self._q_slice.start
-			x_tuple = self._ocp._x_reshape_lambda(x, num_yu, yu_qts_split)
+			x_tuple = self.backend.compiled_functions.x_reshape_lambda(
+				x, 
+				self.y_slices, 
+				self.u_slices, 
+				self.q_slices, 
+				self.t_slices, 
+				self.s_slice,
+				self.mesh.N,
+				)
 			return x_tuple
 
 		self._reshape_x = reshape_x
@@ -273,6 +303,32 @@ class Iteration:
 			return g
 
 		self._gradient_lambda = gradient
+		msg = "Objective function gradient lambda generated successfully."
+		console_out(msg)
+
+	def generate_constraints_lambda(self):
+
+		def constraint(x):
+			x_tuple = self._reshape_x(x)
+			x_tuple_point = self._reshape_x_point(x)
+			c = self.backend.compiled_functions.c_lambda(
+				x_tuple, 
+				x_tuple_point, 
+				self.mesh.sA_matrix, 
+				self.mesh.sD_matrix, 
+				self.mesh.W_matrix, 
+				self.mesh.N,
+				[slice(p_var_slice.start, p_var_slice.start + p.num_y_vars) for p, p_var_slice in zip(self.backend.p, self.backend.phase_variable_slices)],
+				[slice(p_var_slice.start + p.num_y_vars + p.num_u_vars, p_var_slice.start + p.num_y_vars + p.num_u_vars + p.num_q_vars) for p, p_var_slice in zip(self.backend.p, self.backend.phase_variable_slices)],
+				self.c_lambda_dy_slices,
+				self.c_lambda_p_slices,
+				self.c_lambda_g_slices,
+				)#, self._mesh._N, self._ocp._y_slice, self._ocp._q_slice, self._num_c, self._c_lambda_dy_slice, self._c_lambda_p_slice, self._c_lambda_g_slice, self._c_defect_slice, self._c_path_slice, self._c_integral_slice, self._c_boundary_slice, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix)
+			return c
+
+		self._constraint_lambda = constraint
+		msg = "Constraints lambda generated successfully."
+		console_out(msg)
 
 	def generate_bounds(self):
 		self.generate_variable_bounds()
@@ -394,8 +450,8 @@ class Iteration:
 			g = self._gradient_lambda(x_data)
 			print(f"g:\n{g}\n")
 
-			# c = self._constraint_lambda(x_data)
-			# print(f"c:\n{c}\n")
+			c = self._constraint_lambda(x_data)
+			print(f"c:\n{c}\n")
 
 			# G_struct = self._jacobian_structure_lambda()
 			# print(f"G Structure:\n{G_struct[0]}\n{G_struct[1]}")

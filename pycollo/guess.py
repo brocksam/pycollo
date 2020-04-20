@@ -42,21 +42,26 @@ class Guess:
 	def generate(self):
 
 		self.tau = []
+		self.t0 = []
+		self.tF = []
 		self.y = []
 		self.u = []
 		self.q = []
 		self.t = []
 
-		for p in self.p:
-			data = self.generate_single_phase(p)
-			tau, y, u, q, t = data
-			self.tau.append(tau)
-			self.y.append(y)
-			self.u.append(u)
-			self.q.append(q)
-			self.t.append(t)
+		for p, p_guess in zip(self.backend.p, self.p):
+			data = self.generate_single_phase(p_guess)
+			tau, t0, tF, y, u, q, t = data
 
-		self.s = self.endpoint.parameter_variables
+			self.tau.append(tau)
+			self.t0.append(t0)
+			self.tF.append(tF)
+			self.y.append(y[p.ocp_phase.bounds._y_needed])
+			self.u.append(u[p.ocp_phase.bounds._u_needed])
+			self.q.append(q[p.ocp_phase.bounds._q_needed])
+			self.t.append(t[p.ocp_phase.bounds._t_needed])
+
+		self.s = self.endpoint.parameter_variables[self.backend.ocp.bounds._s_needed]
 
 		# print(self.tau)
 		# print(self.y)
@@ -67,20 +72,20 @@ class Guess:
 		# print('\n\n\n')
 		# raise NotImplementedError
 
-	def generate_single_phase(self, p):
+	def generate_single_phase(self, p_guess):
 
-		t0 = p.time[0]
-		tF = p.time[-1]
+		t0 = p_guess.time[0]
+		tF = p_guess.time[-1]
 		stretch = 0.5 * (tF - t0)
 		shift = 0.5 * (t0 + tF)
-		tau = np.array(p.time - shift)/stretch
+		tau = np.array(p_guess.time - shift)/stretch
 
-		y = p.state_variables
-		u = p.control_variables
-		q = p.integral_variables
+		y = np.array(p_guess.state_variables)
+		u = np.array(p_guess.control_variables)
+		q = np.array(p_guess.integral_variables)
 		t = np.array([t0, tF])#np.array([t for t, t_needed in zip([t0, tF], self._ocp._bounds._t_needed) if t_needed])
 
-		data = (tau, y, u, q, t)
+		data = (tau, t0, tF, y, u, q, t)
 
 		return data
 

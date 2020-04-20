@@ -19,23 +19,31 @@ from pycollo.scaling import IterationScaling
 
 class Iteration:
 
-	def __init__(self, optimal_control_problem=None, iteration_number=None, *, mesh=None, guess=None):
+	# def __init__(self, optimal_control_problem=None, iteration_number=None, *, mesh=None, guess=None):
+	def __init__(self, backend, index, mesh, guess):
 
-		# Optimal control problem
-		self._ocp = optimal_control_problem
+		self.backend = backend
 
-		# Iteration number
-		self._iteration_number = int(iteration_number)
-
-		# Mesh
+		self.index = index
+		self.number = index + 1
 		self._mesh = mesh
-		self._mesh._iteration = self
-
-		# Guess
 		self._guess = guess
+
+		# # Optimal control problem
+		# self._ocp = optimal_control_problem
+
+		# # Iteration number
+		# self._iteration_number = int(iteration_number)
+
+		# # Mesh
+		# self._mesh = mesh
+		# self._mesh._iteration = self
+
+		# # Guess
+		# self._guess = guess
 		
-		# Result
-		self._result = None
+		# # Result
+		# self._result = None
 
 	def _display_mesh_iteration(self):
 		print(f'\n\n\n==========================\nSolving Mesh Iteration {self.iteration_number}:\n==========================\n')
@@ -87,6 +95,34 @@ class Iteration:
 	@property
 	def solution(self):
 		return self._solution
+
+	def initialise(self):
+
+		def interpolate_to_new_mesh(num_vars, prev):
+			new_guess = np.empty((num_vars, self._mesh._N))
+			for index, row in enumerate(prev):
+				interp_func = interpolate.interp1d(prev_guess._tau, row)
+				new_guess[index, :] = interp_func(self._guess._tau)
+			return new_guess
+
+		# Guess
+		self._guess = Guess(
+			optimal_control_problem=self._ocp)
+		self._guess._iteration = self
+		self._guess._mesh = self._mesh
+		self._mesh._guess = self._guess
+		self._guess._tau = self._mesh._tau
+		self._guess._t0 = prev_guess._t0
+		self._guess._tF = prev_guess._tF
+		self._guess._stretch = 0.5 * (self._guess._tF - self._guess._t0)
+		self._guess._shift = 0.5 * (self._guess._t0 + self._guess._tF)
+		self._guess._time = (self._mesh._tau * self._guess._stretch) + self._guess._shift
+		self._guess._y = interpolate_to_new_mesh(self._ocp._num_y_vars, prev_guess._y) if self._ocp._num_y_vars else np.array([])
+		self._guess._u = interpolate_to_new_mesh(self._ocp._num_u_vars, prev_guess._u) if self._ocp._num_u_vars else np.array([])
+		self._guess._q = prev_guess._q
+		self._guess._t = prev_guess._t
+		self._guess._s = prev_guess._s
+		print('Guess interpolated to iteration mesh.')
 
 	def _initialise_iteration(self, prev_guess):
 

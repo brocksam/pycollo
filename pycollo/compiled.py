@@ -242,7 +242,7 @@ class CompiledFunctions:
 			G_dzeta_dy = phase_G_dzeta_dy_lambda(dzeta_dy, stretch, A, D, ocp_num_y)
 			G_dzeta_du = phase_G_dzeta_du_lambda(dzeta_du, stretch, A, ocp_num_y, ocp_num_u) if num_u else None
 			G_dzeta_dq = None
-			G_dzeta_dt = phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, ocp_num_y, num_t) if num_t else None
+			G_dzeta_dt = phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, num_c_defect, num_t) if num_t else None
 			G_dzeta_ds = phase_G_dzeta_ds_lambda(dzeta_ds, stretch, A, num_c_defect, num_s) if num_s else sparse.csr_matrix((num_c_defect, num_s))
 			G_dgamma_dy = phase_G_dgamma_dy_lambda(dgamma_dy, ocp_num_c_path, ocp_num_y) if num_c_path else None
 			G_dgamma_du = phase_G_dgamma_du_lambda(dgamma_du, ocp_num_c_path, ocp_num_u) if (num_c_path and num_u) else None
@@ -296,10 +296,10 @@ class CompiledFunctions:
 			G_dzeta_du = sparse.bmat(np.array(G_dzeta_du).reshape(ocp_num_y, ocp_num_u))
 			return G_dzeta_du
 
-		def phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, ocp_num_y, num_t):
+		def phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, num_c_defect, num_t):
 			A_dy_flat = (A.dot(dy.T).flatten(order='F'))
 			product = np.outer(dstretch_dt, A_dy_flat)
-			G_dzeta_dt = sparse.csr_matrix(product.reshape((ocp_num_y, num_t), order='F'))
+			G_dzeta_dt = sparse.csr_matrix(product.reshape((num_c_defect, num_t), order='F'))
 			return G_dzeta_dt
 
 		def phase_G_dzeta_ds_lambda(ddy_ds, stretch, A, num_c_defect, num_s):

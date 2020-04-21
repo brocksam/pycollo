@@ -355,7 +355,7 @@ class CompiledFunctions:
 				db_dxb_phase = db_dxb_lambda(*x_point_tuple, N).flatten()
 				y_row_indices = np.array([(i*N, (i+1)*N-1) for i in range(ocp_num_y)]).flatten()
 				q_row_indices = np.array(range(num_x - num_q - num_t, num_x))
-				row_indices = np.repeat(np.array(range(num_c_endpoint)), ocp_num_y*2 + num_q)
+				row_indices = np.repeat(np.array(range(num_c_endpoint)), ocp_num_y*2 + num_q + num_t)
 				col_indices = np.tile(np.concatenate([y_row_indices, q_row_indices]), num_c_endpoint)
 				db_dxb_phase = sparse.coo_matrix((db_dxb_phase, (row_indices, col_indices)), shape=(num_c_endpoint, num_x))
 				db_dxb_phases.append(db_dxb_phase)

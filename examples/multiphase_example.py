@@ -33,15 +33,15 @@ phase_A.bounds.final_time = 1
 phase_A.bounds.state_variables = {
 	y0: [-3, 3],
 	y1: [-3, 3],
-	y2: [-10, 10],
-	y3: [-10, 10],
+	y2: [-50, 50],
+	y3: [-50, 50],
 	}
 phase_A.bounds.control_variables = {
-	u0: [-10, 10],
-	u1: [-10, 10],
+	u0: [-50, 50],
+	u1: [-50, 50],
 	}
-phase_A.bounds.integral_variables = [[0, 100], [0, 100]]
-phase_A.bounds.path_constraints = [0, 10]
+phase_A.bounds.integral_variables = [[0, 1000], [0, 1000]]
+phase_A.bounds.path_constraints = [[0, 10]]
 phase_A.bounds.initial_state_constraints = {
 	y0: 1,
 	y1: -2,
@@ -127,9 +127,10 @@ problem.settings.backend = "pycollo"
 problem.settings.scaling_method = "bounds"
 problem.settings.assume_inf_bounds = False
 problem.settings.inf_value = 1e16
-problem.settings.check_nlp_functions = True
+problem.settings.check_nlp_functions = False
 problem.settings.collocation_points_min = 2
 problem.settings.collocation_points_max = 3
+problem.settings.derivative_level = 1
 
 phase_A.mesh.number_mesh_sections = 2
 phase_A.mesh.number_mesh_section_nodes = [2, 3]
@@ -139,4 +140,5 @@ phase_B.mesh.number_mesh_section_nodes = [3, 2]
 phase_B.mesh.mesh_section_sizes = [1/2, 1/2]
 
 problem.initialise()
+problem.solve()
 

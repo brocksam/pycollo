@@ -24,6 +24,7 @@ class Iteration:
 	def __init__(self, backend, index, mesh, guess):
 
 		self.backend = backend
+		self._ocp = self.backend.ocp
 
 		self.index = index
 		self.number = index + 1
@@ -51,10 +52,6 @@ class Iteration:
 	@property
 	def optimal_control_problem(self):
 		return self._ocp
-
-	@property
-	def iteration_number(self):
-		return self._iteration_number
 
 	@property
 	def mesh(self):
@@ -102,9 +99,9 @@ class Iteration:
 		self.create_variable_constraint_numbers_slices()
 		self.generate_nlp_lambdas()
 		self.generate_bounds()
-		# self.generate_scaling()
-		# self.reset_bounds()
-		# self.initialise_nlp()
+		self.generate_scaling()
+		self.reset_bounds()
+		self.initialise_nlp()
 		self.check_nlp_functions()
 
 	def console_out_initialising_iteration(self):
@@ -132,6 +129,15 @@ class Iteration:
 		self.guess_q = prev_guess.q
 		self.guess_t = prev_guess.t
 		self.guess_s = prev_guess.s
+
+		self.guess_x = []
+		for y, u, q, t in zip(self.guess_y, self.guess_u, self.guess_q, self.guess_t):
+			self.guess_x.extend(y.tolist())
+			self.guess_x.extend(u.tolist())
+			self.guess_x.extend([q.tolist()])
+			self.guess_x.extend([t.tolist()])
+		self.guess_x.extend([self.guess_s.tolist()])
+		self.guess_x = np.array(list(itertools.chain.from_iterable(self.guess_x)))
 
 		msg = ("Guess interpolated to iteration mesh.")
 		console_out(msg)
@@ -351,7 +357,9 @@ class Iteration:
 	def generate_jacobian_lambda(self):
 
 		def jacobian_data(x):
-			return jacobian(x).data
+			G = jacobian(x)
+			G_zeros = sparse.coo_matrix((np.full(self._G_nnz, 1e-20), self._jacobian_structure_lambda()), shape=self._G_shape).tocsr()
+			return (G + G_zeros).tocoo().data
 
 		def jacobian(x):
 			x_tuple = self._reshape_x(x)
@@ -395,14 +403,14 @@ class Iteration:
 				[p.c_path_slice for p in self.backend.p],
 				[p.c_integral_slice for p in self.backend.p],
 				)
-			G = G.tocoo()
 			return G
 
 		self._G_shape = (self.num_c, self.num_x)
 		x_sparsity_detect = np.full(self.num_x, np.nan)
-		G_sparsity_detect = jacobian(x_sparsity_detect)
+		G_sparsity_detect = jacobian(x_sparsity_detect).tocoo()
 		self._G_nonzero_row = G_sparsity_detect.row
 		self._G_nonzero_col = G_sparsity_detect.col
+		self._G_nnz = G_sparsity_detect.nnz
 
 		self._jacobian_lambda = jacobian_data
 
@@ -410,6 +418,7 @@ class Iteration:
 			return (self._G_nonzero_row, self._G_nonzero_col)
 
 		self._jacobian_structure_lambda = jacobian_structure
+
 		msg = "Jacobian of the constraints lambda generated successfully."
 		console_out(msg)
 
@@ -420,49 +429,37 @@ class Iteration:
 		console_out(msg)
 
 	def generate_variable_bounds(self):
-
-		bnd_l = np.empty((self.num_x, ))
-		bnd_u = np.empty((self.num_x, ))
-
-		# y bounds
-		for p, N, y_slice in zip(self.backend.p, self.mesh.N, self.y_slice_per_phase):
-			bnd_l[y_slice] = (np.ones((N, 1))*p.ocp._bounds._y_l_needed.reshape(1, -1)).flatten('F').squeeze()
-			bnd_u[y_slice] = (np.ones((N, 1))*p.ocp._bounds._y_u_needed.reshape(1, -1)).flatten('F').squeeze()
-
-			# u bounds
-			bnd_l[self._u_slice] = (np.ones((N, 1))*self._ocp._bounds._u_l_needed.reshape(1, -1)).flatten('F').squeeze()
-			bnd_u[self._u_slice] = (np.ones((N, 1))*self._ocp._bounds._u_u_needed.reshape(1, -1)).flatten('F').squeeze()
-
-			# q bounds
-			bnd_l[self._q_slice] = self._ocp._bounds._q_l_needed
-			bnd_u[self._q_slice] = self._ocp._bounds._q_u_needed
-
-			# t bounds
-			bnd_l[self._t_slice] = self._ocp._bounds._t_l_needed
-			bnd_u[self._t_slice] = self._ocp._bounds._t_u_needed
-
-		# s bounds
-		bnd_l[self._s_slice] = self._ocp._bounds._s_l_needed
-		bnd_u[self._s_slice] = self._ocp._bounds._s_u_needed
-
-		self._x_bnd_l = bnd_l
-		self._x_bnd_u = bnd_u
+		bnds = []
+		for p, N in zip(self.backend.p, self.mesh.N):
+			p_bnds = p.ocp_phase.bounds
+			y_bnds = p_bnds._y_bnds[p_bnds._y_needed]
+			y_t0_bnds = p_bnds._y_t0_bnds[p_bnds._y_needed]
+			y_tF_bnds = p_bnds._y_tF_bnds[p_bnds._y_needed]
+			u_bnds = p_bnds._u_bnds[p_bnds._u_needed]
+			q_bnds = p_bnds._q_bnds[p_bnds._q_needed]
+			t_bnds = p_bnds._t_bnds[p_bnds._t_needed]
+			for y_bnd, y_t0_bnd, y_tF_bnd in zip(y_bnds, y_t0_bnds, y_tF_bnds):
+				bnds.extend([y_t0_bnd] + [y_bnd]*(N-2) + [y_tF_bnd])
+			for u_bnd in u_bnds:
+				bnds.extend([u_bnd]*N)
+			bnds.extend(q_bnds)
+			bnds.extend(t_bnds)
+		bnds.extend(self.backend.ocp.bounds._s_bnds[self.backend.ocp.bounds._s_needed])
+		bnds = np.array(bnds)
+		self._x_bnd_l = bnds[:, 0]
+		self._x_bnd_u = bnds[:, 1]
 
 	def generate_constraint_bounds(self):
-
-		bnd_l = np.zeros((self._num_c, ))
-		bnd_u = np.zeros((self._num_c, ))
-
-		# Path constraints bounds
-		bnd_l[self._c_path_slice] = (self._ocp._bounds._c_l * self._mesh._N).flatten()
-		bnd_u[self._c_path_slice] = (self._ocp._bounds._c_u * self._mesh._N).flatten()
-
-		# Boundary constrants bounds
-		bnd_l[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_l, self._ocp._bounds._b_l))
-		bnd_u[self._c_boundary_slice] = np.concatenate((self._ocp._bounds._y_b_u, self._ocp._bounds._b_u))
-
-		self._c_bnd_l = bnd_l 
-		self._c_bnd_u = bnd_u
+		bnds = []
+		for p, N, num_c_defect, num_c_integral in zip(self.backend.p, self.mesh.N, self.num_c_defect_per_phase, self.num_c_integral_per_phase):
+			bnds.extend([np.array((0, 0))]*num_c_defect)
+			for c_bnd in p.ocp_phase.bounds._c_path_bnds:
+				bnds.extend([c_bnd]*N)
+			bnds.extend([np.array((0, 0))]*num_c_integral)
+		bnds.extend(self.backend.ocp.bounds._c_endpoint_bnds)
+		bnds = np.array(bnds)
+		self._c_bnd_l = bnds[:, 0]
+		self._c_bnd_u = bnds[:, 1]
 
 	def generate_scaling(self):
 		self.scaling = IterationScaling(self)
@@ -471,7 +468,8 @@ class Iteration:
 		console_out(msg)
 
 	def reset_bounds(self):
-		self.generate_variable_bounds()
+		self._x_bnd_l = (self._x_bnd_l - self.scaling.x_shift) * self.scaling.x_scaling
+		self._x_bnd_u = (self._x_bnd_u - self.scaling.x_shift) * self.scaling.x_scaling
 
 	def initialise_nlp(self):
 
@@ -492,8 +490,8 @@ class Iteration:
 				)
 
 			self._nlp_problem = ipopt.problem(
-				n=self._num_x,
-				m=self._num_c,
+				n=self.num_x,
+				m=self.num_c,
 				problem_obj=self._ipopt_problem,
 				lb=self._x_bnd_l,
 				ub=self._x_bnd_u,
@@ -556,7 +554,33 @@ class Iteration:
 			# 	print(sH)
 			
 			print('\n\n\n')
-			raise NotImplementedError	
+			raise NotImplementedError
+
+	def solve(self):
+
+		time_start = time.time()
+		nlp_time_start = timer()
+
+		nlp_solution, nlp_solution_info = self._nlp_problem.solve(self.guess_x)
+
+		nlp_time_stop = timer()
+		time_stop = time.time()
+		self._nlp_time = nlp_time_stop - nlp_time_start
+
+		process_results_time_start = timer()
+
+		self._solution = Solution(self, nlp_solution, nlp_solution_info)
+		next_iter_mesh = self._refine_new_mesh()
+		next_iter_guess = Guess(optimal_control_problem=self._ocp, time=self._solution.time, state=self._solution.state, control=self._solution.control, integral=self._solution.integral, parameter=self._solution.parameter)
+		_ = next_iter_guess._mesh_refinement_bypass_init()
+
+		process_results_time_stop = timer()
+
+		_ = self._display_mesh_iteration_info(next_iter_mesh)
+
+		self._process_results_time = process_results_time_stop - process_results_time_start
+
+		return next_iter_mesh, next_iter_guess
 
 
 
@@ -650,158 +674,158 @@ class Iteration:
 		self._G_shape = (self._num_c, self._num_x)
 		self._H_shape = (self._num_x, self._num_x)
 
-		# Jacobian
-		G_nonzero_row = []
-		G_nonzero_col = []
-		dzeta_dy_D_nonzero = []
+		# # Jacobian
+		# G_nonzero_row = []
+		# G_nonzero_col = []
+		# dzeta_dy_D_nonzero = []
 
-		A_row_col_array = np.vstack(self._mesh._sA_matrix.nonzero())
-		A_ind_array = self._mesh._A_index_array
-		D_ind_array = self._mesh._D_index_array
+		# A_row_col_array = np.vstack(self._mesh._sA_matrix.nonzero())
+		# A_ind_array = self._mesh._A_index_array
+		# D_ind_array = self._mesh._D_index_array
 
-		# Defect constraints by state variables
-		for i_c in range(self._ocp._num_y_vars):
-			for i_y in range(self._ocp._num_y_vars):
-				row_offset = i_c * self._mesh._num_c_boundary_per_y
-				col_offset = i_y * self._mesh._N
-				ind_offset = len(G_nonzero_row)
-				G_nonzero_row.extend(list(A_row_col_array[0] + row_offset))
-				G_nonzero_col.extend(list(A_row_col_array[1] + col_offset))
-				if i_c == i_y:
-					dzeta_dy_D_nonzero.extend(list(D_ind_array + ind_offset))
-		dzeta_dy_slice = slice(0, len(G_nonzero_row))
+		# # Defect constraints by state variables
+		# for i_c in range(self._ocp._num_y_vars):
+		# 	for i_y in range(self._ocp._num_y_vars):
+		# 		row_offset = i_c * self._mesh._num_c_boundary_per_y
+		# 		col_offset = i_y * self._mesh._N
+		# 		ind_offset = len(G_nonzero_row)
+		# 		G_nonzero_row.extend(list(A_row_col_array[0] + row_offset))
+		# 		G_nonzero_col.extend(list(A_row_col_array[1] + col_offset))
+		# 		if i_c == i_y:
+		# 			dzeta_dy_D_nonzero.extend(list(D_ind_array + ind_offset))
+		# dzeta_dy_slice = slice(0, len(G_nonzero_row))
 
-		# Defect constraints by control variables
-		for i_c in range(self._ocp._num_y_vars):
-			for i_u in range(self._ocp._num_u_vars):
-				row_offset = i_c * self._mesh._num_c_boundary_per_y
-				col_offset = (self._ocp._num_y_vars + i_u) * self._mesh._N
-				G_nonzero_row.extend(list(A_row_col_array[0] + row_offset))
-				G_nonzero_col.extend(list(A_row_col_array[1] + col_offset))
-		dzeta_du_slice = slice(dzeta_dy_slice.stop, len(G_nonzero_row))
+		# # Defect constraints by control variables
+		# for i_c in range(self._ocp._num_y_vars):
+		# 	for i_u in range(self._ocp._num_u_vars):
+		# 		row_offset = i_c * self._mesh._num_c_boundary_per_y
+		# 		col_offset = (self._ocp._num_y_vars + i_u) * self._mesh._N
+		# 		G_nonzero_row.extend(list(A_row_col_array[0] + row_offset))
+		# 		G_nonzero_col.extend(list(A_row_col_array[1] + col_offset))
+		# dzeta_du_slice = slice(dzeta_dy_slice.stop, len(G_nonzero_row))
 
-		# Defect constraints by time variables
-		num_rows = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
-		num_cols = self._ocp._num_t_vars
-		col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars
-		row_indices = list(range(num_rows))
-		col_indices = list(range(col_offset, col_offset+num_cols))
-		G_nonzero_row.extend(np.repeat(row_indices, num_cols))
-		G_nonzero_col.extend(np.tile(col_indices, num_rows))
-		dzeta_dt_slice = slice(dzeta_du_slice.stop, len(G_nonzero_row))
+		# # Defect constraints by time variables
+		# num_rows = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
+		# num_cols = self._ocp._num_t_vars
+		# col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars
+		# row_indices = list(range(num_rows))
+		# col_indices = list(range(col_offset, col_offset+num_cols))
+		# G_nonzero_row.extend(np.repeat(row_indices, num_cols))
+		# G_nonzero_col.extend(np.tile(col_indices, num_rows))
+		# dzeta_dt_slice = slice(dzeta_du_slice.stop, len(G_nonzero_row))
 
-		# Defect constraint by parameter variables
-		num_rows = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
-		num_cols = self._ocp._num_s_vars
-		col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars
-		row_indices = list(range(num_rows))
-		col_indices = list(range(col_offset, col_offset+num_cols))
-		G_nonzero_row.extend(np.repeat(row_indices, num_cols))
-		G_nonzero_col.extend(np.tile(col_indices, num_rows))
-		dzeta_ds_slice = slice(dzeta_dt_slice.stop, len(G_nonzero_row))
+		# # Defect constraint by parameter variables
+		# num_rows = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
+		# num_cols = self._ocp._num_s_vars
+		# col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars
+		# row_indices = list(range(num_rows))
+		# col_indices = list(range(col_offset, col_offset+num_cols))
+		# G_nonzero_row.extend(np.repeat(row_indices, num_cols))
+		# G_nonzero_col.extend(np.tile(col_indices, num_rows))
+		# dzeta_ds_slice = slice(dzeta_dt_slice.stop, len(G_nonzero_row))
 
-		# Path constraints by state variables
-		for i_c in range(self._ocp.number_path_constraints):
-			for i_y in range(self._ocp._num_y_vars):
-				row_offset = self._ocp.number_state_equations*self._mesh._num_c_boundary_per_y + i_c
-				col_offset = i_y * self._mesh._N
-				G_nonzero_row.extend(list(range(row_offset, self._mesh._N + row_offset)))
-				G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
-		dgamma_dy_slice = slice(dzeta_ds_slice.stop, len(G_nonzero_row))
+		# # Path constraints by state variables
+		# for i_c in range(self._ocp.number_path_constraints):
+		# 	for i_y in range(self._ocp._num_y_vars):
+		# 		row_offset = self._ocp.number_state_equations*self._mesh._num_c_boundary_per_y + i_c
+		# 		col_offset = i_y * self._mesh._N
+		# 		G_nonzero_row.extend(list(range(row_offset, self._mesh._N + row_offset)))
+		# 		G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
+		# dgamma_dy_slice = slice(dzeta_ds_slice.stop, len(G_nonzero_row))
 
-		# Path constraints by control variables
-		for i_c in range(self._ocp.number_path_constraints):
-			for i_u in range(self._ocp._num_u_vars):
-				row_offset = self._ocp.number_state_equations*self._mesh._num_c_boundary_per_y + i_c
-				col_offset = (self._ocp._num_y_vars + i_u) * self._mesh._N
-				G_nonzero_row.extend(list(range(row_offset, self._mesh._N + row_offset)))
-				G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
-		dgamma_du_slice = slice(dgamma_dy_slice.stop, len(G_nonzero_row))
+		# # Path constraints by control variables
+		# for i_c in range(self._ocp.number_path_constraints):
+		# 	for i_u in range(self._ocp._num_u_vars):
+		# 		row_offset = self._ocp.number_state_equations*self._mesh._num_c_boundary_per_y + i_c
+		# 		col_offset = (self._ocp._num_y_vars + i_u) * self._mesh._N
+		# 		G_nonzero_row.extend(list(range(row_offset, self._mesh._N + row_offset)))
+		# 		G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
+		# dgamma_du_slice = slice(dgamma_dy_slice.stop, len(G_nonzero_row))
 
-		# Path constraints by time variables
-		num_rows = self._ocp.number_path_constraints * self._mesh._N
-		num_cols = self._ocp._num_t_vars
-		row_offset = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
-		col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars
-		row_indices = list(range(row_offset, row_offset+num_rows))
-		col_indices = list(range(col_offset, col_offset+num_cols))
-		G_nonzero_row.extend(np.repeat(row_indices, num_cols))
-		G_nonzero_col.extend(np.tile(col_indices, num_rows))
-		dgamma_dt_slice = slice(dgamma_du_slice.stop, len(G_nonzero_row))
+		# # Path constraints by time variables
+		# num_rows = self._ocp.number_path_constraints * self._mesh._N
+		# num_cols = self._ocp._num_t_vars
+		# row_offset = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
+		# col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars
+		# row_indices = list(range(row_offset, row_offset+num_rows))
+		# col_indices = list(range(col_offset, col_offset+num_cols))
+		# G_nonzero_row.extend(np.repeat(row_indices, num_cols))
+		# G_nonzero_col.extend(np.tile(col_indices, num_rows))
+		# dgamma_dt_slice = slice(dgamma_du_slice.stop, len(G_nonzero_row))
 
-		# Path constraints by parameter variables
-		num_rows = self._ocp.number_path_constraints * self._mesh._N
-		num_cols = self._ocp._num_s_vars
-		row_offset = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
-		col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars
-		row_indices = list(range(row_offset, row_offset+num_rows))
-		col_indices = list(range(col_offset, col_offset+num_cols))
-		G_nonzero_row.extend(np.repeat(row_indices, num_cols))
-		G_nonzero_col.extend(np.tile(col_indices, num_rows))
-		dgamma_ds_slice = slice(dgamma_dt_slice.stop, len(G_nonzero_row))
+		# # Path constraints by parameter variables
+		# num_rows = self._ocp.number_path_constraints * self._mesh._N
+		# num_cols = self._ocp._num_s_vars
+		# row_offset = self._ocp._num_y_vars * self._mesh._num_c_boundary_per_y
+		# col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars
+		# row_indices = list(range(row_offset, row_offset+num_rows))
+		# col_indices = list(range(col_offset, col_offset+num_cols))
+		# G_nonzero_row.extend(np.repeat(row_indices, num_cols))
+		# G_nonzero_col.extend(np.tile(col_indices, num_rows))
+		# dgamma_ds_slice = slice(dgamma_dt_slice.stop, len(G_nonzero_row))
 
-		# Integral constraints by state variables
-		for i_c in range(self._ocp._num_q_vars):
-			for i_y in range(self._ocp._num_y_vars):
-				row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
-				col_offset = i_y * self._mesh._N
-				G_nonzero_row.extend(list(row_offset*np.ones(self._mesh._N, dtype=int)))
-				G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
-		drho_dy_slice = slice(dgamma_ds_slice.stop, len(G_nonzero_row))
+		# # Integral constraints by state variables
+		# for i_c in range(self._ocp._num_q_vars):
+		# 	for i_y in range(self._ocp._num_y_vars):
+		# 		row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
+		# 		col_offset = i_y * self._mesh._N
+		# 		G_nonzero_row.extend(list(row_offset*np.ones(self._mesh._N, dtype=int)))
+		# 		G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
+		# drho_dy_slice = slice(dgamma_ds_slice.stop, len(G_nonzero_row))
 
-		# Integral constraints by control variables
-		for i_c in range(self._ocp._num_q_vars):
-			for i_u in range(self._ocp._num_u_vars):
-				row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
-				col_offset = (self._ocp._num_y_vars + i_u) * self._mesh._N
-				G_nonzero_row.extend(list(row_offset*np.ones(self._mesh._N, dtype=int)))
-				G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
-		drho_du_slice = slice(drho_dy_slice.stop, len(G_nonzero_row))
+		# # Integral constraints by control variables
+		# for i_c in range(self._ocp._num_q_vars):
+		# 	for i_u in range(self._ocp._num_u_vars):
+		# 		row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
+		# 		col_offset = (self._ocp._num_y_vars + i_u) * self._mesh._N
+		# 		G_nonzero_row.extend(list(row_offset*np.ones(self._mesh._N, dtype=int)))
+		# 		G_nonzero_col.extend(list(range(col_offset, self._mesh._N + col_offset)))
+		# drho_du_slice = slice(drho_dy_slice.stop, len(G_nonzero_row))
 
-		# Integral constraints by integral variables
-		for i_c in range(self._ocp._num_q_vars):
-			row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
-			col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + i_c
-			G_nonzero_row.extend(list(row_offset*np.ones(self._ocp._num_q_vars, dtype=int)))
-			G_nonzero_col.extend(list(range(col_offset, self._ocp._num_q_vars + col_offset)))
-		drho_dq_slice = slice(drho_du_slice.stop, len(G_nonzero_row))
+		# # Integral constraints by integral variables
+		# for i_c in range(self._ocp._num_q_vars):
+		# 	row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
+		# 	col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + i_c
+		# 	G_nonzero_row.extend(list(row_offset*np.ones(self._ocp._num_q_vars, dtype=int)))
+		# 	G_nonzero_col.extend(list(range(col_offset, self._ocp._num_q_vars + col_offset)))
+		# drho_dq_slice = slice(drho_du_slice.stop, len(G_nonzero_row))
 
-		# Integral constraints by time variables
-		for i_c in range(self._ocp._num_q_vars):
-			for i_t in range(self._ocp._num_t_vars):
-				row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
-				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + i_t
-				G_nonzero_row.append(row_offset)
-				G_nonzero_col.append(col_offset)
-		drho_dt_slice = slice(drho_dq_slice.stop, len(G_nonzero_row))
+		# # Integral constraints by time variables
+		# for i_c in range(self._ocp._num_q_vars):
+		# 	for i_t in range(self._ocp._num_t_vars):
+		# 		row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
+		# 		col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + i_t
+		# 		G_nonzero_row.append(row_offset)
+		# 		G_nonzero_col.append(col_offset)
+		# drho_dt_slice = slice(drho_dq_slice.stop, len(G_nonzero_row))
 
-		# Integral constraints by parameter variables
-		for i_c in range(self._ocp._num_q_vars):
-			for i_s in range(self._ocp._num_s_vars):
-				row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
-				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars + i_s
-				G_nonzero_row.append(row_offset)
-				G_nonzero_col.append(col_offset)
-		drho_ds_slice = slice(drho_dt_slice.stop, len(G_nonzero_row))
+		# # Integral constraints by parameter variables
+		# for i_c in range(self._ocp._num_q_vars):
+		# 	for i_s in range(self._ocp._num_s_vars):
+		# 		row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + i_c
+		# 		col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + self._ocp._num_q_vars + self._ocp._num_t_vars + i_s
+		# 		G_nonzero_row.append(row_offset)
+		# 		G_nonzero_col.append(col_offset)
+		# drho_ds_slice = slice(drho_dt_slice.stop, len(G_nonzero_row))
 
-		# Boundary constraints
-		for i_c in range(self._ocp.number_state_endpoint_constraints + self._ocp.number_endpoint_constraints):
-			for i_y in range(self._ocp._num_y_vars):
-				row_offset = [self._ocp.number_state_equations*self._mesh._num_c_boundary_per_y + self._ocp.number_path_constraints*self._mesh._N + self._ocp._num_q_vars + i_c]*2
-				col_offset = [i_y * self._mesh._N, (i_y+1) * self._mesh._N - 1]
-				G_nonzero_row.extend(row_offset)
-				G_nonzero_col.extend(col_offset)
-			for i_qts in range(self._ocp._num_q_vars + self._ocp._num_t_vars + self._ocp._num_s_vars):
-				row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + self._ocp.number_integrand_functions + i_c
-				col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + i_qts
-				G_nonzero_row.append(row_offset)
-				G_nonzero_col.append(col_offset)
-		dbeta_dxb_slice = slice(drho_ds_slice.stop, len(G_nonzero_row))
+		# # Boundary constraints
+		# for i_c in range(self._ocp.number_state_endpoint_constraints + self._ocp.number_endpoint_constraints):
+		# 	for i_y in range(self._ocp._num_y_vars):
+		# 		row_offset = [self._ocp.number_state_equations*self._mesh._num_c_boundary_per_y + self._ocp.number_path_constraints*self._mesh._N + self._ocp._num_q_vars + i_c]*2
+		# 		col_offset = [i_y * self._mesh._N, (i_y+1) * self._mesh._N - 1]
+		# 		G_nonzero_row.extend(row_offset)
+		# 		G_nonzero_col.extend(col_offset)
+		# 	for i_qts in range(self._ocp._num_q_vars + self._ocp._num_t_vars + self._ocp._num_s_vars):
+		# 		row_offset = (self._ocp.number_state_equations + self._ocp.number_path_constraints) * self._mesh._num_c_boundary_per_y + self._ocp.number_integrand_functions + i_c
+		# 		col_offset = (self._ocp._num_y_vars + self._ocp._num_u_vars) * self._mesh._N + i_qts
+		# 		G_nonzero_row.append(row_offset)
+		# 		G_nonzero_col.append(col_offset)
+		# dbeta_dxb_slice = slice(drho_ds_slice.stop, len(G_nonzero_row))
 
-		self._G_nonzero_row = tuple(G_nonzero_row)
-		self._G_nonzero_col = tuple(G_nonzero_col)
-		self._num_G_nonzero = len(self._G_nonzero_row)
-		print('Full Jacobian sparsity computed.')
+		# self._G_nonzero_row = tuple(G_nonzero_row)
+		# self._G_nonzero_col = tuple(G_nonzero_col)
+		# self._num_G_nonzero = len(self._G_nonzero_row)
+		# print('Full Jacobian sparsity computed.')
 
 		def hessian_objective_sparsity():
 			H_objective_nonzero_row = []

@@ -97,8 +97,9 @@ phase_A.bounds.state_variables = {
 	v_z: [-10000, 10000],
 	v_x: [-10000, 10000],
 	v_y: [-10000, 10000],
-	m: [9*m_tot_S + m_tot_1 + m_tot_2 + m_payload, phase_A.initial_state_variables.m 
-		- (6*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1)]
+	m: [9*m_tot_S + m_tot_1 + m_tot_2 + m_payload
+			- (6*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1), 
+		9*m_tot_S + m_tot_1 + m_tot_2 + m_payload]
 	}
 phase_A.bounds.control_variables = {
 	u_x: [-10, 10],
@@ -154,6 +155,7 @@ phase_B, phase_C, phase_D = problem.new_phases_like(number=3,
 # PHASE 2
 
 phase_B.bounds.initial_time = phase_A.bounds.final_time
+phase_B.bounds.final_time = 150.4
 
 phase_B.auxiliary_data = {
 	T: 3*T_eng_S + T_eng_1,
@@ -162,12 +164,18 @@ phase_B.auxiliary_data = {
 
 # PHASE 3
 
+phase_C.bounds.initial_time = phase_B.bounds.final_time
+phase_C.bounds.final_time = 261
+
 phase_C.auxiliary_data = {
 	T: T_eng_1,
 	xi: T_eng_1/(g_0*I_1),
 	}
 
 # PHASE 4
+
+phase_D.bounds.initial_time = phase_C.bounds.final_time
+phase_D.bounds.final_time = [phase_D.bounds.initial_time, 961]
 
 phase_D.auxiliary_data = {
 	T: T_eng_2,
@@ -177,7 +185,6 @@ phase_D.auxiliary_data = {
 problem.objective_function = problem.phases[2].final_state_variables.m
 
 problem.endpoint_constraints = [
-	phase_D.final_time_variable - phase_D.initial_time_variable,
 	(phase_A.final_state_variables.m - phase_A.initial_state_variables.m 
 		+ 6*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1),
 	(phase_B.initial_state_variables.m - phase_A.final_state_variables.m 
@@ -190,10 +197,45 @@ problem.endpoint_constraints = [
 		+ (1 - 2*(tau_burn_S/tau_burn_1))*m_prop_1),
 	(phase_D.initial_state_variables.m - phase_C.final_state_variables.m
 		+ m_struct_1),
+	phase_A.final_state_variables.r_x - phase_B.initial_state_variables.r_x,
+	phase_A.final_state_variables.r_y - phase_B.initial_state_variables.r_y,
+	phase_A.final_state_variables.r_z - phase_B.initial_state_variables.r_z,
+	phase_A.final_state_variables.v_x - phase_B.initial_state_variables.v_x,
+	phase_A.final_state_variables.v_y - phase_B.initial_state_variables.v_y,
+	phase_A.final_state_variables.v_z - phase_B.initial_state_variables.v_z,
+	phase_B.final_state_variables.r_x - phase_C.initial_state_variables.r_x,
+	phase_B.final_state_variables.r_y - phase_C.initial_state_variables.r_y,
+	phase_B.final_state_variables.r_z - phase_C.initial_state_variables.r_z,
+	phase_B.final_state_variables.v_x - phase_C.initial_state_variables.v_x,
+	phase_B.final_state_variables.v_y - phase_C.initial_state_variables.v_y,
+	phase_B.final_state_variables.v_z - phase_C.initial_state_variables.v_z,
+	phase_C.final_state_variables.r_x - phase_D.initial_state_variables.r_x,
+	phase_C.final_state_variables.r_y - phase_D.initial_state_variables.r_y,
+	phase_C.final_state_variables.r_z - phase_D.initial_state_variables.r_z,
+	phase_C.final_state_variables.v_x - phase_D.initial_state_variables.v_x,
+	phase_C.final_state_variables.v_y - phase_D.initial_state_variables.v_y,
+	phase_C.final_state_variables.v_z - phase_D.initial_state_variables.v_z,
 	]
 
 problem.bounds.endpoint_constraints = [
-	961 - 261,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
 	0,
 	0,
 	0,
@@ -203,7 +245,7 @@ problem.bounds.endpoint_constraints = [
 	]
 
 problem.auxiliary_data = {
-	mu: 3.986012e14, # 
+	mu: 3.986012e14, # Gravitational parameter
 	R_E: 6378145, # Radius of Earth (in m)
 	r_vec_norm: sym.sqrt(r_x**2 + r_y**2 + r_z**2), # Absolute position (in m)
 	v_vec_norm: sym.sqrt(v_x**2 + v_y**2 + v_z**2), # Absolute velocity (in m/s)
@@ -246,6 +288,7 @@ problem.auxiliary_data = {
 	tau_burn_2: 700, # Burn time of stage 2 (in s)
 	m_payload: 4146, # Mass of payload (in kg)
 	T_over_m: T/m,
+	psi_L: (28.5/180)*np.pi, # (Geocentric) latitude of Cape Canaveral launch site (in rad)
 	}
 
 problem.settings.nlp_tolerance = 10e-7
@@ -253,6 +296,8 @@ problem.settings.mesh_tolerance = 10e-6
 problem.settings.maximise_objective = True
 problem.settings.backend = "pycollo"
 problem.settings.scaling_method = None
+problem.settings.assume_inf_bounds = True
+problem.settings.inf_value = 1e16
 
 problem.initialise()
 

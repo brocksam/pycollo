@@ -140,6 +140,7 @@ class IterationScaling:
 
 	def __init__(self, iteration):
 		self.iteration = iteration
+		self.backend = self.iteration.backend
 		self._GENERATE_DISPATCHER = {
 			True: self._generate_from_previous,
 			False: self._generate_from_base,
@@ -152,24 +153,30 @@ class IterationScaling:
 
 	@property
 	def base_scaling(self):
-		return self.optimal_control_problem.scaling
+		return self.optimal_control_problem._backend.scaling
 
 	def _generate(self):
 		update_scaling = self.optimal_control_problem.settings.update_scaling
-		if self.iteration._iteration_number >= 2:
+		if self.iteration.number >= 2:
 			self._GENERATE_DISPATCHER[update_scaling]()
 		else:
 			self._generate_from_base()
 
 	def _expand_x_to_mesh(self, base_scaling):
-		N = self.iteration._mesh._N
-		yu = base_scaling[self.optimal_control_problem._yu_slice]
-		qts = base_scaling[self.optimal_control_problem._qts_slice]
-		return np.concatenate([np.repeat(yu, N), qts])
+		parts = []
+		for p, p_slice, N in zip(self.backend.p, self.backend.phase_variable_slices, self.iteration.mesh.N):
+			p_scaling = base_scaling[p_slice]
+			yu_scaling = p_scaling[p.yu_slice]
+			qt_scaling = p_scaling[p.qt_slice]
+			parts.append(np.repeat(yu_scaling, N))
+			parts.append(qt_scaling)
+		parts.append(base_scaling[self.backend.variable_slice])
+		scaling = np.concatenate(parts)
+		return scaling
 
 	def _generate_from_base(self):
 
-		x_guess = self.iteration._guess._x
+		x_guess = self.iteration.guess_x
 
 		# Variables scale
 		self._x_offset_unexpanded = self.base_scaling.x_shift
@@ -183,14 +190,20 @@ class IterationScaling:
 
 		# Objective scale
 		self.obj_scaling = self._calculate_objective_scaling(x_guess)
-
+		
 		# Constraints scale
 		c_scaling = self._calculate_constraint_scaling(x_guess)
-		W_defect = V_vals[self.iteration._c_defect_slice]
-		W_path = np.ones(self.iteration._num_c_path)
-		W_integral = V_vals[self.iteration._c_integral_slice]
-		W_point = np.ones(self.iteration._num_c_boundary)
-		W_vals = np.concatenate([W_defect, W_path, W_integral, W_point])
+		parts = []
+		for c_defect_slice, c_integral_slice, num_c_path in zip(self.iteration.c_defect_slices, self.iteration.c_integral_slices, self.iteration.num_c_path_per_phase):
+			W_defect = V_vals[c_defect_slice]
+			W_path = np.ones(num_c_path)
+			W_integral = V_vals[c_integral_slice]
+			parts.append(W_defect)
+			parts.append(W_path)
+			parts.append(W_integral)
+		W_point = np.ones(self.iteration.num_c_endpoint)
+		parts.append(W_point)
+		W_vals = np.concatenate(parts)
 		
 		self.c_scaling = W_vals
 

@@ -243,17 +243,17 @@ class CompiledFunctions:
 			G_dzeta_du = phase_G_dzeta_du_lambda(dzeta_du, stretch, A, ocp_num_y, ocp_num_u) if num_u else None
 			G_dzeta_dq = None
 			G_dzeta_dt = phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, ocp_num_y, num_t) if num_t else None
-			G_dzeta_ds = phase_G_dzeta_ds_lambda(dzeta_ds, stretch, A, num_c_defect, num_s) if num_s else sparse.csr_matrix(shape=(num_c_defect, num_s))
+			G_dzeta_ds = phase_G_dzeta_ds_lambda(dzeta_ds, stretch, A, num_c_defect, num_s) if num_s else sparse.csr_matrix((num_c_defect, num_s))
 			G_dgamma_dy = phase_G_dgamma_dy_lambda(dgamma_dy, ocp_num_c_path, ocp_num_y) if num_c_path else None
 			G_dgamma_du = phase_G_dgamma_du_lambda(dgamma_du, ocp_num_c_path, ocp_num_u) if (num_c_path and num_u) else None
 			G_dgamma_dq = None
 			G_dgamma_dt = None
-			G_dgamma_ds = phase_G_dgamma_ds_lambda(dgamma_ds, num_c_path, num_s) if (num_c_path and num_s) else sparse.csr_matrix(shape=(num_c_path, num_s))
+			G_dgamma_ds = phase_G_dgamma_ds_lambda(dgamma_ds, num_c_path, num_s) if (num_c_path and num_s) else sparse.csr_matrix((num_c_path, num_s))
 			G_drho_dy = phase_G_drho_dy_lambda(drho_dy, stretch, W, num_c_integral, num_y) if num_c_integral else None
 			G_drho_du = phase_G_drho_du_lambda(drho_du, stretch, W, num_c_integral, num_u) if (num_c_integral and num_u) else None
 			G_drho_dq = phase_G_drho_dq_lambda(num_q) if (num_c_integral and num_q) else None
 			G_drho_dt = phase_G_drho_dt_lambda(g, dstretch_dt, W) if (num_c_integral and num_t) else None
-			G_drho_ds = phase_G_drho_ds_lambda(drho_ds, stretch, W, num_c_integral, num_s) if (num_c_integral and num_s) else sparse.csr_matrix(shape=(num_c_integral, num_s))
+			G_drho_ds = phase_G_drho_ds_lambda(drho_ds, stretch, W, num_c_integral, num_s) if (num_c_integral and num_s) else sparse.csr_matrix((num_c_integral, num_s))
 
 			G_phase = sparse.bmat([
 				[G_dzeta_dy, G_dzeta_du, G_dzeta_dq, G_dzeta_dt],
@@ -347,7 +347,7 @@ class CompiledFunctions:
 			G_drho_ds = sparse.csr_matrix((- stretch * np.matmul(drho_ds, W)).reshape((num_c_integral, num_s), order="F"))
 			return G_drho_ds
 
-		def endpoint_jacobian_lambda(G_shape, x_point_tuple, db_dxb_phase_lambdas, db_ds_lambda, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_c_endpoint):
+		def endpoint_jacobian_lambda(G_shape, x_point_tuple, db_dxb_phase_lambdas, db_ds_lambda, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_s, num_c_endpoint):
 			row_offset = 0
 			db_dxb_phases = []
 			for db_dxb_lambda, N, num_y, num_q, num_t, num_x in zip(db_dxb_phase_lambdas, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase):
@@ -359,7 +359,7 @@ class CompiledFunctions:
 				col_indices = np.tile(np.concatenate([y_row_indices, q_row_indices]), num_c_endpoint)
 				db_dxb_phase = sparse.coo_matrix((db_dxb_phase, (row_indices, col_indices)), shape=(num_c_endpoint, num_x))
 				db_dxb_phases.append(db_dxb_phase)
-			db_ds = sparse.csr_matrix(db_ds_lambda(*x_point_tuple).reshape(num_c_endpoint, -1))
+			db_ds = sparse.csr_matrix(db_ds_lambda(*x_point_tuple).reshape(num_c_endpoint, num_s))
 			db_dxb_blocks = db_dxb_phases + [db_ds]
 			G_endpoint = sparse.hstack(db_dxb_blocks)
 			G_continuous_shape = (G_shape[0] - num_c_endpoint, G_shape[1])
@@ -371,7 +371,7 @@ class CompiledFunctions:
 			G = sparse.csr_matrix(G_shape)
 			for t_stretch_lambda, dstretch_dt, c_continuous_lambda, dc_dx_lambda, A, D, W, N, row_offset, col_offset, y_slice, u_slice, q_slice, t_slice, dy_slice, p_slice, g_slice, c_defect_slice, c_path_slice, c_integral_slice, num_y, num_u, num_q, num_t, num_x, num_c_defect, num_c_path, num_c_integral, num_c, phase_y_slice, phase_u_slice, phase_q_slice, phase_t_slice, phase_c_defect_slice, phase_c_path_slice, phase_c_integral_slice in zip(self._t_stretch_lambdas, self._t_dstretch_dt_lambdas, self.c_continuous_lambdas, dc_dx_lambdas, p_A, p_D, p_W, p_N, phase_row_offsets, phase_col_offsets, ocp_phase_y_slice, ocp_phase_u_slice, ocp_phase_q_slice, ocp_phase_t_slice, ocp_phase_dy_slice, ocp_phase_p_slice, ocp_phase_g_slice, ocp_phase_c_defect_slice, ocp_phase_c_path_slice, ocp_phase_c_integral_slice, num_y_per_phase, num_u_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_c_defect_per_phase, num_c_path_per_phase, num_c_integral_per_phase, num_c_per_phase, phase_y_slices, phase_u_slices, phase_q_slices, phase_t_slices, phase_c_defect_slices, phase_c_path_slices, phase_c_integral_slices):
 				G += phase_jacobian_lambda(G_shape, x_tuple, t_stretch_lambda, dstretch_dt, c_continuous_lambda, dc_dx_lambda, A, D, W, N, row_offset, col_offset, y_slice, u_slice, q_slice, t_slice, dy_slice, p_slice, g_slice, c_defect_slice, c_path_slice, c_integral_slice, num_y, num_u, num_q, num_t, num_x, num_s, num_c_defect, num_c_path, num_c_integral, num_c, phase_y_slice, phase_u_slice, phase_q_slice, phase_t_slice, phase_c_defect_slice, phase_c_path_slice, phase_c_integral_slice)
-			G += endpoint_jacobian_lambda(G_shape, x_point_tuple, db_dxb_phase_lambdas, db_ds_lambda, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_c_endpoint)
+			G += endpoint_jacobian_lambda(G_shape, x_point_tuple, db_dxb_phase_lambdas, db_ds_lambda, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_s, num_c_endpoint)
 			return G
 
 		expr_graph = self.ocp_backend.expression_graph

@@ -24,7 +24,7 @@ class EndpointGuess:
 
 		self.optimal_control_problem = optimal_control_problem
 
-		self.parameter_variables = []
+		self.parameter_variables = np.array([])
 
 
 class Guess:

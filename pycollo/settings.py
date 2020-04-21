@@ -103,6 +103,7 @@ class Settings():
 
 		# Backend
 		self.backend = backend
+		self.check_nlp_functions = False
 
 		# Other
 		self.maximise_objective = maximise_objective

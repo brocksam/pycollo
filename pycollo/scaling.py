@@ -91,7 +91,7 @@ class PhaseScaling(ScalingABC):
 		return string
 
 
-class Scaling:
+class Scaling(ScalingABC):
 
 	def __init__(self, backend):
 
@@ -104,6 +104,10 @@ class Scaling:
 			GUESS: self._generate_guess,
 			}
 		self._generate()
+
+	@property
+	def optimal_control_problem(self):
+		return self.ocp
 
 	def _generate(self):
 		method = self.ocp.settings.scaling_method

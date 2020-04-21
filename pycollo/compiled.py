@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as sparse
 import sympy as sym
 
 from .numbafy import numbafy
@@ -15,7 +16,7 @@ class CompiledFunctions:
 		self.compile_objective()
 		self.compile_objective_gradient()
 		self.compile_constraints()
-		# self.compile_jacobian_constraints()
+		self.compile_jacobian_constraints()
 		# if self.ocp.settings.derivative_level == 2:
 		# 	self.compile_hessian_lagrangian()
 
@@ -198,189 +199,200 @@ class CompiledFunctions:
 			# ocp_num_vars=self._num_vars_tuple,
 			)
 
-		# self._t_stretch_lambda = t_stretch_lambda
-		# self._dstretch_dt = [val 
-		# 	for val, t_needed in zip(self._dSTRETCH_dt, self._bounds._t_needed) 
-		# 	if t_needed]
-		# self._c_continuous_lambda = c_continuous_lambda
+		self._t_stretch_lambdas = t_stretch_lambdas
+		self._t_dstretch_dt_lambdas = []
+		for p in self.ocp_backend.p:
+			dstretch_dt = np.array([val
+				for val, t_needed in zip(np.array([-0.5, 0.5]), p.ocp_phase.bounds._t_needed)
+				if t_needed])
+			self._t_dstretch_dt_lambdas.append(dstretch_dt)
+		self.c_continuous_lambdas = c_continuous_lambdas
+		self.c_endpoint_lambda = c_endpoint_lambda
 		self.c_lambda = constraints_lambda
 		print('Constraints function compiled.')
 
-		# print(expr_graph.c)
-		# print('\n\n\n')
-		# raise NotImplementedError
+	def compile_jacobian_constraints(self):
 
-	# def _compile_jacobian_constraints(self):
+		def phase_jacobian_lambda(G_shape, x_tuple, t_stretch_lambda, dstretch_dt, c_continuous_lambda, dc_dx_lambda, A, D, W, N, phase_row_offset, phase_col_offset, y_slice, u_slice, q_slice, t_slice, dy_slice, p_slice, g_slice, c_defect_slice, c_path_slice, c_integral_slice, num_y, num_u, num_q, num_t, num_x, num_s, num_c_defect, num_c_path, num_c_integral, num_c, phase_y_slice, phase_u_slice, phase_q_slice, phase_t_slice, phase_c_defect_slice, phase_c_path_slice, phase_c_integral_slice):
+			
+			ocp_num_y = int(num_y / N)
+			ocp_num_u = int(num_u / N)
 
-	# 	def A_x_dot_sparse(A_sparse, ddy_dx, num_y, num_nz, stretch, 
-	# 		return_array):
-	# 		for i, row in enumerate(ddy_dx):
-	# 			start = i*num_nz
-	# 			stop = start + num_nz
-	# 			entries = stretch*A_sparse.multiply(row).data
-	# 			return_array[start:stop] = entries
-	# 		return return_array
+			ocp_num_c_path = int(num_c_path / N)
 
-	# 	def G_dzeta_dy_lambda(ddy_dy, stretch, A, D, A_row_col_array, num_y, 
-	# 		dzeta_dy_D_nonzero, dzeta_dy_slice):
-	# 		num_nz = A_row_col_array.shape[1]
-	# 		return_array = np.empty(num_y**2 * num_nz)
-	# 		G_dzeta_dy = A_x_dot_sparse(A, ddy_dy, num_y, num_nz, stretch, 
-	# 			return_array)
-	# 		D_data = (D.data * np.ones((num_y, 1))).flatten()
-	# 		G_dzeta_dy[dzeta_dy_D_nonzero] += D_data
-	# 		return G_dzeta_dy
+			stretch = t_stretch_lambda(*x_tuple)
+			c_continuous = c_continuous_lambda(*x_tuple, N)
+			y = np.vstack(x_tuple[y_slice])
+			q = np.array(x_tuple[q_slice])
+			dy = c_continuous[dy_slice].reshape((-1, N))
+			p = c_continuous[p_slice]
+			g = c_continuous[g_slice].reshape((-1, N))
 
-	# 	def G_dzeta_du_lambda(ddy_du, stretch, A, A_row_col_array, num_y, 
-	# 		num_u):
-	# 		num_nz = A_row_col_array.shape[1]
-	# 		return_array = np.empty(num_u*num_y*num_nz)
-	# 		G_dzeta_du = A_x_dot_sparse(A, ddy_du, num_u, num_nz, stretch, 
-	# 			return_array)
-	# 		return G_dzeta_du
+			dc_dx = dc_dx_lambda(*x_tuple, N)
+			dzeta_dy = dc_dx[phase_c_defect_slice, phase_y_slice, :].reshape(-1, N)
+			dzeta_du = dc_dx[phase_c_defect_slice, phase_u_slice, :].reshape(-1, N)
+			dzeta_ds = dc_dx[phase_c_defect_slice, phase_t_slice.stop:, :].reshape(-1, N)
+			dgamma_dy = dc_dx[phase_c_path_slice, phase_y_slice, :].reshape(-1, N)
+			dgamma_du = dc_dx[phase_c_path_slice, phase_u_slice, :].reshape(-1, N)
+			dgamma_ds = dc_dx[phase_c_path_slice, phase_t_slice.stop:, :].reshape(-1, N)
+			drho_dy = dc_dx[phase_c_integral_slice, phase_y_slice, :].reshape(-1, N)
+			drho_du = dc_dx[phase_c_integral_slice, phase_u_slice, :].reshape(-1, N)
+			drho_ds = dc_dx[phase_c_integral_slice, phase_t_slice.stop:, :].reshape(-1, N)
 
-	# 	def G_dzeta_dt_lambda(dy, A):
-	# 		A_dy_flat = (A.dot(dy.T).flatten(order='F'))
-	# 		product = np.outer(self._dstretch_dt, A_dy_flat)
-	# 		G_dzeta_dt = product.flatten(order='F')
-	# 		return G_dzeta_dt
+			G_dzeta_dy = phase_G_dzeta_dy_lambda(dzeta_dy, stretch, A, D, ocp_num_y)
+			G_dzeta_du = phase_G_dzeta_du_lambda(dzeta_du, stretch, A, ocp_num_y, ocp_num_u) if num_u else None
+			G_dzeta_dq = None
+			G_dzeta_dt = phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, ocp_num_y, num_t) if num_t else None
+			G_dzeta_ds = phase_G_dzeta_ds_lambda(dzeta_ds, stretch, A, num_c_defect, num_s) if num_s else sparse.csr_matrix(shape=(num_c_defect, num_s))
+			G_dgamma_dy = phase_G_dgamma_dy_lambda(dgamma_dy, ocp_num_c_path, ocp_num_y) if num_c_path else None
+			G_dgamma_du = phase_G_dgamma_du_lambda(dgamma_du, ocp_num_c_path, ocp_num_u) if (num_c_path and num_u) else None
+			G_dgamma_dq = None
+			G_dgamma_dt = None
+			G_dgamma_ds = phase_G_dgamma_ds_lambda(dgamma_ds, num_c_path, num_s) if (num_c_path and num_s) else sparse.csr_matrix(shape=(num_c_path, num_s))
+			G_drho_dy = phase_G_drho_dy_lambda(drho_dy, stretch, W, num_c_integral, num_y) if num_c_integral else None
+			G_drho_du = phase_G_drho_du_lambda(drho_du, stretch, W, num_c_integral, num_u) if (num_c_integral and num_u) else None
+			G_drho_dq = phase_G_drho_dq_lambda(num_q) if (num_c_integral and num_q) else None
+			G_drho_dt = phase_G_drho_dt_lambda(g, dstretch_dt, W) if (num_c_integral and num_t) else None
+			G_drho_ds = phase_G_drho_ds_lambda(drho_ds, stretch, W, num_c_integral, num_s) if (num_c_integral and num_s) else sparse.csr_matrix(shape=(num_c_integral, num_s))
 
-	# 	def G_dzeta_ds_lambda(ddy_ds, stretch, A):
-	# 		G_dzeta_ds = stretch*A.dot(ddy_ds.T).flatten(order='F')
-	# 		return G_dzeta_ds
+			G_phase = sparse.bmat([
+				[G_dzeta_dy, G_dzeta_du, G_dzeta_dq, G_dzeta_dt],
+				[G_dgamma_dy, G_dgamma_du, G_dgamma_dq, G_dgamma_dt],
+				[G_drho_dy, G_drho_du, G_drho_dq, G_drho_dt],
+				])
 
-	# 	def G_dgamma_dy_lambda(dgamma_dy):
-	# 		if dgamma_dy.size:
-	# 			return dgamma_dy.flatten()
-	# 		else:
-	# 			return []
+			G_parameter = sparse.vstack([G_dzeta_ds, G_dgamma_ds, G_drho_ds]).tocoo()
 
-	# 	def G_dgamma_du_lambda(dgamma_du):
-	# 		if dgamma_du.size:
-	# 			return dgamma_du.flatten()
-	# 		else:
-	# 			return []
+			phase_data = G_phase.data
+			phase_row = G_phase.row + phase_row_offset
+			phase_col = G_phase.col + phase_col_offset
+			G_phase = sparse.coo_matrix((phase_data, (phase_row, phase_col)), shape=G_shape)
 
-	# 	def G_dgamma_dt_lambda(p):
-	# 		if p.size:
-	# 			return np.zeros_like(p).flatten()
-	# 		else:
-	# 			return []
+			parameter_row_offset = phase_row_offset
+			parameter_col_offset = G_shape[1] - num_s
+			parameter_data = G_parameter.data
+			parameter_row = G_parameter.row + parameter_row_offset
+			parameter_col = G_parameter.col + parameter_col_offset
+			G_parameter = sparse.coo_matrix((parameter_data, (parameter_row, parameter_col)), shape=G_shape)
+			
+			G_continuous = G_phase + G_parameter
 
-	# 	def G_dgamma_ds_lambda(dgamma_ds):
-	# 		if dgamma_ds.size:
-	# 			return dgamma_ds.flatten()
-	# 		else:
-	# 			return []
+			return G_continuous
 
-	# 	def G_drho_dy_lambda(drho_dy, stretch, W):
+		def phase_G_dzeta_dy_lambda(ddy_dy, stretch, A, D, ocp_num_y):
+			G_dzeta_dy = []
+			for row in ddy_dy:
+				G_dzeta_dy.append(stretch*A*sparse.diags(row))
+			G_dzeta_dy = sparse.bmat(np.array(G_dzeta_dy).reshape(ocp_num_y, ocp_num_y))
+			D_data = sparse.block_diag([D]*ocp_num_y)
+			G_dzeta_dy += D_data
+			return G_dzeta_dy
 
-	# 		if drho_dy.size:
-	# 			G_drho_dy = (- stretch * drho_dy * W).flatten()
-	# 			return G_drho_dy
-	# 		else:
-	# 			return []
+		def phase_G_dzeta_du_lambda(ddy_du, stretch, A, ocp_num_y, ocp_num_u):
+			G_dzeta_du = []
+			for row in ddy_du:
+				block = sparse.dia_matrix(row)
+				G_dzeta_du.append(stretch*A.multiply(block))
+			G_dzeta_du = sparse.bmat(np.array(G_dzeta_du).reshape(ocp_num_y, ocp_num_u))
+			return G_dzeta_du
 
-	# 	def G_drho_du_lambda(drho_du, stretch, W):
-	# 		if drho_du.size:
-	# 			G_drho_du = (- stretch * drho_du * W).flatten()
-	# 			return G_drho_du
-	# 		else:
-	# 			return []
+		def phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, ocp_num_y, num_t):
+			A_dy_flat = (A.dot(dy.T).flatten(order='F'))
+			product = np.outer(dstretch_dt, A_dy_flat)
+			G_dzeta_dt = sparse.csr_matrix(product.reshape((ocp_num_y, num_t), order='F'))
+			return G_dzeta_dt
 
-	# 	def G_drho_dt_lambda(g, W):
-	# 		if g.size > 0:
-	# 			product = np.outer(self._dstretch_dt, np.matmul(g, W))
-	# 			return - product.flatten(order='F')
-	# 		else:
-	# 			return []
+		def phase_G_dzeta_ds_lambda(ddy_ds, stretch, A, num_c_defect, num_s):
+			G_dzeta_ds = stretch*A.dot(ddy_ds.T).flatten(order='F')
+			G_dzeta_ds = sparse.csr_matrix(G_dzeta_ds.reshape((num_c_defect, num_s), order='F'))
+			return G_dzeta_ds
 
-	# 	def G_drho_ds_lambda(drho_ds, stretch, W):
-	# 		if drho_ds.size:
-	# 			G_drho_ds = (- stretch * np.matmul(drho_ds, W))
-	# 			return G_drho_ds
-	# 		else:
-	# 			return []
+		def phase_G_dgamma_dy_lambda(dgamma_dy, ocp_num_c_path, ocp_num_y):
+			G_dgamma_dy = []
+			for row in dgamma_dy:
+				G_dgamma_dy.append(sparse.diags(row))
+			G_dgamma_dy = sparse.bmat(np.array(G_dgamma_dy).reshape(ocp_num_c_path, ocp_num_y))
+			return G_dgamma_dy
 
-	# 	def jacobian_lambda(x_tuple, x_tuple_point, N, num_G_nonzero, 
-	# 		num_x_ocp, A, D, W, A_row_col_array, dy_slice, 
-	# 		p_slice, g_slice, dzeta_dy_D_nonzero, 
-	# 		dzeta_dy_slice, dzeta_du_slice, 
-	# 		dzeta_dt_slice, dzeta_ds_slice, dgamma_dy_slice, dgamma_du_slice, 
-	# 		dgamma_dt_slice, dgamma_ds_slice, drho_dy_slice, drho_du_slice, 
-	# 		drho_dq_slice, drho_dt_slice, drho_ds_slice, dbeta_dxb_slice):
+		def phase_G_dgamma_du_lambda(dgamma_du, ocp_num_c_path, ocp_num_u):
+			G_dgamma_du = []
+			for row in dgamma_du:
+				G_dgamma_du.append(sparse.diags(row))
+			G_dgamma_du = sparse.bmat(np.array(G_dgamma_du).reshape(ocp_num_c_path, ocp_num_u))
+			return G_dgamma_du
 
-	# 		stretch = t_stretch_lambda(*x_tuple)
-	# 		dstretch_dt = self._dstretch_dt
-	# 		c_continuous = c_continuous_lambda(*x_tuple, N)
-	# 		dc_dx = dc_dx_lambda(*x_tuple, N)
-	# 		dy = c_continuous[dy_slice].reshape((-1, N))
-	# 		p = c_continuous[p_slice]
-	# 		g = c_continuous[g_slice]
+		def phase_G_dgamma_ds_lambda(dgamma_ds, num_c_path, num_s):
+			G_dgamma_ds = sparse.csr_matrix(dgamma_ds.reshape((num_c_path, num_s), order="F"))
+			return G_dgamma_ds
 
-	# 		dzeta_dy = dc_dx[dc_dx_slice.zeta_y].reshape(dc_dx_shape.zeta_y, N)
-	# 		dzeta_du = dc_dx[dc_dx_slice.zeta_u].reshape(dc_dx_shape.zeta_u, N)
-	# 		dzeta_dt = None
-	# 		dzeta_ds = dc_dx[dc_dx_slice.zeta_s].reshape(dc_dx_shape.zeta_s, N)
-	# 		dgamma_dy = dc_dx[dc_dx_slice.gamma_y].reshape(dc_dx_shape.gamma_y, N)
-	# 		dgamma_du = dc_dx[dc_dx_slice.gamma_u].reshape(dc_dx_shape.gamma_u, N)
-	# 		dgamma_dt = None
-	# 		dgamma_ds = dc_dx[dc_dx_slice.gamma_s].reshape(dc_dx_shape.gamma_s, N)
-	# 		drho_dy = dc_dx[dc_dx_slice.rho_y].reshape(dc_dx_shape.rho_y, N)
-	# 		drho_du = dc_dx[dc_dx_slice.rho_u].reshape(dc_dx_shape.rho_u, N)
-	# 		drho_dt = None
-	# 		drho_ds = dc_dx[dc_dx_slice.rho_s].reshape(dc_dx_shape.rho_s, N)
+		def phase_G_drho_dy_lambda(drho_dy, stretch, W, num_c_integral, num_y):
+			G_drho_dy = sparse.csr_matrix((- stretch * drho_dy * W).reshape(num_c_integral, num_y))
+			return G_drho_dy
 
-	# 		G = np.empty(num_G_nonzero)
+		def phase_G_drho_du_lambda(drho_du, stretch, W, num_c_integral, num_u):
+			G_drho_du = sparse.csr_matrix((- stretch * drho_du * W).reshape(num_c_integral, num_u))
+			return G_drho_du
 
-	# 		if num_x_ocp.y:
-	# 			G[dzeta_dy_slice] = G_dzeta_dy_lambda(dzeta_dy, stretch, A, D, 
-	# 				A_row_col_array, num_x_ocp.y, dzeta_dy_D_nonzero, 
-	# 				dzeta_dy_slice)
-	# 			G[dgamma_dy_slice] = G_dgamma_dy_lambda(dgamma_dy)
-	# 			G[drho_dy_slice] = G_drho_dy_lambda(drho_dy, stretch, W)
+		def phase_G_drho_dq_lambda(num_q):
+			G_drho_dq = sparse.eye(num_q)
+			return G_drho_dq
 
-	# 		if num_x_ocp.u:
-	# 			G[dzeta_du_slice] = G_dzeta_du_lambda(dzeta_du, stretch, A, 
-	# 				A_row_col_array, num_x_ocp.y, num_x_ocp.u)
-	# 			G[dgamma_du_slice] = G_dgamma_du_lambda(dgamma_du)
-	# 			G[drho_du_slice] = G_drho_du_lambda(drho_du, stretch, W)
+		def phase_G_drho_dt_lambda(g, dstretch_dt, W):
+			product = np.outer(dstretch_dt, np.matmul(g, W))
+			G_drho_dt = - product.flatten(order='F')
+			raise NotImplementedError
+			return G_drho_dt
 
-	# 		if num_x_ocp.q:
-	# 			G[drho_dq_slice] = 1
+		def phase_G_drho_ds_lambda(drho_ds, stretch, W, num_c_integral, num_s):
+			G_drho_ds = sparse.csr_matrix((- stretch * np.matmul(drho_ds, W)).reshape((num_c_integral, num_s), order="F"))
+			return G_drho_ds
 
-	# 		if num_x_ocp.t:
-	# 			G[dzeta_dt_slice] = G_dzeta_dt_lambda(dy, A)
-	# 			G[dgamma_dt_slice] = G_dgamma_dt_lambda(p)
-	# 			G[drho_dt_slice] = G_drho_dt_lambda(g, W)
+		def endpoint_jacobian_lambda(G_shape, x_point_tuple, db_dxb_phase_lambdas, db_ds_lambda, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_c_endpoint):
+			row_offset = 0
+			db_dxb_phases = []
+			for db_dxb_lambda, N, num_y, num_q, num_t, num_x in zip(db_dxb_phase_lambdas, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase):
+				ocp_num_y = int(num_y / N)
+				db_dxb_phase = db_dxb_lambda(*x_point_tuple, N).flatten()
+				y_row_indices = np.array([(i*N, (i+1)*N-1) for i in range(ocp_num_y)]).flatten()
+				q_row_indices = np.array(range(num_x - num_q - num_t, num_x))
+				row_indices = np.repeat(np.array(range(num_c_endpoint)), ocp_num_y*2 + num_q)
+				col_indices = np.tile(np.concatenate([y_row_indices, q_row_indices]), num_c_endpoint)
+				db_dxb_phase = sparse.coo_matrix((db_dxb_phase, (row_indices, col_indices)), shape=(num_c_endpoint, num_x))
+				db_dxb_phases.append(db_dxb_phase)
+			db_ds = sparse.csr_matrix(db_ds_lambda(*x_point_tuple).reshape(num_c_endpoint, -1))
+			db_dxb_blocks = db_dxb_phases + [db_ds]
+			G_endpoint = sparse.hstack(db_dxb_blocks)
+			G_continuous_shape = (G_shape[0] - num_c_endpoint, G_shape[1])
+			G_continuous = sparse.csr_matrix(G_continuous_shape)
+			G_endpoint = sparse.vstack([G_continuous, G_endpoint])
+			return G_endpoint
 
-	# 		if num_x_ocp.s:
-	# 			G[dzeta_ds_slice] = G_dzeta_ds_lambda(dzeta_ds, stretch, A)
-	# 			G[dgamma_ds_slice] = G_dgamma_ds_lambda(dgamma_ds)
-	# 			G[drho_ds_slice] = G_drho_ds_lambda(drho_ds, stretch, W)
+		def jacobian_lambda(G_shape, x_tuple, x_point_tuple, p_A, p_D, p_W, p_N, phase_row_offsets, phase_col_offsets, ocp_phase_y_slice, ocp_phase_u_slice, ocp_phase_q_slice, ocp_phase_t_slice, ocp_phase_dy_slice, ocp_phase_p_slice, ocp_phase_g_slice, ocp_phase_c_defect_slice, ocp_phase_c_path_slice, ocp_phase_c_integral_slice, num_y_per_phase, num_u_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_s, num_c_defect_per_phase, num_c_path_per_phase, num_c_integral_per_phase, num_c_per_phase, num_c_endpoint, phase_y_slices, phase_u_slices, phase_q_slices, phase_t_slices, phase_c_defect_slices, phase_c_path_slices, phase_c_integral_slices):
+			G = sparse.csr_matrix(G_shape)
+			for t_stretch_lambda, dstretch_dt, c_continuous_lambda, dc_dx_lambda, A, D, W, N, row_offset, col_offset, y_slice, u_slice, q_slice, t_slice, dy_slice, p_slice, g_slice, c_defect_slice, c_path_slice, c_integral_slice, num_y, num_u, num_q, num_t, num_x, num_c_defect, num_c_path, num_c_integral, num_c, phase_y_slice, phase_u_slice, phase_q_slice, phase_t_slice, phase_c_defect_slice, phase_c_path_slice, phase_c_integral_slice in zip(self._t_stretch_lambdas, self._t_dstretch_dt_lambdas, self.c_continuous_lambdas, dc_dx_lambdas, p_A, p_D, p_W, p_N, phase_row_offsets, phase_col_offsets, ocp_phase_y_slice, ocp_phase_u_slice, ocp_phase_q_slice, ocp_phase_t_slice, ocp_phase_dy_slice, ocp_phase_p_slice, ocp_phase_g_slice, ocp_phase_c_defect_slice, ocp_phase_c_path_slice, ocp_phase_c_integral_slice, num_y_per_phase, num_u_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_c_defect_per_phase, num_c_path_per_phase, num_c_integral_per_phase, num_c_per_phase, phase_y_slices, phase_u_slices, phase_q_slices, phase_t_slices, phase_c_defect_slices, phase_c_path_slices, phase_c_integral_slices):
+				G += phase_jacobian_lambda(G_shape, x_tuple, t_stretch_lambda, dstretch_dt, c_continuous_lambda, dc_dx_lambda, A, D, W, N, row_offset, col_offset, y_slice, u_slice, q_slice, t_slice, dy_slice, p_slice, g_slice, c_defect_slice, c_path_slice, c_integral_slice, num_y, num_u, num_q, num_t, num_x, num_s, num_c_defect, num_c_path, num_c_integral, num_c, phase_y_slice, phase_u_slice, phase_q_slice, phase_t_slice, phase_c_defect_slice, phase_c_path_slice, phase_c_integral_slice)
+			G += endpoint_jacobian_lambda(G_shape, x_point_tuple, db_dxb_phase_lambdas, db_ds_lambda, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_c_endpoint)
+			return G
 
-	# 		G[dbeta_dxb_slice] = db_dxb_lambda(*x_tuple_point, N)
+		expr_graph = self.ocp_backend.expression_graph
 
-	# 		return G
-
-	# 	expr_graph = self._expression_graph
-
-	# 	t_stretch_lambda = self._t_stretch_lambda
-	# 	dstretch_dt = None
-
-	# 	c_continuous_lambda = self._c_continuous_lambda
-
-	# 	dc_dx_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.dc_dx,
-	# 		expression_nodes=expr_graph.dc_dx_nodes,
-	# 		precomputable_nodes=expr_graph.dc_dx_precomputable,
-	# 		dependent_tiers=expr_graph.dc_dx_dependent_tiers,
-	# 		parameters=self._x_vars, 
-	# 		return_dims=3, 
-	# 		N_arg=True, 
-	# 		ocp_num_vars=self._num_vars_tuple,
-	# 		)
+		dc_dx_lambdas = []
+		for p, p_x_slice, p_c_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_variable_slices, self.ocp_backend.phase_constraint_slices):
+			dc_dx_phase = expr_graph.dc_dx[p_c_slice, p_x_slice]
+			dc_dx_parameter = expr_graph.dc_dx[p_c_slice, self.ocp_backend.variable_slice]
+			dc_dx = sym.Matrix(sym.BlockMatrix([dc_dx_phase, dc_dx_parameter]))
+			dc_dx_lambda = numbafy(
+				expression_graph=expr_graph,
+				expression=dc_dx,
+				expression_nodes=expr_graph.dc_dx_nodes,
+				precomputable_nodes=expr_graph.dc_dx_precomputable,
+				dependent_tiers=expr_graph.dc_dx_dependent_tiers,
+				parameters=self.ocp_backend.x_vars, 
+				return_dims=3, 
+				N_arg=True, 
+				ocp_num_vars=p.num_each_vars,
+				)
+			dc_dx_lambdas.append(dc_dx_lambda)
 
 	# 	dc_dx_slice = pu.dcdxInfo(
 	# 		zeta_y=(self._c_defect_slice, self._y_slice),
@@ -406,19 +418,34 @@ class CompiledFunctions:
 	# 		rho_s=(self.number_integrand_functions*self.number_parameter_variables),
 	# 		)
 
-	# 	db_dxb_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.db_dxb,
-	# 		precomputable_nodes=expr_graph.db_dxb_precomputable,
-	# 		dependent_tiers=expr_graph.db_dxb_dependent_tiers,
-	# 		parameters=self._x_b_vars, 
-	# 		return_dims=1, 
-	# 		N_arg=True, 
-	# 		ocp_num_vars=self._num_vars_tuple,
-	# 		)
+		db_dxb_phase_lambdas = []
+		for p, p_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_endpoint_variable_slices):
+			db_dxb_phase = expr_graph.db_dxb[:, p_slice]
+			db_dxb_phase_lambda = numbafy(
+				expression_graph=expr_graph,
+				expression=db_dxb_phase,
+				precomputable_nodes=expr_graph.db_dxb_precomputable,
+				dependent_tiers=expr_graph.db_dxb_dependent_tiers,
+				parameters=self.ocp_backend.x_point_vars, 
+				return_dims=1, 
+				N_arg=True, 
+				ocp_num_vars=p.num_each_vars,
+				)
+			db_dxb_phase_lambdas.append(db_dxb_phase_lambda)
 
-	# 	self._G_lambda = jacobian_lambda
-	# 	print('Jacobian function compiled.')
+		db_ds_lambda = numbafy(
+			expression_graph=expr_graph,
+			expression=expr_graph.db_dxb[:, self.ocp_backend.endpoint_variable_slice],
+			precomputable_nodes=expr_graph.db_dxb_precomputable,
+			dependent_tiers=expr_graph.db_dxb_dependent_tiers,
+			parameters=self.ocp_backend.x_point_vars,
+			return_dims=1, 
+			N_arg=False, 
+			endpoint=False, 
+			)
+
+		self.G_lambda = jacobian_lambda
+		print('Jacobian function compiled.')
 
 	# def _compile_hessian_lagrangian(self):
 

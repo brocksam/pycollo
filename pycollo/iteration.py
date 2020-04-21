@@ -101,7 +101,7 @@ class Iteration:
 		self.interpolate_guess_to_mesh(self.prev_guess)
 		self.create_variable_constraint_numbers_slices()
 		self.generate_nlp_lambdas()
-		# self.generate_bounds()
+		self.generate_bounds()
 		# self.generate_scaling()
 		# self.reset_bounds()
 		# self.initialise_nlp()
@@ -219,6 +219,23 @@ class Iteration:
 		# self._c_lambda_p_slice = slice(self._c_lambda_dy_slice.stop, self._c_lambda_dy_slice.stop + self._num_c_path*self._mesh._N)
 		# self._c_lambda_g_slice = slice(self._c_lambda_p_slice.stop, self._c_lambda_p_slice.stop + self._num_c_integral*self._mesh._N)
 
+		self.c_defect_slices = []
+		self.c_path_slices = []
+		self.c_integral_slices = []
+		self.c_slices = []
+		total = 0
+		for num_c_defect, num_c_path, num_c_integral, num_c in zip(self.num_c_defect_per_phase, self.num_c_path_per_phase, self.num_c_integral_per_phase, self.num_c_per_phase):
+			c_defect_slice = slice(total, total + num_c_defect)
+			c_path_slice = slice(c_defect_slice.stop, c_defect_slice.stop + num_c_path)
+			c_integral_slice = slice(c_path_slice.stop, c_path_slice.stop + num_c_integral)
+			c_slice = slice(c_defect_slice.start, c_integral_slice.stop)
+			self.c_defect_slices.append(c_defect_slice)
+			self.c_path_slices.append(c_path_slice)
+			self.c_integral_slices.append(c_integral_slice)
+			self.c_slices.append(c_slice)
+			total += num_c
+		self.c_endpoint_slice = slice(self.num_c - self.num_c_endpoint, self.num_c)
+
 		# self._c_defect_slice = slice(0, self._num_c_defect)
 		# self._c_path_slice = slice(self._c_defect_slice.stop, self._c_defect_slice.stop + self._num_c_path)
 		# self._c_integral_slice = slice(self._c_path_slice.stop, self._c_path_slice.stop + self._num_c_integral)
@@ -232,6 +249,7 @@ class Iteration:
 		self.generate_objective_lambda()
 		self.generate_gradient_lambda()
 		self.generate_constraints_lambda()
+		self.generate_jacobian_lambda()
 
 	def generate_unscale_variables_lambda(self):
 
@@ -330,6 +348,71 @@ class Iteration:
 		msg = "Constraints lambda generated successfully."
 		console_out(msg)
 
+	def generate_jacobian_lambda(self):
+
+		def jacobian_data(x):
+			return jacobian(x).data
+
+		def jacobian(x):
+			x_tuple = self._reshape_x(x)
+			x_tuple_point = self._reshape_x_point(x)
+			G = self.backend.compiled_functions.G_lambda(
+				self._G_shape,
+				x_tuple, 
+				x_tuple_point,
+				self.mesh.sA_matrix, 
+				self.mesh.sD_matrix, 
+				self.mesh.W_matrix, 
+				self.mesh.N,
+				[c_slice.start for c_slice in self.c_slices],
+				[x_slice.start for x_slice in self.x_slices],
+				[slice(p_var_slice.start, p_var_slice.start + p.num_y_vars) for p, p_var_slice in zip(self.backend.p, self.backend.phase_variable_slices)],
+				[slice(p_var_slice.start + p.num_y_vars, p_var_slice.start + p.num_y_vars + p.num_u_vars) for p, p_var_slice in zip(self.backend.p, self.backend.phase_variable_slices)],
+				[slice(p_var_slice.start + p.num_y_vars + p.num_u_vars, p_var_slice.start + p.num_y_vars + p.num_u_vars + p.num_q_vars) for p, p_var_slice in zip(self.backend.p, self.backend.phase_variable_slices)],
+				[slice(p_var_slice.start + p.num_y_vars + p.num_u_vars + p.num_q_vars, p_var_slice.start + p.num_y_vars + p.num_u_vars + p.num_q_vars + p.num_t_vars) for p, p_var_slice in zip(self.backend.p, self.backend.phase_variable_slices)],
+				self.c_lambda_dy_slices,
+				self.c_lambda_p_slices,
+				self.c_lambda_g_slices,
+				[slice(p_c_slice.start, p_c_slice.start + p.num_c_defect) for p, p_c_slice in zip(self.backend.p, self.backend.phase_constraint_slices)],
+				[slice(p_c_slice.start + p.num_c_defect, p_c_slice.start + p.num_c_defect + p.num_c_path) for p, p_c_slice in zip(self.backend.p, self.backend.phase_constraint_slices)],
+				[slice(p_c_slice.start + p.num_c_defect + p.num_c_path, p_c_slice.start + p.num_c_defect + p.num_c_path + p.num_c_integral) for p, p_c_slice in zip(self.backend.p, self.backend.phase_constraint_slices)],
+				self.num_y_per_phase,
+				self.num_u_per_phase,
+				self.num_q_per_phase,
+				self.num_t_per_phase,
+				self.num_x_per_phase,
+				self.backend.num_s_vars,
+				self.num_c_defect_per_phase,
+				self.num_c_path_per_phase,
+				self.num_c_integral_per_phase,
+				self.num_c_per_phase,
+				self.num_c_endpoint,
+				[p.y_slice for p in self.backend.p],
+				[p.u_slice for p in self.backend.p],
+				[p.q_slice for p in self.backend.p],
+				[p.t_slice for p in self.backend.p],
+				[p.c_defect_slice for p in self.backend.p],
+				[p.c_path_slice for p in self.backend.p],
+				[p.c_integral_slice for p in self.backend.p],
+				)
+			G = G.tocoo()
+			return G
+
+		self._G_shape = (self.num_c, self.num_x)
+		x_sparsity_detect = np.full(self.num_x, np.nan)
+		G_sparsity_detect = jacobian(x_sparsity_detect)
+		self._G_nonzero_row = G_sparsity_detect.row
+		self._G_nonzero_col = G_sparsity_detect.col
+
+		self._jacobian_lambda = jacobian_data
+
+		def jacobian_structure():
+			return (self._G_nonzero_row, self._G_nonzero_col)
+
+		self._jacobian_structure_lambda = jacobian_structure
+		msg = "Jacobian of the constraints lambda generated successfully."
+		console_out(msg)
+
 	def generate_bounds(self):
 		self.generate_variable_bounds()
 		self.generate_constraint_bounds()
@@ -342,20 +425,21 @@ class Iteration:
 		bnd_u = np.empty((self.num_x, ))
 
 		# y bounds
-		bnd_l[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_l_needed.reshape(1, -1)).flatten('F').squeeze()
-		bnd_u[self._y_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._y_u_needed.reshape(1, -1)).flatten('F').squeeze()
+		for p, N, y_slice in zip(self.backend.p, self.mesh.N, self.y_slice_per_phase):
+			bnd_l[y_slice] = (np.ones((N, 1))*p.ocp._bounds._y_l_needed.reshape(1, -1)).flatten('F').squeeze()
+			bnd_u[y_slice] = (np.ones((N, 1))*p.ocp._bounds._y_u_needed.reshape(1, -1)).flatten('F').squeeze()
 
-		# u bounds
-		bnd_l[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_l_needed.reshape(1, -1)).flatten('F').squeeze()
-		bnd_u[self._u_slice] = (np.ones((self._mesh._N, 1))*self._ocp._bounds._u_u_needed.reshape(1, -1)).flatten('F').squeeze()
+			# u bounds
+			bnd_l[self._u_slice] = (np.ones((N, 1))*self._ocp._bounds._u_l_needed.reshape(1, -1)).flatten('F').squeeze()
+			bnd_u[self._u_slice] = (np.ones((N, 1))*self._ocp._bounds._u_u_needed.reshape(1, -1)).flatten('F').squeeze()
 
-		# q bounds
-		bnd_l[self._q_slice] = self._ocp._bounds._q_l_needed
-		bnd_u[self._q_slice] = self._ocp._bounds._q_u_needed
+			# q bounds
+			bnd_l[self._q_slice] = self._ocp._bounds._q_l_needed
+			bnd_u[self._q_slice] = self._ocp._bounds._q_u_needed
 
-		# t bounds
-		bnd_l[self._t_slice] = self._ocp._bounds._t_l_needed
-		bnd_u[self._t_slice] = self._ocp._bounds._t_u_needed
+			# t bounds
+			bnd_l[self._t_slice] = self._ocp._bounds._t_l_needed
+			bnd_u[self._t_slice] = self._ocp._bounds._t_u_needed
 
 		# s bounds
 		bnd_l[self._s_slice] = self._ocp._bounds._s_l_needed
@@ -453,11 +537,11 @@ class Iteration:
 			c = self._constraint_lambda(x_data)
 			print(f"c:\n{c}\n")
 
-			# G_struct = self._jacobian_structure_lambda()
-			# print(f"G Structure:\n{G_struct[0]}\n{G_struct[1]}")
+			G_struct = self._jacobian_structure_lambda()
+			print(f"G Structure:\n{G_struct[0]}\n{G_struct[1]}\n")
 
-			# G = self._jacobian_lambda(x_data)
-			# print(f"G:\n{G}\n")
+			G = self._jacobian_lambda(x_data)
+			print(f"G:\n{G}\n")
 
 			# if self._ocp.settings.derivative_level == 2:
 

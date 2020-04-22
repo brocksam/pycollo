@@ -502,13 +502,13 @@ class Iteration:
 			self._nlp_problem.addOption('tol', self._ocp._settings.nlp_tolerance)
 			self._nlp_problem.addOption('max_iter', self._ocp._settings.max_nlp_iterations)
 			self._nlp_problem.addOption('print_level', 5)
-			# self._nlp_problem.addOption('nlp_scaling_method', 'gradient-based')
+			# self._nlp_problem.addOption('nlp_scaling_method', 'user-scaling')
 
 			# self._nlp_problem.setProblemScaling(
 			# 	self.scaling.obj_scaling, 
 			# 	self.scaling.x_scaling,
-				# self.scaling.c_scaling,
-				# )
+			# 	self.scaling.c_scaling,
+			# 	)
 
 		else:
 			raise NotImplementedError
@@ -1412,15 +1412,19 @@ class Iteration:
 		return next_iter_mesh
 		
 
+phase_solution_data_fields = ("tau", "y", "dy", "u", "q", "t", "t0", "tF", 
+	"T", "stretch", "shift", "time")
+PhaseSolutionData = collections.namedtuple("PhaseSolutionData", 
+	phase_solution_data_fields)
 
 
 class Solution:
 
 	def __init__(self, iteration, nlp_solution, nlp_solution_info):
 		self._it = iteration
-		self._ocp = iteration._ocp
-		self._mesh = iteration._mesh
-		self._tau = self._mesh._tau
+		self._ocp = iteration.optimal_control_problem
+		self._backend = iteration.optimal_control_problem._backend
+		self._tau = iteration.mesh.tau
 		
 		self._nlp_solution = nlp_solution
 		self._nlp_solution_info = nlp_solution_info
@@ -1461,105 +1465,143 @@ class Solution:
 		return self._s
 
 	def _process_ipopt_solution(self):
-		self._y = self._x[self._it._y_slice].reshape(self._ocp._num_y_vars, -1) if self._ocp._num_y_vars else []
-		self._dy = self._ocp._c_continuous_lambda(*self._it._reshape_x(self._x), self._mesh._N)[self._it._c_lambda_dy_slice].reshape((-1, self._mesh._N)) if self._ocp._num_y_vars else []
-		self._u = self._x[self._it._u_slice].reshape(self._ocp._num_u_vars, -1) if self._ocp._num_u_vars else []
-		self._q = self._x[self._it._q_slice]
-		self._t = self._x[self._it._t_slice]
-		self._s = self._x[self._it._s_slice]
-
-		self._t0 = self._t[0] if self._ocp._bounds._t_needed[0] else self._it._guess._t0
-		self._tF = self._t[sum(self._ocp._bounds._t_needed) - 1] if self._ocp._bounds._t_needed[1] else self._it._guess._tF
-		self._T = self._tF - self._t0
-		self._stretch = (self._T)/2
-		self._shift = (self._t0 + self._tF)/2
-		self._time = self._tau * self._stretch + self._shift
-
+		self._phase_data = []
+		for tau, time_guess, phase, c_continuous_lambda, y_slice, u_slice, q_slice, t_slice, dy_slice, N in zip(self._tau, self._it.guess_time, self._backend.p, self._backend.compiled_functions.c_continuous_lambdas, self._it.y_slices, self._it.u_slices, self._it.q_slices, self._it.t_slices, self._it.c_lambda_dy_slices, self._it.mesh.N):
+			y = self._x[y_slice].reshape(phase.num_y_vars, -1) if phase.num_y_vars else np.array([], dtype=float)
+			dy = c_continuous_lambda(*self._it._reshape_x(self._x), N)[dy_slice].reshape((-1, N)) if phase.num_y_vars else np.array([], dtype=float)
+			u = self._x[u_slice].reshape(phase.num_u_vars, -1) if phase.num_u_vars else np.array([], dtype=float)
+			q = self._x[q_slice]
+			t = self._x[t_slice]
+			
+			t0 = t[0] if phase.ocp_phase.bounds._t_needed[0] else time_guess[0]
+			tF = t[-1] if phase.ocp_phase.bounds._t_needed[1] else time_guess[-1]
+			T = tF - t0
+			stretch = T/2
+			shift = (t0 + tF) / 2
+			time = tau*stretch + shift
+			phase_data = PhaseSolutionData(tau=tau, y=y, dy=dy, u=u, q=q, t=t, t0=t0, tF=tF, T=T, stretch=stretch, shift=shift, time=time)
+			self._phase_data.append(phase_data)
+		self._phase_data = tuple(self._phase_data)
+		self._y = tuple(p.y for p in self._phase_data)
+		self._dy = tuple(p.dy for p in self._phase_data)
+		self._u = tuple(p.u for p in self._phase_data)
+		self._q = tuple(p.q for p in self._phase_data)
+		self._t = tuple(p.t for p in self._phase_data)
+		self._t0 = tuple(p.t0 for p in self._phase_data)
+		self._tF = tuple(p.tF for p in self._phase_data)
+		self._T = tuple(p.T for p in self._phase_data)
+		self._stretch = tuple(p.stretch for p in self._phase_data)
+		self._shift = tuple(p.shift for p in self._phase_data)
+		self._time = tuple(p.time for p in self._phase_data)
+		self._s = self._x[self._it.s_slice]
 		self._interpolate_solution()
 
 	def _process_snopt_solution(self, solution):
 		raise NotImplementedError
 
 	def _interpolate_solution(self):
-		self._y_polys = np.empty((self._ocp._num_y_vars, self._mesh._K), dtype=object)
-		self._dy_polys = np.empty((self._ocp._num_y_vars, self._mesh._K), dtype=object)
-		self._u_polys = np.empty((self._ocp._num_u_vars, self._mesh._K), dtype=object)
 
-		for i_y, state_deriv in enumerate(self._dy):
-			for i_k, (i_start, i_stop) in enumerate(zip(self._mesh._mesh_index_boundaries[:-1], self._mesh._mesh_index_boundaries[1:])):
-				t_k = self._mesh._tau[i_start:i_stop+1]
-				dy_k = state_deriv[i_start:i_stop+1]
-				dy_poly = np.polynomial.Polynomial.fit(t_k, dy_k, deg=self._mesh._mesh_col_points[i_k]-1, window=[0, 1])
-				scale_factor = self._mesh._PERIOD/self._T
-				y_poly = dy_poly.integ(k=scale_factor*self._y[i_y, i_start])
-				y_poly = np.polynomial.Polynomial(coef=y_poly.coef/scale_factor, window=y_poly.window, domain=y_poly.domain)
-				self._y_polys[i_y, i_k] = y_poly
-				self._dy_polys[i_y, i_k] = dy_poly
+		self._phase_y_polys = []
+		self._phase_dy_polys = []
+		self._phase_u_polys = []
+		for p, p_data, K, N_K, mesh_index_boundaries in zip(self._backend.p, self._phase_data, self._it.mesh.K, self._it.mesh.N_K, self._it.mesh.mesh_index_boundaries):
 
-		for i_u, control in enumerate(self._u):
-			for i_k, (i_start, i_stop) in enumerate(zip(self._mesh._mesh_index_boundaries[:-1], self._mesh._mesh_index_boundaries[1:])):
-				t_k = self._mesh._tau[i_start:i_stop+1]
-				u_k = control[i_start:i_stop+1]
-				u_poly = np.polynomial.Polynomial.fit(t_k, u_k, deg=self._mesh._mesh_col_points[i_k]-1, window=[0, 1])
-				self._u_polys[i_u, i_k] = u_poly
+			y_polys = np.empty((p.num_y_vars, K), dtype=object)
+			dy_polys = np.empty((p.num_y_vars, K), dtype=object)
+			u_polys = np.empty((p.num_u_vars, K), dtype=object)
+
+			for i_y, state_deriv in enumerate(p_data.dy):
+				for i_k, (i_start, i_stop) in enumerate(zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])):
+					t_k = p_data.tau[i_start:i_stop+1]
+					dy_k = state_deriv[i_start:i_stop+1]
+					dy_poly = np.polynomial.Polynomial.fit(t_k, dy_k, deg=N_K[i_k]-1, window=[0, 1])
+					scale_factor = self._it.mesh._PERIOD/p_data.T
+					y_poly = dy_poly.integ(k=scale_factor*p_data.y[i_y, i_start])
+					y_poly = np.polynomial.Polynomial(coef=y_poly.coef/scale_factor, window=y_poly.window, domain=y_poly.domain)
+					y_polys[i_y, i_k] = y_poly
+					dy_polys[i_y, i_k] = dy_poly
+
+			for i_u, control in enumerate(p_data.u):
+				for i_k, (i_start, i_stop) in enumerate(zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])):
+					t_k = p_data.tau[i_start:i_stop+1]
+					u_k = control[i_start:i_stop+1]
+					u_poly = np.polynomial.Polynomial.fit(t_k, u_k, deg=N_K[i_k]-1, window=[0, 1])
+					u_polys[i_u, i_k] = u_poly
+
+			self._phase_y_polys.append(y_polys)
+			self._phase_dy_polys.append(dy_polys)
+			self._phase_u_polys.append(u_polys)
 
 	def _plot_interpolated_solution(self, plot_y=False, plot_dy=False, plot_u=False):
 
-		t_start_stops = list(zip(self._tau[self._mesh._mesh_index_boundaries[:-1]], self._tau[self._mesh._mesh_index_boundaries[1:]]))
+		t_data_phases = []
+		y_datas_phases = []
+		dy_datas_phases = []
+		u_datas_phases = []
 
-		t_data = []
-		y_datas = []
-		dy_datas = []
-		u_datas = []
+		for y_polys, dy_polys, u_polys, p_data, mesh_index_boundaries in zip(self._phase_y_polys, self._phase_dy_polys, self._phase_u_polys, self._phase_data, self._it.mesh.mesh_index_boundaries):
 
-		for i_y, state in enumerate(self._y_polys):
-			t_list = []
-			y_list = []
-			for t_start_stop, y_poly in zip(t_start_stops, state):
-				t_linspace = np.linspace(*t_start_stop)[:-1]
-				y_linspace = y_poly(t_linspace)
-				t_list.extend(t_linspace)
-				y_list.extend(y_linspace)
-			t_list.append(self._tau[-1])
-			y_list.append(self._y[i_y, -1])
-			t_data.append(t_list)
-			y_datas.append(y_list)
+			t_start_stops = list(zip(p_data.tau[mesh_index_boundaries[:-1]], p_data.tau[mesh_index_boundaries[1:]]))
 
-		for i_dy, dstate in enumerate(self._dy_polys):
-			t_list = []
-			dy_list = []
-			for t_start_stop, dy_poly in zip(t_start_stops, dstate):
-				t_linspace = np.linspace(*t_start_stop)[:-1]
-				dy_linspace = dy_poly(t_linspace)
-				t_list.extend(t_linspace)
-				dy_list.extend(dy_linspace)
-			t_list.append(self._tau[-1])
-			dy_list.append(self._dy[i_dy, -1])
-			t_data.append(t_list)
-			dy_datas.append(dy_list)
+			t_data = []
+			y_datas = []
+			dy_datas = []
+			u_datas = []
 
-		for i_u, control in enumerate(self._u_polys):
-			t_list = []
-			u_list = []
-			for t_start_stop, u_poly in zip(t_start_stops, control):
-				t_linspace = np.linspace(*t_start_stop)[:-1]
-				u_linspace = u_poly(t_linspace)
-				t_list.extend(t_linspace)
-				u_list.extend(u_linspace)
-			t_list.append(self._tau[-1])
-			u_list.append(self._u[i_u, -1])
-			t_data.append(t_list)
-			u_datas.append(u_list)
+			for i_y, state in enumerate(y_polys):
+				t_list = []
+				y_list = []
+				for t_start_stop, y_poly in zip(t_start_stops, state):
+					t_linspace = np.linspace(*t_start_stop)[:-1]
+					y_linspace = y_poly(t_linspace)
+					t_list.extend(t_linspace)
+					y_list.extend(y_linspace)
+				t_list.append(p_data.tau[-1])
+				y_list.append(p_data.y[i_y, -1])
+				t_data.append(t_list)
+				y_datas.append(y_list)
 
-		t_data = np.array(t_data[0])*self._stretch + self._shift
-		y_datas = np.array(y_datas)
-		dy_datas = np.array(dy_datas)
-		u_datas = np.array(u_datas)
+			for i_dy, dstate in enumerate(dy_polys):
+				t_list = []
+				dy_list = []
+				for t_start_stop, dy_poly in zip(t_start_stops, dstate):
+					t_linspace = np.linspace(*t_start_stop)[:-1]
+					dy_linspace = dy_poly(t_linspace)
+					t_list.extend(t_linspace)
+					dy_list.extend(dy_linspace)
+				t_list.append(p_data.tau[-1])
+				dy_list.append(p_data.dy[i_dy, -1])
+				t_data.append(t_list)
+				dy_datas.append(dy_list)
+
+			for i_u, control in enumerate(u_polys):
+				t_list = []
+				u_list = []
+				for t_start_stop, u_poly in zip(t_start_stops, control):
+					t_linspace = np.linspace(*t_start_stop)[:-1]
+					u_linspace = u_poly(t_linspace)
+					t_list.extend(t_linspace)
+					u_list.extend(u_linspace)
+				t_list.append(p_data.tau[-1])
+				u_list.append(p_data.u[i_u, -1])
+				t_data.append(t_list)
+				u_datas.append(u_list)
+
+			t_data = np.array(t_data[0])*p_data.stretch + p_data.shift
+			y_datas = np.array(y_datas)
+			dy_datas = np.array(dy_datas)
+			u_datas = np.array(u_datas)
+
+			t_data_phases.append(t_data)
+			y_datas_phases.append(y_datas)
+			dy_datas_phases.append(dy_datas)
+			u_datas_phases.append(u_datas)
 
 		if plot_y:
-			for i_y, y_data in enumerate(y_datas):
-				plt.plot(self._time, self._y[i_y], marker='x', markersize=5, linestyle='', color='black')
-				plt.plot(t_data, y_data, linewidth=2, label=self._ocp._y_vars_user[i_y])
+			for p, p_data, t_data, y_datas in zip(self._backend.p, self._phase_data, t_data_phases, y_datas_phases):
+				for i_y, y_data in enumerate(y_datas):
+					plt.plot(p_data.time, p_data.y[i_y], marker='x', markersize=5, linestyle='', color='black')
+					plt.plot(t_data, y_data, linewidth=2, label=str(p.y_vars[i_y])[1:])
 			plt.legend(loc='upper left')
 			plt.grid(True)
 			plt.title('States')
@@ -1567,9 +1609,10 @@ class Solution:
 			plt.show()
 
 		if plot_dy:
-			for i_y, dy_data in enumerate(dy_datas):
-				plt.plot(self._time, self._dy[i_y], marker='x', markersize=5, linestyle='', color='black')
-				plt.plot(t_data, dy_data, linewidth=2, label=self._ocp._y_vars_user[i_y])	
+			for p, p_data, t_data, dy_datas in zip(self._backend.p, self._phase_data, t_data_phases, dy_datas_phases):
+				for i_y, dy_data in enumerate(dy_datas):
+					plt.plot(p_data.time, p_data.dy[i_y], marker='x', markersize=5, linestyle='', color='black')
+					plt.plot(t_data, dy_data, linewidth=2, label=str(p.y_vars[i_y])[1:])	
 			plt.legend(loc='upper left')
 			plt.grid(True)
 			plt.title('State Derivatives')
@@ -1577,9 +1620,10 @@ class Solution:
 			plt.show()
 
 		if plot_u:
-			for i_u, u_data in enumerate(u_datas):
-				plt.plot(self._time, self._u[i_u], marker='x', markersize=5, linestyle='', color='black')
-				plt.plot(t_data, u_data, linewidth=2, label=self._ocp._u_vars_user[i_u])
+			for p, p_data, t_data, u_datas in zip(self._backend.p, self._phase_data, t_data_phases, u_datas_phases):
+				for i_u, u_data in enumerate(u_datas):
+					plt.plot(p_data.time, p_data.u[i_u], marker='x', markersize=5, linestyle='', color='black')
+					plt.plot(t_data, u_data, linewidth=2, label=str(p.u_vars[i_u])[1:])
 			plt.legend(loc='upper left')
 			plt.grid(True)
 			plt.title('Controls')

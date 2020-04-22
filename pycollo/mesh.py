@@ -203,8 +203,10 @@ class Mesh:
 		self.tau = []
 		self.h = []
 		self.N = []
+		self.K = []
 		self.mesh_index_boundaries = []
 		self.h_K = []
+		self.N_K = []
 		self.num_c_defect_per_y = []
 		self.W_matrix = []
 		self.sA_matrix = []
@@ -216,14 +218,16 @@ class Mesh:
 			self.tau.append(data[0])
 			self.h.append(data[1])
 			self.N.append(data[2])
-			self.mesh_index_boundaries.append(data[3])
-			self.h_K.append(data[4])
-			self.num_c_defect_per_y.append(data[5])
-			self.W_matrix.append(data[6])
-			self.sA_matrix.append(data[7])
-			self.sD_matrix.append(data[8])
-			self.A_index_array.append(data[9])
-			self.D_index_array.append(data[10])
+			self.K.append(data[3])
+			self.mesh_index_boundaries.append(data[4])
+			self.h_K.append(data[5])
+			self.N_K.append(data[6])
+			self.num_c_defect_per_y.append(data[7])
+			self.W_matrix.append(data[8])
+			self.sA_matrix.append(data[9])
+			self.sD_matrix.append(data[10])
+			self.A_index_array.append(data[11])
+			self.D_index_array.append(data[12])
 		# print(self.tau)
 		# print(self.h)
 		# print(self.N)
@@ -268,9 +272,11 @@ class Mesh:
 		tau = np.array(mesh)
 		h = np.diff(tau)
 		N = len(tau)
+		K = p.number_mesh_sections
 		
 		mesh_index_boundaries = np.insert(np.cumsum(p.number_mesh_section_nodes - 1), 0, 0)
 		h_K = np.diff(tau[mesh_index_boundaries])
+		N_K = p.number_mesh_section_nodes
 
 		block_starts = mesh_index_boundaries[:-1]
 		num_c_boundary_per_y = int(mesh_index_boundaries[-1])
@@ -325,6 +331,6 @@ class Mesh:
 		A_index_array = np.array(A_index_array)
 		D_index_array = np.array(D_index_array)
 
-		data = (tau, h, N, mesh_index_boundaries, h_K, num_c_boundary_per_y, W_matrix, sA_matrix, sD_matrix, A_index_array, D_index_array)
+		data = (tau, h, N, K, mesh_index_boundaries, h_K, N_K, num_c_boundary_per_y, W_matrix, sA_matrix, sD_matrix, A_index_array, D_index_array)
 		return data
 

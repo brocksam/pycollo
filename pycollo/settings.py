@@ -3,20 +3,15 @@ from typing import Optional
 from .backend import BackendABC
 from .bounds import BoundsABC
 from .mesh import PhaseMesh
+from .nlp import NLPSettings
 from .scaling import ScalingABC
-from .utils import format_multiple_items_for_output
+from .utils import (format_for_output, format_multiple_items_for_output)
 
 
 FIRST_ORDER = 1
 SECOND_ORDER = 2
 DIFFERENTIAL_FORM = "differential"
 INTEGRAL_FORM = "integral"
-IPOPT = "ipopt"
-WORHP = "worhp"
-SNOPT = "snopt"
-KNITRO = "knitro"
-MUMPS = "mumps"
-MA57 = "ma57"
 GUASS = "gauss"
 LOBATTO = "lobatto"
 RADAU = "radau"
@@ -25,16 +20,14 @@ RADAU = "radau"
 class Settings():
 
 	_COLLOCATION_MATRIX_FORMS = {DIFFERENTIAL_FORM, INTEGRAL_FORM}
-	_NLP_SOLVERS = {IPOPT, WORHP, SNOPT, KNITRO}
-	_LINEAR_SOLVERS = {MUMPS, MA57}
 	_QUADRATURE_METHODS = {GUASS, LOBATTO, RADAU}
 	_DERIVATIVE_LEVELS = {FIRST_ORDER, SECOND_ORDER}
 
 	def __init__(self, *, 
 			optimal_control_problem=None, 
 			collocation_matrix_form=INTEGRAL_FORM, 
-			nlp_solver=IPOPT, 
-			linear_solver=MUMPS, 
+			nlp_solver=NLPSettings.NLP_SOLVER_DEFAULT, 
+			linear_solver=NLPSettings.LINEAR_SOLVER_DEFAULT, 
 			nlp_tolerance=1e-8, 
 			max_nlp_iterations=2000, 
 			quadrature_method=LOBATTO, 
@@ -181,8 +174,25 @@ class Settings():
 
 	@nlp_solver.setter
 	def nlp_solver(self, nlp_solver):
-		if nlp_solver not in self._NLP_SOLVERS:
-			msg = (f"{nlp_solver} is not a valid NLP solver.")
+		nlp_solver = nlp_solver.casefold()
+		if nlp_solver not in NLPSettings.NLP_SOLVERS.keys():
+			nlp_solver = format_for_output(nlp_solver, case="upper")
+			supported_nlp_solvers = format_multiple_items_for_output(
+				NLPSettings.NLP_SOLVERS.keys(), case="upper")
+			plural_needed = "" if len(supported_nlp_solvers) == 1 else "from "
+			msg = (f"{nlp_solver} is not a valid NLP solver. Please choose "
+				f"{plural_needed}{supported_nlp_solvers}.")
+			raise ValueError(msg)
+		if not NLPSettings.NLP_SOLVERS.get(nlp_solver):
+			nlp_solver = format_for_output(nlp_solver, case="upper")
+			supported_solvers = tuple(solver
+				for solver, is_supported in NLPSettings.NLP_SOLVERS.items()
+				if is_supported)
+			supported_solvers_formatted = format_multiple_items_for_output(
+				supported_solvers, case="upper")
+			plural_needed = "" if len(supported_solvers) == 1 else "from "
+			msg = (f"{nlp_solver} is not currently supported. Please choose "
+				f"{plural_needed}{supported_solvers_formatted}.")
 			raise ValueError(msg)
 		self._nlp_solver = nlp_solver
 
@@ -192,15 +202,15 @@ class Settings():
 	
 	@linear_solver.setter
 	def linear_solver(self, linear_solver):
-		if self.nlp_solver == IPOPT:
-			if linear_solver not in self._LINEAR_SOLVERS:
-				msg = (f"{linear_solver} is not a valid linear solver.")
-				raise ValueError(msg)
-			self._linear_solver = linear_solver
-		elif self.nlp_solver == SNOPT:
-			msg = ("SNOPT is not currently supported. Please use IPOPT as the "
-				f"NLP solver.")
-			raise NotImplementedError(msg)
+		linear_solver = linear_solver.casefold()
+		supported_linear_solvers = NLPSettings.LINEAR_SOLVERS.get(self.nlp_solver)
+		if linear_solver not in supported_linear_solvers:
+			supported_linear_solvers = format_multiple_items_for_output(
+				supported_linear_solvers)
+			msg = (f"'{linear_solver}' is not a valid linear solver. Please "
+				f"choose from {supported_linear_solvers}")
+			raise ValueError(msg)
+		self._linear_solver = linear_solver
 
 	@property
 	def nlp_tolerance(self):

@@ -108,9 +108,9 @@ class ExpressionGraph:
 		self.user_symbol_to_expression_auxiliary_mapping = {}
 		self._user_constants = OrderedSet()
 		for key, value in aux_info.items():
-			try:
-				value = float(value)
-			except (ValueError, TypeError) as e:
+			is_expression = isinstance(value, (sym.Expr, sym.Symbol))
+			is_not_number = not value.is_Number
+			if is_expression and is_not_number:
 				self.user_symbol_to_expression_auxiliary_mapping[key] = value
 			else:
 				self._user_constants.add(key)

@@ -120,8 +120,8 @@ problem.bounds.endpoint_constraints = [
 
 problem.guess.parameter_variables = np.array([1.5])
 
-problem.settings.nlp_tolerance = 10e-7
-problem.settings.mesh_tolerance = 10e-6
+problem.settings.nlp_tolerance = 1e-7
+problem.settings.mesh_tolerance = 1e-10
 problem.settings.maximise_objective = False
 problem.settings.backend = "pycollo"
 problem.settings.scaling_method = "none"
@@ -131,6 +131,7 @@ problem.settings.check_nlp_functions = False
 problem.settings.collocation_points_min = 2
 problem.settings.collocation_points_max = 8
 problem.settings.derivative_level = 1
+problem.settings.max_mesh_iterations = 2
 
 # phase_A.mesh.number_mesh_sections = 2
 # phase_A.mesh.number_mesh_section_nodes = [2, 3]

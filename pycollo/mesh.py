@@ -228,19 +228,6 @@ class Mesh:
 			self.sD_matrix.append(data[10])
 			self.A_index_array.append(data[11])
 			self.D_index_array.append(data[12])
-		# print(self.tau)
-		# print(self.h)
-		# print(self.N)
-		# print(self.mesh_index_boundaries)
-		# print(self.h_K)
-		# print(self.num_c_boundary_per_y)
-		# print(self.W_matrix)
-		# print(self.sA_matrix)
-		# print(self.sD_matrix)
-		# print(self.A_index_array)
-		# print(self.D_index_array)
-		# print('\n\n\n')
-		# raise NotImplementedError
 
 	def generate_single_phase(self, p):
 
@@ -298,10 +285,10 @@ class Mesh:
 
 		num_A_nonzero = 0
 
-		for block_size, h_K, block_start in zip(p.number_mesh_section_nodes, h_K, block_starts):
+		for block_size, h_k, block_start in zip(p.number_mesh_section_nodes, h_K, block_starts):
 			row_slice = slice(block_start, block_start+block_size-1)
 			col_slice = slice(block_start, block_start+block_size)
-			A_block = self.quadrature.A_matrix(block_size) * h_K
+			A_block = self.quadrature.A_matrix(block_size) * h_k
 			A_vals_entry = A_block.flatten().tolist()
 			A_row_inds_entry = np.repeat(np.array(range(block_start, block_start+block_size-1)), block_size)
 			A_col_inds_entry = np.tile(np.array(range(block_start, block_start+block_size)), block_size-1)
@@ -321,7 +308,7 @@ class Mesh:
 			D_col_inds.extend(D_col_inds_entry)
 			D_index_array.extend(self.quadrature.D_index_array(block_size) + num_A_nonzero)
 
-			W_matrix[col_slice] += self.quadrature.quadrature_weight(block_size) * h_K
+			W_matrix[col_slice] += self.quadrature.quadrature_weight(block_size) * h_k
 
 			num_A_nonzero = len(A_index_array)
 

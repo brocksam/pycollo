@@ -102,13 +102,13 @@ def dict_merge(*dicts: Iterable[Mapping]) -> dict:
     return merged
 
 
-def console_out(msg, heading=False, subheading=False):
+def console_out(msg, heading=False, subheading=False, prefix="", suffix=""):
+    msg = f"{prefix}{msg}{suffix}"
+    msg_len = len(msg)
     if heading:
-        msg_len = len(msg)
         seperator = '=' * msg_len
         output_msg = (f"\n{seperator}\n{msg}\n{seperator}\n")
     elif subheading:
-        msg_len = len(msg)
         seperator = '-' * msg_len
         output_msg = (f"\n{msg}\n{seperator}")
     else:
@@ -122,15 +122,30 @@ def fast_sympify(arg):
     return arg
 
 
-def format_multiple_items_for_output(items, wrapping_char="'", *, prefix_char=""):
-    items = [f"{prefix_char}{item}" for item in items]
+def format_case(item, case):
+    if case is "title":
+        return item.title()
+    elif case is "upper":
+        return item.upper()
+    elif case is "lower":
+        return item.lower()
+    else:
+        return item
+
+
+def format_for_output(items, *args, **kwargs):
+    return format_multiple_items_for_output(items, *args, **kwargs)
+
+
+def format_multiple_items_for_output(items, wrapping_char="'", *, prefix_char="", case=None):
+    items = (items, ) if isinstance(items, str) else items
+    items = [f"{prefix_char}{format_case(item, case)}" for item in items]
     if len(items) == 1:
         return f"'{items[0]}'"
     else:
         pad = f"{wrapping_char}, {wrapping_char}"
         return (f"{wrapping_char}{pad.join(items[:-1])}{wrapping_char} "
             f"and {wrapping_char}{items[-1]}{wrapping_char}")
-
 
 
 def parse_arg_type(arg, arg_name_str, arg_type):

@@ -109,8 +109,7 @@ class ExpressionGraph:
 		self._user_constants = OrderedSet()
 		for key, value in aux_info.items():
 			is_expression = isinstance(value, (sym.Expr, sym.Symbol))
-			is_not_number = not value.is_Number
-			if is_expression and is_not_number:
+			if is_expression and (not value.is_Number):
 				self.user_symbol_to_expression_auxiliary_mapping[key] = value
 			else:
 				self._user_constants.add(key)

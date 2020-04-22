@@ -162,7 +162,8 @@ class IterationScaling:
 	def _generate(self):
 		update_scaling = self.optimal_control_problem.settings.update_scaling
 		if self.iteration.number >= 2:
-			self._GENERATE_DISPATCHER[update_scaling]()
+			self._generate_from_base()
+			# self._GENERATE_DISPATCHER[update_scaling]()
 		else:
 			self._generate_from_base()
 

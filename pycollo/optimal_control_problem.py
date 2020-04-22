@@ -303,7 +303,7 @@ class OptimalControlProblem():
 	
 	@property
 	def num_mesh_iterations(self):
-		return len(self._mesh_iterations)
+		return len(self._backend.mesh_iterations)
 
 	@property
 	def settings(self):
@@ -410,27 +410,19 @@ class OptimalControlProblem():
 		# self._check_if_initialisation_required_before_solve()
 
 		# Solve the transcribed NLP on the initial mesh
-		new_iteration_mesh, new_iteration_guess = self._backend.mesh_iterations[0].solve()
-
-		mesh_iterations_met = self._settings.max_mesh_iterations == 1
-		if new_iteration_mesh is None:
-				mesh_tolerance_met = True
-		else:
-			mesh_tolerance_met = False
+		mesh_tolerance_met, new_iteration_mesh, new_iteration_guess = self._backend.mesh_iterations[0].solve()
+		mesh_iterations_met = self.settings.max_mesh_iterations == 1
 
 		while not mesh_iterations_met and not mesh_tolerance_met:
-			new_iteration = Iteration(optimal_control_problem=self, iteration_number=self.num_mesh_iterations+1, mesh=new_iteration_mesh)
-			self._mesh_iterations.append(new_iteration)
-			self._mesh_iterations[-1]._initialise_iteration(new_iteration_guess)
-			new_iteration_mesh, new_iteration_guess = self._mesh_iterations[-1]._solve()
-			if new_iteration_mesh is None:
-				mesh_tolerance_met = True
-				print(f'Mesh tolerance met in mesh iteration {len(self._mesh_iterations)}.\n')
+			new_iteration = self._backend.new_mesh_iteration(new_iteration_mesh, new_iteration_guess)
+			mesh_tolerance_met, new_iteration_mesh, new_iteration_guess = self._backend.mesh_iterations[-1].solve()
+			if mesh_tolerance_met:
+				print(f'Mesh tolerance met in mesh iteration {self.num_mesh_iterations}.\n')
 			elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
 				mesh_iterations_met = True
 				print(f'Maximum number of mesh iterations reached. pycollo exiting before mesh tolerance met.\n')
 	
-		_ = self._final_output()
+		self._final_output()
 
 	def _set_solve_options(self, display_progress):
 		self._display_progress = display_progress
@@ -440,60 +432,60 @@ class OptimalControlProblem():
 
 
 
-	def _initialise(self):
-		self._check_user_supplied_bounds()
-		self._generate_scaling()
-		self._generate_expression_graph()
-		self._generate_quadrature()
-		self._compile_numba_functions()
-		self._check_user_supplied_initial_guess()
+	# def _initialise(self):
+	# 	self._check_user_supplied_bounds()
+	# 	self._generate_scaling()
+	# 	self._generate_expression_graph()
+	# 	self._generate_quadrature()
+	# 	self._compile_numba_functions()
+	# 	self._check_user_supplied_initial_guess()
 
-		# Initialise the initial mesh iterations
-		self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
+	# 	# Initialise the initial mesh iterations
+	# 	self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
 
-		ocp_initialisation_time_stop = timer()
-		self._ocp_initialisation_time = (ocp_initialisation_time_stop 
-			- ocp_initialisation_time_start)
-		self._is_initialised = True
+	# 	ocp_initialisation_time_stop = timer()
+	# 	self._ocp_initialisation_time = (ocp_initialisation_time_stop 
+	# 		- ocp_initialisation_time_start)
+	# 	self._is_initialised = True
 
-	def solve_old(self, display_progress=False):
-		"""Solve the optimal control problem.
+	# def solve_old(self, display_progress=False):
+	# 	"""Solve the optimal control problem.
 
-		If the initialisation flag is not set to True then the initialisation 
-		method is called to initialise the optimal control problem. 
+	# 	If the initialisation flag is not set to True then the initialisation 
+	# 	method is called to initialise the optimal control problem. 
 
-		Parameters:
-		-----------
-		display_progress : bool
-			Option for whether progress updates should be outputted to the 
-			console during solving. Defaults to False.
-		"""
+	# 	Parameters:
+	# 	-----------
+	# 	display_progress : bool
+	# 		Option for whether progress updates should be outputted to the 
+	# 		console during solving. Defaults to False.
+	# 	"""
 
-		self._set_solve_options(display_progress)
-		self._check_if_initialisation_required_before_solve()
+	# 	self._set_solve_options(display_progress)
+	# 	self._check_if_initialisation_required_before_solve()
 
-		# Solve the transcribed NLP on the initial mesh
-		new_iteration_mesh, new_iteration_guess = self._mesh_iterations[0]._solve()
+	# 	# Solve the transcribed NLP on the initial mesh
+	# 	new_iteration_mesh, new_iteration_guess = self._mesh_iterations[0]._solve()
 
-		mesh_iterations_met = self._settings.max_mesh_iterations == 1
-		if new_iteration_mesh is None:
-				mesh_tolerance_met = True
-		else:
-			mesh_tolerance_met = False
+	# 	mesh_iterations_met = self._settings.max_mesh_iterations == 1
+	# 	if new_iteration_mesh is None:
+	# 			mesh_tolerance_met = True
+	# 	else:
+	# 		mesh_tolerance_met = False
 
-		while not mesh_iterations_met and not mesh_tolerance_met:
-			new_iteration = Iteration(optimal_control_problem=self, iteration_number=self.num_mesh_iterations+1, mesh=new_iteration_mesh)
-			self._mesh_iterations.append(new_iteration)
-			self._mesh_iterations[-1]._initialise_iteration(new_iteration_guess)
-			new_iteration_mesh, new_iteration_guess = self._mesh_iterations[-1]._solve()
-			if new_iteration_mesh is None:
-				mesh_tolerance_met = True
-				print(f'Mesh tolerance met in mesh iteration {len(self._mesh_iterations)}.\n')
-			elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
-				mesh_iterations_met = True
-				print(f'Maximum number of mesh iterations reached. pycollo exiting before mesh tolerance met.\n')
+	# 	while not mesh_iterations_met and not mesh_tolerance_met:
+	# 		new_iteration = Iteration(optimal_control_problem=self, iteration_number=self.num_mesh_iterations+1, mesh=new_iteration_mesh)
+	# 		self._mesh_iterations.append(new_iteration)
+	# 		self._mesh_iterations[-1]._initialise_iteration(new_iteration_guess)
+	# 		new_iteration_mesh, new_iteration_guess = self._mesh_iterations[-1]._solve()
+	# 		if new_iteration_mesh is None:
+	# 			mesh_tolerance_met = True
+	# 			print(f'Mesh tolerance met in mesh iteration {len(self._mesh_iterations)}.\n')
+	# 		elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
+	# 			mesh_iterations_met = True
+	# 			print(f'Maximum number of mesh iterations reached. pycollo exiting before mesh tolerance met.\n')
 	
-		_ = self._final_output()
+	# 	_ = self._final_output()
 
 	def _set_solve_options(self, display_progress):
 		self._display_progress = display_progress
@@ -505,7 +497,7 @@ class OptimalControlProblem():
 	def _final_output(self):
 
 		def solution_results():
-			J_msg = (f'Final Objective Function Evaluation: {self.mesh_iterations[-1]._solution._J:.4f}\n')
+			J_msg = (f'Final Objective Function Evaluation: {self._backend.mesh_iterations[-1].solution.objective:.4f}\n')
 			print(J_msg)
 
 		def mesh_results():
@@ -538,11 +530,12 @@ class OptimalControlProblem():
 			print('\n\n')
 
 		solved_msg = ('Optimal control problem sucessfully solved.')
-		self._console_out_message_heading(solved_msg)
+		console_out(solved_msg, heading=True)
 
 		solution_results()
-		mesh_results()
-		time_results()
+		if False:
+			mesh_results()
+			time_results()
 
 	def __str__(self):
 		return self.name

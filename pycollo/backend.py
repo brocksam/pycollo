@@ -497,7 +497,8 @@ class Pycollo(BackendABC):
 		self.expression_graph._form_time_normalisation_functions()
 		self.expression_graph._form_objective_function_and_derivatives(objective)
 		self.expression_graph._form_constraints_and_derivatives(constraints)
-		self.expression_graph._form_lagrangian_and_derivatives()
+		if self.ocp.settings.derivative_level == 2:
+			self.expression_graph._form_lagrangian_and_derivatives()
 
 		self.phase_variable_slices = []
 		start = 0

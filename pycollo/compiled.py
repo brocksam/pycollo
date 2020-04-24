@@ -228,7 +228,7 @@ class CompiledFunctions:
 			p = c_continuous[p_slice]
 			g = c_continuous[g_slice].reshape((-1, N))
 
-			dc_dx = dc_dx_lambda(*x_tuple, N)
+			dc_dx = dc_dx_lambda(*x_tuple, N).astype(float)
 			dzeta_dy = dc_dx[phase_c_defect_slice, phase_y_slice, :].reshape(-1, N)
 			dzeta_du = dc_dx[phase_c_defect_slice, phase_u_slice, :].reshape(-1, N)
 			dzeta_ds = dc_dx[phase_c_defect_slice, phase_t_slice.stop:, :].reshape(-1, N)
@@ -283,7 +283,7 @@ class CompiledFunctions:
 			G_dzeta_dy = []
 			for row in ddy_dy:
 				G_dzeta_dy.append(stretch*A*sparse.diags(row))
-			G_dzeta_dy = sparse.bmat(np.array(G_dzeta_dy).reshape(ocp_num_y, ocp_num_y))
+			G_dzeta_dy = sparse.bmat(np.array(G_dzeta_dy).reshape(ocp_num_y, ocp_num_y), dtype=float)
 			D_data = sparse.block_diag([D]*ocp_num_y)
 			G_dzeta_dy += D_data
 			return G_dzeta_dy
@@ -381,10 +381,14 @@ class CompiledFunctions:
 			dc_dx_phase = expr_graph.dc_dx[p_c_slice, p_x_slice]
 			dc_dx_parameter = expr_graph.dc_dx[p_c_slice, self.ocp_backend.variable_slice]
 			dc_dx = sym.Matrix(sym.BlockMatrix([dc_dx_phase, dc_dx_parameter]))
+			dc_dx_nodes = np.array(expr_graph.dc_dx_nodes).reshape(expr_graph.dc_dx.shape)
+			dc_dx_nodes_phase = dc_dx_nodes[p_c_slice, p_x_slice]
+			dc_dx_nodes_parameter = dc_dx_nodes[p_c_slice, self.ocp_backend.variable_slice]
+			dc_dx_nodes = np.hstack([dc_dx_nodes_phase, dc_dx_nodes_parameter]).flatten().tolist()
 			dc_dx_lambda = numbafy(
 				expression_graph=expr_graph,
 				expression=dc_dx,
-				expression_nodes=expr_graph.dc_dx_nodes,
+				expression_nodes=dc_dx_nodes,
 				precomputable_nodes=expr_graph.dc_dx_precomputable,
 				dependent_tiers=expr_graph.dc_dx_dependent_tiers,
 				parameters=self.ocp_backend.x_vars, 

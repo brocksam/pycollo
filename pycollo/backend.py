@@ -364,7 +364,7 @@ class Pycollo(BackendABC):
 			return True
 		elif symbol in self.aux_data_phase_independent or equation is None:
 			return False
-		elif equation.is_Number or equation in self.s_vars:
+		elif equation.is_Number or equation in self.s_vars_full:
 			self.new_aux_data_pair_phase_independent(symbol, equation)
 			return True
 		else:

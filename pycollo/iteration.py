@@ -578,8 +578,11 @@ class Iteration:
 		msg = (f"Pycollo Analysis of Mesh Iteration {self.number}")
 		console_out(msg, subheading=True, suffix=":")
 
+		max_rel_mesh_error = np.max(np.array([np.max(element) 
+			for element in self._solution._maximum_relative_mesh_errors]))
+
 		print(f'Objective Evaluation:       {self.solution.objective}')
-		print(f'Max Relative Mesh Error:    {np.max(self._solution._maximum_relative_mesh_errors)}\n')
+		print(f'Max Relative Mesh Error:    {max_rel_mesh_error}\n')
 		if mesh_tol_met:
 			print(f'Adjusting Collocation Mesh: {next_iter_mesh.K} mesh sections\n')
 

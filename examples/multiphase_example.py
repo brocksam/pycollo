@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import sympy as sym
 
@@ -10,6 +11,8 @@ y3 = sym.Symbol('y3')
 u0 = sym.Symbol('u0')
 u1 = sym.Symbol('u1')
 s0 = sym.Symbol('s0')
+
+circle_radius = 2.0
 
 problem = pycollo.OptimalControlProblem(
 	name="Multiphase example problem", 
@@ -24,7 +27,7 @@ phase_A.state_equations = {
 	y2: u0 / s0,
 	y3: u1 / s0,
 	}
-phase_A.path_constraints = [sym.sqrt(y0**2 + y1**2) - 1]
+phase_A.path_constraints = [sym.sqrt(y0**2 + y1**2) - circle_radius]
 phase_A.integrand_functions = [u0**2, u1**2]
 phase_A.auxiliary_data = {}
 
@@ -120,8 +123,8 @@ problem.bounds.endpoint_constraints = [
 
 problem.guess.parameter_variables = np.array([1.5])
 
-problem.settings.nlp_tolerance = 1e-7
-problem.settings.mesh_tolerance = 1e-10
+problem.settings.nlp_tolerance = 1e-3
+problem.settings.mesh_tolerance = 1e-5
 problem.settings.maximise_objective = False
 problem.settings.backend = "pycollo"
 problem.settings.scaling_method = "none"
@@ -131,15 +134,23 @@ problem.settings.check_nlp_functions = False
 problem.settings.collocation_points_min = 2
 problem.settings.collocation_points_max = 8
 problem.settings.derivative_level = 1
-problem.settings.max_mesh_iterations = 2
-
-# phase_A.mesh.number_mesh_sections = 2
-# phase_A.mesh.number_mesh_section_nodes = [2, 3]
-# phase_A.mesh.mesh_section_sizes = [1/2, 1/2]
-# phase_B.mesh.number_mesh_sections = 2
-# phase_B.mesh.number_mesh_section_nodes = [3, 2]
-# phase_B.mesh.mesh_section_sizes = [1/2, 1/2]
+problem.settings.max_mesh_iterations = 10
+problem.settings.display_mesh_result_graph = False
 
 problem.initialise()
 problem.solve()
+
+r = np.linspace(0, 2*np.pi, 1000)
+x_circle = circle_radius*np.cos(r)
+y_circle = circle_radius*np.sin(r)
+
+x_P0 = problem.solution.state[0][0]
+y_P0 = problem.solution.state[0][1]
+x_P1 = problem.solution.state[1][0]
+y_P1 = problem.solution.state[1][1]
+plt.plot(x_P0, y_P0)
+plt.plot(x_P1, y_P1)
+plt.plot(x_circle, y_circle, color="#000000")
+plt.gca().set_aspect('equal', adjustable='box')
+plt.show()
 

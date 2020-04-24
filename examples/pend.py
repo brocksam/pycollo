@@ -62,7 +62,7 @@ phase.guess.control_variables = np.array([[0, 0]])
 phase.guess.integral_variables = np.array([100])
 
 # Auxiliary data
-problem.auxiliary_data = {g: -9.81, d0: 0.5, k0: 1/12, T0min: -15, T0max: 15,
+problem.auxiliary_data = {g: -9.81, d0: 0.5, k0: 1/12, T0min: -30, T0max: 30,
 	m0: 1.0, p0: 1.0,
 	}
 

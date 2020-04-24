@@ -319,7 +319,7 @@ class OptimalControlProblem():
 
 	@property
 	def solution(self):
-		return self._mesh_iterations[-1].solution
+		return self._backend.mesh_iterations[-1].solution
 
 	def initialise(self):
 		"""Initialise the optimal control problem before solving.

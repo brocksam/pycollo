@@ -24,7 +24,8 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
         elif e is one_sym:
             e_entry = f'_np_ones_array_N'
         elif node.is_vector:
-            e_entry = f'{e}'
+            # e_entry = f'{e}'
+            e_entry = f'({e})*_np_ones_array_N'
         else:
             e_entry = f'({e})*_np_ones_array_N'
         return e_entry
@@ -224,14 +225,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
             for col_num, e in enumerate(row):
                 index = row_num*expression.cols + col_num
                 node = expression_nodes[index]
-                if e is zero_sym:
-                    e_entry = f'_np_zeros_array_N'
-                elif e is one_sym:
-                    e_entry = f'_np_ones_array_N'
-                elif node.is_vector:
-                    e_entry = f'{e}'
-                else:
-                    e_entry = f'({e})*np.ones(_N)'
+                e_entry = expand_to_array(e, node)
                 expression_list.append(e_entry)
             expression_row = ', '.join(f'{e}' for e in expression_list)
             expression_rows.append(f"np.stack(({expression_row}))")

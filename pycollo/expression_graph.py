@@ -34,11 +34,13 @@ Notes:
 
 class ExpressionGraph:
 
-	def __init__(self, ocp, problem_variables, objective, constraints, 
+	def __init__(self, ocp_backend, problem_variables, objective, constraints, 
 			auxiliary_information):
 
-		self.ocp = ocp
-		self.phases = ocp.p
+		self.ocp_backend = ocp_backend
+		self.phases = ocp_backend.p
+		self.objective = objective
+		self.constraints = constraints
 		self.console_out_begin_expression_graph_creation()		
 		self.initialise_node_symbol_number_counters()
 		self.initialise_node_mappings()
@@ -124,6 +126,14 @@ class ExpressionGraph:
 		for node_symbol, node_expr in iterable:
 			_ = Node(node_symbol, self, equation=node_expr)
 
+	def form_functions_and_derivatives(self):
+		self._form_time_normalisation_functions()
+		self._form_objective_function_and_derivatives()
+		self._form_constraints_and_derivatives()
+		raise NotImplementedError
+		if self.ocp_backend.ocp.settings.derivative_level == 2:
+			self._form_lagrangian_and_derivatives()
+
 	def _form_time_normalisation_functions(self):
 		for p in self.phases:
 			self._form_function_and_derivative(
@@ -135,9 +145,9 @@ class ExpressionGraph:
 				completion_msg=f"time normalisation of phase #{p.i}",
 				)
 
-	def _form_objective_function_and_derivatives(self, objective):
+	def _form_objective_function_and_derivatives(self):
 		self._form_function_and_derivative(
-			func=objective,
+			func=self.objective,
 			wrt=self._endpoint_variable_nodes,
 			order=1, 
 			func_abrv="J",
@@ -145,7 +155,7 @@ class ExpressionGraph:
 			completion_msg="objective gradient",
 			)
 
-	def _form_constraints_and_derivatives(self, constraints):
+	def _form_constraints_and_derivatives(self):
 
 		def form_continuous(continuous_constraints):
 			form_function_and_derivative(func=continuous_constraints,
@@ -161,9 +171,9 @@ class ExpressionGraph:
 			self._form_function_and_derivative, order=1, init_func=True)
 
 		continuous_constraints = sym.Matrix(
-			constraints[self.ocp.c_continuous_slice])
+			self.constraints[self.ocp_backend.c_continuous_slice])
 		endpoint_constraints = sym.Matrix(
-			constraints[self.ocp.c_endpoint_slice])
+			self.constraints[self.ocp_backend.c_endpoint_slice])
 
 		form_continuous(continuous_constraints)
 		form_endpoint(endpoint_constraints)
@@ -321,16 +331,10 @@ class ExpressionGraph:
 				return f"dd{func_abrv}_d{wrt_abrv}d{wrt_abrv}"
 
 		def add_to_namespace(self, args, func_abrv):
-			zeroth_arg = f"{func_abrv}"
-			first_arg = f"{func_abrv}_nodes"
-			second_arg = f"{func_abrv}_precomputable"
-			third_arg = f"{func_abrv}_dependent_tiers"
-
-			attribute_names = [zeroth_arg, first_arg, second_arg, third_arg]
-			for i, attrib_name in enumerate(attribute_names):
-				exec_cmd = f"setattr(self, str('{attrib_name}'), args[{i}])"
-				exec(exec_cmd)
-
+			setattr(self, f"{func_abrv}", args[0])
+			setattr(self, f"{func_abrv}_nodes", args[1])
+			setattr(self, f"{func_abrv}_precomputable", args[2])
+			setattr(self, f"{func_abrv}_dependent_tiers", args[3])
 			return self
 
 		init_args = self._initialise_function(func)
@@ -454,11 +458,17 @@ class ExpressionGraph:
 	def hybrid_symbolic_algorithmic_differentiation(self, target_function, 
 		function_nodes, precomputable_nodes, dependent_nodes_by_tier, wrt):
 
-		def differentiate(function_nodes, wrt):
-			derivative_full = [[function_node.derivative_as_symbol(single_wrt) 
-				for single_wrt in wrt] 
-				for function_node in function_nodes]
-			return sym.Matrix(derivative_full)
+		def differentiate(function_nodes, wrt_nodes):
+			n_rows = len(function_nodes)
+			n_cols = len(wrt_nodes)
+			wrt_mapping = {wrt_node: i for i, wrt_node in enumerate(wrt_nodes)}
+			nonzeros = {}
+			for i_row, node in enumerate(function_nodes):
+				for wrt in node.differentiable_by:
+					i_col = wrt_mapping.get(wrt)
+					if i_col is not None:
+						nonzeros[(i_row, i_col)] = node.derivative_as_symbol(wrt)
+			return sym.SparseMatrix(n_rows, n_cols, nonzeros)
 
 		def compute_target_function_derivatives_for_each_tier(
 				dependent_nodes_by_tier_collapsed):

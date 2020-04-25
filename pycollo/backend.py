@@ -493,12 +493,7 @@ class Pycollo(BackendABC):
 		aux_data = dict_merge(self.aux_data, *(p.aux_data for p in self.p), self.bounds.aux_data)
 		self.expression_graph = ExpressionGraph(self, variables, objective, 
 			constraints, aux_data)
-
-		self.expression_graph._form_time_normalisation_functions()
-		self.expression_graph._form_objective_function_and_derivatives(objective)
-		self.expression_graph._form_constraints_and_derivatives(constraints)
-		if self.ocp.settings.derivative_level == 2:
-			self.expression_graph._form_lagrangian_and_derivatives()
+		self.expression_graph.form_functions_and_derivatives()
 
 		self.phase_variable_slices = []
 		start = 0

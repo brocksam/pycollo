@@ -23,6 +23,20 @@ dcdxInfo = collections.namedtuple('dcdxInfo', [
 supported_iter_types = (tuple, list, np.ndarray)
 
 
+class cachedproperty:
+
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance, cls):
+        if instance is None:
+            return self
+        else:
+            value = self.func(instance)
+            setattr(instance, self.func.__name__, value)
+            return value
+
+
 def format_as_named_tuple(
         iterable: OptionalSymsType, 
         use_named: bool = True, 

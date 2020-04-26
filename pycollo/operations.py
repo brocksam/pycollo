@@ -12,11 +12,13 @@ SYMPY_TWO = sym.numbers.Integer(2)
 SYMPY_THREE = sym.numbers.Integer(3)
 SYMPY_HALF = sym.numbers.Half()
 SYMPY_THIRD = sym.numbers.Rational(1/3)
+SYMPY_2THIRDS = sym.numbers.Rational(2/3)
 SYMPY_NEG_ONE = sym.numbers.Integer(-1)
 SYMPY_NEG_TWO = sym.numbers.Integer(-2)
 SYMPY_NEG_THREE = sym.numbers.Integer(-3)
 SYMPY_NEG_HALF = sym.numbers.Rational(-1/2)
 SYMPY_NEG_THIRD = sym.numbers.Rational(-1/3)
+SYMPY_NEG_2THIRDS = sym.numbers.Rational(-2/3)
 
 
 class PycolloOp(abc.ABC):
@@ -123,10 +125,6 @@ class PycolloTernaryMul(PycolloOp):
 		return derivatives
 
 
-# class PycolloProd(PycolloOp):
-# 	pass
-
-
 class PycolloAdd(PycolloOp):
 
 	SYMPY_OP = sym.Add
@@ -141,23 +139,6 @@ class PycolloAdd(PycolloOp):
 				derivatives[parent_node] = self.node.graph._one_node
 		return derivatives
 
-# 	NUM_ARGS = 2
-
-# 	def __init__(self, nodes):
-# 		super().__init__(nodes)
-# 		self._value = ' + '.join([str(node.symbol) for node in nodes])
-# 		self._derivatives = {node.symbol: '1' for node in nodes}
-
-# 	@classmethod
-# 	def _check_num_arguments(cls, arguments):
-# 		if len(arguments) < cls.NUM_ARGS:
-# 			raise ValueError
-# 		return arguments
-
-
-# class PycolloSum(PycolloOp):
-# 	pass
-
 
 class PycolloPow(PycolloOp):
 
@@ -167,9 +148,9 @@ class PycolloPow(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		intermediate_1 = sym.Add(self.node.parent_nodes[1].symbol, SYMPY_NEG_ONE)
-		intermediate_2 = sym.Pow(self.node.parent_nodes[0].symbol, intermediate_1)
-		derivative = sym.Mul(self.node.parent_nodes[1].symbol, intermediate_2)
+		sub_1 = sym.Add(self.node.parent_nodes[1].symbol, SYMPY_NEG_ONE)
+		sub_2 = sym.Pow(self.node.parent_nodes[0].symbol, sub_1)
+		derivative = sym.Mul(self.node.parent_nodes[1].symbol, sub_2)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
@@ -189,6 +170,21 @@ class PycolloSquare(PycolloOp):
 		return derivatives
 
 
+class PycolloCube(PycolloOp):
+
+	SYMPY_OP = sym.Pow
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_TWO)
+		derivative = sym.Mul(SYMPY_THREE, sub_1)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
 class PycolloSquareroot(PycolloOp):
 
 	SYMPY_OP = sym.Pow
@@ -197,8 +193,23 @@ class PycolloSquareroot(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		intermediate_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_HALF)
-		derivative = sym.Mul(SYMPY_HALF, intermediate_1)
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_HALF)
+		derivative = sym.Mul(SYMPY_HALF, sub_1)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloCuberoot(PycolloOp):
+
+	SYMPY_OP = sym.Pow
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_2THIRDS)
+		derivative = sym.Mul(SYMPY_THIRD, sub_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
@@ -212,8 +223,8 @@ class PycolloReciprocal(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		intermediate_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_TWO)
-		derivative = sym.Mul(SYMPY_NEG_ONE, intermediate_1)
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_TWO)
+		derivative = sym.Mul(SYMPY_NEG_ONE, sub_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
@@ -227,20 +238,33 @@ class PycolloExp(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		raise NotImplementedError
-		derivatives = {self.node.parent_nodes[0]: 2}
+		derivatives = {self.node.parent_nodes[0]: self.node.parent_nodes[0]}
 		return derivatives
 
 
-class PycolloCos(PycolloOp):
+class PycolloLn(PycolloOp):
 
-	SYMPY_OP = sym.cos
+	SYMPY_OP = sym.log
 
 	@cachedproperty
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivative = -sym.sin(self.node.parent_nodes[0].symbol)
+		derivative = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_ONE)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloLog(PycolloOp):
+
+	SYMPY_OP = sym.log
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		derivative = self.node.symbol.diff(self.node.parent_nodes[0].symbol)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
@@ -260,6 +284,363 @@ class PycolloSin(PycolloOp):
 		return derivatives
 
 
+class PycolloCos(PycolloOp):
+
+	SYMPY_OP = sym.cos
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.sin(self.node.parent_nodes[0].symbol)
+		derivative = sym.Mul(SYMPY_NEG_ONE, sub_1)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloTan(PycolloOp):
+
+	SYMPY_OP = sym.tan
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.sec(self.node.parent_nodes[0].symbol)
+		derivative = sym.Pow(sub_1, SYMPY_TWO)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloCot(PycolloOp):
+
+	SYMPY_OP = sym.cot
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.csc(self.node.parent_nodes[0].symbol)
+		sub_2 = sym.Pow(sub_1, SYMPY_TWO)
+		derivative = sym.Mul(SYMPY_NEG_ONE, sub_2)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloSec(PycolloOp):
+
+	SYMPY_OP = sym.sec
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.tan(self.node.parent_nodes[0].symbol)
+		sub_2 = sym.sec(self.node.parent_nodes[0].symbol)
+		derivative = sym.Mul(sub_1, sub_2)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloCosec(PycolloOp):
+
+	SYMPY_OP = sym.csc
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.cot(self.node.parent_nodes[0].symbol)
+		sub_2 = sym.csc(self.node.parent_nodes[0].symbol)
+		sub_3 = sym.Mul(sub_1, sub_2)
+		derivative = sym.Mul(SYMPY_NEG_ONE, sub_3)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloArcsin(PycolloOp):
+
+	SYMPY_OP = sym.asin
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_TWO)
+		sub_2 = sym.Mul(SYMPY_NEG_ONE, sub_1)
+		sub_3 = sym.Add(SYMPY_ONE, sub_2)
+		derivative = sym.Pow(sub_3, SYMPY_NEG_HALF)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloArccos(PycolloOp):
+
+	SYMPY_OP = sym.acos
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_TWO)
+		sub_2 = sym.Mul(SYMPY_NEG_ONE, sub_1)
+		sub_3 = sym.Add(SYMPY_ONE, sub_2)
+		sub_4 = sym.Pow(sub_3, SYMPY_NEG_HALF)
+		derivative = sym.Mul(SYMPY_NEG_ONE, sub_4)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloArctan(PycolloOp):
+
+	SYMPY_OP = sym.atan
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_TWO)
+		sub_2 = sym.Add(SYMPY_ONE, sub_1)
+		derivative = sym.Pow(sub_2, SYMPY_NEG_ONE)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloArccot(PycolloOp):
+
+	SYMPY_OP = sym.acot
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_TWO)
+		sub_2 = sym.Add(SYMPY_ONE, sub_1)
+		sub_3 = sym.Pow(sub_2, SYMPY_NEG_ONE)
+		derivative = sym.Mul(SYMPY_NEG_ONE, sub_3)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloArcsec(PycolloOp):
+
+	SYMPY_OP = sym.asec
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		msg = (f"Pycollo does not currently support differentiation of "
+			f"'arccosec' functions as they are discontinuous.")
+		raise NotImplementedError(msg)
+
+
+class PycolloArccosec(PycolloOp):
+
+	SYMPY_OP = sym.acsc
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		msg = (f"Pycollo does not currently support differentiation of "
+			f"'arccosec' functions as they are discontinuous.")
+		raise NotImplementedError(msg)
+
+
+class PycolloSinh(PycolloOp):
+
+	SYMPY_OP = sym.sinh
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		derivative = sym.cosh(self.node.parent_nodes[0].symbol)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloCosh(PycolloOp):
+
+	SYMPY_OP = sym.cosh
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.sinh(self.node.parent_nodes[0].symbol)
+		derivative = sym.Mul(SYMPY_NEG_ONE, sub_1)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloTanh(PycolloOp):
+
+	SYMPY_OP = sym.tanh
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.tanh(self.node.parent_nodes[0].symbol)
+		sub_2 = sym.Pow(sub_1, SYMPY_TWO)
+		sub_3 = sym.Mul(SYMPY_NEG_ONE, sub_2)
+		derivative = sym.Add(SYMPY_ONE, sub_3)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloCoth(PycolloOp):
+
+	SYMPY_OP = sym.coth
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.coth(self.node.parent_nodes[0].symbol)
+		sub_2 = sym.Pow(sub_1, SYMPY_TWO)
+		sub_3 = sym.Mul(SYMPY_NEG_ONE, sub_2)
+		derivative = sym.Add(SYMPY_ONE, sub_3)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloSech(PycolloOp):
+
+	SYMPY_OP = sym.sech
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.tanh(self.node.parent_nodes[0].symbol)
+		derivative = sym.Mul(SYMPY_NEG_ONE, self.node.parent_nodes[0].symbol, sub_1)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloCosech(PycolloOp):
+
+	SYMPY_OP = sym.csch
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.coth(self.node.parent_nodes[0].symbol)
+		derivative = sym.Mul(SYMPY_NEG_ONE, self.node.parent_nodes[0].symbol, sub_1)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloArcsinh(PycolloOp):
+
+	SYMPY_OP = sym.asinh
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_TWO)
+		sub_2 = sym.Add(SYMPY_ONE, sub_1)
+		derivative = sym.Pow(sub_2, SYMPY_NEG_HALF)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloArccosh(PycolloOp):
+
+	SYMPY_OP = sym.acosh
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_TWO)
+		sub_2 = sym.Add(SYMPY_NEG_ONE, sub_1)
+		derivative = sym.Pow(sub_2, SYMPY_NEG_HALF)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloArctanh(PycolloOp):
+
+	SYMPY_OP = sym.atanh
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		msg = (f"Pycollo does not currently support differentiation of "
+			f"'arctanh' functions as they are discontinuous.")
+		raise NotImplementedError(msg)
+
+
+class PycolloArccoth(PycolloOp):
+
+	SYMPY_OP = sym.acoth
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		msg = (f"Pycollo does not currently support differentiation of "
+			f"'arccoth' functions as they are discontinuous.")
+		raise NotImplementedError(msg)
+
+
+class PycolloArcsech(PycolloOp):
+
+	SYMPY_OP = sym.asech
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_TWO)
+		sub_2 = sym.Mul(SYMPY_NEG_ONE, sub_1)
+		sub_3 = sym.Add(SYMPY_ONE, sub_2)
+		sub_4 = sym.Pow(sub_3, SYMPY_HALF)
+		sub_5 = sym.Mul(self.node.parent_nodes[0].symbol, sub_4)
+		sub_6 = sym.Pow(sub_5, SYMPY_NEG_ONE)
+		derivative = sym.Mul(SYMPY_NEG_ONE, sub_6)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloArccosech(PycolloOp):
+
+	SYMPY_OP = sym.acsch
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		msg = (f"Pycollo does not currently support differentiation of "
+			f"'arccosech' functions as they are discontinuous.")
+		raise NotImplementedError(msg)
+
+
 def determine_operation(sympy_func, node):
 	op_obj = SYMPY_EXPR_TYPES_DISPATCHER[sympy_func](node)
 	return op_obj
@@ -274,13 +655,14 @@ def is_sympy_mul(node):
 	return PYCOLLO_MUL_DISPATCHER.get(num_operands, PycolloMul)(node)
 
 
-# def is_sympy_add(nodes):
-# 	return PycolloAdd(node)
-
-
 def is_sympy_pow(node):
 	exponent_node_key = node.parent_nodes[1].key
 	return PYCOLLO_POW_DISPATCHER.get(exponent_node_key, PycolloPow)(node)
+
+
+def is_sympy_log(node):
+	num_operands = len(node.parent_nodes)
+	return PYCOLLO_LOG_DISPATCHER.get(num_operands, PycolloLog)(node)
 
 
 SYMPY_EXPR_TYPES_DISPATCHER = {
@@ -288,49 +670,48 @@ SYMPY_EXPR_TYPES_DISPATCHER = {
 	sym.Mul: is_sympy_mul,
 	sym.Add: PycolloAdd,
 	sym.Pow: is_sympy_pow,
-	sym.cos: PycolloCos,
+	sym.exp: PycolloExp,
+	sym.log: is_sympy_log,
 	sym.sin: PycolloSin,
+	sym.cos: PycolloCos,
+	sym.tan: PycolloTan,
+	sym.cot: PycolloCot,
+	sym.sec: PycolloSec,
+	sym.csc: PycolloCosec,
+	sym.asin: PycolloArcsin,
+	sym.acos: PycolloArccos,
+	sym.atan: PycolloArctan,
+	sym.acot: PycolloArccot,
+	sym.asec: PycolloArcsec,
+	sym.acsc: PycolloArccosec,
 
 	# Pycollo.Negate
-	# Pycollo.Reciprocal
-	# Pycollo.Square
-	# Pycollo.Squareroot
-	# Pycollo.Cube
-	# Pycollo.Cuberoot
-
-	# Pycollo.Tan
-	sym.exp: PycolloExp,
-	# Pycollo.Log
-	# Pycollo.Arcsin
-	# Pycollo.Arccos
-	# Pycollo.Arctan
-	# Pycollo.Sec
-	# Pycollo.Cosec
-	# Pycollo.Cot
 	# Pycollo.Cosh
 	# Pycollo.Sinh
 	# Pycollo.Tanh
 	# Pycollo.Sech
 	# Pycollo.Cosech
 	# Pycollo.Coth
-	
 	}
-
-
-PYCOLLO_POW_DISPATCHER = {
-	sym.numbers.Integer(-1): PycolloReciprocal,
-	sym.numbers.Integer(2): PycolloSquare,
-	# 3: PycolloCube,
-	sym.numbers.Half(): PycolloSquareroot,
-	# 1/3: PycolloCuberoot,
-	}
-
-
 
 
 PYCOLLO_MUL_DISPATCHER = {
 	2: PycolloBinaryMul,
 	3: PycolloTernaryMul,
+	}
+
+
+PYCOLLO_POW_DISPATCHER = {
+	SYMPY_NEG_ONE: PycolloReciprocal,
+	SYMPY_TWO: PycolloSquare,
+	SYMPY_THREE: PycolloCube,
+	SYMPY_HALF: PycolloSquareroot,
+	SYM_THIRD: PycolloCuberoot,
+	}
+
+
+PYCOLLO_LOG_DISPATCHER = {
+	1: PycolloLn,
 	}
 
 

@@ -134,6 +134,10 @@ class Node(metaclass=Cached):
 		is_precomputable = self._type.is_precomputable(self)
 		if is_precomputable:
 			self.graph._precomputable_nodes.update({self.symbol: self})
+			if self.value is None:
+				sympy_op = self.operation.SYMPY_OP
+				self._value = float(sympy_op(*[parent.value 
+					for parent in self.parent_nodes]))
 		return is_precomputable
 
 	@cachedproperty
@@ -490,40 +494,10 @@ class IntermediateNode(ExpressionNodeABC):
 
 	@staticmethod
 	def _get_derivative_wrt(node_instance, wrt):
-		# print(f"Getting deriv of {node_instance} wrt {wrt}")
 		if node_instance.is_precomputable:
 			msg = ("Trying to take derivative of precomputable node")
 			raise ValueError(msg)
 		return node_instance.operation.derivatives[wrt]
-		# if node_instance.is_precomputable:
-		# 	return node_instance.graph._zero_node
-		# else:
-		# 	if wrt in node_instance.parent_nodes:
-		# 		deriv_node = node_instance._derivatives.get(wrt)
-		# 		if deriv_node is None:
-		# 			if isinstance(node_instance._expression, sym.Pow):
-		# 				args = node_instance._expression.args
-		# 				deriv = args[1] * args[0]**(args[1] - 1)
-		# 			else:
-		# 				deriv = node_instance._expression.diff(wrt.symbol)
-		# 			if deriv.is_Atom:
-		# 				if isinstance(deriv, sym.Symbol):
-		# 					deriv_node = node_instance.graph.symbols_to_nodes_mapping.get(deriv)
-		# 					if deriv_node is None:
-		# 						raise ValueError
-		# 				elif deriv.is_Number:
-		# 					deriv_node = Node(deriv, node_instance.graph)
-		# 				else:
-		# 					raise TypeError
-		# 			else:
-		# 				deriv_node = Node(deriv, node_instance.graph)
-		# 			return_val = deriv_node
-		# 		else:
-		# 			return_val = deriv_node
-		# 	else:
-		# 		return_val = node_instance.graph._zero_node
-		# 	# print(f"Taking the derivative of {node_instance.symbol} = {node_instance.expression} with respect to {wrt.symbol} with answer {return_val.symbol}")
-		# 	return return_val
 
 	@staticmethod
 	def is_root():
@@ -538,15 +512,6 @@ class IntermediateNode(ExpressionNodeABC):
 	def is_precomputable(node_instance):
 		is_precomputable = all([parent.is_precomputable 
 			for parent in node_instance.parent_nodes])
-		# if is_precomputable:
-		# 	sympy_op = node_instance.operation.SYMPY_OP
-		# 	node_instance._value = float(sympy_op(*[parent.value 
-		# 		for parent in node_instance.parent_nodes]))
-		# 	node_instance._operation = determine_operation(sympy_op, 
-		# 		node_instance)
-		# 	print(node_instance.operation.derivatives)
-		# 	msg = (f"Reset derivatives to None")
-		# 	raise NotImplementedError(msg)
 		return is_precomputable
 
 	@staticmethod

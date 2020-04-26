@@ -55,17 +55,19 @@ class PycolloUnsetOp(PycolloOp):
 
 class PycolloNullOp(PycolloOp):
 
-	SYMPY_OP = None
+	@staticmethod
+	def SYMPY_OP(arg):
+		return arg
 
 	@cachedproperty
 	def expression(self):
-		return self.node
+		return self.node.parent_nodes[0].symbol
 
-
-# class PycolloNumber(PycolloOp):
-
-# 	SYMPY_OP = None
-
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		return {self.node.parent_nodes[0].symbol: self.node.graph._one_node}
 
 
 class PycolloMul(PycolloOp):

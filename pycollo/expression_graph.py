@@ -50,11 +50,6 @@ class ExpressionGraph:
 		self.initialise_time_normalisation_nodes()
 		self.initialise_auxiliary_intermediate_nodes()
 
-		# self._form_time_normalisation_functions()
-		# self._form_objective_function_and_derivatives(objective)
-		# self._form_constraints_and_derivatives(constraints)
-		# self._form_lagrangian_and_derivatives()
-
 	def console_out_begin_expression_graph_creation(self):
 		msg = (f"Beginning expression graph creation.")
 		console_out(msg)
@@ -130,7 +125,6 @@ class ExpressionGraph:
 		self._form_time_normalisation_functions()
 		self._form_objective_function_and_derivatives()
 		self._form_constraints_and_derivatives()
-		raise NotImplementedError
 		if self.ocp_backend.ocp.settings.derivative_level == 2:
 			self._form_lagrangian_and_derivatives()
 
@@ -284,10 +278,10 @@ class ExpressionGraph:
 			self._form_function_and_derivative, order=2, init_func=False)
 
 		sigma = sym.symbols("_sigma")
-		self.ocp.sigma = sigma
+		self.ocp_backend.sigma_sym = sigma
 
-		L_syms = [sym.symbols(f"_lambda_{n}") for n in range(self.ocp.num_c)]
-		self.ocp.lagrange_syms = L_syms
+		L_syms = [sym.symbols(f"_lambda_{n}") for n in range(self.ocp_backend.num_c)]
+		self.ocp_backend.lagrange_syms = L_syms
 
 		self.lagrange_syms = tuple([sigma] + L_syms)
 		for L_sym in self.lagrange_syms:
@@ -464,7 +458,8 @@ class ExpressionGraph:
 			wrt_mapping = {wrt_node: i for i, wrt_node in enumerate(wrt_nodes)}
 			nonzeros = {}
 			for i_row, node in enumerate(function_nodes):
-				for wrt in node.differentiable_by:
+				diff_nodes = node.differentiable_by
+				for wrt in diff_nodes:
 					i_col = wrt_mapping.get(wrt)
 					if i_col is not None:
 						nonzeros[(i_row, i_col)] = node.derivative_as_symbol(wrt)
@@ -484,7 +479,7 @@ class ExpressionGraph:
 			for tier_num, dependent_nodes_tier in enumerate(
 					dependent_nodes_by_tier_collapsed[1:], 1):
 				num_ei = len(dependent_nodes_tier)
-				delta_matrix_i = sym.Matrix.zeros(num_ei, num_e0)
+				delta_matrix_i = sym.SparseMatrix(num_ei, num_e0, {})
 				for by_tier_num in range(tier_num):
 					delta_matrix_j = delta_matrices[by_tier_num]
 					deriv_matrix = differentiate(dependent_nodes_tier, 
@@ -495,7 +490,7 @@ class ExpressionGraph:
 
 		def compute_derivative_recursive_hSAD_algorithm():
 			num_f = len(function_nodes)
-			derivative = sym.Matrix.zeros(num_f, num_e0)
+			derivative = sym.SparseMatrix(num_f, num_e0, {})
 			for df_dei, delta_i in zip(df_de, delta_matrices):
 				if df_dei.shape != (0, 0):
 					derivative += df_dei*delta_i

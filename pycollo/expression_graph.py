@@ -398,18 +398,16 @@ class ExpressionGraph:
 
 		def check_root_tier_is_exlusively_continuous_or_endpoint(
 			dependent_tiers):
-			return None
+			pass
 
 		(expr_subbed, expr_nodes, 
 			max_tier) = substitute_function_for_root_symbols(expr)
-
 		(precomputable_nodes, 
 			dependent_nodes) = separate_precomputable_and_dependent_nodes(
 			expr_subbed, expr_nodes)
-
 		dependent_tiers = sort_dependent_nodes_by_tier(dependent_nodes, 
 			max_tier)
-
+		check_root_tier_is_exlusively_continuous_or_endpoint(dependent_tiers)
 		return expr_subbed, expr_nodes, precomputable_nodes, dependent_tiers
 
 	@property
@@ -463,6 +461,11 @@ class ExpressionGraph:
 					i_col = wrt_mapping.get(wrt)
 					if i_col is not None:
 						nonzeros[(i_row, i_col)] = node.derivative_as_symbol(wrt)
+			# print(function_nodes)
+			# print(wrt_nodes)
+			# print(sym.SparseMatrix(n_rows, n_cols, nonzeros))
+			# print('\n\n')
+			# input()
 			return sym.SparseMatrix(n_rows, n_cols, nonzeros)
 
 		def compute_target_function_derivatives_for_each_tier(
@@ -499,7 +502,7 @@ class ExpressionGraph:
 		dependent_nodes_by_tier_collapsed = [wrt]
 		for nodes in list(dependent_nodes_by_tier.values())[1:]:
 			if nodes:
-				dependent_nodes_by_tier_collapsed.append(nodes)
+				dependent_nodes_by_tier_collapsed.append(tuple(nodes))
 
 		df_de = compute_target_function_derivatives_for_each_tier(
 			dependent_nodes_by_tier_collapsed)

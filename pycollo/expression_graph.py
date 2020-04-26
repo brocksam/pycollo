@@ -125,6 +125,7 @@ class ExpressionGraph:
 		self._form_time_normalisation_functions()
 		self._form_objective_function_and_derivatives()
 		self._form_constraints_and_derivatives()
+		raise NotImplementedError
 		if self.ocp_backend.ocp.settings.derivative_level == 2:
 			self._form_lagrangian_and_derivatives()
 
@@ -280,10 +281,10 @@ class ExpressionGraph:
 		sigma = sym.symbols("_sigma")
 		self.ocp_backend.sigma_sym = sigma
 
-		L_syms = [sym.symbols(f"_lambda_{n}") for n in range(self.ocp_backend.num_c)]
+		L_syms = tuple(sym.symbols(f"_lambda_{n}") for n in range(self.ocp_backend.num_c))
 		self.ocp_backend.lagrange_syms = L_syms
 
-		self.lagrange_syms = tuple([sigma] + L_syms)
+		self.lagrange_syms = tuple((sigma, ) + L_syms)
 		for L_sym in self.lagrange_syms:
 			_ = Node(L_sym, self)
 
@@ -305,8 +306,8 @@ class ExpressionGraph:
 			form_integral(L_integral_terms, phase.i)
 
 		L_endpoint_terms = sym.Matrix(tuple(beta
-			for beta in self.ocp.beta)
-			if self.b else [0])
+			for beta in self.ocp_backend.beta)
+			if self.ocp_backend.num_c_endpoint != 0 else [0])
 		form_endpoint(L_endpoint_terms)
 
 		make_L_matrices_lower_triangular()

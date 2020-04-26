@@ -27,15 +27,7 @@ class PycolloOp(abc.ABC):
 
 	@cachedproperty
 	def derivatives(self):
-		if self.node.is_precomputable:
-			return {}
-		return {self.node: self.node.graph._one_node}
-		# for parent_node in self.node.parent_nodes:
-		# 	if not parent_node.is_precomputable:
-		# 		derivative = self.expression.diff(parent_node.symbol)
-		# 		derivative_node = self.node.new_node(derivative, self.node.graph)
-		# 		derivatives[parent_node] = derivative_node
-		# return derivatives
+		return {}
 
 
 class PycolloUnsetOp(PycolloOp):
@@ -74,7 +66,7 @@ class PycolloMul(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivatives = {self.node: self.node.graph._one_node}
+		derivatives = {}
 		for parent_node in self.node.parent_nodes:
 			if not parent_node.is_precomputable:
 				derivative = self.expression / parent_node.symbol
@@ -91,7 +83,7 @@ class PycolloBinaryMul(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivatives = {self.node: self.node.graph._one_node}
+		derivatives = {}
 		if not self.node.parent_nodes[0].is_precomputable:
 			derivatives[self.node.parent_nodes[0]] = self.node.parent_nodes[1]
 		if not self.node.parent_nodes[1].is_precomputable:
@@ -107,7 +99,7 @@ class PycolloTernaryMul(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivatives = {self.node: self.node.graph._one_node}
+		derivatives = {}
 		if not self.node.parent_nodes[0].is_precomputable:
 			derivative = self.node.parent_nodes[1].symbol * self.node.parent_nodes[2].symbol
 			derivative_node = self.node.new_node(derivative, self.node.graph)
@@ -135,7 +127,7 @@ class PycolloAdd(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivatives = {self.node: self.node.graph._one_node}
+		derivatives = {}
 		for parent_node in self.node.parent_nodes:
 			if not parent_node.is_precomputable:
 				derivatives[parent_node] = self.node.graph._one_node
@@ -171,8 +163,7 @@ class PycolloPow(PycolloOp):
 		intermediate_2 = sym.Pow(self.node.parent_nodes[0].symbol, intermediate_1)
 		derivative = sym.Mul(self.node.parent_nodes[1].symbol, intermediate_2)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
-		derivatives = {self.node: self.node.graph._one_node,
-			self.node.parent_nodes[0]: derivative_node}
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
 	
 
@@ -186,8 +177,7 @@ class PycolloSquare(PycolloOp):
 			return {}
 		derivative = 2*self.node.parent_nodes[0].symbol
 		derivative_node = self.node.new_node(derivative, self.node.graph)
-		derivatives = {self.node: self.node.graph._one_node,
-			self.node.parent_nodes[0]: derivative_node}
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
 
 
@@ -201,8 +191,7 @@ class PycolloSquareroot(PycolloOp):
 			return {}
 		derivative = sym.Mul(SYMPY_HALF, sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_HALF))
 		derivative_node = self.node.new_node(derivative, self.node.graph)
-		derivatives = {self.node: self.node.graph._one_node,
-			self.node.parent_nodes[0]: derivative_node}
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
 
 
@@ -216,8 +205,7 @@ class PycolloReciprocal(PycolloOp):
 			return {}
 		derivative = -self.node.parent_nodes[0].symbol**(-2)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
-		derivatives = {self.node: self.node.graph._one_node,
-			self.node.parent_nodes[0]: derivative_node}
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
 
 
@@ -230,8 +218,7 @@ class PycolloExp(PycolloOp):
 		if self.node.is_precomputable:
 			return {}
 		raise NotImplementedError
-		derivatives = {self.node: self.node.graph_one_node, 
-			self.node.parent_nodes[0]: 2}
+		derivatives = {self.node.parent_nodes[0]: 2}
 		return derivatives
 
 
@@ -245,8 +232,7 @@ class PycolloCos(PycolloOp):
 			return {}
 		derivative = -sym.sin(self.node.parent_nodes[0].symbol)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
-		derivatives = {self.node: self.node.graph._one_node, 
-			self.node.parent_nodes[0]: derivative_node}
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
 
 
@@ -260,8 +246,7 @@ class PycolloSin(PycolloOp):
 			return {}
 		derivative = sym.cos(self.node.parent_nodes[0].symbol)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
-		derivatives = {self.node: self.node.graph._one_node, 
-			self.node.parent_nodes[0]: derivative_node}
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
 
 

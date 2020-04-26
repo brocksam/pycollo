@@ -134,8 +134,7 @@ class CompiledFunctions:
 		def integral_constraints_lambda(q, g, W, stretch):
 			return q - stretch*np.matmul(g, W) if g.size else q
 
-		def constraints_lambda(x_tuple, x_tuple_point, p_A, p_D, p_W, p_N, ocp_phase_y_slice, ocp_phase_q_slice, ocp_phase_dy_slice, ocp_phase_p_slice, ocp_phase_g_slice):#, N, ocp_y_slice, 
-
+		def constraints_lambda(x_tuple, x_tuple_point, p_A, p_D, p_W, p_N, ocp_phase_y_slice, ocp_phase_q_slice, ocp_phase_dy_slice, ocp_phase_p_slice, ocp_phase_g_slice):
 			c = np.array([])
 			for t_stretch_lambda, c_continuous_lambda, A, D, W, N, y_slice, q_slice, dy_slice, p_slice, g_slice in zip(t_stretch_lambdas, c_continuous_lambdas, p_A, p_D, p_W, p_N, ocp_phase_y_slice, ocp_phase_q_slice, ocp_phase_dy_slice, ocp_phase_p_slice, ocp_phase_g_slice):
 				c_phase = phase_constraints_lambda(x_tuple, t_stretch_lambda, c_continuous_lambda, A, D, W, N, y_slice, q_slice, dy_slice, p_slice, g_slice)
@@ -143,17 +142,6 @@ class CompiledFunctions:
 
 			c_endpoint = c_endpoint_lambda(*x_tuple_point)
 			c = np.concatenate([c, c_endpoint])
-			# dy = c_continuous[dy_slice].reshape((-1, N))
-			# p = c_continuous[p_slice]
-			# g = c_continuous[g_slice]
-			# b = c_endpoint
-
-			# c = np.empty(num_c)
-			# c[defect_slice] = defect_constraints_lambda(y, dy, A, D, stretch)
-			# c[path_slice] = path_constraints_lambda(p)
-			# c[integral_slice] = integral_constraints_lambda(q, g, W, stretch)
-			# c[boundary_slice] = endpoint_constraints_lambda(b)
-
 			return c
 
 		expr_graph = self.ocp_backend.expression_graph

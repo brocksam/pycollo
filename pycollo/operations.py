@@ -696,14 +696,7 @@ SYMPY_EXPR_TYPES_DISPATCHER = {
 	sym.acoth: PycolloArccoth,
 	sym.asech: PycolloArcsech,
 	sym.acsch: PycolloArccosech,
-
 	# Pycollo.Negate
-	# Pycollo.Cosh
-	# Pycollo.Sinh
-	# Pycollo.Tanh
-	# Pycollo.Sech
-	# Pycollo.Cosech
-	# Pycollo.Coth
 	}
 
 
@@ -718,7 +711,7 @@ PYCOLLO_POW_DISPATCHER = {
 	SYMPY_TWO: PycolloSquare,
 	SYMPY_THREE: PycolloCube,
 	SYMPY_HALF: PycolloSquareroot,
-	SYM_THIRD: PycolloCuberoot,
+	SYMPY_THIRD: PycolloCuberoot,
 	}
 
 

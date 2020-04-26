@@ -684,6 +684,18 @@ SYMPY_EXPR_TYPES_DISPATCHER = {
 	sym.acot: PycolloArccot,
 	sym.asec: PycolloArcsec,
 	sym.acsc: PycolloArccosec,
+	sym.sinh: PycolloSinh,
+	sym.cosh: PycolloCosh,
+	sym.tanh: PycolloTanh,
+	sym.coth: PycolloCoth,
+	sym.sech: PycolloSech,
+	sym.csch: PycolloCosech,
+	sym.asinh: PycolloArcsinh,
+	sym.acosh: PycolloArccosh,
+	sym.atanh: PycolloArctanh,
+	sym.acoth: PycolloArccoth,
+	sym.asech: PycolloArcsech,
+	sym.acsch: PycolloArccosech,
 
 	# Pycollo.Negate
 	# Pycollo.Cosh

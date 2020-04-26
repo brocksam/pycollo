@@ -197,7 +197,8 @@ class PycolloSquareroot(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivative = sym.Mul(SYMPY_HALF, sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_HALF))
+		intermediate_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_HALF)
+		derivative = sym.Mul(SYMPY_HALF, intermediate_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
@@ -211,7 +212,8 @@ class PycolloReciprocal(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivative = sym.Mul(SYMPY_NEG_ONE, sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_TWO))
+		intermediate_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_TWO)
+		derivative = sym.Mul(SYMPY_NEG_ONE, intermediate_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives

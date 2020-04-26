@@ -6,9 +6,17 @@ import sympy as sym
 from .utils import cachedproperty
 
 
-SYMPY_HALF = sym.numbers.Half(1)
+SYMPY_ZERO = sym.numbers.Zero()
+SYMPY_ONE = sym.numbers.One()
+SYMPY_TWO = sym.numbers.Integer(2)
+SYMPY_THREE = sym.numbers.Integer(3)
+SYMPY_HALF = sym.numbers.Half()
+SYMPY_THIRD = sym.numbers.Rational(1/3)
 SYMPY_NEG_ONE = sym.numbers.Integer(-1)
-SYMPY_NEG_HALF = sym.numbers.Half(-1)
+SYMPY_NEG_TWO = sym.numbers.Integer(-2)
+SYMPY_NEG_THREE = sym.numbers.Integer(-3)
+SYMPY_NEG_HALF = sym.numbers.Rational(-1/2)
+SYMPY_NEG_THIRD = sym.numbers.Rational(-1/3)
 
 
 class PycolloOp(abc.ABC):
@@ -175,7 +183,7 @@ class PycolloSquare(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivative = 2*self.node.parent_nodes[0].symbol
+		derivative = sym.Mul(SYMPY_TWO, self.node.parent_nodes[0].symbol)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
@@ -203,7 +211,7 @@ class PycolloReciprocal(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivative = -self.node.parent_nodes[0].symbol**(-2)
+		derivative = sym.Mul(SYMPY_NEG_ONE, sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_TWO))
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives

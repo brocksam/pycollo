@@ -82,7 +82,7 @@ class Node(metaclass=Cached):
 
 	@property
 	def parent_nodes(self):
-		return self._type.parent_nodes(self)
+		return self._type._get_parent_nodes(self)
 
 	def new_parent(self, parent):
 		self._type.new_parent(self, parent)
@@ -136,7 +136,7 @@ class Node(metaclass=Cached):
 			self.graph._precomputable_nodes.update({self.symbol: self})
 			if self.value is None:
 				sympy_op = self.operation.SYMPY_OP
-				self._value = float(sympy_op(*[parent.value 
+				self.value = float(sympy_op(*[parent.value 
 					for parent in self.parent_nodes]))
 		return is_precomputable
 
@@ -219,7 +219,7 @@ class ExpressionNodeABC(abc.ABC):
 
 	@staticmethod
 	@abc.abstractmethod
-	def parent_nodes(node_instance):
+	def _get_parent_nodes(node_instance):
 		pass
 
 	@staticmethod
@@ -280,7 +280,7 @@ class RootNode(ExpressionNodeABC):
 		return ()
 
 	@staticmethod
-	def parent_nodes(node_instance):
+	def _get_parent_nodes(node_instance):
 		raise _parent_nodes_not_allowed_error
 
 	@staticmethod
@@ -472,21 +472,17 @@ class IntermediateNode(ExpressionNodeABC):
 				node_instance)
 
 	@staticmethod
-	def parent_nodes(node_instance):
+	def _get_parent_nodes(node_instance):
 		return node_instance._parent_nodes
 
 	@staticmethod
 	def new_parent(node_instance, parent):
-		node_instance.parent_nodes.append(parent)
+		node_instance._parent_nodes.append(parent)
 		parent._child_nodes.add(node_instance)
 
 	@staticmethod
 	def arguments(node_instance):
 		return tuple(parent.symbol for parent in node_instance.parent_nodes)
-
-	@staticmethod
-	def value(node_instance):
-		return node_instance._value
 
 	@staticmethod
 	def _differentiable_by(node_instance):

@@ -386,30 +386,6 @@ class CompiledFunctions:
 				)
 			dc_dx_lambdas.append(dc_dx_lambda)
 
-	# 	dc_dx_slice = pu.dcdxInfo(
-	# 		zeta_y=(self._c_defect_slice, self._y_slice),
-	# 		zeta_u=(self._c_defect_slice, self._u_slice),
-	# 		zeta_s=(self._c_defect_slice, self._s_slice),
-	# 		gamma_y=(self._c_path_slice, self._y_slice),
-	# 		gamma_u=(self._c_path_slice, self._u_slice),
-	# 		gamma_s=(self._c_path_slice, self._s_slice),
-	# 		rho_y=(self._c_integral_slice, self._y_slice),
-	# 		rho_u=(self._c_integral_slice, self._u_slice),
-	# 		rho_s=(self._c_integral_slice, self._s_slice),
-	# 		)
-
-	# 	dc_dx_shape = pu.dcdxInfo(
-	# 		zeta_y=(self.number_state_equations*self.number_state_variables),
-	# 		zeta_u=(self.number_state_equations*self.number_control_variables),
-	# 		zeta_s=(self.number_state_equations*self.number_parameter_variables),
-	# 		gamma_y=(self.number_path_constraints*self.number_state_variables),
-	# 		gamma_u=(self.number_path_constraints*self.number_control_variables),
-	# 		gamma_s=(self.number_path_constraints*self.number_parameter_variables),
-	# 		rho_y=(self.number_integrand_functions*self.number_state_variables),
-	# 		rho_u=(self.number_integrand_functions*self.number_control_variables),
-	# 		rho_s=(self.number_integrand_functions*self.number_parameter_variables),
-	# 		)
-
 		db_dxb_phase_lambdas = []
 		for p, p_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_endpoint_variable_slices):
 			db_dxb_phase = expr_graph.db_dxb[:, p_slice]

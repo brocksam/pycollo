@@ -6,6 +6,11 @@ import sympy as sym
 from .utils import cachedproperty
 
 
+SYMPY_HALF = sym.numbers.Half(1)
+SYMPY_NEG_ONE = sym.numbers.Integer(-1)
+SYMPY_NEG_HALF = sym.numbers.Half(-1)
+
+
 class PycolloOp(abc.ABC):
 
 	def __init__(self, node):
@@ -24,13 +29,13 @@ class PycolloOp(abc.ABC):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivatives = {self.node: self.node.graph._one_node}
-		for parent_node in self.node.parent_nodes:
-			if not parent_node.is_precomputable:
-				derivative = self.expression.diff(parent_node.symbol)
-				derivative_node = self.node.new_node(derivative, self.node.graph)
-				derivatives[parent_node] = derivative_node
-		return derivatives
+		return {self.node: self.node.graph._one_node}
+		# for parent_node in self.node.parent_nodes:
+		# 	if not parent_node.is_precomputable:
+		# 		derivative = self.expression.diff(parent_node.symbol)
+		# 		derivative_node = self.node.new_node(derivative, self.node.graph)
+		# 		derivatives[parent_node] = derivative_node
+		# return derivatives
 
 
 class PycolloUnsetOp(PycolloOp):
@@ -54,17 +59,10 @@ class PycolloNullOp(PycolloOp):
 	def expression(self):
 		return self.node
 
-	@cachedproperty
-	def derivatives(self):
-		if self.node.is_precomputable:
-			return {}
-		return {self.node: self.node.graph_one_node}
 
+# class PycolloNumber(PycolloOp):
 
-class PycolloNumber(PycolloOp):
-
-	SYMPY_OP = None
-
+# 	SYMPY_OP = None
 
 
 
@@ -72,16 +70,57 @@ class PycolloMul(PycolloOp):
 
 	SYMPY_OP = sym.Mul
 
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		derivatives = {self.node: self.node.graph._one_node}
+		for parent_node in self.node.parent_nodes:
+			if not parent_node.is_precomputable:
+				derivative = self.expression / parent_node.symbol
+				derivative_node = self.node.new_node(derivative, self.node.graph)
+				derivatives[parent_node] = derivative_node
+		return derivatives
 
-# class PycolloBinaryMul(PycolloOp):
 
-# 	NUM_ARGS = 2
+class PycolloBinaryMul(PycolloOp):
 
-# 	def __init__(self, nodes):
-# 		super().__init__(nodes)
-# 		symbols = [str(node.symbol) for node in nodes]
-# 		self._value = '*'.join(symbols)
-# 		self._derivatives = {}
+	SYMPY_OP = sym.Mul
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		derivatives = {self.node: self.node.graph._one_node}
+		if not self.node.parent_nodes[0].is_precomputable:
+			derivatives[self.node.parent_nodes[0]] = self.node.parent_nodes[1]
+		if not self.node.parent_nodes[1].is_precomputable:
+			derivatives[self.node.parent_nodes[1]] = self.node.parent_nodes[0]
+		return derivatives
+
+
+class PycolloTernaryMul(PycolloOp):
+
+	SYMPY_OP = sym.Mul
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		derivatives = {self.node: self.node.graph._one_node}
+		if not self.node.parent_nodes[0].is_precomputable:
+			derivative = self.node.parent_nodes[1].symbol * self.node.parent_nodes[2].symbol
+			derivative_node = self.node.new_node(derivative, self.node.graph)
+			derivatives[self.node.parent_nodes[0]] = derivative_node
+		if not self.node.parent_nodes[1].is_precomputable:
+			derivative = self.node.parent_nodes[0].symbol * self.node.parent_nodes[2].symbol
+			derivative_node = self.node.new_node(derivative, self.node.graph)
+			derivatives[self.node.parent_nodes[1]] = derivative_node
+		if not self.node.parent_nodes[2].is_precomputable:
+			derivative = self.node.parent_nodes[0].symbol * self.node.parent_nodes[1].symbol
+			derivative_node = self.node.new_node(derivative, self.node.graph)
+			derivatives[self.node.parent_nodes[2]] = derivative_node
+		return derivatives
 
 
 # class PycolloProd(PycolloOp):
@@ -91,6 +130,16 @@ class PycolloMul(PycolloOp):
 class PycolloAdd(PycolloOp):
 
 	SYMPY_OP = sym.Add
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		derivatives = {self.node: self.node.graph._one_node}
+		for parent_node in self.node.parent_nodes:
+			if not parent_node.is_precomputable:
+				derivatives[parent_node] = self.node.graph._one_node
+		return derivatives
 
 # 	NUM_ARGS = 2
 
@@ -114,6 +163,17 @@ class PycolloPow(PycolloOp):
 
 	SYMPY_OP = sym.Pow
 
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		intermediate_1 = sym.Add(self.node.parent_nodes[1].symbol, SYMPY_NEG_ONE)
+		intermediate_2 = sym.Pow(self.node.parent_nodes[0].symbol, intermediate_1)
+		derivative = sym.Mul(self.node.parent_nodes[1].symbol, intermediate_2)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node: self.node.graph._one_node,
+			self.node.parent_nodes[0]: derivative_node}
+		return derivatives
 	
 
 class PycolloSquare(PycolloOp):
@@ -125,6 +185,36 @@ class PycolloSquare(PycolloOp):
 		if self.node.is_precomputable:
 			return {}
 		derivative = 2*self.node.parent_nodes[0].symbol
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node: self.node.graph._one_node,
+			self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloSquareroot(PycolloOp):
+
+	SYMPY_OP = sym.Pow
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		derivative = sym.Mul(SYMPY_HALF, sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_HALF))
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node: self.node.graph._one_node,
+			self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
+class PycolloReciprocal(PycolloOp):
+
+	SYMPY_OP = sym.Pow
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		derivative = -self.node.parent_nodes[0].symbol**(-2)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node: self.node.graph._one_node,
 			self.node.parent_nodes[0]: derivative_node}
@@ -145,30 +235,6 @@ class PycolloExp(PycolloOp):
 		return derivatives
 
 
-
-# class PycolloReciprocal(PycolloOp):
-
-# 	NUM_ARGS = 1
-
-# 	def __init__(self, nodes):
-# 		super().__init__(nodes[:-1])
-# 		symbol = self.nodes[0].symbol
-# 		self._value = f'{symbol}**-1'
-# 		self._derivatives = {symbol: f'-{symbol}**-2'}
-
-
-
-# class PycolloSquare(PycolloOp):
-
-# 	NUM_ARGS = 1
-
-# 	def __init__(self, nodes):
-# 		super().__init__(nodes[:-1])
-# 		symbol = self.nodes[0].symbol
-# 		self._value = f'{symbol}*{symbol}'
-# 		self._derivatives = {symbol: f'2*{symbol}'}
-
-
 class PycolloCos(PycolloOp):
 
 	SYMPY_OP = sym.cos
@@ -177,9 +243,10 @@ class PycolloCos(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		raise NotImplementedError
-		derivatives = {self.node: self.node.graph_one_node, 
-			self.node.parent_nodes[0]: -sym.sin(self.node.parent_nodes[0].symbol)}
+		derivative = -sym.sin(self.node.parent_nodes[0].symbol)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node: self.node.graph._one_node, 
+			self.node.parent_nodes[0]: derivative_node}
 		return derivatives
 
 
@@ -191,9 +258,10 @@ class PycolloSin(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		raise NotImplementedError
-		derivatives = {self.node: self.node.graph_one_node, 
-			self.node.parent_nodes[0]: sym.cos(self.node.parent_nodes[0].symbol)}
+		derivative = sym.cos(self.node.parent_nodes[0].symbol)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node: self.node.graph._one_node, 
+			self.node.parent_nodes[0]: derivative_node}
 		return derivatives
 
 
@@ -206,8 +274,9 @@ def is_sympy_sym(node):
 	return PycolloNullOp(node)
 
 
-# def is_sympy_mul(node):
-# 	return PYCOLLO_MUL_DISPATCHER.get(node, PycolloMul)(node)
+def is_sympy_mul(node):
+	num_operands = len(node.parent_nodes)
+	return PYCOLLO_MUL_DISPATCHER.get(num_operands, PycolloMul)(node)
 
 
 # def is_sympy_add(nodes):
@@ -221,7 +290,7 @@ def is_sympy_pow(node):
 
 SYMPY_EXPR_TYPES_DISPATCHER = {
 	sym.Symbol: is_sympy_sym,
-	sym.Mul: PycolloMul,
+	sym.Mul: is_sympy_mul,
 	sym.Add: PycolloAdd,
 	sym.Pow: is_sympy_pow,
 	sym.cos: PycolloCos,
@@ -254,10 +323,10 @@ SYMPY_EXPR_TYPES_DISPATCHER = {
 
 
 PYCOLLO_POW_DISPATCHER = {
-	#-1: PycolloReciprocal,
-	2: PycolloSquare,
+	sym.numbers.Integer(-1): PycolloReciprocal,
+	sym.numbers.Integer(2): PycolloSquare,
 	# 3: PycolloCube,
-	# 1/2: PycolloSquareroot,
+	sym.numbers.Half(): PycolloSquareroot,
 	# 1/3: PycolloCuberoot,
 	}
 
@@ -265,7 +334,8 @@ PYCOLLO_POW_DISPATCHER = {
 
 
 PYCOLLO_MUL_DISPATCHER = {
-	# 2: PycolloBinaryMul,
+	2: PycolloBinaryMul,
+	3: PycolloTernaryMul,
 	}
 
 

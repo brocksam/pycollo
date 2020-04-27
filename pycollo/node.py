@@ -381,11 +381,10 @@ class ConstantNode(RootNode):
 
 	@staticmethod
 	def _set_value(node_instance, value):
-		return float(value)
-		# try:
-		# 	return float(value)
-		# except TypeError:
-		# 	return float(node_instance.key)
+		try:
+			return float(value)
+		except TypeError:
+			return float(node_instance.key)
 
 	@staticmethod
 	def _str(node_instance):

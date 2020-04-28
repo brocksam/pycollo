@@ -394,7 +394,8 @@ class Pycollo(BackendABC):
 		all_symbol_equation_mappings = dict_merge(self.aux_data, 
 			self.aux_data_phase_dependent, self.aux_data_phase_independent)
 		equation = all_symbol_equation_mappings.get(symbol)
-		if equation is None and symbol not in self.all_phase_vars:
+		all_vars = self.all_phase_vars.union(set(self.s_vars_user))
+		if equation is None and symbol not in all_vars:
 			msg = (f"'{symbol}' is not defined.")
 			raise ValueError(msg)
 		return equation

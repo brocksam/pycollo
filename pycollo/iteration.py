@@ -1,6 +1,7 @@
 import collections
 import csv
 import itertools
+import json
 from timeit import default_timer as timer
 import time
 
@@ -24,7 +25,7 @@ class Iteration:
 	def __init__(self, backend, index, mesh, guess):
 
 		self.backend = backend
-		self._ocp = self.backend.ocp
+		self.ocp = self.backend.ocp
 
 		self.index = index
 		self.number = index + 1
@@ -51,7 +52,7 @@ class Iteration:
 
 	@property
 	def optimal_control_problem(self):
-		return self._ocp
+		return self.ocp
 
 	@property
 	def mesh(self):
@@ -256,6 +257,8 @@ class Iteration:
 		self.generate_gradient_lambda()
 		self.generate_constraints_lambda()
 		self.generate_jacobian_lambda()
+		if self.ocp.settings.derivative_level == 2:
+			self.generate_hessian_lambda()
 
 	def generate_unscale_variables_lambda(self):
 
@@ -422,6 +425,60 @@ class Iteration:
 		msg = "Jacobian of the constraints lambda generated successfully."
 		console_out(msg)
 
+	def generate_hessian_lambda(self):
+
+		def detect_hessian_sparsity():
+
+			def build_endpoint_blocks():
+				blocks = []
+				return blocks
+
+			sH_endpoint_blocks = []
+			sH_continuous_blocks = []
+
+			sH_J = detect_endpoint_hessian_sparsity(self.backend.compiled_functions.ddL_J_dxbdxb_nonzero_indices)
+			self._sH_J_nz_inds_ = (sH_J.row, sH_J.col)
+
+			sH = sH_J
+			self._H_nonzero_row = sH.row
+			self._H_nonzero_col = sH.col
+			self._H_nnz = sH.nnz
+
+		def detect_endpoint_hessian_sparsity(nz_inds):
+			nnz = len(nz_inds[0])
+			data = np.full(nnz, np.nan)
+			H_ocp = sparse.coo_matrix((data, nz_inds), shape=self._H_shape)
+
+			H = sparse.tril(H)
+			return H
+
+		def hessian_data(x):
+			G = hessian(x)
+			G_zeros = sparse.coo_matrix((np.full(self._G_nnz, 1e-20), self._hessian_structure_lambda()), shape=self._G_shape).tocsr()
+			return (G + G_zeros).tocoo().data
+
+		def hessian(x):
+			x_tuple = self._reshape_x(x)
+			x_tuple_point = self._reshape_x_point(x)
+			H = self.backend.compiled_functions.H_lambda(
+				self._H_shape,
+				x_tuple, 
+				x_tuple_point,
+				)
+			return G
+
+		self._H_shape = (self.num_x, self.num_x)
+		detect_hessian_sparsity()
+		self._hessian_lambda = hessian_data
+
+		def hessian_structure():
+			return (self._H_nonzero_row, self._H_nonzero_col)
+
+		self._hessian_structure_lambda = hessian_structure
+
+		msg = "Hessian of the Lagrangian lambda generated successfully."
+		console_out(msg)
+
 	def generate_bounds(self):
 		self.generate_variable_bounds()
 		self.generate_constraint_bounds()
@@ -498,8 +555,33 @@ class Iteration:
 			G_struct = self._jacobian_structure_lambda()
 			print(f"G Structure:\n{G_struct[0]}\n{G_struct[1]}\n")
 
+			G_nnz = len(G_struct[0])
+			print(f"G Nonzeros:\n{G_nnz}\n")
+
 			G = self._jacobian_lambda(x_data)
 			print(f"G:\n{G}\n")
+
+			if self.optimal_control_problem.settings.dump_nlp_check_json:
+				file_extension = ".json"
+				filename_full = str(self.optimal_control_problem.settings.dump_nlp_check_json) + file_extension
+
+				sG = sparse.coo_matrix((G, G_struct), shape=self._G_shape)
+
+				data = {
+					"x": x_data.tolist(),
+					"J": float(J),
+					"g": np.array(g).tolist(),
+					"c": np.array(c).tolist(), 
+					"G_data": sG.data.tolist(),
+					"G_row": sG.row.tolist(),
+					"G_col": sG.col.tolist(),
+					"G_nnz": int(sG.nnz),
+					"num_x": int(self.num_x),
+					"num_c": int(self.num_c),
+					}
+
+				with open(filename_full, "w", encoding="utf-8") as file:
+					json.dump(data, file, ensure_ascii=False, indent=4)
 
 			# if self._ocp.settings.derivative_level == 2:
 

@@ -11,10 +11,6 @@ y3 = sym.Symbol('y3')
 u0 = sym.Symbol('u0')
 u1 = sym.Symbol('u1')
 s0 = sym.Symbol('s0')
-s1 = sym.Symbol('s1')
-
-a0 = sym.Symbol('a0')
-a1 = sym.Symbol('a1')
 
 circle_radius = 1.0
 
@@ -28,10 +24,11 @@ phase_A.control_variables = [u0, u1]
 phase_A.state_equations = {
 	y0: y2,
 	y1: y3,
-	y2: a0,
-	y3: a1,
+	y2: u0 / s0,
+	y3: u1 / s0,
 	}
-phase_A.path_constraints = [sym.sqrt(y0**2 + y1**2) - circle_radius]
+phase_A.path_constraints = [sym.sqrt(y0**2 + y1**2) - circle_radius,
+	sym.sqrt((y0 - 0.5)**2 + y1**2) - circle_radius]
 phase_A.integrand_functions = [u0**2, u1**2]
 phase_A.auxiliary_data = {}
 
@@ -48,7 +45,7 @@ phase_A.bounds.control_variables = {
 	u1: [-50, 50],
 	}
 phase_A.bounds.integral_variables = [[0, 1000], [0, 1000]]
-phase_A.bounds.path_constraints = [[0, 10]]
+phase_A.bounds.path_constraints = [[0, 20], [0, 20]]
 phase_A.bounds.initial_state_constraints = {
 	y0: 1,
 	y1: -2,
@@ -110,11 +107,6 @@ problem.objective_function = (phase_A.integral_variables[0]
 	+ phase_B.integral_variables[0]
 	+ phase_B.integral_variables[1])
 
-problem.auxiliary_data = {
-	a0: u0 / s0,
-	a1: u1 / s0,
-}
-
 problem.endpoint_constraints = [
 	phase_A.final_state_variables.y0 - phase_B.initial_state_variables.y0,
 	phase_A.final_state_variables.y1 - phase_B.initial_state_variables.y1,
@@ -139,20 +131,12 @@ problem.settings.backend = "pycollo"
 problem.settings.scaling_method = "none"
 problem.settings.assume_inf_bounds = False
 problem.settings.inf_value = 1e16
-problem.settings.check_nlp_functions = True
-problem.settings.dump_nlp_check_json = "pycollo"
+problem.settings.check_nlp_functions = False
 problem.settings.collocation_points_min = 2
 problem.settings.collocation_points_max = 8
 problem.settings.derivative_level = 1
 problem.settings.max_mesh_iterations = 10
 problem.settings.display_mesh_result_graph = False
-
-phase_A.mesh.number_mesh_sections = 2
-phase_A.mesh.mesh_section_sizes = [1/2, 1/2]
-phase_A.mesh.number_mesh_section_nodes = [2, 3]
-phase_B.mesh.number_mesh_sections = 2
-phase_B.mesh.mesh_section_sizes = [1/2, 1/2]
-phase_B.mesh.number_mesh_section_nodes = [3, 2]
 
 problem.initialise()
 problem.solve()
@@ -170,4 +154,3 @@ plt.plot(x_P1, y_P1)
 plt.plot(x_circle, y_circle, color="#000000")
 plt.gca().set_aspect('equal', adjustable='box')
 plt.show()
-

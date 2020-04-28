@@ -17,6 +17,7 @@ T0min, T0max = sym.symbols('T0min T0max')
 # Optimal Control Problem
 problem = pycollo.OptimalControlProblem(
 	name="Pendulum swing up problem")
+problem.parameter_variables = [m0, p0]
 phase = problem.new_phase(name="A")
 
 phase.state_variables = [y0, y1]
@@ -63,8 +64,10 @@ phase.guess.integral_variables = np.array([100])
 
 # Auxiliary data
 problem.auxiliary_data = {g: -9.81, d0: 0.5, k0: 1/12, T0min: -30, T0max: 30,
-	m0: 1.0, p0: 1.0,
+	# m0: 1.0, p0: 1.0,
 	}
+problem.bounds.parameter_variables = {m0: [1, 2], p0: [1, 2]}
+problem.guess.parameter_variables = np.array([1.5, 1.5])
 
 
 problem.settings.max_mesh_iterations = 10

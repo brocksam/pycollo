@@ -52,7 +52,7 @@ phase.guess.control_variables = np.array([[0, umax]])
 
 problem.settings.display_mesh_result_graph = True
 problem.settings.scaling_method = "none"
-problem.settings.derivative_level = 1
+problem.settings.derivative_level = 2
 
 problem.initialise()
 problem.solve()

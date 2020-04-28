@@ -9,7 +9,7 @@ from ordered_set import OrderedSet
 import numpy as np
 import sympy as sym
 
-from .node import Node
+from .node import (Node)
 from .utils import console_out
 
 """
@@ -125,7 +125,6 @@ class ExpressionGraph:
 		self._form_time_normalisation_functions()
 		self._form_objective_function_and_derivatives()
 		self._form_constraints_and_derivatives()
-		raise NotImplementedError
 		if self.ocp_backend.ocp.settings.derivative_level == 2:
 			self._form_lagrangian_and_derivatives()
 
@@ -355,25 +354,26 @@ class ExpressionGraph:
 		def substitute_function_for_root_symbols(expr):
 
 			def traverse_root_branch(expr, max_tier):
-				root_node = self.symbols_to_nodes_mapping.get(expr, Node(expr, self))
+				root_node = self.get_node_from_expr(expr)
 				max_tier = max(max_tier, root_node.tier)
-				return root_node.symbol, root_node, max_tier
+				return (root_node.symbol, root_node, max_tier)
 
 			if isinstance(expr, sym.Expr):
-				root_symbol, root_node, max_tier = traverse_root_branch(expr, 0)
-				return root_symbol, [root_node], max_tier
+				return_vals = traverse_root_branch(expr, 0)
+				root_symbol, root_node, max_tier = return_vals
+				return (root_symbol, [root_node], max_tier)
 			else:
 				expr_subbed = []
 				expr_nodes = []
 				max_tier = 0
 				for entry_expr in expr:
-					root_symbol, root_node, max_tier = traverse_root_branch(
-						entry_expr, max_tier)
+					return_vals = traverse_root_branch(entry_expr, max_tier)
+					root_symbol, root_node, max_tier = return_vals 
 					expr_subbed.append(root_symbol)
 					expr_nodes.append(root_node)
 				return_matrix = sym.Matrix(np.array(expr_subbed).reshape(
 					expr.shape))
-				return return_matrix, expr_nodes, max_tier
+				return (return_matrix, expr_nodes, max_tier)
 
 		def separate_precomputable_and_dependent_nodes(expr, nodes):
 			precomputable_nodes = set()
@@ -389,7 +389,7 @@ class ExpressionGraph:
 					precomputable_nodes.add(node)
 				else:
 					dependent_nodes.add(node)
-			return precomputable_nodes, dependent_nodes
+			return (precomputable_nodes, dependent_nodes)
 
 		def sort_dependent_nodes_by_tier(dependent_nodes, max_tier):
 			dependent_tiers = {i: set() for i in range(max_tier+1)}
@@ -401,11 +401,11 @@ class ExpressionGraph:
 			dependent_tiers):
 			pass
 
-		(expr_subbed, expr_nodes, 
-			max_tier) = substitute_function_for_root_symbols(expr)
-		(precomputable_nodes, 
-			dependent_nodes) = separate_precomputable_and_dependent_nodes(
+		return_vals = substitute_function_for_root_symbols(expr)
+		expr_subbed, expr_nodes, max_tier = return_vals
+		return_vals = separate_precomputable_and_dependent_nodes(
 			expr_subbed, expr_nodes)
+		precomputable_nodes, dependent_nodes = return_vals
 		dependent_tiers = sort_dependent_nodes_by_tier(dependent_nodes, 
 			max_tier)
 		check_root_tier_is_exlusively_continuous_or_endpoint(dependent_tiers)
@@ -439,6 +439,21 @@ class ExpressionGraph:
 	def precomputable_nodes(self):
 		return tuple(self._precomputable_nodes.values())
 
+	def get_node_from_expr(self, expr):
+		node = self._variable_nodes.get(expr)
+		if node is not None:
+			return node
+		node = self._constant_nodes.get(expr)
+		if node is not None:
+			return node
+		node = self._number_nodes.get(expr)
+		if node is not None:
+			return node
+		node = self._intermediate_nodes.get(expr)
+		if node is not None:
+			return node
+		return Node(expr, self)
+
 	@property
 	def symbols_to_nodes_mapping(self):
 		return {
@@ -462,11 +477,6 @@ class ExpressionGraph:
 					i_col = wrt_mapping.get(wrt)
 					if i_col is not None:
 						nonzeros[(i_row, i_col)] = node.derivative_as_symbol(wrt)
-			# print(function_nodes)
-			# print(wrt_nodes)
-			# print(sym.SparseMatrix(n_rows, n_cols, nonzeros))
-			# print('\n\n')
-			# input()
 			return sym.SparseMatrix(n_rows, n_cols, nonzeros)
 
 		def compute_target_function_derivatives_for_each_tier(

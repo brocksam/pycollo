@@ -67,9 +67,11 @@ class PycolloNullOp(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
+		
 		expected = self.node.graph._one_node.value
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
 		if expected != actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -90,12 +92,14 @@ class PycolloMul(PycolloOp):
 				derivative = self.expression / parent_node.symbol
 				derivative_node = self.node.new_node(derivative, self.node.graph)
 				derivatives[parent_node] = derivative_node
-			expected = self.expression / parent_node.symbol
-			actual = self.expression.diff(parent_node.symbol)
-			if expected != actual:
-				print(f"Expected: {expected}")
-				print(f"Actual: {actual}\n\n")
-				raise ValueError
+			
+				expected = self.expression / parent_node.symbol
+				actual = self.expression.diff(parent_node.symbol)
+				if expected != actual:
+					print(self.node.symbol, self.node.expression, self.node.parent_nodes)
+					print(f"Expected: {expected}")
+					print(f"Actual: {actual}\n\n")
+					raise ValueError
 		return derivatives
 
 
@@ -112,15 +116,19 @@ class PycolloBinaryMul(PycolloOp):
 			derivatives[self.node.parent_nodes[0]] = self.node.parent_nodes[1]
 		if not self.node.parent_nodes[1].is_precomputable:
 			derivatives[self.node.parent_nodes[1]] = self.node.parent_nodes[0]
+		
 		expected = self.node.parent_nodes[1].symbol
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
 		if expected != actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
+		
 		expected = self.node.parent_nodes[0].symbol
 		actual = self.expression.diff(self.node.parent_nodes[1].symbol)
 		if expected != actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -140,34 +148,37 @@ class PycolloTernaryMul(PycolloOp):
 			derivative = self.node.parent_nodes[1].symbol * self.node.parent_nodes[2].symbol
 			derivative_node = self.node.new_node(derivative, self.node.graph)
 			derivatives[self.node.parent_nodes[0]] = derivative_node
+			expected = self.node.parent_nodes[1].symbol * self.node.parent_nodes[2].symbol
+			actual = self.expression.diff(self.node.parent_nodes[0].symbol)
+			if expected == actual:
+				print(self.node.symbol, self.node.expression, self.node.parent_nodes)
+				print(f"Expected: {expected}")
+				print(f"Actual: {actual}\n\n")
+				raise ValueError
 		if not self.node.parent_nodes[1].is_precomputable:
 			derivative = self.node.parent_nodes[0].symbol * self.node.parent_nodes[2].symbol
 			derivative_node = self.node.new_node(derivative, self.node.graph)
 			derivatives[self.node.parent_nodes[1]] = derivative_node
+			expected = self.node.parent_nodes[0].symbol * self.node.parent_nodes[2].symbol
+			actual = self.expression.diff(self.node.parent_nodes[1].symbol)
+			if expected != actual:
+				print(self.node.symbol, self.node.expression, self.node.parent_nodes)
+				print(f"Expected: {expected}")
+				print(f"Actual: {actual}\n\n")
+				raise ValueError
 		if not self.node.parent_nodes[2].is_precomputable:
 			derivative = self.node.parent_nodes[0].symbol * self.node.parent_nodes[1].symbol
 			derivative_node = self.node.new_node(derivative, self.node.graph)
 			derivatives[self.node.parent_nodes[2]] = derivative_node
-		expected = self.node.parent_nodes[1].symbol * self.node.parent_nodes[2].symbol
-		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
-			print(f"Expected: {expected}")
-			print(f"Actual: {actual}\n\n")
-			raise ValueError
-		expected = self.node.parent_nodes[0].symbol * self.node.parent_nodes[2].symbol
-		actual = self.expression.diff(self.node.parent_nodes[1].symbol)
-		if expected != actual:
-			print(f"Expected: {expected}")
-			print(f"Actual: {actual}\n\n")
-			raise ValueError
-		expected = self.node.parent_nodes[0].symbol * self.node.parent_nodes[1].symbol
-		actual = self.expression.diff(self.node.parent_nodes[2].symbol)
-		if expected != actual:
-			print(f"Expected: {expected}")
-			print(f"Actual: {actual}\n\n")
-			raise ValueError
+			expected = self.node.parent_nodes[0].symbol * self.node.parent_nodes[1].symbol
+			actual = self.expression.diff(self.node.parent_nodes[2].symbol)
+			if expected != actual:
+				print(self.node.symbol, self.node.expression, self.node.parent_nodes)
+				print(f"Expected: {expected}")
+				print(f"Actual: {actual}\n\n")
+				raise ValueError
 		return derivatives
-
+		
 
 class PycolloAdd(PycolloOp):
 
@@ -181,9 +192,11 @@ class PycolloAdd(PycolloOp):
 		for parent_node in self.node.parent_nodes:
 			if not parent_node.is_precomputable:
 				derivatives[parent_node] = self.node.graph._one_node
+			
 			expected = self.node.graph._one_node.value
 			actual = self.expression.diff(parent_node.symbol)
 			if expected != actual:
+				print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 				print(f"Expected: {expected}")
 				print(f"Actual: {actual}\n\n")
 				raise ValueError
@@ -203,9 +216,11 @@ class PycolloPow(PycolloOp):
 		derivative = sym.Mul(self.node.parent_nodes[1].symbol, sub_2)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -223,9 +238,11 @@ class PycolloSquare(PycolloOp):
 		derivative = sym.Mul(SYMPY_TWO, self.node.parent_nodes[0].symbol)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = sym.simplify(self.expression.diff(self.node.parent_nodes[0].symbol).xreplace({self.node.parent_nodes[1].symbol: SYMPY_TWO}))
 		if expected != actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -244,9 +261,11 @@ class PycolloCube(PycolloOp):
 		derivative = sym.Mul(SYMPY_THREE, sub_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = sym.simplify(self.expression.diff(self.node.parent_nodes[0].symbol).xreplace({self.node.parent_nodes[1].symbol: SYMPY_THREE}))
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -265,9 +284,11 @@ class PycolloSquareroot(PycolloOp):
 		derivative = sym.Mul(SYMPY_HALF, sub_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = sym.simplify(self.expression.diff(self.node.parent_nodes[0].symbol).xreplace({self.node.parent_nodes[1].symbol: SYMPY_HALF}))
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -286,9 +307,11 @@ class PycolloCuberoot(PycolloOp):
 		derivative = sym.Mul(SYMPY_THIRD, sub_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = sym.simplify(self.expression.diff(self.node.parent_nodes[0].symbol).xreplace({self.node.parent_nodes[1].symbol: SYMPY_THIRD}))
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -307,9 +330,11 @@ class PycolloReciprocal(PycolloOp):
 		derivative = sym.Mul(SYMPY_NEG_ONE, sub_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = sym.simplify(self.expression.diff(self.node.parent_nodes[0].symbol).xreplace({self.node.parent_nodes[1].symbol: SYMPY_NEG_ONE}))
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -325,9 +350,11 @@ class PycolloExp(PycolloOp):
 		if self.node.is_precomputable:
 			return {}
 		derivatives = {self.node.parent_nodes[0]: self.node.parent_nodes[0]}
+		
 		expected = self.expression.symbol
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -345,9 +372,11 @@ class PycolloLn(PycolloOp):
 		derivative = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_ONE)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = sym.simplify(self.expression.diff(self.node.parent_nodes[0].symbol).xreplace({}))
 		if expected != actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -365,9 +394,11 @@ class PycolloLog(PycolloOp):
 		derivative = self.node.symbol.diff(self.node.parent_nodes[0].symbol)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = sym.simplify(self.expression.diff(self.node.parent_nodes[0].symbol).xreplace({}))
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -385,9 +416,11 @@ class PycolloSin(PycolloOp):
 		derivative = sym.cos(self.node.parent_nodes[0].symbol)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -406,9 +439,11 @@ class PycolloCos(PycolloOp):
 		derivative = sym.Mul(SYMPY_NEG_ONE, sub_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
 		if expected != actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -427,9 +462,11 @@ class PycolloTan(PycolloOp):
 		derivative = sym.Pow(sub_1, SYMPY_TWO)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -449,9 +486,11 @@ class PycolloCot(PycolloOp):
 		derivative = sym.Mul(SYMPY_NEG_ONE, sub_2)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -471,9 +510,11 @@ class PycolloSec(PycolloOp):
 		derivative = sym.Mul(sub_1, sub_2)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -494,9 +535,11 @@ class PycolloCosec(PycolloOp):
 		derivative = sym.Mul(SYMPY_NEG_ONE, sub_3)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -517,9 +560,11 @@ class PycolloArcsin(PycolloOp):
 		derivative = sym.Pow(sub_3, SYMPY_NEG_HALF)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -541,9 +586,11 @@ class PycolloArccos(PycolloOp):
 		derivative = sym.Mul(SYMPY_NEG_ONE, sub_4)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -563,9 +610,11 @@ class PycolloArctan(PycolloOp):
 		derivative = sym.Pow(sub_2, SYMPY_NEG_ONE)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -586,9 +635,11 @@ class PycolloArccot(PycolloOp):
 		derivative = sym.Mul(SYMPY_NEG_ONE, sub_3)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -632,9 +683,11 @@ class PycolloSinh(PycolloOp):
 		derivative = sym.cosh(self.node.parent_nodes[0].symbol)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -653,9 +706,11 @@ class PycolloCosh(PycolloOp):
 		derivative = sym.Mul(SYMPY_NEG_ONE, sub_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -676,9 +731,11 @@ class PycolloTanh(PycolloOp):
 		derivative = sym.Add(SYMPY_ONE, sub_3)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
 		if expected != actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -699,9 +756,11 @@ class PycolloCoth(PycolloOp):
 		derivative = sym.Add(SYMPY_ONE, sub_3)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -720,9 +779,11 @@ class PycolloSech(PycolloOp):
 		derivative = sym.Mul(SYMPY_NEG_ONE, self.node.parent_nodes[0].symbol, sub_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -741,9 +802,11 @@ class PycolloCosech(PycolloOp):
 		derivative = sym.Mul(SYMPY_NEG_ONE, self.node.parent_nodes[0].symbol, sub_1)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -763,9 +826,11 @@ class PycolloArcsinh(PycolloOp):
 		derivative = sym.Pow(sub_2, SYMPY_NEG_HALF)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -785,9 +850,11 @@ class PycolloArccosh(PycolloOp):
 		derivative = sym.Pow(sub_2, SYMPY_NEG_HALF)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError
@@ -837,9 +904,11 @@ class PycolloArcsech(PycolloOp):
 		derivative = sym.Mul(SYMPY_NEG_ONE, sub_6)
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		
 		expected = derivative
 		actual = self.expression.diff(self.node.parent_nodes[0].symbol)
-		if expected != actual:
+		if expected == actual:
+			print(self.node.symbol, self.node.expression, self.node.parent_nodes)
 			print(f"Expected: {expected}")
 			print(f"Actual: {actual}\n\n")
 			raise ValueError

@@ -524,12 +524,12 @@ class ExpressionGraph:
 
 		derivative = compute_derivative_recursive_hSAD_algorithm()
 
-		try:
-			for r, c in [(1, 0), (1, 1), (1, 3), (4, 0), (4, 3), (4, 4), (9, 9)]:
-				print(f"({r}, {c}): {derivative.row(r).col(c)}")
-			input()
-		except IndexError:
-			pass
+		# try:
+		# 	for r, c in [(1, 0), (1, 1), (1, 3), (4, 0), (4, 3), (4, 4), (9, 9)]:
+		# 		print(f"({r}, {c}): {derivative.row(r).col(c)}")
+		# 	input()
+		# except IndexError:
+		# 	pass
 
 		return derivative
 

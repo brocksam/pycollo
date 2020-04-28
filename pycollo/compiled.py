@@ -219,6 +219,8 @@ class CompiledFunctions:
 
 			dc_dx = dc_dx_lambda(*x_tuple, N).astype(float)
 			dzeta_dy = dc_dx[phase_c_defect_slice, phase_y_slice, :].reshape(-1, N)
+			print(dzeta_dy),
+			input()
 			dzeta_du = dc_dx[phase_c_defect_slice, phase_u_slice, :].reshape(-1, N)
 			dzeta_ds = dc_dx[phase_c_defect_slice, phase_t_slice.stop:, :].reshape(-1, N)
 			dgamma_dy = dc_dx[phase_c_path_slice, phase_y_slice, :].reshape(-1, N)

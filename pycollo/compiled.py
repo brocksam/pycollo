@@ -3,6 +3,7 @@ import scipy.sparse as sparse
 import sympy as sym
 
 from .numbafy import numbafy
+from .numbafy_hessian import (numbafy_objective_hessian, )
 from .utils import console_out
 
 class CompiledFunctions:
@@ -17,8 +18,8 @@ class CompiledFunctions:
 		self.compile_objective_gradient()
 		self.compile_constraints()
 		self.compile_jacobian_constraints()
-		# if self.ocp.settings.derivative_level == 2:
-		# 	self.compile_hessian_lagrangian()
+		if self.ocp.settings.derivative_level == 2:
+			self.compile_hessian_lagrangian()
 
 	def console_out_compiling_nlp_functions(self):
 		msg = ("Beginning NLP function compilation.")
@@ -414,6 +415,91 @@ class CompiledFunctions:
 
 		self.G_lambda = jacobian_lambda
 		print('Jacobian function compiled.')
+
+	def compile_hessian_lagrangian(self):
+
+		def objective_hessian_lambda(H_shape, x_point_tuple, sigma, H_objective_indices):
+			data = ddL_J_dxbdxb_lambda(*x_point_tuple)
+			H = sparse.coo_matrix((data, (rows, cols)), shape=H_shape)
+			return H
+
+		def defect_hessian_lambda(H_shape, x_tuple):
+			H = sparse.csr_matrix(H_shape)
+			return H
+
+		def path_hessian_lambda(H_shape, x_tuple):
+			H = sparse.csr_matrix(H_shape)
+			return H
+
+		def integral_hessian_lambda(H_shape, x_tuple):
+			H = sparse.csr_matrix(H_shape)
+			return H
+
+		def endpoint_hessian_lambda(H_shape, x_point_tuple):
+			H = sparse.csr_matrix(H_shape)
+			return H
+
+		def hessian_lambda(H_shape, x_tuple, x_point_tuple, sigma, H_objective_indices):
+			H = objective_hessian_lambda(H_shape, x_point_tuple, sigma, H_objective_indices)
+			H += defect_hessian_lambda(H_shape, x_tuple)
+			H += path_hessian_lambda(H_shape, x_tuple)
+			H += integral_hessian_lambda(H_shape, x_tuple)
+			H += endpoint_hessian_lambda(H_shape, x_point_tuple)
+			return H
+
+		expr_graph = self.ocp_backend.expression_graph
+		L_sigma = expr_graph.lagrange_syms[0]
+		L_syms = expr_graph.lagrange_syms[1:]
+
+		ddL_J_dxbdxb_lambda, self.ddL_J_dxbdxb_nonzero_indices = numbafy_objective_hessian(
+			expression_graph=expr_graph,
+			expression=expr_graph.ddL_J_dxbdxb,
+			expression_nodes=expr_graph.ddL_J_dxbdxb_nodes,
+			precomputable_nodes=expr_graph.ddL_J_dxbdxb_precomputable,
+			dependent_tiers=expr_graph.ddL_J_dxbdxb_dependent_tiers,
+			parameters=self.ocp_backend.x_point_vars,
+			sigma=L_sigma,
+			)
+
+
+
+		# ddL_objective_dxbdxb_phase_lambdas = []
+		# ddL_J_dxbdxb_expression_nodes = np.array(expr_graph.ddL_J_dxbdxb_nodes, dtype=object).reshape(expr_graph.ddL_J_dxbdxb.shape)
+		# for p, p_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_endpoint_variable_slices):
+		# 	ddL_J_dxbdxb_phase = expr_graph.ddL_J_dxbdxb[p_slice, p_slice]
+		# 	ddL_J_dxbdxb_phase_nodes = ddL_J_dxbdxb_expression_nodes[p_slice, p_slice].flatten().tolist()
+		# 	ddL_objective_dxbdxb_lambda = numbafy(
+		# 		expression_graph=expr_graph,
+		# 		expression=ddL_J_dxbdxb_phase,
+		# 		expression_nodes=ddL_J_dxbdxb_phase_nodes,
+		# 		precomputable_nodes=expr_graph.ddL_J_dxbdxb_precomputable,
+		# 		dependent_tiers=expr_graph.ddL_J_dxbdxb_dependent_tiers,
+		# 		parameters=self._x_b_vars,
+		# 		lagrange_parameters=L_sigma,
+		# 		return_dims=2,
+		# 		endpoint=True,
+		# 		N_arg=True,
+		# 		ocp_num_vars=p.num_each_vars,
+		# 		)
+		# 	ddL_objective_dxbdxb_phase_lambdas.append(dJ_dxb_phase_lambda)
+
+		# 	ddL_J_dxbdxb_phase_nodes = ddL_J_dxbdxb_expression_nodes[p_slice, p_slice].flatten().tolist()
+		# ddL_J_dxbdxb_endpoint_lambda = numbafy(
+		# 	expression_graph=expr_graph,
+		# 	expression=expr_graph.ddL_J_dxbdxb[self.ocp_backend.endpoint_variable_slice, self.ocp_backend.endpoint_variable_slice],
+		# 	expression_nodes=ddL_J_dxbdxb_expression_nodes[, self.ocp_backend.endpoint_variable_slice].flatten().tolist()
+		# 	precomputable_nodes=expr_graph.dJ_dxb_precomputable,
+		# 	dependent_tiers=expr_graph.dJ_dxb_dependent_tiers,
+		# 	parameters=self.ocp_backend.x_point_vars,
+		# 	return_dims=1, 
+		# 	N_arg=False, 
+		# 	endpoint=False, 
+		# 	)
+
+		self.H_lambda = hessian_lambda
+		print('Hessian function compiled.')
+		# print('\n\n\n')
+		# raise NotImplementedError
 
 	# def _compile_hessian_lagrangian(self):
 

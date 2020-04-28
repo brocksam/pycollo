@@ -104,7 +104,6 @@ class CompiledFunctions:
 			return_dims=1, 
 			N_arg=False, 
 			endpoint=False, 
-			# ocp_num_vars=p.num_each_vars,
 			)
 
 		self.g_lambda = objective_gradient_lambda
@@ -185,7 +184,6 @@ class CompiledFunctions:
 			parameters=self.ocp_backend.x_point_vars,
 			return_dims=1,
 			N_arg=False,
-			# ocp_num_vars=self._num_vars_tuple,
 			)
 
 		self._t_stretch_lambdas = t_stretch_lambdas

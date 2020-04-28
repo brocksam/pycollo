@@ -171,7 +171,6 @@ class Node(metaclass=Cached):
 		return f"{cls_name}({self.symbol})"
 
 
-
 class ExpressionNodeABC(abc.ABC):
 
 	@staticmethod
@@ -258,7 +257,6 @@ class ExpressionNodeABC(abc.ABC):
 		pass
 
 
-
 class RootNode(ExpressionNodeABC):
 
 	_parent_nodes_not_allowed_error_message = (f"Object of type RootNode do not have parent nodes.")
@@ -335,11 +333,10 @@ class VariableNode(RootNode):
 		if wrt is node_instance:
 			return node_instance.graph._one_node
 		else:
-			msg = ("Trying to take derivative with respect to self")
-			raise ValueError(msg)
+			return node_instance.graph._zero_node
 
 	def differentiable_by(node_instance):
-		return node_instance.derivative_mappings.keys()
+		return (node_instance, )
 
 	@staticmethod
 	def is_precomputable(node_instance):
@@ -489,9 +486,6 @@ class IntermediateNode(ExpressionNodeABC):
 
 	@staticmethod
 	def _get_derivative_wrt(node_instance, wrt):
-		if node_instance.is_precomputable:
-			msg = ("Trying to take derivative of precomputable node")
-			raise ValueError(msg)
 		return node_instance.operation.derivatives[wrt]
 
 	@staticmethod

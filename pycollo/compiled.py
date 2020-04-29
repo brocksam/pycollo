@@ -326,9 +326,6 @@ class CompiledFunctions:
 			return G_drho_dq
 
 		def phase_G_drho_dt_lambda(g, dstretch_dt, W, num_c_integral, num_t):
-			# print(np.matmul(g, W))
-			# print(-np.outer(dstretch_dt, np.matmul(g, W)).T)
-			# input()
 			G_drho_dt = sparse.csr_matrix(-np.outer(dstretch_dt, np.matmul(g, W)).T)
 			return G_drho_dt
 

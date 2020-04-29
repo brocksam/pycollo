@@ -138,7 +138,7 @@ class PycolloPhaseData:
 
 	def check_all_user_phase_aux_data_supplied(self):
 		self_aux_user_keys = set(self.user_phase_aux_data_mapping.keys())
-		missing_syms = self.ocp_backend.user_aux_data_syms.difference(
+		missing_syms = self.ocp_backend.user_phase_aux_data_syms.difference(
 			self_aux_user_keys)
 		self.missing_user_phase_aux_data_syms = missing_syms
 
@@ -323,9 +323,10 @@ class Pycollo(BackendABC):
 			for phase in self.ocp.phases)
 		self.num_phases = len(self.p)
 		self.all_phase_vars = {var for p in self.p for var in p.all_user_vars}
+		self.all_vars = self.all_phase_vars.union(set(self.s_vars_user))
 
 	def preprocess_user_problem_aux_data(self):
-		self.user_aux_data_syms = {symbol 
+		self.user_phase_aux_data_syms = {symbol 
 			for phase in self.ocp.phases 
 			for symbol in phase.auxiliary_data}
 		self.aux_data = {}
@@ -339,9 +340,9 @@ class Pycollo(BackendABC):
 
 	def partition_user_problem_phase_aux_data(self, symbol, equation):
 		equation = fast_sympify(equation)
-		if symbol in self.user_aux_data_syms:
+		if symbol in self.user_phase_aux_data_syms:
 			self.aux_data_supplied_in_ocp_and_phase[symbol] = equation
-		elif self.user_aux_data_syms.intersection(equation.free_symbols):
+		elif self.user_phase_aux_data_syms.intersection(equation.free_symbols):
 			self.aux_data_phase_dependent[symbol] = equation
 		else:
 			self.aux_data[symbol] = equation
@@ -360,13 +361,16 @@ class Pycollo(BackendABC):
 			self.process_aux_data_pair_is_phase_dependent(symbol, equation)
 
 	def process_aux_data_pair_is_phase_dependent(self, symbol, equation):
+		# print(symbol, equation)
 		if symbol in self.aux_data_phase_dependent:
 			return True
-		elif symbol in self.aux_data_phase_independent or equation is None:
-			return False
-		elif equation.is_Number or equation in self.s_vars_full:
-			self.new_aux_data_pair_phase_independent(symbol, equation)
+		elif equation in self.all_phase_vars:
 			return True
+		elif equation in self.s_vars_user:
+			return False
+		elif equation.is_Number:
+			self.new_aux_data_pair_phase_independent(symbol, equation)
+			return False
 		else:
 			return self.check_aux_data_pair_children(symbol, equation)
 
@@ -383,19 +387,20 @@ class Pycollo(BackendABC):
 		child_is_phase_dependent = [
 			self.process_aux_data_pair_is_phase_dependent(child_sym, child_eqn)
 				for child_sym, child_eqn in zip(child_syms, child_eqns)]
-		if all(child_is_phase_dependent):
-			self.new_aux_data_pair_phase_independent(symbol, equation)
+		if any(child_is_phase_dependent):
+			self.new_aux_data_pair_phase_dependent(symbol, equation)
 			return True
 		else:
-			self.new_aux_data_pair_phase_dependent(symbol, equation)
+			self.new_aux_data_pair_phase_independent(symbol, equation)
 			return False
 
 	def get_child_equation(self, symbol):
 		all_symbol_equation_mappings = dict_merge(self.aux_data, 
 			self.aux_data_phase_dependent, self.aux_data_phase_independent)
 		equation = all_symbol_equation_mappings.get(symbol)
-		all_vars = self.all_phase_vars.union(set(self.s_vars_user))
-		if equation is None and symbol not in all_vars:
+		if symbol in self.all_vars:
+			return symbol
+		elif equation is None:
 			msg = (f"'{symbol}' is not defined.")
 			raise ValueError(msg)
 		return equation
@@ -409,6 +414,8 @@ class Pycollo(BackendABC):
 	def collect_variables_substitutions(self):
 		self.all_subs_mappings = dict_merge(self.s_vars_subs_mappings,
 			*[p.all_subs_mappings for p in self.p])
+		self.aux_data = {phase_sym: user_eqn.xreplace(self.all_subs_mappings)
+			for phase_sym, user_eqn in self.aux_data_phase_independent.items()}
 
 	def preprocess_objective_function(self):
 		self.J = self.ocp.objective_function.xreplace(self.all_subs_mappings)

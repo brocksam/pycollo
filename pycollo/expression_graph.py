@@ -510,8 +510,9 @@ class ExpressionGraph:
 			derivative = SparseCOOMatrix({}, num_f, num_e0)
 			# derivative = sym.SparseMatrix(num_f, num_e0, {})
 			for df_dei, delta_i in zip(df_de, delta_matrices):
+				# TO DO: Understand why this is required
 				if df_dei.shape != (0, 0):
-					derivative += df_dei*delta_i
+					derivative += df_dei * delta_i
 			return derivative
 
 		dependent_nodes_by_tier_collapsed = [wrt]

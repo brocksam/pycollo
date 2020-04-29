@@ -229,8 +229,8 @@ class CompiledFunctions:
 			G_dzeta_dy = phase_G_dzeta_dy_lambda(dzeta_dy, stretch, A, D, ocp_num_y)
 			G_dzeta_du = phase_G_dzeta_du_lambda(dzeta_du, stretch, A, ocp_num_y, ocp_num_u) if num_u else None
 			G_dzeta_dq = None
-			G_dzeta_dt = phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, num_c_defect, num_t) if num_t else None
-			G_dzeta_ds = phase_G_dzeta_ds_lambda(dzeta_ds, stretch, A, num_c_defect, num_s) if num_s else sparse.csr_matrix((num_c_defect, num_s))
+			G_dzeta_dt = phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, ocp_num_y, num_c_defect, num_t) if num_t else None
+			G_dzeta_ds = phase_G_dzeta_ds_lambda(dzeta_ds, stretch, A, ocp_num_y, num_c_defect, num_s) if num_s else sparse.csr_matrix((num_c_defect, num_s))
 			G_dgamma_dy = phase_G_dgamma_dy_lambda(dgamma_dy, ocp_num_c_path, ocp_num_y) if num_c_path else None
 			G_dgamma_du = phase_G_dgamma_du_lambda(dgamma_du, ocp_num_c_path, ocp_num_u) if (num_c_path and num_u) else None
 			G_dgamma_dq = None
@@ -239,7 +239,7 @@ class CompiledFunctions:
 			G_drho_dy = phase_G_drho_dy_lambda(drho_dy, stretch, W, num_c_integral, num_y) if num_c_integral else None
 			G_drho_du = phase_G_drho_du_lambda(drho_du, stretch, W, num_c_integral, num_u) if (num_c_integral and num_u) else None
 			G_drho_dq = phase_G_drho_dq_lambda(num_q) if (num_c_integral and num_q) else None
-			G_drho_dt = phase_G_drho_dt_lambda(g, dstretch_dt, W) if (num_c_integral and num_t) else None
+			G_drho_dt = phase_G_drho_dt_lambda(g, dstretch_dt, W, num_c_integral, num_t) if (num_c_integral and num_t) else None
 			G_drho_ds = phase_G_drho_ds_lambda(drho_ds, stretch, W, num_c_integral, num_s) if (num_c_integral and num_s) else sparse.csr_matrix((num_c_integral, num_s))
 
 			G_phase = sparse.bmat([
@@ -283,15 +283,16 @@ class CompiledFunctions:
 			G_dzeta_du = sparse.bmat(np.array(G_dzeta_du).reshape(ocp_num_y, ocp_num_u))
 			return G_dzeta_du
 
-		def phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, num_c_defect, num_t):
-			A_dy_flat = (A.dot(dy.T).flatten(order='F'))
-			product = np.outer(dstretch_dt, A_dy_flat)
-			G_dzeta_dt = sparse.csr_matrix(product.reshape((num_c_defect, num_t), order='F'))
+		def phase_G_dzeta_dt_lambda(dy, A, dstretch_dt, ocp_num_y, num_c_defect, num_t):
+			A_dy_flat = (A.dot(dy.T).flatten(order="F"))
+			G_dzeta_dt = np.outer(dstretch_dt, A_dy_flat).T
+			G_dzeta_dt = sparse.csr_matrix(G_dzeta_dt)
 			return G_dzeta_dt
 
-		def phase_G_dzeta_ds_lambda(ddy_ds, stretch, A, num_c_defect, num_s):
-			G_dzeta_ds = stretch*A.dot(ddy_ds.T).flatten(order='F')
-			G_dzeta_ds = sparse.csr_matrix(G_dzeta_ds.reshape((num_c_defect, num_s), order='F'))
+		def phase_G_dzeta_ds_lambda(ddy_ds, stretch, A, ocp_num_y, num_c_defect, num_s):
+			G_dzeta_ds = stretch*A.dot(ddy_ds.T)
+			G_dzeta_ds = np.vstack(np.split(G_dzeta_ds, ocp_num_y, axis=1))
+			G_dzeta_ds = sparse.csr_matrix(G_dzeta_ds)
 			return G_dzeta_ds
 
 		def phase_G_dgamma_dy_lambda(dgamma_dy, ocp_num_c_path, ocp_num_y):
@@ -324,14 +325,15 @@ class CompiledFunctions:
 			G_drho_dq = sparse.eye(num_q)
 			return G_drho_dq
 
-		def phase_G_drho_dt_lambda(g, dstretch_dt, W):
-			product = np.outer(dstretch_dt, np.matmul(g, W))
-			G_drho_dt = - product.flatten(order='F')
-			raise NotImplementedError
+		def phase_G_drho_dt_lambda(g, dstretch_dt, W, num_c_integral, num_t):
+			# print(np.matmul(g, W))
+			# print(-np.outer(dstretch_dt, np.matmul(g, W)).T)
+			# input()
+			G_drho_dt = sparse.csr_matrix(-np.outer(dstretch_dt, np.matmul(g, W)).T)
 			return G_drho_dt
 
 		def phase_G_drho_ds_lambda(drho_ds, stretch, W, num_c_integral, num_s):
-			G_drho_ds = sparse.csr_matrix((- stretch * np.matmul(drho_ds, W)).reshape((num_c_integral, num_s), order="F"))
+			G_drho_ds = sparse.csr_matrix((- stretch * np.matmul(drho_ds, W)).reshape((num_c_integral), num_s, order="F"))
 			return G_drho_ds
 
 		def endpoint_jacobian_lambda(G_shape, x_point_tuple, db_dxb_phase_lambdas, db_ds_lambda, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_s, num_c_endpoint):
@@ -456,7 +458,17 @@ class CompiledFunctions:
 			precomputable_nodes=expr_graph.ddL_J_dxbdxb_precomputable,
 			dependent_tiers=expr_graph.ddL_J_dxbdxb_dependent_tiers,
 			parameters=self.ocp_backend.x_point_vars,
-			sigma=L_sigma,
+			objective_factor=L_sigma,
+			)
+
+		ddL_zeta_dxdx_lambda, self.ddL_zeta_dxdx_nonzero_indices = numbafy_defect_hessian(
+			expression_graph=expr_graph,
+			expression=expr_graph.ddL_zeta_dxdx,
+			expression_nodes=expr_graph.ddL_zeta_dxdx_nodes,
+			precomputable_nodes=expr_graph.ddL_zeta_dxdx_precomputable,
+			dependent_tiers=expr_graph.ddL_zeta_dxdx_dependent_tiers,
+			parameters=self.ocp_backend.x_vars,
+			lagrange_multipliers=L_syms,
 			)
 
 

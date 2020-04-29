@@ -1,4 +1,5 @@
 import abc
+import collections
 import functools
 import itertools
 import numbers
@@ -477,7 +478,8 @@ class ExpressionGraph:
 					i_col = wrt_mapping.get(wrt)
 					if i_col is not None:
 						nonzeros[(i_row, i_col)] = node.derivative_as_symbol(wrt)
-			return sym.SparseMatrix(n_rows, n_cols, nonzeros)
+			return SparseCOOMatrix(nonzeros, n_rows, n_cols)
+			# return sym.SparseMatrix(n_rows, n_cols, nonzeros)
 
 		def compute_target_function_derivatives_for_each_tier(
 				dependent_nodes_by_tier_collapsed):
@@ -493,18 +495,20 @@ class ExpressionGraph:
 			for tier_num, dependent_nodes_tier in enumerate(
 					dependent_nodes_by_tier_collapsed[1:], 1):
 				num_ei = len(dependent_nodes_tier)
-				delta_matrix_i = sym.SparseMatrix(num_ei, num_e0, {})
+				delta_matrix_i = SparseCOOMatrix({}, num_ei, num_e0)
+				# delta_matrix_i = sym.SparseMatrix(num_ei, num_e0, {})
 				for by_tier_num in range(tier_num):
 					delta_matrix_j = delta_matrices[by_tier_num]
 					deriv_matrix = differentiate(dependent_nodes_tier, 
 						dependent_nodes_by_tier_collapsed[by_tier_num])
-					delta_matrix_i += deriv_matrix*delta_matrix_j
+					delta_matrix_i += deriv_matrix * delta_matrix_j
 				delta_matrices.append(delta_matrix_i)
 			return delta_matrices
 
 		def compute_derivative_recursive_hSAD_algorithm():
 			num_f = len(function_nodes)
-			derivative = sym.SparseMatrix(num_f, num_e0, {})
+			derivative = SparseCOOMatrix({}, num_f, num_e0)
+			# derivative = sym.SparseMatrix(num_f, num_e0, {})
 			for df_dei, delta_i in zip(df_de, delta_matrices):
 				if df_dei.shape != (0, 0):
 					derivative += df_dei*delta_i
@@ -523,6 +527,8 @@ class ExpressionGraph:
 			dependent_nodes_by_tier_collapsed)
 
 		derivative = compute_derivative_recursive_hSAD_algorithm()
+
+		derivative = sym.SparseMatrix(derivative.rows, derivative.cols, derivative._smat)
 		
 		return derivative
 
@@ -539,6 +545,66 @@ class ExpressionGraph:
 
 
 
+class SparseCOOMatrix:
+
+	ZERO = sym.numbers.Zero()
+
+	def __new__(cls, nonzeros, n_rows, n_cols):
+		self = object.__new__(cls)
+		self.rows = n_rows
+		self.cols = n_cols
+		self._smat = nonzeros
+		return self
+
+	@classmethod
+	def _new(cls, *args, **kwargs):
+		return cls(*args)
+
+	@property
+	def shape(self):
+		return (self.rows, self.cols)
+
+	def __iter__(self):
+		raise NotImplementedError
+
+	def __add__(self, other):
+		if not isinstance(other, self.__class__):
+			raise NotImplementedError 
+		smat = {}
+		for key in set().union(self._smat.keys(), other._smat.keys()):
+			sum = self._smat.get(key, self.ZERO) + other._smat.get(key, self.ZERO)
+			if sum != 0:
+				smat[key] = sum
+	  # Add new nodes to expression graph and return new sparse matrix with
+	  # nodes as nonzero entries
+		return self._new(smat, self.rows, self.cols)
+
+	def __mul__(self, other):
+		"""Fast multiplication exploiting the sparsity of the matrix."""
+		if not isinstance(other, self.__class__):
+			if other == 1:
+				return self
+			raise NotImplementedError
+
+		# if we made it here, we're both sparse matrices
+		# create quick lookups for rows and cols
+		row_lookup = collections.defaultdict(dict)
+		for (i,j), val in self._smat.items():
+			row_lookup[i][j] = val
+		col_lookup = collections.defaultdict(dict)
+		for (i,j), val in other._smat.items():
+			col_lookup[j][i] = val
+
+		smat = {}
+		for row in row_lookup.keys():
+			for col in col_lookup.keys():
+				# find the common indices of non-zero entries.
+				# these are the only things that need to be multiplied.
+				indices = set(col_lookup[col].keys()) & set(row_lookup[row].keys())
+				if indices:
+					val = sum(row_lookup[row][k]*col_lookup[col][k] for k in indices)
+					smat[row, col] = val
+		return self._new(smat, self.rows, other.cols)
 
 
 

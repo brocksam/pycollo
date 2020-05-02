@@ -10,8 +10,9 @@ from ordered_set import OrderedSet
 import numpy as np
 import sympy as sym
 
-from .node import (Node)
-from .utils import console_out
+from .node import Node
+from .sparse import SparseCOOMatrix
+from .utils import (console_out, dict_merge)
 
 """
 
@@ -61,6 +62,7 @@ class ExpressionGraph:
 		self._intermediate_node_num_counter = itertools.count()
 	
 	def initialise_node_mappings(self):
+		self._node_syms = set()
 		self._variable_nodes = {}
 		self._number_nodes = {}
 		self._constant_nodes = {}
@@ -134,7 +136,8 @@ class ExpressionGraph:
 			self._form_function_and_derivative(
 				func=p.t_norm,
 				wrt=None,
-				order=0,
+				derivative=False,
+				hessian=False,
 				func_abrv=f"t_norm_P{p.i}",
 				init_func=True,
 				completion_msg=f"time normalisation of phase #{p.i}",
@@ -144,7 +147,8 @@ class ExpressionGraph:
 		self._form_function_and_derivative(
 			func=self.objective,
 			wrt=self._endpoint_variable_nodes,
-			order=1, 
+			derivative=True,
+			hessian=False, 
 			func_abrv="J",
 			init_func=True,
 			completion_msg="objective gradient",
@@ -163,7 +167,7 @@ class ExpressionGraph:
 				completion_msg="Jacobian of the endpoint constraints")
 
 		form_function_and_derivative = functools.partial(
-			self._form_function_and_derivative, order=1, init_func=True)
+			self._form_function_and_derivative, derivative=True, hessian=False, init_func=True)
 
 		continuous_constraints = sym.Matrix(
 			self.constraints[self.ocp_backend.c_continuous_slice])
@@ -175,108 +179,8 @@ class ExpressionGraph:
 
 	def _form_lagrangian_and_derivatives(self):
 
-		def form_objective(L_J):
-			form_function_and_derivative(func=L_J,
-				wrt=self._endpoint_variable_nodes, func_abrv="L_J",
-				completion_msg="Hessian of the objective Lagrangian")
-
-		self.ddL_zeta_dxdx = []
-		self.ddL_zeta_dxdx_nodes = []
-		self.ddL_zeta_dxdx_precomputable = set()
-		self.ddL_zeta_dxdx_dependent_tiers = {}
-
-		def form_defect(L_defect, phase_i):
-			
-			for i, L_zeta in enumerate(L_defect):
-				form_function_and_derivative(func=L_zeta,
-					wrt=self._continuous_variable_nodes, func_abrv=f"L_zeta_temp",
-					completion_msg=f"Hessian of the defect Lagrangian #{i} in phase #{phase_i}")
-				self.ddL_zeta_dxdx.append(self.ddL_zeta_temp_dxdx)
-				self.ddL_zeta_dxdx_nodes.append(self.ddL_zeta_temp_dxdx_nodes)
-				self.ddL_zeta_dxdx_precomputable.update(
-					self.ddL_zeta_temp_dxdx_precomputable)
-				for tier, nodes in self.ddL_zeta_temp_dxdx_dependent_tiers.items():
-					try:
-						self.ddL_zeta_dxdx_dependent_tiers[tier].update(nodes)
-					except KeyError:
-						self.ddL_zeta_dxdx_dependent_tiers[tier] = nodes
-
-		self.ddL_gamma_dxdx = []
-		self.ddL_gamma_dxdx_nodes = []
-		self.ddL_gamma_dxdx_precomputable = set()
-		self.ddL_gamma_dxdx_dependent_tiers = {}
-
-		def form_path(L_path, phase_i):
-			for i, L_gamma in enumerate(L_path):
-				form_function_and_derivative(func=L_gamma,
-					wrt=self._continuous_variable_nodes, func_abrv=f"L_gamma_temp",
-					completion_msg=f"Hessian of the path Lagrangian #{i} in phase #{phase_i}")
-				self.ddL_gamma_dxdx.append(self.ddL_gamma_temp_dxdx)
-				self.ddL_gamma_dxdx_nodes.append(self.ddL_gamma_temp_dxdx_nodes)
-				self.ddL_gamma_dxdx_precomputable.update(
-					self.ddL_gamma_temp_dxdx_precomputable)
-				for tier, nodes in self.ddL_gamma_temp_dxdx_dependent_tiers.items():
-					try:
-						self.ddL_gamma_dxdx_dependent_tiers[tier].update(nodes)
-					except KeyError:
-						self.ddL_gamma_dxdx_dependent_tiers[tier] = nodes
-
-		self.ddL_rho_dxdx = []
-		self.ddL_rho_dxdx_nodes = []
-		self.ddL_rho_dxdx_precomputable = set()
-		self.ddL_rho_dxdx_dependent_tiers = {}
-
-		def form_integral(L_integral, phase_i):
-			for i, L_rho in enumerate(L_integral):
-				form_function_and_derivative(func=L_rho,
-					wrt=self._continuous_variable_nodes, func_abrv=f"L_rho_temp",
-					completion_msg=f"Hessian of the integral Lagrangian #{i} in phase #{phase_i}")
-				self.ddL_rho_dxdx.append(self.ddL_rho_temp_dxdx)
-				self.ddL_rho_dxdx_nodes.append(self.ddL_rho_temp_dxdx_nodes)
-				self.ddL_rho_dxdx_precomputable.update(
-					self.ddL_rho_temp_dxdx_precomputable)
-				for tier, nodes in self.ddL_rho_temp_dxdx_dependent_tiers.items():
-					try:
-						self.ddL_rho_dxdx_dependent_tiers[tier].update(nodes)
-					except KeyError:
-						self.ddL_rho_dxdx_dependent_tiers[tier] = nodes
-
-		def form_endpoint(L_endpoint):
-			self.ddL_b_dxbdxb = []
-			self.ddL_b_dxbdxb_nodes = []
-			self.ddL_b_dxbdxb_precomputable = set()
-			self.ddL_b_dxbdxb_dependent_tiers = {}
-			for i, L_b in enumerate(L_endpoint):
-				form_function_and_derivative(func=L_b,
-					wrt=self._endpoint_variable_nodes, func_abrv="L_b_temp",
-					completion_msg=f"Hessian of the endpoint Lagrangian #{i}")
-				self.ddL_b_dxbdxb.append(self.ddL_b_temp_dxbdxb)
-				self.ddL_b_dxbdxb_nodes.append(self.ddL_b_temp_dxbdxb_nodes)
-				self.ddL_b_dxbdxb_precomputable.update(
-					self.ddL_b_temp_dxbdxb_precomputable)
-				for tier, nodes in self.ddL_b_temp_dxbdxb_dependent_tiers.items():
-					try:
-						self.ddL_b_dxbdxb_dependent_tiers[tier].update(nodes)
-					except KeyError:
-						self.ddL_b_dxbdxb_dependent_tiers[tier] = nodes
-
-		def make_L_matrices_lower_triangular():
-
-			def make_lower_triangular(mat):
-				return sym.Matrix(np.tril(np.array(mat)))
-
-			self.ddL_J_dxbdxb = make_lower_triangular(self.ddL_J_dxbdxb)
-			self.ddL_zeta_dxdx = [make_lower_triangular(ddL_zeta_dxdx) 
-				for ddL_zeta_dxdx in self.ddL_zeta_dxdx]
-			self.ddL_gamma_dxdx = [make_lower_triangular(ddL_gamma_dxdx) 
-				for ddL_gamma_dxdx in self.ddL_gamma_dxdx]
-			self.ddL_rho_dxdx = [make_lower_triangular(ddL_rho_dxdx) 
-				for ddL_rho_dxdx in self.ddL_rho_dxdx]
-			self.ddL_b_dxbdxb = [make_lower_triangular(ddL_b_dxbdxb)
-				for ddL_b_dxbdxb in self.ddL_b_dxbdxb]
-
 		form_function_and_derivative = functools.partial(
-			self._form_function_and_derivative, order=2, init_func=False)
+			self._form_function_and_derivative, derivative=True, hessian=True, init_func=False)
 
 		sigma = sym.symbols("_sigma")
 		self.ocp_backend.sigma_sym = sigma
@@ -288,31 +192,89 @@ class ExpressionGraph:
 		for L_sym in self.lagrange_syms:
 			_ = Node(L_sym, self)
 
-		L_objective = sigma * self.J
-		form_objective(L_objective)
+		dL_dxb_objective = self.dJ_dxb.scalar_multiply(sigma)
+		L_syms_endpoint = L_syms[self.ocp_backend.c_endpoint_slice]
+		dL_dxb_endpoint = self.db_dxb.vector_premultiply(L_syms_endpoint)
+		dL_dxb = dL_dxb_objective + dL_dxb_endpoint
+		dL_dxb_terms = dL_dxb.to_dense_sympy_matrix()
+		form_function_and_derivative(func=dL_dxb_terms,
+				wrt=self._endpoint_variable_nodes, func_abrv="L",
+				completion_msg=f"Hessian of the endpoint Lagrangian")
+		self.ddL_dxbdxb = self.ddL_dxbdxb.make_lower_triangular()
 
-		for phase, t_norm_node in zip(self.phases, self._t_norm_nodes):
-			L_defect_terms = sym.Matrix(tuple(t_norm_node.symbol*zeta 
-				for zeta in phase.zeta)
-				if phase.num_c_defect != 0 else [0])
-			L_path_terms = sym.Matrix(tuple(gamma 
-				for gamma in phase.gamma) 
-				if phase.num_c_path != 0 else [0])
-			L_integral_terms = sym.Matrix(tuple(t_norm_node.symbol*rho 
-				for rho in phase.rho)
-				if phase.num_c_integral != 0 else [0])
-			form_defect(L_defect_terms, phase.i)
-			form_path(L_path_terms, phase.i)
-			form_integral(L_integral_terms, phase.i)
+		L_syms_continuous_time_stretched = []
+		for p_c_defect_slice, p_c_path_slice, p_c_integral_slice, t_norm_node in zip(
+				self.ocp_backend.phase_defect_constraint_slices, 
+				self.ocp_backend.phase_path_constraint_slices, 
+				self.ocp_backend.phase_integral_constraint_slices,
+				self._t_norm_nodes, 
+				):
+			terms = [Node(sym.Mul(t_norm_node.symbol, L_sym), self).symbol 
+				for L_sym in L_syms[p_c_defect_slice]]
+			L_syms_continuous_time_stretched.extend(terms)
+			terms = [L_sym for L_sym in L_syms[p_c_path_slice]]
+			L_syms_continuous_time_stretched.extend(terms)
+			terms = [Node(sym.Mul(t_norm_node.symbol, L_sym), self).symbol 
+				for L_sym in L_syms[p_c_integral_slice]]
+			L_syms_continuous_time_stretched.extend(terms)
 
-		L_endpoint_terms = sym.Matrix(tuple(beta
-			for beta in self.ocp_backend.beta)
-			if self.ocp_backend.num_c_endpoint != 0 else [0])
-		form_endpoint(L_endpoint_terms)
+		dL_dx_continuous = self.dc_dx.vector_premultiply(L_syms_continuous_time_stretched)
+		dL_dx_terms = dL_dx_continuous.to_dense_sympy_matrix()
+		form_function_and_derivative(func=dL_dx_terms,
+			wrt=self._continuous_variable_nodes, func_abrv="L",
+			completion_msg=f"Hessian of the continuous Lagrangian")
+		self.ddL_dxdx = self.ddL_dxdx.make_lower_triangular()
+		self.ddL_dxdx_nodes = self.ddL_dxdx_nodes.make_lower_triangular()
 
-		make_L_matrices_lower_triangular()
+		portions_requiring_summing = {}
+		for p, p_var_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_variable_slices):
+			offset = p_var_slice.start
+			p_qt_slice = slice(p.qt_slice.start + offset, p.qt_slice.stop + offset)
+			portions_requiring_summing.update({**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, p_qt_slice).entries})
+		portions_requiring_summing.update({**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, self.ocp_backend.variable_slice).entries})
+		final_nodes = set(Node(symbol, self) for symbol in portions_requiring_summing.values())
 
-	def _form_function_and_derivative(self, func, wrt, order, func_abrv, init_func, completion_msg=None):
+		ddL_dxdx_dependent_nodes = set(node for tier in self.ddL_dxdx_dependent_tiers.values() for node in tier)
+		nodes_requiring_summing = set()
+
+		def requires_summing(node):
+			if node in final_nodes:
+				summing_required = True
+			else:
+				summing_required = any(requires_summing(child) for child in node.child_nodes)
+			if summing_required:
+				nodes_requiring_summing.add(node)
+			return summing_required
+
+		for L in L_syms:
+			_ = requires_summing(Node(L, self))
+
+		self.ddL_dxdx_sum_nodes = nodes_requiring_summing.difference(set(Node(symbol, self) for symbol in L_syms))
+
+		L_nodes = set(Node(L, self) for L in L_syms)
+		nodes_requiring_summing = set()
+		def requires_summing(node):
+			if node in L_nodes:
+				return True
+			try:
+				if any([requires_summing(node) for node in node.parent_nodes]):
+					nodes_requiring_summing.add(node)
+					return True
+				else:
+					return False
+			except NameError:
+				return False
+
+		for node in final_nodes:
+			requires_summing(node)
+
+		self.ddL_dxdx_sum_nodes = nodes_requiring_summing
+
+		# for node in nodes_requiring_summing:
+		# 	print(node)
+		# input()
+
+	def _form_function_and_derivative(self, func, wrt, derivative, hessian, func_abrv, init_func, completion_msg=None):
 
 		def create_derivative_abbreviation(wrt, func_abrv):
 			if wrt is self._continuous_variable_nodes:
@@ -320,11 +282,11 @@ class ExpressionGraph:
 			elif wrt is self._endpoint_variable_nodes:
 				wrt_abrv = "xb"
 
-			if order == 1:
-				return f"d{func_abrv}_d{wrt_abrv}"
-			elif order == 2:
+			if hessian:
 				return f"dd{func_abrv}_d{wrt_abrv}d{wrt_abrv}"
-
+			else:
+				return f"d{func_abrv}_d{wrt_abrv}"
+				
 		def add_to_namespace(self, args, func_abrv):
 			setattr(self, f"{func_abrv}", args[0])
 			setattr(self, f"{func_abrv}_nodes", args[1])
@@ -333,16 +295,15 @@ class ExpressionGraph:
 			return self
 
 		init_args = self._initialise_function(func)
+		temp = init_args[0]
 
 		if init_func is True:
 			self = add_to_namespace(self, init_args, func_abrv)
 
-		for _ in range(order):
+		if derivative:
 			deriv = self.hybrid_symbolic_algorithmic_differentiation(
 				*init_args, wrt)
 			init_args = self._initialise_function(deriv)
-
-		if order > 0:
 			deriv_abrv = create_derivative_abbreviation(wrt, func_abrv)
 			self = add_to_namespace(self, init_args, deriv_abrv)
 
@@ -363,6 +324,19 @@ class ExpressionGraph:
 				return_vals = traverse_root_branch(expr, 0)
 				root_symbol, root_node, max_tier = return_vals
 				return (root_symbol, [root_node], max_tier)
+			elif isinstance(expr, SparseCOOMatrix):
+				max_tier = 0
+				return_expr_entries = {}
+				return_node_entries = {}
+				expr.sort()
+				for index, value in expr.entries.copy().items():
+					return_vals = traverse_root_branch(value, max_tier)
+					root_symbol, root_node, max_tier = return_vals 
+					return_expr_entries[index] = root_symbol
+					return_node_entries[index] = root_node
+				return_matrix = SparseCOOMatrix(return_expr_entries, *expr.shape, self)
+				expr_nodes = SparseCOOMatrix(return_node_entries, *expr.shape, self)
+				return (return_matrix, expr_nodes, max_tier)
 			else:
 				expr_subbed = []
 				expr_nodes = []
@@ -379,7 +353,10 @@ class ExpressionGraph:
 		def separate_precomputable_and_dependent_nodes(expr, nodes):
 			precomputable_nodes = set()
 			dependent_nodes = set()
-			all_nodes = set(nodes)
+			if isinstance(expr, SparseCOOMatrix):
+				all_nodes = nodes.free_symbols
+			else:
+				all_nodes = set(nodes)
 			for free_symbol in expr.free_symbols:
 				node = self.symbols_to_nodes_mapping[free_symbol]
 				all_nodes.update(node.dependent_nodes)
@@ -478,7 +455,7 @@ class ExpressionGraph:
 					i_col = wrt_mapping.get(wrt)
 					if i_col is not None:
 						nonzeros[(i_row, i_col)] = node.derivative_as_symbol(wrt)
-			return SparseCOOMatrix(nonzeros, n_rows, n_cols)
+			return SparseCOOMatrix(nonzeros, n_rows, n_cols, self)
 			# return sym.SparseMatrix(n_rows, n_cols, nonzeros)
 
 		def compute_target_function_derivatives_for_each_tier(
@@ -495,7 +472,7 @@ class ExpressionGraph:
 			for tier_num, dependent_nodes_tier in enumerate(
 					dependent_nodes_by_tier_collapsed[1:], 1):
 				num_ei = len(dependent_nodes_tier)
-				delta_matrix_i = SparseCOOMatrix({}, num_ei, num_e0)
+				delta_matrix_i = SparseCOOMatrix({}, num_ei, num_e0, self)
 				# delta_matrix_i = sym.SparseMatrix(num_ei, num_e0, {})
 				for by_tier_num in range(tier_num):
 					delta_matrix_j = delta_matrices[by_tier_num]
@@ -507,7 +484,7 @@ class ExpressionGraph:
 
 		def compute_derivative_recursive_hSAD_algorithm():
 			num_f = len(function_nodes)
-			derivative = SparseCOOMatrix({}, num_f, num_e0)
+			derivative = SparseCOOMatrix({}, num_f, num_e0, self)
 			# derivative = sym.SparseMatrix(num_f, num_e0, {})
 			for df_dei, delta_i in zip(df_de, delta_matrices):
 				# TO DO: Understand why this is required
@@ -528,8 +505,6 @@ class ExpressionGraph:
 			dependent_nodes_by_tier_collapsed)
 
 		derivative = compute_derivative_recursive_hSAD_algorithm()
-
-		derivative = sym.SparseMatrix(derivative.rows, derivative.cols, derivative._smat)
 		
 		return derivative
 
@@ -543,69 +518,6 @@ class ExpressionGraph:
 		return (f"{cls_name}(problem_variables="
 			f"({self.problem_variables_continuous}, "
 			f"{self.problem_variables_endpoint}))")
-
-
-
-class SparseCOOMatrix:
-
-	ZERO = sym.numbers.Zero()
-
-	def __new__(cls, nonzeros, n_rows, n_cols):
-		self = object.__new__(cls)
-		self.rows = n_rows
-		self.cols = n_cols
-		self._smat = nonzeros
-		return self
-
-	@classmethod
-	def _new(cls, *args, **kwargs):
-		return cls(*args)
-
-	@property
-	def shape(self):
-		return (self.rows, self.cols)
-
-	def __iter__(self):
-		raise NotImplementedError
-
-	def __add__(self, other):
-		if not isinstance(other, self.__class__):
-			raise NotImplementedError 
-		smat = {}
-		for key in set().union(self._smat.keys(), other._smat.keys()):
-			sum = self._smat.get(key, self.ZERO) + other._smat.get(key, self.ZERO)
-			if sum != 0:
-				smat[key] = sum
-	  # Add new nodes to expression graph and return new sparse matrix with
-	  # nodes as nonzero entries
-		return self._new(smat, self.rows, self.cols)
-
-	def __mul__(self, other):
-		"""Fast multiplication exploiting the sparsity of the matrix."""
-		if not isinstance(other, self.__class__):
-			if other == 1:
-				return self
-			raise NotImplementedError
-
-		# if we made it here, we're both sparse matrices
-		# create quick lookups for rows and cols
-		row_lookup = collections.defaultdict(dict)
-		for (i,j), val in self._smat.items():
-			row_lookup[i][j] = val
-		col_lookup = collections.defaultdict(dict)
-		for (i,j), val in other._smat.items():
-			col_lookup[j][i] = val
-
-		smat = {}
-		for row in row_lookup.keys():
-			for col in col_lookup.keys():
-				# find the common indices of non-zero entries.
-				# these are the only things that need to be multiplied.
-				indices = set(col_lookup[col].keys()) & set(row_lookup[row].keys())
-				if indices:
-					val = sum(row_lookup[row][k]*col_lookup[col][k] for k in indices)
-					smat[row, col] = val
-		return self._new(smat, self.rows, other.cols)
 
 
 

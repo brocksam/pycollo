@@ -457,13 +457,30 @@ class Pycollo(BackendABC):
 		constraints = (tuple(itertools.chain.from_iterable(p.c 
 			for p in self.p)) + self.beta)
 		self.num_c = len(constraints)
+		self.phase_defect_constraint_slices = []
+		self.phase_path_constraint_slices = []
+		self.phase_integral_constraint_slices = []
 		self.phase_constraint_slices = []
-		start = 0
+		phase_start = 0
 		for p in self.p:
-			stop = start + p.num_c
+			start = phase_start
+			stop = start + p.num_c_defect
 			p_slice = slice(start, stop)
+			self.phase_defect_constraint_slices.append(p_slice)
 			start = stop
+			stop = start + p.num_c_path
+			p_slice = slice(start, stop)
+			self.phase_path_constraint_slices.append(p_slice)
+			start = stop
+			stop = start + p.num_c_integral
+			p_slice = slice(start, stop)
+			self.phase_integral_constraint_slices.append(p_slice)
+			start = stop
+			phase_stop = phase_start + p.num_c
+			p_slice = slice(phase_start, phase_stop)
 			self.phase_constraint_slices.append(p_slice)
+			phase_start = phase_stop
+			
 		start = 0
 		stop = self.phase_constraint_slices[-1].stop
 		self.c_continuous_slice = slice(start, stop)
@@ -496,13 +513,6 @@ class Pycollo(BackendABC):
 		self.num_point_vars = len(endpoint_vars)
 		variables = (continuous_vars, endpoint_vars)
 
-		objective = self.J
-		constraints = self.collect_constraints()
-		aux_data = dict_merge(self.aux_data, *(p.aux_data for p in self.p), self.bounds.aux_data)
-		self.expression_graph = ExpressionGraph(self, variables, objective, 
-			constraints, aux_data)
-		self.expression_graph.form_functions_and_derivatives()
-
 		self.phase_variable_slices = []
 		start = 0
 		for p in self.p:
@@ -521,8 +531,14 @@ class Pycollo(BackendABC):
 			self.phase_endpoint_variable_slices.append(p_slice)
 		self.endpoint_variable_slice = slice(self.num_point_vars - self.num_s_vars, self.num_point_vars)
 
-	
+		objective = self.J
+		constraints = self.collect_constraints()
+		aux_data = dict_merge(self.aux_data, *(p.aux_data for p in self.p), self.bounds.aux_data)
+		self.expression_graph = ExpressionGraph(self, variables, objective, 
+			constraints, aux_data)
+		self.expression_graph.form_functions_and_derivatives()
 
+		
 
 
 

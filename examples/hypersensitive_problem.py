@@ -30,7 +30,7 @@ phase.guess.integral_variables = np.array([4])
 
 problem.objective_function = phase.integral_variables[0]
 
-problem.settings.derivative_level = 1
+problem.settings.derivative_level = 2
 
 problem.initialise()
 problem.solve()

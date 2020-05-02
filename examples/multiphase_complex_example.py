@@ -4,19 +4,36 @@ import sympy as sym
 
 import pycollo
 
-y0 = sym.Symbol('y0')
-y1 = sym.Symbol('y1')
-y2 = sym.Symbol('y2')
-y3 = sym.Symbol('y3')
-u0 = sym.Symbol('u0')
-u1 = sym.Symbol('u1')
-s0 = sym.Symbol('s0')
+y0 = sym.Symbol("y0")
+y1 = sym.Symbol("y1")
+y2 = sym.Symbol("y2")
+y3 = sym.Symbol("y3")
+u0 = sym.Symbol("u0")
+u1 = sym.Symbol("u1")
+s0 = sym.Symbol("s0")
+s1 = sym.Symbol("s1")
+
+s1g = sym.Symbol("s1g")
+
+a0 = sym.Symbol("a0")
+a1 = sym.Symbol("a1")
+
+a0_times = sym.Symbol("a0_times")
+a1_times = sym.Symbol("a1_times")
+
+g = sym.Symbol("g")
+v_abs = sym.Symbol("v_abs")
+v_mag = sym.Symbol("v_mag")
+v_norm_x = sym.Symbol("v_norm_x")
+v_norm_y = sym.Symbol("v_norm_y")
+
+x,y,z = sym.symbols('x y z')
 
 circle_radius = 1.0
 
 problem = pycollo.OptimalControlProblem(
 	name="Multiphase example problem", 
-	parameter_variables=s0)
+	parameter_variables=[s0, s1])
 
 phase_A = problem.new_phase(name="A")
 phase_A.state_variables = [y0, y1, y2, y3]
@@ -24,16 +41,21 @@ phase_A.control_variables = [u0, u1]
 phase_A.state_equations = {
 	y0: y2,
 	y1: y3,
-	y2: u0 / s0,
-	y3: u1 / s0,
+	y2: a0,
+	y3: a1,
 	}
-phase_A.path_constraints = [sym.sqrt(y0**2 + y1**2) - circle_radius,
-	sym.sqrt((y0 - 0.5)**2 + y1**2) - circle_radius]
+phase_A.path_constraints = [
+	sym.sqrt(y0**2 + y1**2) - circle_radius,
+	sym.sqrt((y0 - 1)**2 + y1**2) - circle_radius,
+	]
 phase_A.integrand_functions = [u0**2, u1**2]
-phase_A.auxiliary_data = {}
+phase_A.auxiliary_data = {
+	a0: (u0 / s0),
+	a1: (u1 / s0),
+}
 
 phase_A.bounds.initial_time = 0
-phase_A.bounds.final_time = 1
+phase_A.bounds.final_time = [1, 2]
 phase_A.bounds.state_variables = {
 	y0: [-3, 3],
 	y1: [-3, 3],
@@ -45,7 +67,7 @@ phase_A.bounds.control_variables = {
 	u1: [-50, 50],
 	}
 phase_A.bounds.integral_variables = [[0, 1000], [0, 1000]]
-phase_A.bounds.path_constraints = [[0, 20], [0, 20]]
+phase_A.bounds.path_constraints = [[0, 10], [0, 10]]
 phase_A.bounds.initial_state_constraints = {
 	y0: 1,
 	y1: -2,
@@ -76,10 +98,13 @@ phase_B = problem.new_phase_like(
 	phase_for_copying=phase_A,
 	name="B",
 	)
-phase_B.auxiliary_data = {}
+phase_B.auxiliary_data = {
+	a0: (u0 / s0) - s1 * g * v_norm_x,
+	a1: (u1 / s0) - s1 * g * v_norm_y,
+}
 
-phase_B.bounds.initial_time = 1
-phase_B.bounds.final_time = 2
+phase_B.bounds.initial_time = [1, 2]
+phase_B.bounds.final_time = [1, 3]
 phase_B.bounds.initial_state_constraints = {
 	y0: 0,
 	y1: 2,
@@ -102,41 +127,59 @@ phase_B.guess.state_variables = np.array([
 	])
 phase_B.guess.integral_variables = np.array([0, 0])
 
-problem.objective_function = (phase_A.integral_variables[0] 
+problem.objective_function = (phase_A.integral_variables[0]
 	+ phase_A.integral_variables[1]
 	+ phase_B.integral_variables[0]
 	+ phase_B.integral_variables[1])
 
+problem.auxiliary_data = {
+	g: 9.81,
+	v_abs: y2**2 + y3**2,
+	v_mag: sym.sqrt(v_abs),
+	v_norm_x: y2 / v_mag,
+	v_norm_y: y3 / v_mag,
+}
+
 problem.endpoint_constraints = [
+	phase_A.final_time_variable - phase_B.initial_time_variable,
 	phase_A.final_state_variables.y0 - phase_B.initial_state_variables.y0,
 	phase_A.final_state_variables.y1 - phase_B.initial_state_variables.y1,
 	phase_A.final_state_variables.y2 - phase_B.initial_state_variables.y2,
 	phase_A.final_state_variables.y3 - phase_B.initial_state_variables.y3,
 	]
 
-problem.bounds.parameter_variables = [[1, 2]]
+problem.bounds.parameter_variables = [[1, 2], [1, 2]]
 problem.bounds.endpoint_constraints = [
+	0,
 	0,
 	0,
 	0,
 	0,
 	]
 
-problem.guess.parameter_variables = np.array([1.5])
+problem.guess.parameter_variables = np.array([1.5, 1.5])
 
-problem.settings.nlp_tolerance = 1e-3
+problem.settings.nlp_tolerance = 1e-8
 problem.settings.mesh_tolerance = 1e-5
 problem.settings.maximise_objective = False
 problem.settings.backend = "pycollo"
 problem.settings.scaling_method = "none"
 problem.settings.assume_inf_bounds = False
 problem.settings.inf_value = 1e16
-problem.settings.check_nlp_functions = False
+problem.settings.check_nlp_functions = True
+problem.settings.dump_nlp_check_json = "pycollo"
 problem.settings.collocation_points_min = 2
 problem.settings.collocation_points_max = 8
-problem.settings.derivative_level = 1
+problem.settings.derivative_level = 2
 problem.settings.max_mesh_iterations = 10
 problem.settings.display_mesh_result_graph = False
+
+phase_A.mesh.number_mesh_sections = 3
+phase_A.mesh.mesh_section_sizes = [1/3, 1/3, 1/3]
+phase_A.mesh.number_mesh_section_nodes = [2, 3, 2]
+phase_B.mesh.number_mesh_sections = 3
+phase_B.mesh.mesh_section_sizes = [1/3, 1/3, 1/3]
+phase_B.mesh.number_mesh_section_nodes = [3, 2, 3]
 
 problem.initialise()
 problem.solve()

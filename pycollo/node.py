@@ -27,6 +27,8 @@ class Cached(type):
 		else:
 			obj = super().__call__(*args, **kwargs)
 			self.__cache[args] = obj
+			args = (obj.symbol, ) + args[1:]
+			self.__cache[args] = obj
 			return obj
 	
 
@@ -62,6 +64,7 @@ class Node(metaclass=Cached):
 	def _associate_new_node_with_graph(self):
 		self.symbol = self._type._create_or_get_new_node_symbol(self)
 		self._type._graph_node_group(self)[self.symbol] = self
+		self.graph._node_syms.add(self.symbol)
 
 	@property
 	def key(self):

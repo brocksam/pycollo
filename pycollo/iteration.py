@@ -429,43 +429,116 @@ class Iteration:
 
 		def detect_hessian_sparsity():
 
-			def build_endpoint_blocks():
-				blocks = []
-				return blocks
+			self._sH_endpoint_indices = detect_endpoint_hessian_sparsity()
+			self._sH_continuous_indices = detect_continuous_hessian_sparsity()
 
-			sH_endpoint_blocks = []
-			sH_continuous_blocks = []
+			x_sparsity_detect = np.full(self.num_x, np.nan)
+			lagrange_sparsity_detect = np.full(self.num_c, np.nan)
+			obj_factor_sparsity_detect = np.nan
+			# x_sparsity_detect = np.array(range(1, self.num_x+1))
+			# lagrange_sparsity_detect = np.array(range(1, self.num_c+1))
+			# obj_factor_sparsity_detect = 2
+			
+			H_sparsity_detect = hessian(x_sparsity_detect, obj_factor_sparsity_detect, lagrange_sparsity_detect).tocoo()
+			self._H_nonzero_row = H_sparsity_detect.row
+			self._H_nonzero_col = H_sparsity_detect.col
+			self._H_nnz = H_sparsity_detect.nnz
 
-			sH_J = detect_endpoint_hessian_sparsity(self.backend.compiled_functions.ddL_J_dxbdxb_nonzero_indices)
-			self._sH_J_nz_inds_ = (sH_J.row, sH_J.col)
+		def detect_endpoint_hessian_sparsity():
 
-			sH = sH_J
-			self._H_nonzero_row = sH.row
-			self._H_nonzero_col = sH.col
-			self._H_nnz = sH.nnz
+			def ocp_index_to_phase_index(ocp_index):
+				return ocp_index_to_phase_index_mapping[ocp_index]
 
-		def detect_endpoint_hessian_sparsity(nz_inds):
-			nnz = len(nz_inds[0])
-			data = np.full(nnz, np.nan)
-			H_ocp = sparse.coo_matrix((data, nz_inds), shape=self._H_shape)
+			ocp_indices = list(range(self.backend.num_point_vars))
+			phase_indices = []
+			i = 0
+			for p, N in zip(self.backend.p, self.mesh.N):
+				for _ in range(p.num_y_vars):
+					phase_indices.append(i)
+					phase_indices.append(i + N - 1)
+					i += N
+				for _ in range(p.num_u_vars):
+					i += N
+				for _ in range(p.num_q_vars + p.num_t_vars):
+					phase_indices.append(i)
+					i += 1
+			for _ in range(self.backend.num_s_vars):
+				phase_indices.append(i)
+				i += 1
 
-			H = sparse.tril(H)
-			return H
+			ocp_index_to_phase_index_mapping = dict(zip(ocp_indices, phase_indices))
 
-		def hessian_data(x):
-			G = hessian(x)
-			G_zeros = sparse.coo_matrix((np.full(self._G_nnz, 1e-20), self._hessian_structure_lambda()), shape=self._G_shape).tocsr()
-			return (G + G_zeros).tocoo().data
+			x_endpoint_row_indices = []
+			x_endpoint_col_indices = []
+			for i_row_ocp, i_col_ocp in self.backend.expression_graph.ddL_dxbdxb.entries.keys():
+				i_row_phase = ocp_index_to_phase_index(i_row_ocp)
+				i_col_phase = ocp_index_to_phase_index(i_col_ocp)
+				x_endpoint_row_indices.append(i_row_phase)
+				x_endpoint_col_indices.append(i_col_phase)
+			return (x_endpoint_row_indices, x_endpoint_col_indices)
 
-		def hessian(x):
+		def detect_continuous_hessian_sparsity():
+			ocp_indices = []
+			offset = 0
+			for p in self.backend.p:
+				phase_ocp_indices = [(i, j) for i in range(offset, offset + p.num_vars) for j in range(offset, i + 1)]
+
+				offset += p.num_vars
+				ocp_indices += phase_ocp_indices
+			ocp_indices += [(i, j) for i in range(offset, offset + self.backend.num_vars) for j in range(i + 1)]
+			phase_blocks = []
+			endpoint_blocks = []
+			for p, N in zip(self.backend.p, self.mesh.N):
+				num_yu_ocp = p.num_y_vars + p.num_u_vars
+				block_yu_yu = sparse.kron(np.tril(np.ones((num_yu_ocp, num_yu_ocp))), sparse.coo_matrix(([1], ([0], [0])), shape=(N, N)))
+				num_qt_ocp = p.num_q_vars + p.num_t_vars 
+				block_yu_qt = sparse.kron(np.ones((num_qt_ocp, num_yu_ocp)), sparse.coo_matrix(([2], ([0], [0])), shape=(1, N)))
+				block_qt_qt = sparse.csr_matrix(3 * np.tril(np.ones((num_qt_ocp, num_qt_ocp))))
+				block_yu_s = sparse.kron(np.ones((self.backend.num_s_vars, num_yu_ocp)), sparse.coo_matrix(([2], ([0], [0])), shape=(1, N)))
+				block_qt_s = sparse.csr_matrix(3 * np.ones((self.backend.num_s_vars, num_qt_ocp)))
+				phase_blocks.append(sparse.bmat([[block_yu_yu, None], [block_yu_qt, block_qt_qt]]))
+				endpoint_blocks.append(sparse.hstack([block_yu_s, block_qt_s]))
+			phase_block = sparse.block_diag(phase_blocks)
+			endpoint_block = sparse.hstack(endpoint_blocks)
+			parameter_block = sparse.csr_matrix(3 * np.tril(np.ones((self.backend.num_s_vars, self.backend.num_s_vars))))
+			continuous = sparse.bmat([[phase_block, None], [endpoint_block, parameter_block]]).tocsr().tocoo()
+			ocp_index_to_phase_index_mapping = dict(zip(ocp_indices, zip(zip(continuous.row, continuous.col), continuous.data)))
+			H_continuous_indices_iteration = [ocp_index_to_phase_index_mapping[index] for index in self.backend.expression_graph.ddL_dxdx.entries]
+			return H_continuous_indices_iteration
+
+		def hessian_data(x, lagrange, obj_factor):
+			H = hessian(x, obj_factor, lagrange)
+			H_zeros = sparse.coo_matrix((np.full(self._H_nnz, 1e-20), self._hessian_structure_lambda()), shape=self._H_shape).tocsr()
+			return (H + H_zeros).tocoo().data
+
+		def reshape_lagrange(lagrange):
+			lagrange = np.array(lagrange)
+			chunks = []
+			for p, c_defect_slice, c_path_slice, c_integral_slice, sA_matrix, W_matrix in zip(self.backend.p, self.c_defect_slices, self.c_path_slices, self.c_integral_slices, self.mesh.sA_matrix, self.mesh.W_matrix):
+				chunks.extend([*sA_matrix.T.dot(lagrange[c_defect_slice].reshape((p.num_c_defect, -1)).T).T])
+				if p.num_c_path:
+					chunks.extend([*lagrange[c_path_slice].reshape((p.num_c_path, -1))])
+				if p.num_c_integral:
+					chunks.extend([*lagrange[c_integral_slice].reshape(-1, 1).dot(-W_matrix.reshape((1, -1)))])
+			if self.num_c_endpoint:
+				chunks.extend([*0*lagrange[self.c_endpoint_slice].reshape(-1, )])
+
+			return chunks
+
+		def hessian(x, obj_factor, lagrange):
 			x_tuple = self._reshape_x(x)
 			x_tuple_point = self._reshape_x_point(x)
+			lagrange = reshape_lagrange(lagrange)
 			H = self.backend.compiled_functions.H_lambda(
 				self._H_shape,
 				x_tuple, 
 				x_tuple_point,
+				obj_factor,
+				lagrange,
+				self._sH_continuous_indices,
+				self._sH_endpoint_indices,
 				)
-			return G
+			return H
 
 		self._H_shape = (self.num_x, self.num_x)
 		detect_hessian_sparsity()
@@ -536,12 +609,19 @@ class Iteration:
 	def check_nlp_functions(self):
 		if self.backend.ocp.settings.check_nlp_functions:
 			print('\n\n\n')
-			x_data = np.array(range(1, self.num_x+1), dtype=float)
-			# lagrange = np.array(range(self._num_c), dtype=float)
-			# obj_factor = 2.0
+			# x_data = np.array(range(1, self.num_x + 1), dtype=float)
+			x_data = np.ones(self.num_x)
+			
 			print(f"x Variables:\n{self.backend.x_vars}\n")
 			print(f"x Data:\n{x_data}\n")
-			# print(f"Lagrange Multipliers:\n{lagrange}\n")
+
+			if self.optimal_control_problem.settings.derivative_level == 2:
+				# lagrange = np.array(range(1, self.num_c + 1), dtype=float)
+				lagrange = np.ones(self.num_c)
+				# obj_factor = 2.0
+				obj_factor = 1
+				print(f"Objective Factor:\n{obj_factor}\n")
+				print(f"Lagrange Multipliers:\n{lagrange}\n")
 
 			J = self._objective_lambda(x_data)
 			print(f"J:\n{J}\n")
@@ -553,7 +633,7 @@ class Iteration:
 			print(f"c:\n{c}\n")
 
 			G_struct = self._jacobian_structure_lambda()
-			print(f"G Structure:\n{G_struct[0]}\n{G_struct[1]}\n")
+			print(f"G Structure:\n{G_struct[0]}\n\n{G_struct[1]}\n")
 
 			G_nnz = len(G_struct[0])
 			print(f"G Nonzeros:\n{G_nnz}\n")
@@ -561,12 +641,22 @@ class Iteration:
 			G = self._jacobian_lambda(x_data)
 			print(f"G:\n{G}\n")
 
+			if self.optimal_control_problem.settings.derivative_level == 2:
+				H_struct = self._hessian_structure_lambda()
+				print(f"H Structure:\n{H_struct[0]}\n\n{H_struct[1]}\n")
+
+				H_nnz = len(H_struct[0])
+				print(f"H Nonzeros:\n{H_nnz}\n")
+
+				H = self._hessian_lambda(x_data, lagrange, obj_factor)
+				print(f"H:\n{H}\n")
+
 			if self.optimal_control_problem.settings.dump_nlp_check_json:
 				file_extension = ".json"
 				filename_full = str(self.optimal_control_problem.settings.dump_nlp_check_json) + file_extension
 
 				sG = sparse.coo_matrix((G, G_struct), shape=self._G_shape)
-
+				
 				data = {
 					"x": x_data.tolist(),
 					"J": float(J),
@@ -579,6 +669,15 @@ class Iteration:
 					"num_x": int(self.num_x),
 					"num_c": int(self.num_c),
 					}
+
+				if self.optimal_control_problem.settings.derivative_level == 2:
+					sH = sparse.coo_matrix((H, H_struct), shape=self._H_shape)
+					data["H_data"] = sH.data.flatten().tolist()
+					data["H_row"] = sH.row.flatten().tolist()
+					data["H_col"] = sH.col.flatten().tolist()
+					data["H_nnz"] = int(sH.nnz)
+
+					print(sH)
 
 				with open(filename_full, "w", encoding="utf-8") as file:
 					json.dump(data, file, ensure_ascii=False, indent=4)

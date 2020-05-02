@@ -3,7 +3,7 @@ import scipy.sparse as sparse
 import sympy as sym
 
 from .numbafy import numbafy
-from .numbafy_hessian import (numbafy_objective_hessian, )
+from .numbafy_hessian import (numbafy_endpoint_hessian, numbafy_continuous_hessian)
 from .utils import console_out
 
 class CompiledFunctions:
@@ -79,12 +79,15 @@ class CompiledFunctions:
 			return g
 
 		expr_graph = self.ocp_backend.expression_graph
+		dJ_dxb = expr_graph.dJ_dxb
+		dJ_dxb = sym.Matrix(sym.SparseMatrix(*dJ_dxb.shape, dJ_dxb.entries))
 
 		dJ_dxb_phase_lambdas = []
 		for p, p_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_endpoint_variable_slices):
+			
 			dJ_dxb_phase_lambda = numbafy(
 				expression_graph=expr_graph,
-				expression=expr_graph.dJ_dxb[p_slice],
+				expression=dJ_dxb[p_slice],
 				precomputable_nodes=expr_graph.dJ_dxb_precomputable,
 				dependent_tiers=expr_graph.dJ_dxb_dependent_tiers,
 				parameters=self.ocp_backend.x_point_vars,
@@ -97,7 +100,7 @@ class CompiledFunctions:
 
 		dJ_dxb_endpoint_lambda = numbafy(
 			expression_graph=expr_graph,
-			expression=expr_graph.dJ_dxb[self.ocp_backend.endpoint_variable_slice],
+			expression=dJ_dxb[self.ocp_backend.endpoint_variable_slice],
 			precomputable_nodes=expr_graph.dJ_dxb_precomputable,
 			dependent_tiers=expr_graph.dJ_dxb_dependent_tiers,
 			parameters=self.ocp_backend.x_point_vars,
@@ -163,10 +166,11 @@ class CompiledFunctions:
 		c_continuous_lambdas = []
 		for p, p_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_constraint_slices):
 			c = sym.Matrix(expr_graph.c[p_slice])
+			c_nodes = expr_graph.c_nodes[p_slice]
 			c_continuous_lambda = numbafy(
 				expression_graph=expr_graph,
 				expression=c,
-				expression_nodes=expr_graph.c_nodes,
+				expression_nodes=c_nodes,
 				precomputable_nodes=expr_graph.c_precomputable,
 				dependent_tiers=expr_graph.c_dependent_tiers,
 				parameters=self.ocp_backend.x_vars,
@@ -361,20 +365,24 @@ class CompiledFunctions:
 			return G
 
 		expr_graph = self.ocp_backend.expression_graph
+		dc_dx = expr_graph.dc_dx
+		dc_dx = sym.Matrix(sym.SparseMatrix(*dc_dx.shape, dc_dx.entries))
+		dc_dx_nodes = np.zeros(expr_graph.dc_dx_nodes.shape, dtype=object)
+		for k, v in expr_graph.dc_dx_nodes.entries.items():
+			dc_dx_nodes[k] = v
 
 		dc_dx_lambdas = []
 		for p, p_x_slice, p_c_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_variable_slices, self.ocp_backend.phase_constraint_slices):
-			dc_dx_phase = expr_graph.dc_dx[p_c_slice, p_x_slice]
-			dc_dx_parameter = expr_graph.dc_dx[p_c_slice, self.ocp_backend.variable_slice]
-			dc_dx = sym.Matrix(sym.BlockMatrix([dc_dx_phase, dc_dx_parameter]))
-			dc_dx_nodes = np.array(expr_graph.dc_dx_nodes).reshape(expr_graph.dc_dx.shape)
+			dc_dx_phase = dc_dx[p_c_slice, p_x_slice]
+			dc_dx_parameter = dc_dx[p_c_slice, self.ocp_backend.variable_slice]
+			dc_dx_joined = sym.Matrix(sym.BlockMatrix([dc_dx_phase, dc_dx_parameter]))
 			dc_dx_nodes_phase = dc_dx_nodes[p_c_slice, p_x_slice]
 			dc_dx_nodes_parameter = dc_dx_nodes[p_c_slice, self.ocp_backend.variable_slice]
-			dc_dx_nodes = np.hstack([dc_dx_nodes_phase, dc_dx_nodes_parameter]).flatten().tolist()
+			dc_dx_nodes_joined = np.hstack([dc_dx_nodes_phase, dc_dx_nodes_parameter]).flatten().tolist()
 			dc_dx_lambda = numbafy(
 				expression_graph=expr_graph,
-				expression=dc_dx,
-				expression_nodes=dc_dx_nodes,
+				expression=dc_dx_joined,
+				expression_nodes=dc_dx_nodes_joined,
 				precomputable_nodes=expr_graph.dc_dx_precomputable,
 				dependent_tiers=expr_graph.dc_dx_dependent_tiers,
 				parameters=self.ocp_backend.x_vars, 
@@ -386,7 +394,8 @@ class CompiledFunctions:
 
 		db_dxb_phase_lambdas = []
 		for p, p_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_endpoint_variable_slices):
-			db_dxb_phase = expr_graph.db_dxb[:, p_slice]
+			db_dxb = expr_graph.db_dxb
+			db_dxb_phase = sym.Matrix(sym.SparseMatrix(*db_dxb.shape, db_dxb.entries))[:, p_slice]
 			db_dxb_phase_lambda = numbafy(
 				expression_graph=expr_graph,
 				expression=db_dxb_phase,
@@ -399,9 +408,11 @@ class CompiledFunctions:
 				)
 			db_dxb_phase_lambdas.append(db_dxb_phase_lambda)
 
+		db_dxb = expr_graph.db_dxb
+		db_ds = sym.Matrix(sym.SparseMatrix(*db_dxb.shape, db_dxb.entries))[:, self.ocp_backend.endpoint_variable_slice]
 		db_ds_lambda = numbafy(
 			expression_graph=expr_graph,
-			expression=expr_graph.db_dxb[:, self.ocp_backend.endpoint_variable_slice],
+			expression=db_ds,
 			precomputable_nodes=expr_graph.db_dxb_precomputable,
 			dependent_tiers=expr_graph.db_dxb_dependent_tiers,
 			parameters=self.ocp_backend.x_point_vars,
@@ -415,242 +426,64 @@ class CompiledFunctions:
 
 	def compile_hessian_lagrangian(self):
 
-		def objective_hessian_lambda(H_shape, x_point_tuple, sigma, H_objective_indices):
-			data = ddL_J_dxbdxb_lambda(*x_point_tuple)
-			H = sparse.coo_matrix((data, (rows, cols)), shape=H_shape)
+		def endpoint_hessian_lambda(H_shape, x_point_tuple, sigma, lagrange, H_indices):
+			data = ddL_dxbdxb_lambda(*x_point_tuple, sigma, *lagrange)
+			H = sparse.coo_matrix((data, H_indices), shape=H_shape)
 			return H
 
-		def defect_hessian_lambda(H_shape, x_tuple):
-			H = sparse.csr_matrix(H_shape)
+		def continuous_hessian_lambda(H_shape, x_tuple, lagrange, H_indices_and_flags):
+			phase_data = ddL_dxdx_lambda(*x_tuple, *lagrange)
+			H = sparse.dok_matrix(H_shape)
+			for data, ((root_row_index, root_col_index), flag) in zip(phase_data, H_indices_and_flags):
+				if flag == 1:
+					for offset, datum in enumerate(data):
+						index = (root_row_index + offset, root_col_index + offset)
+						H[index] = datum
+				elif flag == 2:
+					for offset, datum in enumerate(data):
+						index = (root_row_index, root_col_index + offset)
+						H[index] = datum
+				else:
+					index = (root_row_index, root_col_index)
+					H[index] = np.sum(data)
 			return H
 
-		def path_hessian_lambda(H_shape, x_tuple):
-			H = sparse.csr_matrix(H_shape)
-			return H
-
-		def integral_hessian_lambda(H_shape, x_tuple):
-			H = sparse.csr_matrix(H_shape)
-			return H
-
-		def endpoint_hessian_lambda(H_shape, x_point_tuple):
-			H = sparse.csr_matrix(H_shape)
-			return H
-
-		def hessian_lambda(H_shape, x_tuple, x_point_tuple, sigma, H_objective_indices):
-			H = objective_hessian_lambda(H_shape, x_point_tuple, sigma, H_objective_indices)
-			H += defect_hessian_lambda(H_shape, x_tuple)
-			H += path_hessian_lambda(H_shape, x_tuple)
-			H += integral_hessian_lambda(H_shape, x_tuple)
-			H += endpoint_hessian_lambda(H_shape, x_point_tuple)
+		def hessian_lambda(H_shape, x_tuple, x_point_tuple, sigma, lagrange, H_continuous_indices, H_endpoint_indices):
+			H = endpoint_hessian_lambda(H_shape, x_point_tuple, sigma, lagrange, H_endpoint_indices)
+			H += continuous_hessian_lambda(H_shape, x_tuple, lagrange, H_continuous_indices)
 			return H
 
 		expr_graph = self.ocp_backend.expression_graph
 		L_sigma = expr_graph.lagrange_syms[0]
 		L_syms = expr_graph.lagrange_syms[1:]
 
-		ddL_J_dxbdxb_lambda, self.ddL_J_dxbdxb_nonzero_indices = numbafy_objective_hessian(
+		ddL_dxbdxb_lambda = numbafy_endpoint_hessian(
 			expression_graph=expr_graph,
-			expression=expr_graph.ddL_J_dxbdxb,
-			expression_nodes=expr_graph.ddL_J_dxbdxb_nodes,
-			precomputable_nodes=expr_graph.ddL_J_dxbdxb_precomputable,
-			dependent_tiers=expr_graph.ddL_J_dxbdxb_dependent_tiers,
+			expression=expr_graph.ddL_dxbdxb,
+			expression_nodes=expr_graph.ddL_dxbdxb_nodes,
+			precomputable_nodes=expr_graph.ddL_dxbdxb_precomputable,
+			dependent_tiers=expr_graph.ddL_dxbdxb_dependent_tiers,
 			parameters=self.ocp_backend.x_point_vars,
 			objective_factor=L_sigma,
-			)
-
-		ddL_zeta_dxdx_lambda, self.ddL_zeta_dxdx_nonzero_indices = numbafy_defect_hessian(
-			expression_graph=expr_graph,
-			expression=expr_graph.ddL_zeta_dxdx,
-			expression_nodes=expr_graph.ddL_zeta_dxdx_nodes,
-			precomputable_nodes=expr_graph.ddL_zeta_dxdx_precomputable,
-			dependent_tiers=expr_graph.ddL_zeta_dxdx_dependent_tiers,
-			parameters=self.ocp_backend.x_vars,
 			lagrange_multipliers=L_syms,
 			)
 
+		ddL_dxdx_lambda = numbafy_continuous_hessian(
+			expression_graph=expr_graph,
+			expression=expr_graph.ddL_dxdx,
+			expression_nodes=expr_graph.ddL_dxdx_nodes,
+			precomputable_nodes=expr_graph.ddL_dxdx_precomputable,
+			dependent_tiers=expr_graph.ddL_dxdx_dependent_tiers,
+			parameters=self.ocp_backend.x_vars,
+			lagrange_multipliers=L_syms,
+			summing_nodes=expr_graph.ddL_dxdx_sum_nodes,
+			)
 
+		# print(expr_graph.ddL_dxdx.entries)
+		# input()
 
-		# ddL_objective_dxbdxb_phase_lambdas = []
-		# ddL_J_dxbdxb_expression_nodes = np.array(expr_graph.ddL_J_dxbdxb_nodes, dtype=object).reshape(expr_graph.ddL_J_dxbdxb.shape)
-		# for p, p_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_endpoint_variable_slices):
-		# 	ddL_J_dxbdxb_phase = expr_graph.ddL_J_dxbdxb[p_slice, p_slice]
-		# 	ddL_J_dxbdxb_phase_nodes = ddL_J_dxbdxb_expression_nodes[p_slice, p_slice].flatten().tolist()
-		# 	ddL_objective_dxbdxb_lambda = numbafy(
-		# 		expression_graph=expr_graph,
-		# 		expression=ddL_J_dxbdxb_phase,
-		# 		expression_nodes=ddL_J_dxbdxb_phase_nodes,
-		# 		precomputable_nodes=expr_graph.ddL_J_dxbdxb_precomputable,
-		# 		dependent_tiers=expr_graph.ddL_J_dxbdxb_dependent_tiers,
-		# 		parameters=self._x_b_vars,
-		# 		lagrange_parameters=L_sigma,
-		# 		return_dims=2,
-		# 		endpoint=True,
-		# 		N_arg=True,
-		# 		ocp_num_vars=p.num_each_vars,
-		# 		)
-		# 	ddL_objective_dxbdxb_phase_lambdas.append(dJ_dxb_phase_lambda)
-
-		# 	ddL_J_dxbdxb_phase_nodes = ddL_J_dxbdxb_expression_nodes[p_slice, p_slice].flatten().tolist()
-		# ddL_J_dxbdxb_endpoint_lambda = numbafy(
-		# 	expression_graph=expr_graph,
-		# 	expression=expr_graph.ddL_J_dxbdxb[self.ocp_backend.endpoint_variable_slice, self.ocp_backend.endpoint_variable_slice],
-		# 	expression_nodes=ddL_J_dxbdxb_expression_nodes[, self.ocp_backend.endpoint_variable_slice].flatten().tolist()
-		# 	precomputable_nodes=expr_graph.dJ_dxb_precomputable,
-		# 	dependent_tiers=expr_graph.dJ_dxb_dependent_tiers,
-		# 	parameters=self.ocp_backend.x_point_vars,
-		# 	return_dims=1, 
-		# 	N_arg=False, 
-		# 	endpoint=False, 
-		# 	)
 
 		self.H_lambda = hessian_lambda
 		print('Hessian function compiled.')
-		# print('\n\n\n')
-		# raise NotImplementedError
 
-	# def _compile_hessian_lagrangian(self):
-
-	# 	def H_point_lambda(ddL_dxbdxb):
-	# 		vals = np.tril(ddL_dxbdxb).flatten()
-	# 		H = vals[vals != 0]
-	# 		return H
-
-	# 	def H_defect_lambda(ddL_dxdx, A, sum_flag):
-	# 		H = np.array([])
-	# 		for matrix, flag in zip(ddL_dxdx, sum_flag):
-	# 			if flag:
-	# 				vals = A.multiply(matrix).sum().flatten()
-	# 			else:
-	# 				vals = np.array(A.multiply(matrix).sum(axis=0)).flatten()
-	# 			H = np.concatenate([H, vals])
-	# 		return H
-
-	# 	def H_path_lambda(ddL_dxdx):
-	# 		H = np.array([])
-	# 		for matrix in ddL_dxdx:
-	# 			vals = np.diag(matrix).flatten()
-	# 			H = np.concatenate([H, vals])
-	# 		return H
-
-	# 	def H_integral_lambda(ddL_dxdx, W, sum_flag):
-	# 		H = np.array([])
-	# 		for row, flag in zip(ddL_dxdx, sum_flag):
-	# 			if flag:
-	# 				vals = np.array([-np.dot(W, row)])
-	# 			else:
-	# 				vals = -np.multiply(W, row).flatten()
-	# 			H = np.concatenate([H, vals])
-	# 		return H
-
-	# 	def H_lambda(x_tuple, x_tuple_point, sigma, zeta_lagrange, 
-	# 		gamma_lagrange, rho_lagrange, beta_lagrange, N, num_nonzero, 
-	# 		objective_index, defect_index, path_index, integral_index,
-	# 		endpoint_index, A, W, defect_sum_flag, integral_sum_flag):
-
-	# 		ddL_objective_dxbdxb = ddL_objective_dxbdxb_lambda(*x_tuple_point, 
-	# 			sigma, N)
-	# 		ddL_defect_dxdx = ddL_defect_dxdx_lambda(*x_tuple, 
-	# 			*zeta_lagrange, N)
-	# 		ddL_path_dxdx = ddL_path_dxdx_lambda(*x_tuple, *gamma_lagrange, N)
-	# 		ddL_integral_dxdx = ddL_integral_dxdx_lambda(*x_tuple,
-	# 			*rho_lagrange, N)
-	# 		ddL_endpoint_dxbdxb = ddL_endpoint_dxbdxb_lambda(*x_tuple_point, 
-	# 			*beta_lagrange, N)
-
-	# 		H = np.zeros(num_nonzero)
-
-	# 		H[objective_index] += H_point_lambda(ddL_objective_dxbdxb)
-	# 		H[defect_index] += H_defect_lambda(ddL_defect_dxdx, A, 
-	# 			defect_sum_flag)
-	# 		if self.number_path_constraints and path_index:
-	# 			H[path_index] += H_path_lambda(ddL_path_dxdx)
-	# 		H[integral_index] += H_integral_lambda(ddL_integral_dxdx, W, 
-	# 			integral_sum_flag)
-	# 		H[endpoint_index] += H_point_lambda(ddL_endpoint_dxbdxb)
-
-	# 		return H
-
-	# 	expr_graph = self._expression_graph
-	# 	L_sigma = expr_graph.lagrange_syms[0]
-	# 	L_syms = expr_graph.lagrange_syms[1:]
-
-	# 	ddL_objective_dxbdxb_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.ddL_J_dxbdxb,
-	# 		expression_nodes=expr_graph.ddL_J_dxbdxb_nodes,
-	# 		precomputable_nodes=expr_graph.ddL_J_dxbdxb_precomputable,
-	# 		dependent_tiers=expr_graph.ddL_J_dxbdxb_dependent_tiers,
-	# 		parameters=self._x_b_vars,
-	# 		lagrange_parameters=L_sigma,
-	# 		return_dims=2,
-	# 		endpoint=True,
-	# 		N_arg=True,
-	# 		ocp_num_vars=self._num_vars_tuple,
-	# 		)
-
-	# 	ddL_defect_dxdx_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.ddL_zeta_dxdx,
-	# 		expression_nodes=expr_graph.ddL_zeta_dxdx_nodes,
-	# 		precomputable_nodes=expr_graph.ddL_zeta_dxdx_precomputable,
-	# 		dependent_tiers=expr_graph.ddL_zeta_dxdx_dependent_tiers,
-	# 		parameters=self._x_vars,
-	# 		lagrange_parameters=L_syms[self._c_defect_slice],
-	# 		return_dims=2,
-	# 		N_arg=True,
-	# 		ocp_num_vars=self._num_vars_tuple,
-	# 		)
-
-	# 	ddL_path_dxdx_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.ddL_gamma_dxdx,
-	# 		expression_nodes=expr_graph.ddL_gamma_dxdx_nodes,
-	# 		precomputable_nodes=expr_graph.ddL_gamma_dxdx_precomputable,
-	# 		dependent_tiers=expr_graph.ddL_gamma_dxdx_dependent_tiers,
-	# 		parameters=self._x_vars,
-	# 		lagrange_parameters=L_syms[self._c_path_slice],
-	# 		return_dims=2,
-	# 		N_arg=True,
-	# 		ocp_num_vars=self._num_vars_tuple,
-	# 		)
-
-	# 	ddL_integral_dxdx_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.ddL_rho_dxdx,
-	# 		expression_nodes=expr_graph.ddL_rho_dxdx_nodes,
-	# 		precomputable_nodes=expr_graph.ddL_rho_dxdx_precomputable,
-	# 		dependent_tiers=expr_graph.ddL_rho_dxdx_dependent_tiers,
-	# 		parameters=self._x_vars,
-	# 		lagrange_parameters=L_syms[self._c_integral_slice],
-	# 		return_dims=2,
-	# 		N_arg=True,
-	# 		ocp_num_vars=self._num_vars_tuple,
-	# 		)
-
-	# 	ddL_endpoint_dxbdxb_lambda = numbafy(
-	# 		expression_graph=expr_graph,
-	# 		expression=expr_graph.ddL_b_dxbdxb,
-	# 		expression_nodes=expr_graph.ddL_b_dxbdxb_nodes,
-	# 		precomputable_nodes=expr_graph.ddL_b_dxbdxb_precomputable,
-	# 		dependent_tiers=expr_graph.ddL_b_dxbdxb_dependent_tiers,
-	# 		parameters=self._x_b_vars,
-	# 		lagrange_parameters=L_syms[self._c_endpoint_slice],
-	# 		return_dims=2,
-	# 		endpoint=True,
-	# 		N_arg=True,
-	# 		ocp_num_vars=self._num_vars_tuple,
-	# 		)
-
-	# 	ocp_defect_slice = self._c_defect_slice
-	# 	ocp_path_slice = self._c_path_slice
-	# 	ocp_integral_slice = self._c_integral_slice
-	# 	ocp_endpoint_slice = self._c_endpoint_slice
-
-	# 	self._H_lambda = H_lambda
-	# 	print('Hessian function compiled.')
-
-	# 	# print(self._x_vars)
-	# 	# print(expr_graph.ddL_gamma_dxdx)
-	# 	# print('\n\n\n')
-	# 	# raise NotImplementedError
 

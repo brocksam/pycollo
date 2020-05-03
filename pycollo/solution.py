@@ -482,7 +482,7 @@ class Solution:
 					if subdivide_group != []:
 						new_mesh_sec_sizes, new_num_mesh_sec_nodes = subdivide_sections(new_mesh_sec_sizes, new_num_mesh_sec_nodes, subdivide_group, reduction_tolerance)
 						subdivide_group = []
-					merge_group.append([P, h, p])
+					merge_group.append([P, h, N_k])
 				else:
 					if merge_group != []:
 						new_mesh_sec_sizes, new_num_mesh_sec_nodes = merge_sections(new_mesh_sec_sizes, new_num_mesh_sec_nodes, merge_group)

@@ -73,10 +73,11 @@ class EndpointBounds(BoundsABC):
 			bnds_info)
 
 	def _process_endpoint_cons(self):
+		num_c_endpoint = self.optimal_control_problem.number_endpoint_constraints
 		user_bnds = self.endpoint_constraints
-		user_syms = [None] * self._backend.num_c_endpoint
+		user_syms = [None] * num_c_endpoint
 		bnds_type = "endpoint constraints"
-		num_expected = self._backend.num_c_endpoint
+		num_expected = num_c_endpoint
 		bnds_info = BoundsInfo(
 			user_bnds, user_syms, bnds_type, num_expected, False)
 		self._c_endpoint_bnds, _ = self._process_single_type_of_values(

@@ -69,24 +69,7 @@ problem.auxiliary_data = {g: -9.81, d0: 0.5, k0: 1/12, T0min: -30, T0max: 30,
 problem.bounds.parameter_variables = {m0: [1, 2], p0: [1, 2]}
 problem.guess.parameter_variables = np.array([1.5, 1.5])
 
-
-problem.settings.max_mesh_iterations = 10
 problem.settings.display_mesh_result_graph = True
-problem.settings.nlp_tolerance = 10e-7
-problem.settings.mesh_tolerance = 10e-6
-problem.settings.maximise_objective = False
-problem.settings.backend = "pycollo"
-problem.settings.scaling_method = "none"
-problem.settings.assume_inf_bounds = False
-problem.settings.inf_value = 1e16
-problem.settings.check_nlp_functions = False
-problem.settings.collocation_points_min = 2
-# problem.settings.collocation_points_max = 8
-problem.settings.derivative_level = 1
-# phase.mesh.number_mesh_sections = 2
-# phase.mesh.number_mesh_section_nodes = [2, 3]
-# phase.mesh.mesh_section_sizes = [1/2, 1/2]
-
 
 # Solve
 problem.initialise()

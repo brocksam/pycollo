@@ -51,17 +51,6 @@ phase.guess.state_variables = np.array([[x0, xf], [y0, yf], [v0, v0]])
 phase.guess.control_variables = np.array([[0, umax]])
 
 problem.settings.display_mesh_result_graph = True
-problem.settings.scaling_method = "none"
-problem.settings.derivative_level = 2
-# problem.settings.check_nlp_functions = True
-# problem.settings.dump_nlp_check_json = "pycollo"
-# problem.settings.collocation_points_min = 2
-# problem.settings.collocation_points_max = 8
-problem.settings.max_mesh_iterations = 10
-
-# phase.mesh.number_mesh_sections = 3
-# phase.mesh.mesh_section_sizes = [1/3, 1/3, 1/3]
-# phase.mesh.number_mesh_section_nodes = [2, 3, 2]
 
 problem.initialise()
 problem.solve()

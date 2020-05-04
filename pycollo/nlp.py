@@ -83,13 +83,19 @@ def initialise_nlp_backend(iteration):
 	nlp_backend.addOption('tol', settings.nlp_tolerance)
 	nlp_backend.addOption('max_iter', settings.max_nlp_iterations)
 	nlp_backend.addOption('print_level', 5)
-	# nlp_backend.addOption('nlp_scaling_method', 'user-scaling')
+	nlp_backend.addOption('nlp_scaling_method', 'user-scaling')
 
-	# nlp_backend.setProblemScaling(
-	# 	self.scaling.obj_scaling, 
-	# 	self.scaling.x_scaling,
-	# 	self.scaling.c_scaling,
-	# 	)
+	nlp_backend.setProblemScaling(
+		iteration.scaling.J_scale, 
+		iteration.scaling.x_scales,
+		iteration.scaling.c_scales,
+		)
+
+	# print(iteration.scaling.J_scale)
+	# print(iteration.scaling.x_scales)
+	# print(iteration.scaling.c_scales)
+	# input()
+
 	return nlp_backend
 
 

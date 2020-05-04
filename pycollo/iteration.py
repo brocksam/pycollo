@@ -98,10 +98,11 @@ class Iteration:
 		self.console_out_initialising_iteration()
 		self.interpolate_guess_to_mesh(self.prev_guess)
 		self.create_variable_constraint_numbers_slices()
+		self.initialise_scaling()
 		self.generate_nlp_lambdas()
 		self.generate_bounds()
 		self.generate_scaling()
-		self.reset_bounds()
+		self.shift_scale_variable_bounds()
 		self.initialise_nlp()
 		self.check_nlp_functions()
 
@@ -114,7 +115,8 @@ class Iteration:
 		def interpolate_to_new_mesh(prev_tau, tau, num_vars, prev, N):
 			new_guess = np.empty((num_vars, N))
 			for index, row in enumerate(prev):
-				interp_func = interpolate.interp1d(prev_tau, row)
+				interp_func = interpolate.interp1d(prev_tau, row, 
+					bounds_error=False, fill_value="extrapolate")
 				new_guess[index, :] = interp_func(tau)
 			return new_guess
 
@@ -188,10 +190,6 @@ class Iteration:
 			total += num_x
 		self.s_slice = slice(self.num_x - self.num_s, self.num_x)
 
-		# self._yu_slice = slice(self._y_slice.start, self._u_slice.stop)
-		# self._qts_slice = slice(self._q_slice.start, self._s_slice.stop)
-		# self._yu_qts_split = self._yu_slice.stop
-
 		# # Constraints
 		self.num_c_defect_per_phase = []
 		self.num_c_path_per_phase = []
@@ -222,9 +220,6 @@ class Iteration:
 			self.c_lambda_dy_slices.append(dy_slice)
 			self.c_lambda_p_slices.append(p_slice)
 			self.c_lambda_g_slices.append(g_slice)
-		# self._c_lambda_dy_slice = slice(0, self._num_y)
-		# self._c_lambda_p_slice = slice(self._c_lambda_dy_slice.stop, self._c_lambda_dy_slice.stop + self._num_c_path*self._mesh._N)
-		# self._c_lambda_g_slice = slice(self._c_lambda_p_slice.stop, self._c_lambda_p_slice.stop + self._num_c_integral*self._mesh._N)
 
 		self.c_defect_slices = []
 		self.c_path_slices = []
@@ -243,10 +238,10 @@ class Iteration:
 			total += num_c
 		self.c_endpoint_slice = slice(self.num_c - self.num_c_endpoint, self.num_c)
 
-		# self._c_defect_slice = slice(0, self._num_c_defect)
-		# self._c_path_slice = slice(self._c_defect_slice.stop, self._c_defect_slice.stop + self._num_c_path)
-		# self._c_integral_slice = slice(self._c_path_slice.stop, self._c_path_slice.stop + self._num_c_integral)
-		# self._c_boundary_slice = slice(self._c_integral_slice.stop, self._num_c)
+	def initialise_scaling(self):
+		self.scaling = IterationScaling(self)
+		msg = "Scaling initialised."
+		console_out(msg)
 
 	def generate_nlp_lambdas(self):
 
@@ -262,18 +257,17 @@ class Iteration:
 
 	def generate_unscale_variables_lambda(self):
 
-		def unscale_x(x):
-			# x = self.scaling.x_stretch*(x - self.scaling.x_shift)
-			return x
+		def shift_x(x):
+			return x + self.scaling.x_shifts
 
-		self._unscale_x = unscale_x
+		self._shift_x = shift_x
 		msg = "Variable unscale lambda generated successfully."
 		console_out(msg)
 
 	def generate_continuous_variables_reshape_lambda(self):
 
 		def reshape_x(x):
-			x = self._unscale_x(x)
+			x = self._shift_x(x)
 			x_tuple = self.backend.compiled_functions.x_reshape_lambda(
 				x, 
 				self.y_slices, 
@@ -304,7 +298,7 @@ class Iteration:
 		self._x_endpoint_indices.extend(list(range(self.s_slice.start, self.s_slice.stop)))
 
 		def reshape_x_point(x):
-			x = self._unscale_x(x)
+			x = self._shift_x(x)
 			return self.backend.compiled_functions.x_reshape_lambda_point(x, self._x_endpoint_indices)
 
 		self._reshape_x_point = reshape_x_point
@@ -435,9 +429,6 @@ class Iteration:
 			x_sparsity_detect = np.full(self.num_x, np.nan)
 			lagrange_sparsity_detect = np.full(self.num_c, np.nan)
 			obj_factor_sparsity_detect = np.nan
-			# x_sparsity_detect = np.array(range(1, self.num_x+1))
-			# lagrange_sparsity_detect = np.array(range(1, self.num_c+1))
-			# obj_factor_sparsity_detect = 2
 			
 			H_sparsity_detect = hessian(x_sparsity_detect, obj_factor_sparsity_detect, lagrange_sparsity_detect).tocoo()
 			self._H_nonzero_row = H_sparsity_detect.row
@@ -592,14 +583,13 @@ class Iteration:
 		self._c_bnd_u = bnds[:, 1]
 
 	def generate_scaling(self):
-		self.scaling = IterationScaling(self)
 		self.scaling._generate()
 		msg = "Scaling generated."
 		console_out(msg)
 
-	def reset_bounds(self):
-		self._x_bnd_l = (self._x_bnd_l - self.scaling.x_shift) * self.scaling.x_scaling
-		self._x_bnd_u = (self._x_bnd_u - self.scaling.x_shift) * self.scaling.x_scaling
+	def shift_scale_variable_bounds(self):
+		self._x_bnd_l = self._x_bnd_l - self.scaling.x_shifts
+		self._x_bnd_u = self._x_bnd_u - self.scaling.x_shifts
 
 	def initialise_nlp(self):
 		self._nlp_problem = initialise_nlp_backend(self)
@@ -609,17 +599,17 @@ class Iteration:
 	def check_nlp_functions(self):
 		if self.backend.ocp.settings.check_nlp_functions:
 			print('\n\n\n')
-			# x_data = np.array(range(1, self.num_x + 1), dtype=float)
-			x_data = np.ones(self.num_x)
+			x_data = np.array(range(1, self.num_x + 1), dtype=float)
+			# x_data = np.ones(self.num_x)
 			
 			print(f"x Variables:\n{self.backend.x_vars}\n")
 			print(f"x Data:\n{x_data}\n")
 
 			if self.optimal_control_problem.settings.derivative_level == 2:
-				# lagrange = np.array(range(1, self.num_c + 1), dtype=float)
-				lagrange = np.ones(self.num_c)
-				# obj_factor = 2.0
-				obj_factor = 1
+				lagrange = np.array(range(1, self.num_c + 1), dtype=float)
+				# lagrange = np.ones(self.num_c)
+				obj_factor = 2.0
+				# obj_factor = 1
 				print(f"Objective Factor:\n{obj_factor}\n")
 				print(f"Lagrange Multipliers:\n{lagrange}\n")
 
@@ -681,18 +671,6 @@ class Iteration:
 
 				with open(filename_full, "w", encoding="utf-8") as file:
 					json.dump(data, file, ensure_ascii=False, indent=4)
-
-			# if self._ocp.settings.derivative_level == 2:
-
-			# 	H_struct = self._hessian_structure_lambda()
-			# 	print(f"H Structure:\n{H_struct}\n")
-
-			# 	H = self._hessian_lambda(x_data, lagrange, obj_factor)
-			# 	print(f"H:\n{H}\n")
-
-			# 	sH = sparse.coo_matrix((H, (H_struct[0], H_struct[1])), shape=self._H_shape)
-			# 	sH = sparse.coo_matrix(np.tril(sH.toarray()))
-			# 	print(sH)
 			
 			print('\n\n\n')
 			raise NotImplementedError
@@ -702,7 +680,9 @@ class Iteration:
 		time_start = time.time()
 		nlp_time_start = timer()
 
-		nlp_solution, nlp_solution_info = self._nlp_problem.solve(self.guess_x)
+		x_guess = self.guess_x - self.scaling.x_shifts
+
+		nlp_solution, nlp_solution_info = self._nlp_problem.solve(x_guess)
 
 		nlp_time_stop = timer()
 		time_stop = time.time()

@@ -232,6 +232,21 @@ class PycolloReciprocal(PycolloOp):
 		return derivatives
 
 
+class PycolloSquareReciprocal(PycolloOp):
+
+	SYMPY_OP = sym.Pow
+
+	@cachedproperty
+	def derivatives(self):
+		if self.node.is_precomputable:
+			return {}
+		sub_1 = sym.Pow(self.node.parent_nodes[0].symbol, SYMPY_NEG_THREE)
+		derivative = sym.Mul(SYMPY_NEG_TWO, sub_1)
+		derivative_node = self.node.new_node(derivative, self.node.graph)
+		derivatives = {self.node.parent_nodes[0]: derivative_node}
+		return derivatives
+
+
 class PycolloExp(PycolloOp):
 
 	SYMPY_OP = sym.exp
@@ -240,7 +255,7 @@ class PycolloExp(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		derivatives = {self.node.parent_nodes[0]: self.node.parent_nodes[0]}
+		derivatives = {self.node.parent_nodes[0]: self.node}
 		return derivatives
 
 
@@ -709,6 +724,7 @@ PYCOLLO_MUL_DISPATCHER = {
 
 PYCOLLO_POW_DISPATCHER = {
 	SYMPY_NEG_ONE: PycolloReciprocal,
+	SYMPY_NEG_TWO: PycolloSquareReciprocal,
 	SYMPY_TWO: PycolloSquare,
 	SYMPY_THREE: PycolloCube,
 	SYMPY_HALF: PycolloSquareroot,

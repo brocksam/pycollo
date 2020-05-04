@@ -303,8 +303,6 @@ class Pycollo(BackendABC):
 		self.preprocess_user_problem_aux_data()
 		self.preprocess_phase_backends()
 		self.collect_variables_substitutions()
-		self.preprocess_objective_function()
-		self.preprocess_point_constraints()
 		self.console_out_variables_constraints_preprocessed()
 		self.create_expression_graph()
 
@@ -416,14 +414,6 @@ class Pycollo(BackendABC):
 			*[p.all_subs_mappings for p in self.p])
 		self.aux_data = {phase_sym: user_eqn.xreplace(self.all_subs_mappings)
 			for phase_sym, user_eqn in self.aux_data_phase_independent.items()}
-
-	def preprocess_objective_function(self):
-		self.J = self.ocp.objective_function.xreplace(self.all_subs_mappings)
-
-	def preprocess_point_constraints(self):
-		self.beta = tuple(b_con.xreplace(self.all_subs_mappings)
-			for b_con in self.ocp.endpoint_constraints)
-		self.num_c_endpoint = self.ocp.number_endpoint_constraints
 		
 	def console_out_variables_constraints_preprocessed(self):
 		msg = "Pycollo variables and constraints preprocessed."
@@ -431,8 +421,8 @@ class Pycollo(BackendABC):
 
 	def create_expression_graph(self):
 		variables = self.collect_variables()
-		objective = self.J
-		constraints = self.collect_constraints()
+		objective = None
+		constraints = None
 		aux_data = self.collect_aux_data()
 		self.expression_graph_full = ExpressionGraph(self, variables, objective, 
 			constraints, aux_data)
@@ -453,9 +443,109 @@ class Pycollo(BackendABC):
 			self.phase_variable_full_slices.append(p_slice)
 		return variables
 
+	def collect_aux_data(self):
+		aux_data = dict_merge(self.aux_data, *(p.aux_data for p in self.p))
+		return aux_data
+
+	def recollect_variables_and_slices(self):
+		self.recollect_variables()
+		self.process_objective_function()
+		self.process_point_constraints()
+		self.build_expression_graph()
+
+	def recollect_variables(self):
+		for p in self.p:
+			p.collect_pycollo_variables()
+
+		self.s_vars = tuple(np.array(self.s_vars_full)[self.ocp.bounds._s_needed].tolist())
+		self.num_s_vars = len(self.s_vars)
+
+		continuous_vars = (tuple(itertools.chain.from_iterable(p.x_vars 
+			for p in self.p)) + self.s_vars)
+		self.x_vars = continuous_vars
+		self.num_vars = len(continuous_vars)
+		endpoint_vars = (tuple(itertools.chain.from_iterable(p.x_point_vars 
+			for p in self.p)) + self.s_vars)
+		self.x_point_vars = endpoint_vars
+		self.num_point_vars = len(endpoint_vars)
+		self.variables = (continuous_vars, endpoint_vars)
+
+		self.phase_y_vars_slices = []
+		self.phase_u_vars_slices = []
+		self.phase_q_vars_slices = []
+		self.phase_t_vars_slices = []
+		self.phase_variable_slices = []
+		phase_start = 0
+		for p in self.p:
+			start = phase_start
+			stop = start + p.num_y_vars
+			p_slice = slice(start, stop)
+			self.phase_y_vars_slices.append(p_slice)
+			start = stop
+			stop = start + p.num_u_vars
+			p_slice = slice(start, stop)
+			self.phase_u_vars_slices.append(p_slice)
+			start = stop
+			stop = start + p.num_q_vars
+			p_slice = slice(start, stop)
+			self.phase_q_vars_slices.append(p_slice)
+			start = stop
+			stop = start + p.num_t_vars
+			p_slice = slice(start, stop)
+			self.phase_t_vars_slices.append(p_slice)
+			start = stop
+			phase_stop = phase_start + p.num_vars
+			p_slice = slice(phase_start, phase_stop)
+			self.phase_variable_slices.append(p_slice)
+			phase_start = phase_stop
+		self.s_vars_slice = slice(self.num_vars - self.num_s_vars, self.num_vars)
+		self.variable_slice = self.s_vars_slice
+
+		self.phase_endpoint_variable_slices = []
+		start = 0
+		for p in self.p:
+			stop = start + p.num_point_vars
+			p_slice = slice(start, stop)
+			start = stop
+			self.phase_endpoint_variable_slices.append(p_slice)
+		self.endpoint_variable_slice = slice(self.num_point_vars - self.num_s_vars, self.num_point_vars)
+		
+	def process_objective_function(self):
+		self.J = self.ocp.objective_function.xreplace(self.all_subs_mappings)
+
+	def process_point_constraints(self):
+		all_y_vars = []
+		all_y_t0_vars = []
+		all_y_tF_vars = []
+		for p in self.p:
+			all_y_vars.extend(list(p.y_vars))
+			all_y_t0_vars.extend(list(p.y_t0_vars))
+			all_y_tF_vars.extend(list(p.y_tF_vars))
+		all_y_vars_set = set(all_y_vars)
+		all_y_bnds = []
+		for var, x_bnds in zip(self.x_vars, self.bounds.x_bnds):
+			if var in all_y_vars_set:
+				all_y_bnds.append(x_bnds)
+		endpoint_state_constraints = []
+		endpoint_state_constraints_bounds = []
+		for y_t0_var, y_tF_var, y_bnds, y_t0_bnds, y_tF_bnds in zip(
+				all_y_t0_vars, all_y_tF_vars, all_y_bnds, self.bounds.y_t0_bnds, self.bounds.y_tF_bnds):
+			if np.any(~np.isclose(np.array(y_t0_bnds), np.array(y_bnds))):
+				endpoint_state_constraints.append(y_t0_var)
+				endpoint_state_constraints_bounds.append(y_t0_bnds)
+			if np.any(~np.isclose(np.array(y_tF_bnds), np.array(y_bnds))):
+				endpoint_state_constraints.append(y_tF_var)
+				endpoint_state_constraints_bounds.append(y_tF_bnds)
+		self.y_beta = tuple(endpoint_state_constraints)
+		self.bounds.c_y_bnds = endpoint_state_constraints_bounds
+		self.beta = tuple(b_con.xreplace(self.all_subs_mappings)
+			for b_con in self.ocp.endpoint_constraints)
+		self.num_c_endpoint = self.ocp.number_endpoint_constraints
+
 	def collect_constraints(self):
 		constraints = (tuple(itertools.chain.from_iterable(p.c 
 			for p in self.p)) + self.beta)
+
 		self.num_c = len(constraints)
 		self.phase_defect_constraint_slices = []
 		self.phase_path_constraint_slices = []
@@ -489,48 +579,8 @@ class Pycollo(BackendABC):
 		self.c_endpoint_slice = slice(start, stop)
 		return constraints
 
-	def collect_aux_data(self):
-		aux_data = dict_merge(self.aux_data, *(p.aux_data for p in self.p))
-		return aux_data
-
-	def recollect_variables_and_slices(self):
-		self.recollect_variables()
-
-	def recollect_variables(self):
-		for p in self.p:
-			p.collect_pycollo_variables()
-
-		self.s_vars = tuple(np.array(self.s_vars_full)[self.ocp.bounds._s_needed].tolist())
-		self.num_s_vars = len(self.s_vars)
-
-		continuous_vars = (tuple(itertools.chain.from_iterable(p.x_vars 
-			for p in self.p)) + self.s_vars)
-		self.x_vars = continuous_vars
-		self.num_vars = len(continuous_vars)
-		endpoint_vars = (tuple(itertools.chain.from_iterable(p.x_point_vars 
-			for p in self.p)) + self.s_vars)
-		self.x_point_vars = endpoint_vars
-		self.num_point_vars = len(endpoint_vars)
-		variables = (continuous_vars, endpoint_vars)
-
-		self.phase_variable_slices = []
-		start = 0
-		for p in self.p:
-			stop = start + p.num_vars
-			p_slice = slice(start, stop)
-			start = stop
-			self.phase_variable_slices.append(p_slice)
-		self.variable_slice = slice(self.num_vars - self.num_s_vars, self.num_vars)
-
-		self.phase_endpoint_variable_slices = []
-		start = 0
-		for p in self.p:
-			stop = start + p.num_point_vars
-			p_slice = slice(start, stop)
-			start = stop
-			self.phase_endpoint_variable_slices.append(p_slice)
-		self.endpoint_variable_slice = slice(self.num_point_vars - self.num_s_vars, self.num_point_vars)
-
+	def build_expression_graph(self):
+		variables = self.variables
 		objective = self.J
 		constraints = self.collect_constraints()
 		aux_data = dict_merge(self.aux_data, *(p.aux_data for p in self.p), self.bounds.aux_data)

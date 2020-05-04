@@ -266,9 +266,9 @@ class Mesh:
 		N_K = p.number_mesh_section_nodes
 
 		block_starts = mesh_index_boundaries[:-1]
-		num_c_boundary_per_y = int(mesh_index_boundaries[-1])
+		num_c_defect_per_y = int(mesh_index_boundaries[-1])
 		num_cols = mesh_index_boundaries[-1] + 1
-		matrix_dims = (num_c_boundary_per_y, num_cols)
+		matrix_dims = (num_c_defect_per_y, num_cols)
 
 		W_matrix = np.zeros(num_cols)
 
@@ -318,6 +318,6 @@ class Mesh:
 		A_index_array = np.array(A_index_array)
 		D_index_array = np.array(D_index_array)
 
-		data = (tau, h, N, K, mesh_index_boundaries, h_K, N_K, num_c_boundary_per_y, W_matrix, sA_matrix, sD_matrix, A_index_array, D_index_array)
+		data = (tau, h, N, K, mesh_index_boundaries, h_K, N_K, num_c_defect_per_y, W_matrix, sA_matrix, sD_matrix, A_index_array, D_index_array)
 		return data
 

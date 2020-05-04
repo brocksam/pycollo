@@ -65,13 +65,13 @@ class Solution:
 
 	def _process_ipopt_solution(self):
 		self._phase_data = []
+		x = self._it._shift_x(self._x)
 		for tau, time_guess, phase, c_continuous_lambda, y_slice, u_slice, q_slice, t_slice, dy_slice, N in zip(self._tau, self._it.guess_time, self._backend.p, self._backend.compiled_functions.c_continuous_lambdas, self._it.y_slices, self._it.u_slices, self._it.q_slices, self._it.t_slices, self._it.c_lambda_dy_slices, self._it.mesh.N):
-			y = self._x[y_slice].reshape(phase.num_y_vars, -1) if phase.num_y_vars else np.array([], dtype=float)
+			y = x[y_slice].reshape(phase.num_y_vars, -1) if phase.num_y_vars else np.array([], dtype=float)
 			dy = c_continuous_lambda(*self._it._reshape_x(self._x), N)[dy_slice].reshape((-1, N)) if phase.num_y_vars else np.array([], dtype=float)
-			u = self._x[u_slice].reshape(phase.num_u_vars, -1) if phase.num_u_vars else np.array([], dtype=float)
-			q = self._x[q_slice]
-			t = self._x[t_slice]
-			
+			u = x[u_slice].reshape(phase.num_u_vars, -1) if phase.num_u_vars else np.array([], dtype=float)
+			q = x[q_slice]
+			t = x[t_slice]
 			t0 = t[0] if phase.ocp_phase.bounds._t_needed[0] else time_guess[0]
 			tF = t[-1] if phase.ocp_phase.bounds._t_needed[1] else time_guess[-1]
 			T = tF - t0
@@ -92,7 +92,7 @@ class Solution:
 		self._stretch = tuple(p.stretch for p in self._phase_data)
 		self._shift = tuple(p.shift for p in self._phase_data)
 		self._time = tuple(p.time for p in self._phase_data)
-		self._s = self._x[self._it.s_slice]
+		self._s = x[self._it.s_slice]
 		self._interpolate_solution()
 
 	def _process_snopt_solution(self, solution):
@@ -109,11 +109,12 @@ class Solution:
 			dy_polys = np.empty((p.num_y_vars, K), dtype=object)
 			u_polys = np.empty((p.num_u_vars, K), dtype=object)
 
-			for i_y, state_deriv in enumerate(p_data.dy):
+			for i_y, (state, state_deriv) in enumerate(zip(p_data.y, p_data.dy)):
 				for i_k, (i_start, i_stop) in enumerate(zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])):
 					t_k = p_data.tau[i_start:i_stop+1]
 					dy_k = state_deriv[i_start:i_stop+1]
 					dy_poly = np.polynomial.Polynomial.fit(t_k, dy_k, deg=N_K[i_k]-1, window=[0, 1])
+					dy_polys[i_y, i_k] = dy_poly
 					scale_factor = self._it.mesh._PERIOD/p_data.T
 					y_poly = dy_poly.integ(k=scale_factor*p_data.y[i_y, i_start])
 					y_poly = np.polynomial.Polynomial(coef=y_poly.coef/scale_factor, window=y_poly.window, domain=y_poly.domain)
@@ -314,11 +315,20 @@ class Solution:
 		y_tildes = []
 		u_tildes = []
 		x_tilde_full = []
-		for p, p_data in zip(self._backend.p, self._phase_data):
+		zip_args = zip(self._backend.p,
+			self._phase_data,
+			self._backend.phase_y_vars_slices,
+			self._backend.phase_u_vars_slices,
+			self._backend.phase_q_vars_slices,
+			self._backend.phase_t_vars_slices,
+			self._ph_mesh.N)
+		for p, p_data, ocp_y_slice, ocp_u_slice, ocp_q_slice, ocp_t_slice, N in zip_args:
 			y_tilde, u_tilde = self._get_y_u_tilde(p, p_data)
 			y_tildes.append(y_tilde)
 			u_tildes.append(u_tilde)
-			x_tilde_full = x_tilde_full + [y for y in y_tilde] + [u for u in u_tilde] + [q for q in p_data.q] + [t for t in p_data.t]
+			x_tilde_full += ([y for y in y_tilde] + [u for u in u_tilde] 
+				+ [q for q in p_data.q] + [t for t in p_data.t])
+		x_tilde_full += [s for s in self._s]
 
 		self._absolute_mesh_errors = []
 		self._relative_mesh_errors = []
@@ -352,7 +362,7 @@ class Solution:
 
 	def _patterson_rao_discretisation_mesh_error_single_phase(self, p, p_data, y_tilde, u_tilde, x_tilde_full):
 
-		dy_tilde = self._backend.compiled_functions.c_continuous_lambdas[p.i](*x_tilde_full, *self._s, self._ph_mesh.N[p.i])[:p.num_y_vars*self._ph_mesh.N[p.i]].reshape(-1, self._ph_mesh.N[p.i])
+		dy_tilde = self._backend.compiled_functions.c_continuous_lambdas[p.i](*x_tilde_full, self._ph_mesh.N[p.i])[:p.num_y_vars*self._ph_mesh.N[p.i]].reshape(-1, self._ph_mesh.N[p.i])
 
 		A_dy_tilde = p_data.stretch*self._ph_mesh.sA_matrix[p.i].dot(dy_tilde.T)
 

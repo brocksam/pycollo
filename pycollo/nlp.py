@@ -1,6 +1,9 @@
 import abc
 
-import ipopt
+try:
+	import ipopt
+except ModuleNotFoundError:
+	pass
 
 
 IPOPT = "ipopt"

@@ -53,8 +53,9 @@ class ExpressionGraph:
 		self.initialise_auxiliary_intermediate_nodes()
 
 	def console_out_begin_expression_graph_creation(self):
-		msg = (f"Beginning expression graph creation.")
-		console_out(msg)
+		if self.ocp_backend.ocp.settings.console_out_progress:
+			msg = (f"Beginning expression graph creation.")
+			console_out(msg)
 
 	def initialise_node_symbol_number_counters(self):
 		self._number_node_num_counter = itertools.count()
@@ -310,6 +311,8 @@ class ExpressionGraph:
 		if completion_msg is not None:
 			completion_msg = f"Symbolic {completion_msg} calculated."
 			console_out(completion_msg)
+
+		return init_args
 
 	def _initialise_function(self, expr):
 

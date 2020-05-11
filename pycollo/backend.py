@@ -416,8 +416,9 @@ class Pycollo(BackendABC):
 			for phase_sym, user_eqn in self.aux_data_phase_independent.items()}
 		
 	def console_out_variables_constraints_preprocessed(self):
-		msg = "Pycollo variables and constraints preprocessed."
-		console_out(msg)
+		if self.ocp.settings.console_out_progress:
+			msg = "Pycollo variables and constraints preprocessed."
+			console_out(msg)
 
 	def create_expression_graph(self):
 		variables = self.collect_variables()

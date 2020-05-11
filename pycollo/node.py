@@ -453,9 +453,7 @@ class IntermediateNode(ExpressionNodeABC):
 	def _inspect_parents(node_instance, equation):
 
 		def add_new_parent_node(arg):
-			parent_node = node_instance.graph.symbols_to_nodes_mapping.get(arg)
-			if parent_node is None:
-				parent_node = Node(arg, node_instance.graph)
+			parent_node = Node(arg, node_instance.graph)
 			node_instance.new_parent(parent_node)
 
 		if equation is None and node_instance.key.args:

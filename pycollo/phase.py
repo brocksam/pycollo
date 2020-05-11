@@ -153,6 +153,8 @@ class Phase:
 		self.guess = guess
 		self.mesh = mesh
 
+		self.auxiliary_data = {}
+
 	def create_new_copy(self, 
 			name: str, 
 			*, 

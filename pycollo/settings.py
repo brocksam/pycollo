@@ -101,6 +101,7 @@ class Settings():
 
 		# Other
 		self.maximise_objective = maximise_objective
+		self.console_out_progress = True
 
 	@property
 	def scaling_method(self) -> Optional[str]:

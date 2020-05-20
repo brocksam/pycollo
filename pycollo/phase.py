@@ -412,7 +412,7 @@ class Phase:
 	@control_variables.setter
 	def control_variables(self, u_vars: OptionalSymsType):
 		self._u_vars_user = format_as_named_tuple(u_vars)
-		_ = check_sym_name_clash(self._u_vars_user)
+		check_sym_name_clash(self._u_vars_user)
 
 	@property
 	def number_control_variables(self) -> int:

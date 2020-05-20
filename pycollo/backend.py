@@ -356,6 +356,8 @@ class Pycollo(BackendABC):
 
 	def partition_user_problem_aux_data(self):
 		for symbol, equation in self.aux_data.items():
+			# print(symbol, equation)
+			# input()
 			self.process_aux_data_pair_is_phase_dependent(symbol, equation)
 
 	def process_aux_data_pair_is_phase_dependent(self, symbol, equation):
@@ -363,6 +365,7 @@ class Pycollo(BackendABC):
 		if symbol in self.aux_data_phase_dependent:
 			return True
 		elif equation in self.all_phase_vars:
+			self.new_aux_data_pair_phase_independent(symbol, equation)
 			return True
 		elif equation in self.s_vars_user:
 			return False

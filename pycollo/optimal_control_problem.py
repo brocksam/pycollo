@@ -172,7 +172,8 @@ class OptimalControlProblem():
 		`phase` and calling `self.add_phase(phase)`.
 		"""
 		new_phase = Phase(name, optimal_control_problem=self, 
-			state_variables=state_variables)
+			state_variables=state_variables,
+			control_variables=control_variables)
 		return new_phase
 
 	def new_phase_like(self, phase_for_copying: Phase, name: str, **kwargs):

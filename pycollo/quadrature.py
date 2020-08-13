@@ -76,30 +76,29 @@ class Quadrature:
 	def A_index_array(self, order):
 		return self._retrive_or_generate_dict_value(self._A_index_arrays, order)
 
-	def _radau_generator(self, order):
-		coefficients = [0]*(order - 1)
+	def radau_generator(self, order):
+		coefficients = [0]*(order - 2)
 		coefficients.extend([1, 1])
 		legendre_polynomial = np.polynomial.legendre.Legendre(coefficients)
 		self._polynomials.update({order: legendre_polynomial})
 
 		radau_points = legendre_polynomial.roots()
+		radau_points = np.concatenate([radau_points, np.array([0])])
 		self._quadrature_points.update({order: radau_points})
 
-		coefficients = [0]*(order - 1)
+		coefficients = [0]*(order - 2)
 		coefficients.extend([1])
 		legendre_polynomial = np.polynomial.legendre.Legendre(coefficients)
-		radau_weights = [2/order**2]
+		radau_weights = [2/(order-1)**2]
 		radau_weights = np.array(
-			radau_weights + [(1 - x)/(order**2*(legendre_polynomial(x)**2)) 
-			for x in radau_points[1:]])
+			radau_weights + [(1 - x)/((order-1)**2*(legendre_polynomial(x)**2)) 
+			for x in radau_points[1:-1]])
+		radau_weights = np.concatenate([radau_weights, np.array([0])])
 		self._quadrature_weights.update({order: radau_weights})
-
-		# print(f'x: {radau_points}')
-		# print(f'w: {radau_weights}, {sum(radau_weights)}')
 
 		butcher_points = self.quadrature_point(order, domain=[0, 1])
 		butcher_array = np.zeros((order, order))
-		butcher_array[-1, :] = radau_weights
+		butcher_array[-1, :] = radau_weights/2
 		if order > 2:
 			A_row = (order + 1) * (order - 2)
 			A_col = order * (order - 2)
@@ -122,9 +121,6 @@ class Quadrature:
 			butcher_array[1:-1, :] = a.reshape(order-2, -1, order='F')
 		self._butcher_arrays.update({order: butcher_array})
 
-		# print(butcher_array)
-		# input()
-
 		D_left = np.ones((order - 1, 1), dtype=int)
 		D_right = np.diag(-1*np.ones((order - 1, ), dtype=int))
 		D_matrix = np.hstack([D_left, D_right])
@@ -143,6 +139,13 @@ class Quadrature:
 		D_index_array = np.concatenate((D_left, D_right))
 		D_index_array.sort()
 		self._D_index_arrays.update({order: D_index_array})
+
+		# print(f'x: {radau_points}')
+		# print(f'w: {radau_weights}, {sum(radau_weights)}')
+		# print(f"a: {butcher_array}")
+		# print(f"A: {D_matrix}")
+		# print(f"I: {A_matrix}")
+		# input()
 	
 	def lobatto_generator(self, order):
 		num_interior_points = order - 1
@@ -158,9 +161,6 @@ class Quadrature:
 
 		lobatto_weights = np.array([1/(order*(order-1)*(legendre_polynomial(x)**2)) for x in lobatto_points])
 		self._quadrature_weights.update({order: lobatto_weights})
-
-		# print(f'x: {lobatto_points}')
-		# print(f'w: {lobatto_weights}')
 
 		butcher_points = self.quadrature_point(order, domain=[0, 1])
 		# print(f'x\': {butcher_points}')
@@ -218,6 +218,11 @@ class Quadrature:
 		D_index_array.sort()
 		self._D_index_arrays.update({order: D_index_array})
 
+		# print(f'x: {lobatto_points}')
+		# print(f'w: {lobatto_weights}, {sum(lobatto_weights)}')
+		# print(f"a: {butcher_array}")
+		# print(f"A: {D_matrix}")
+		# print(f"I: {A_matrix}")
 		# input()
 
 		

@@ -102,7 +102,8 @@ class Iteration:
 		self.generate_nlp_lambdas()
 		self.generate_bounds()
 		self.generate_scaling()
-		self.shift_scale_variable_bounds()
+		self.scale_bounds()
+		# self.shift_scale_variable_bounds()
 		self.initialise_nlp()
 		self.check_nlp_functions()
 
@@ -240,12 +241,11 @@ class Iteration:
 
 	def initialise_scaling(self):
 		self.scaling = IterationScaling(self)
+		self.guess_x = self.scaling.scale_x(self.guess_x)
 		msg = "Scaling initialised."
 		console_out(msg)
 
 	def generate_nlp_lambdas(self):
-
-		self.generate_unscale_variables_lambda()
 		self.generate_continuous_variables_reshape_lambda()
 		self.generate_endpoint_variables_reshape_lambda()
 		self.generate_objective_lambda()
@@ -255,19 +255,10 @@ class Iteration:
 		if self.ocp.settings.derivative_level == 2:
 			self.generate_hessian_lambda()
 
-	def generate_unscale_variables_lambda(self):
-
-		def shift_x(x):
-			return x + self.scaling.x_shifts
-
-		self._shift_x = shift_x
-		msg = "Variable unscale lambda generated successfully."
-		console_out(msg)
-
 	def generate_continuous_variables_reshape_lambda(self):
 
-		def reshape_x(x):
-			x = self._shift_x(x)
+		def reshape_x(x_tilde):
+			x = self.scaling.unscale_x(x_tilde)
 			x_tuple = self.backend.compiled_functions.x_reshape_lambda(
 				x, 
 				self.y_slices, 
@@ -297,8 +288,8 @@ class Iteration:
 			self._x_endpoint_indices.extend(list(range(t_slice.start, t_slice.stop)))
 		self._x_endpoint_indices.extend(list(range(self.s_slice.start, self.s_slice.stop)))
 
-		def reshape_x_point(x):
-			x = self._shift_x(x)
+		def reshape_x_point(x_tilde):
+			x = self.scaling.unscale_x(x_tilde)
 			return self.backend.compiled_functions.x_reshape_lambda_point(x, self._x_endpoint_indices)
 
 		self._reshape_x_point = reshape_x_point
@@ -307,10 +298,13 @@ class Iteration:
 
 	def generate_objective_lambda(self):
 
-		def objective(x):
-			x_tuple_point = self._reshape_x_point(x)
+		def objective(x_tilde):
+			x_tuple_point = self._reshape_x_point(x_tilde)
 			J = self.backend.compiled_functions.J_lambda(x_tuple_point)
-			return J
+			J_tilde = self.scaling.scale_J(J)
+			# print(J)
+			# print(J_tilde)
+			return J_tilde
 
 		self._objective_lambda = objective
 		msg = "Objective function lambda generated successfully."
@@ -321,7 +315,10 @@ class Iteration:
 		def gradient(x):
 			x_tuple_point = self._reshape_x_point(x)
 			g = self.backend.compiled_functions.g_lambda(x_tuple_point, self.mesh.N)
-			return g
+			g_tilde = self.scaling.scale_g(g)
+			# print(g)
+			# print(g_tilde)
+			return g_tilde
 
 		self._gradient_lambda = gradient
 		msg = "Objective function gradient lambda generated successfully."
@@ -344,8 +341,11 @@ class Iteration:
 				self.c_lambda_dy_slices,
 				self.c_lambda_p_slices,
 				self.c_lambda_g_slices,
-				)#, self._mesh._N, self._ocp._y_slice, self._ocp._q_slice, self._num_c, self._c_lambda_dy_slice, self._c_lambda_p_slice, self._c_lambda_g_slice, self._c_defect_slice, self._c_path_slice, self._c_integral_slice, self._c_boundary_slice, self._mesh._sA_matrix, self._mesh._sD_matrix, self._mesh._W_matrix)
-			return c
+				)
+			c_tilde = self.scaling.scale_c(c)
+			# print(c)
+			# print(c_tilde)
+			return c_tilde
 
 		self._constraint_lambda = constraint
 		msg = "Constraints lambda generated successfully."
@@ -400,7 +400,10 @@ class Iteration:
 				[p.c_path_slice for p in self.backend.p],
 				[p.c_integral_slice for p in self.backend.p],
 				)
-			return G
+			G_tilde = self.scaling.scale_G(G)
+			# print(G)
+			# print(G_tilde)
+			return G_tilde
 
 		self._G_shape = (self.num_c, self.num_x)
 		x_sparsity_detect = np.full(self.num_x, np.nan)
@@ -504,32 +507,35 @@ class Iteration:
 
 		def reshape_lagrange(lagrange):
 			lagrange = np.array(lagrange)
+			lagrange_prime = self.scaling.scale_lagrange(lagrange)
 			chunks = []
 			for p, c_defect_slice, c_path_slice, c_integral_slice, sA_matrix, W_matrix in zip(self.backend.p, self.c_defect_slices, self.c_path_slices, self.c_integral_slices, self.mesh.sA_matrix, self.mesh.W_matrix):
-				chunks.extend([*sA_matrix.T.dot(lagrange[c_defect_slice].reshape((p.num_c_defect, -1)).T).T])
+				chunks.extend([*sA_matrix.T.dot(lagrange_prime[c_defect_slice].reshape((p.num_c_defect, -1)).T).T])
 				if p.num_c_path:
-					chunks.extend([*lagrange[c_path_slice].reshape((p.num_c_path, -1))])
+					chunks.extend([*lagrange_prime[c_path_slice].reshape((p.num_c_path, -1))])
 				if p.num_c_integral:
-					chunks.extend([*lagrange[c_integral_slice].reshape(-1, 1).dot(-W_matrix.reshape((1, -1)))])
+					chunks.extend([*lagrange_prime[c_integral_slice].reshape(-1, 1).dot(-W_matrix.reshape((1, -1)))])
 			if self.num_c_endpoint:
-				chunks.extend([*0*lagrange[self.c_endpoint_slice].reshape(-1, )])
+				chunks.extend([*0*lagrange_prime[self.c_endpoint_slice].reshape(-1, )])
 
 			return chunks
 
 		def hessian(x, obj_factor, lagrange):
 			x_tuple = self._reshape_x(x)
 			x_tuple_point = self._reshape_x_point(x)
-			lagrange = reshape_lagrange(lagrange)
+			obj_factor_prime = self.scaling.scale_sigma(obj_factor)
+			lagrange_prime = reshape_lagrange(lagrange)
 			H = self.backend.compiled_functions.H_lambda(
 				self._H_shape,
 				x_tuple, 
 				x_tuple_point,
-				obj_factor,
-				lagrange,
+				obj_factor_prime,
+				lagrange_prime,
 				self._sH_continuous_indices,
 				self._sH_endpoint_indices,
 				)
-			return H
+			H_tilde = self.scaling.scale_H(H)
+			return H_tilde
 
 		self._H_shape = (self.num_x, self.num_x)
 		detect_hessian_sparsity()
@@ -587,12 +593,27 @@ class Iteration:
 		msg = "Scaling generated."
 		console_out(msg)
 
-	def shift_scale_variable_bounds(self):
-		self._x_bnd_l = self._x_bnd_l - self.scaling.x_shifts
-		self._x_bnd_u = self._x_bnd_u - self.scaling.x_shifts
+		# print('\n')
+
+		# self._objective_lambda(self.guess_x)
+		# self._gradient_lambda(self.guess_x)
+		# self._constraint_lambda(self.guess_x)
+		# self._jacobian_lambda(self.guess_x)
+		# print('\n\n\n')
+		# raise NotImplementedError
+
+	def scale_bounds(self):
+		self._x_bnd_l = self.scaling.scale_x(self._x_bnd_l)		
+		self._x_bnd_u = self.scaling.scale_x(self._x_bnd_u)
+		self._c_bnd_l = self.scaling.scale_c(self._c_bnd_l)		
+		self._c_bnd_u = self.scaling.scale_c(self._c_bnd_u)
+
+	# def shift_scale_variable_bounds(self):
+	# 	self._x_bnd_l = self._x_bnd_l - self.scaling.x_shifts
+	# 	self._x_bnd_u = self._x_bnd_u - self.scaling.x_shifts
 
 	def initialise_nlp(self):
-		self._nlp_problem = initialise_nlp_backend(self)
+		self._nlp_problem, self._nlp_temp = initialise_nlp_backend(self)
 		msg = "NLP initialised successfully."
 		console_out(msg)
 
@@ -680,9 +701,7 @@ class Iteration:
 		time_start = time.time()
 		nlp_time_start = timer()
 
-		x_guess = self.guess_x - self.scaling.x_shifts
-
-		nlp_solution, nlp_solution_info = self._nlp_problem.solve(x_guess)
+		nlp_solution, nlp_solution_info = self._nlp_problem.solve(self.guess_x)
 
 		nlp_time_stop = timer()
 		time_stop = time.time()

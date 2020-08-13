@@ -65,7 +65,8 @@ class Solution:
 
 	def _process_ipopt_solution(self):
 		self._phase_data = []
-		x = self._it._shift_x(self._x)
+		x = self._it.scaling.unscale_x(self._x)
+		# x = self._it._shift_x(self._x)
 		for tau, time_guess, phase, c_continuous_lambda, y_slice, u_slice, q_slice, t_slice, dy_slice, N in zip(self._tau, self._it.guess_time, self._backend.p, self._backend.compiled_functions.c_continuous_lambdas, self._it.y_slices, self._it.u_slices, self._it.q_slices, self._it.t_slices, self._it.c_lambda_dy_slices, self._it.mesh.N):
 			y = x[y_slice].reshape(phase.num_y_vars, -1) if phase.num_y_vars else np.array([], dtype=float)
 			dy = c_continuous_lambda(*self._it._reshape_x(self._x), N)[dy_slice].reshape((-1, N)) if phase.num_y_vars else np.array([], dtype=float)

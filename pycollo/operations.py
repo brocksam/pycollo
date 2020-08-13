@@ -1,7 +1,6 @@
 import abc
 import collections
 
-import symfit
 import sympy as sym
 
 from .utils import cachedproperty
@@ -714,8 +713,15 @@ SYMPY_EXPR_TYPES_DISPATCHER = {
 	sym.acoth: PycolloArccoth,
 	sym.asech: PycolloArcsech,
 	sym.acsch: PycolloArccosech,
-	symfit.Parameter: is_sympy_sym,
 	}
+
+
+try:
+	import symfit
+except ModuleNotFoundError:
+	pass
+else:
+	SYMPY_EXPR_TYPES_DISPATCHER[symfit.Parameter] = is_sympy_sym
 
 
 PYCOLLO_MUL_DISPATCHER = {

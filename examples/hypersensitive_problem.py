@@ -31,6 +31,10 @@ phase.guess.integral_variables = np.array([4])
 problem.objective_function = phase.integral_variables[0]
 
 problem.settings.display_mesh_result_graph = True
+problem.settings.derivative_level = 2
+# problem.settings.scaling_method = None
+problem.settings.quadrature_method = "lobatto"
+problem.settings.max_mesh_iterations = 10
 
 problem.initialise()
 problem.solve()

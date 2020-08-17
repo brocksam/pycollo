@@ -73,22 +73,16 @@ def processed_property(name, **kwargs):
                     value = (check_type(value), )
             else:
                 value = check_type(value)
-
         if options is not None:
             check_options(value)
-
         if min_value is not None:
             check_min(value)
-
         if max_value is not None:
             check_max(value)
-
         if len_sequence is not None:
             check_len(value)
-
         if post_method is not None:
             value = apply_method(value)
-
         setattr(self, storage_name, value)
 
     def check_type(value):

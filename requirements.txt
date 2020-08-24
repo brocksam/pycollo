@@ -7,4 +7,3 @@ numba>=0.40
 ordered-set>=3.1
 matplotlib==2.2.3
 sphinx>=2.2
-pytest>=4.0

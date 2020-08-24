@@ -17,11 +17,21 @@ install:
   - conda info -a
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - source activate test-environment
-  - conda install -q -y --file requirements.txt
+  - conda install -q -y --file=requirements.txt
+  - conda install -q -y --file=tests/requirements.txt
+  - conda install -q -y --file=docs/requirements.txt
   - conda list
   - python setup.py install
 
 script:
+  # Tests
   - pytest
+  # Docs
   - cd docs; make clean; cd ..
   - sphinx-build -nWT -b dummy docs/source docs/build
+
+notifications:
+  slack: 
+    rooms: 
+      - lapysim:iK2uynW8fR6IbFVTpQwTlbwR#dev
+      - lapysim:iK2uynW8fR6IbFVTpQwTlbwR#pycollo

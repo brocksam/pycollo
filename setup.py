@@ -137,7 +137,7 @@ def get_contents_from_file(filepath, by_line=False, strip=""):
         return process_file_contents(filepath)
 
 
-PACKAGE_NAME = "Pycollo"
+PACKAGE_NAME = "pycollo"
 VERSION = "0.0.0.dev0"
 AUTHOR = "Sam Brockie"
 AUTHOR_EMAIL = "sgb39@cam.ac.uk"

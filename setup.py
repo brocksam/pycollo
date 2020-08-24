@@ -90,7 +90,9 @@ def get_contents_from_file(filepath, by_line=False, strip=""):
 
         """
         file_contents_by_line = str(file_contents).split("\n")
-        return [str(line).strip() for line in file_contents_by_line]
+        file_contents_by_line_stripped = [rename_cyipopt(str(line).strip())
+                                          for line in file_contents_by_line]
+        return file_contents_by_line_stripped
 
     def process_to_str(file_contents):
         """File contents with specified :obj:`str` stripped.
@@ -107,6 +109,24 @@ def get_contents_from_file(filepath, by_line=False, strip=""):
 
         """
         return str(file_contents).strip(strip)
+
+    def rename_cyipopt(dependency):
+        """Rename 'cyipopt' as 'ipopt' for PyPI.
+
+        Parameters
+        ----------
+        dependency : str
+            The dependency in question to be processed.
+
+        Returns
+        -------
+        str
+            With 'cyipopt' renamed to 'ipopt' if required. Otherwise unedited.
+
+        """
+        if dependency[:7] == "cyipopt":
+            return dependency[2:]
+        return dependency
 
     if isinstance(filepath, dict):
         return_var = {}

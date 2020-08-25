@@ -1,6 +1,6 @@
 cyipopt>=0.2.0
 cython>=0.29.2
-matplotlib==2.2.3
+matplotlib>=3.1
 numba>=0.40
 numpy>=1.15
 ordered-set>=3.1

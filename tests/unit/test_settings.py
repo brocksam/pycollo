@@ -1,5 +1,7 @@
 """Tests for Pycollo, OCP and NLP settings."""
 
+from hypothesis import assume, given
+import hypothesis.strategies as st
 import pytest
 
 import pycollo
@@ -19,7 +21,7 @@ class TestSettings:
         assert isinstance(self.settings, pycollo.Settings)
 
     def test_settings_ocp_attr_is_set(self):
-        """Creation of :obj:`OptimalControlProblem` should link 
+        """Creation of :obj:`OptimalControlProblem` should link
         :obj:`Settings`.
         """
         assert self.settings.optimal_control_problem is self.ocp
@@ -84,8 +86,8 @@ class TestSettings:
         # Check invalid keyword
         expected_error_msg = (
             f"'{invalid_keyword_str}' is not a valid option of Pycollo "
-            f"backend. Choose one of: '{pycollo_keyword_str}' or "
-            f"'{casadi_keyword_str}'."
+            f"backend (.*backend.*). Choose one of: '{pycollo_keyword_str}' "
+            f"or '{casadi_keyword_str}'."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.backend = invalid_keyword_str
@@ -93,8 +95,8 @@ class TestSettings:
         # Check unsupported keyword
         expected_error_msg = (
             f"'{sympy_keyword_str}' is not currently supported as a Pycollo "
-            f"backend. Choose one of: '{pycollo_keyword_str}' or "
-            f"'{casadi_keyword_str}'."
+            f"backend (.*backend.*). Choose one of: '{pycollo_keyword_str}' "
+            f"or '{casadi_keyword_str}'."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.backend = sympy_keyword_str
@@ -114,8 +116,8 @@ class TestSettings:
 
         # Check invalid keyword
         expected_error_msg = (
-            f"'{invalid_keyword_str}' is not a valid option of NLP solver. "
-            f"Choose one of: '{ipopt_keyword_str}'."
+            f"'{invalid_keyword_str}' is not a valid option of NLP solver "
+            f"(.*nlp_solver.*). Choose one of: '{ipopt_keyword_str}'."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.nlp_solver = invalid_keyword_str
@@ -123,19 +125,19 @@ class TestSettings:
         # Check unsupported keyword
         expected_error_msg = (
             f"'{snopt_keyword_str}' is not currently supported as an NLP "
-            f"solver. Choose one of: '{ipopt_keyword_str}'."
+            f"solver (.*nlp_solver.*). Choose one of: '{ipopt_keyword_str}'."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.nlp_solver = snopt_keyword_str
         expected_error_msg = (
             f"'{worhp_keyword_str}' is not currently supported as an NLP "
-            f"solver. Choose one of: '{ipopt_keyword_str}'."
+            f"solver (.*nlp_solver.*). Choose one of: '{ipopt_keyword_str}'."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.nlp_solver = worhp_keyword_str
         expected_error_msg = (
             f"'{bonmin_keyword_str}' is not currently supported as an NLP "
-            f"solver. Choose one of: '{ipopt_keyword_str}'."
+            f"solver (.*nlp_solver.*). Choose one of: '{ipopt_keyword_str}'."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.nlp_solver = bonmin_keyword_str
@@ -153,8 +155,8 @@ class TestSettings:
 
         # Check invalid keyword
         expected_error_msg = (
-            f"'{invalid_keyword_str}' is not a valid option of linear solver. "
-            f"Choose one of: '{mumps_keyword_str}'."
+            f"'{invalid_keyword_str}' is not a valid option of linear solver "
+            f"(.*linear_solver.*). Choose one of: '{mumps_keyword_str}'."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.linear_solver = invalid_keyword_str
@@ -162,7 +164,8 @@ class TestSettings:
         # Check unsupported keyword
         expected_error_msg = (
             f"'{ma57_keyword_str}' is not currently supported as a linear "
-            f"solver. Choose one of: '{mumps_keyword_str}'."
+            f"solver (.*linear_solver.*). Choose one of: "
+            f"'{mumps_keyword_str}'."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.linear_solver = ma57_keyword_str
@@ -185,22 +188,29 @@ class TestSettings:
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.nlp_tolerance = 0.0
 
-    def test_max_nlp_iterations_property(self):
+    @given(st.integers())
+    def test_max_nlp_iterations_property(self, test_value):
         """ValueError if <1."""
-        for valid_test_value in [1, 100, 10000, "1"]:
-            self.settings.max_nlp_iterations = valid_test_value
-            assert self.settings.max_nlp_iterations == int(valid_test_value)
-
-        for invalid_test_value in [0, -1]:
+        if test_value > 0:
+            self.settings.max_nlp_iterations = test_value
+            assert self.settings.max_nlp_iterations == int(test_value)
+        else:
             expected_error_msg = (
                 f"Maximum number of NLP iterations (.*max_nlp_iterations.*) "
-                f"must be greater than or equal to 1. {invalid_test_value} "
+                f"must be greater than or equal to 1. {test_value} "
                 f"is invalid.")
             with pytest.raises(ValueError, match=expected_error_msg):
-                self.settings.max_nlp_iterations = invalid_test_value
+                self.settings.max_nlp_iterations = test_value
 
-    def test_derivative_level_property(self):
+    @given(st.one_of(st.just(1), st.just(2)))
+    def test_derivative_level_property_correct(self, test_value):
+        """Only value of 1 or 2 should be accepted without error."""
+        self.settings.derivative_level = test_value
+        assert self.settings.derivative_level == test_value
+
+    @given(st.one_of(st.integers()))
+    def test_derivative_level_property_error(self, test_value):
         """Value other than 1 or 2 should raise ValueError."""
-        for valid_test_value in [1, 2, "1", "2"]:
-            self.settings.derivative_level = valid_test_value
-            assert self.settings.derivative_level == int(valid_test_value)
+        assume(test_value not in {1, 2})
+        with pytest.raises(ValueError):
+            self.settings.derivative_level = test_value

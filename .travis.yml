@@ -1,8 +1,19 @@
 language:
   - python
 
+os:
+  - linux
+
 python:
   - "3.6"
+  - "3.7"
+  - "3.8"
+
+notifications:
+  slack: 
+    rooms: 
+      - lapysim:iK2uynW8fR6IbFVTpQwTlbwR#dev
+      - lapysim:iK2uynW8fR6IbFVTpQwTlbwR#pycollo
   
 install:
   - sudo apt-get update
@@ -17,11 +28,18 @@ install:
   - conda info -a
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - source activate test-environment
-  - conda install -q -y --file requirements.txt
+  - conda install -q -y --file=requirements.txt
+  - conda install -q -y --file=tests/requirements.txt
+  - conda install -q -y --file=docs/requirements.txt
   - conda list
   - python setup.py install
 
 script:
-  - pytest
+  # Tests
+  - pytest --cov-report term --cov=pycollo tests/
+  # Docs
   - cd docs; make clean; cd ..
   - sphinx-build -nWT -b dummy docs/source docs/build
+
+after_success:
+  - codecov -t ff88223d-5439-4c71-95ac-dd6da5751646

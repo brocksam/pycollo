@@ -1,0 +1,4 @@
+codecov>=2.1
+hypothesis>=5.28
+pytest>=6.0
+pytest-cov>=2.10

@@ -42,4 +42,4 @@ script:
   - sphinx-build -nWT -b dummy docs/source docs/build
 
 after_success:
-  - codecov -t ff88223d-5439-4c71-95ac-dd6da5751646
+  - codecov -t a96dc6de-9dad-4611-82ec-023d938bdf30

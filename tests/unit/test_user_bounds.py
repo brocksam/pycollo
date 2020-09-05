@@ -6,43 +6,43 @@ import sympy.physics.mechanics as me
 from pycollo import Bounds, OptimalControlProblem
 
 
-@pytest.fixture
-def fixture_pendulum():
+# @pytest.fixture
+# def fixture_pendulum():
 	
-	# Symbols
-	q = sym.Symbol('q')
-	u = sym.Symbol('u')
-	T = sym.Symbol('T')
-	m, l, I, g, k = sym.symbols('m l I g k')
-	ml, mgl, sinq, mglsinq = sym.symbols('ml mgl sinq mglsinq')
+# 	# Symbols
+# 	q = sym.Symbol('q')
+# 	u = sym.Symbol('u')
+# 	T = sym.Symbol('T')
+# 	m, l, I, g, k = sym.symbols('m l I g k')
+# 	ml, mgl, sinq, mglsinq = sym.symbols('ml mgl sinq mglsinq')
 
-	# Optimal Control Problem
-	problem = OptimalControlProblem(name="Pendulum swing-up problem")
-	phase = problem.new_phase("phase")	
-	phase.state_variables = [q, u]
-	phase.control_variables = T
-	phase.state_equations = [u, (m*g*l*sym.sin(q) - T)/I]
-	phase.integrand_functions = [T**2]
-	phase.auxiliary_data = {}
-	problem.objective_function = phase.integral_variables[0]
+# 	# Optimal Control Problem
+# 	problem = OptimalControlProblem(name="Pendulum swing-up problem")
+# 	phase = problem.new_phase("phase")	
+# 	phase.state_variables = [q, u]
+# 	phase.control_variables = T
+# 	phase.state_equations = [u, (m*g*l*sym.sin(q) - T)/I]
+# 	phase.integrand_functions = [T**2]
+# 	phase.auxiliary_data = {}
+# 	problem.objective_function = phase.integral_variables[0]
 
-	problem._check_variables_and_equations()
-	problem._initialise_backend()
+# 	problem._check_variables_and_equations()
+# 	problem._initialise_backend()
 
-	return problem
+# 	return problem
 
 
-def test_bounds_mapping(fixture_pendulum):
+# def test_bounds_mapping(fixture_pendulum):
 
-	q = sym.Symbol('q')
-	u = sym.Symbol('u')
-	fixture_pendulum.phases[0].bounds.state_variables = {
-		q: [0, np.pi],
-		u: [-10, 10],
-		}
+# 	q = sym.Symbol('q')
+# 	u = sym.Symbol('u')
+# 	fixture_pendulum.phases[0].bounds.state_variables = {
+# 		q: [0, np.pi],
+# 		u: [-10, 10],
+# 		}
 
-	with pytest.raises(NotImplementedError):
-		fixture_pendulum._check_problem_and_phase_bounds()
+# 	with pytest.raises(NotImplementedError):
+# 		fixture_pendulum._check_problem_and_phase_bounds()
 
 # def test_bounds_point_time_float(fixture_pendulum):
 

@@ -9,8 +9,9 @@ import pycollo
 
 
 def test_create_guess():
-    """Test whether a :obj:`Guess` can be instantiated sucessfully."""
-    guess = pycollo.Guess()
+    """Test whether a :obj:`PhaseGuess` can be instantiated sucessfully."""
+    _ = pycollo.PhaseGuess()
+    _ = pycollo.PhaseGuess()
 
 
 def test_1():

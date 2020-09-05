@@ -3,15 +3,8 @@ import pytest
 import sympy as sym
 import sympy.physics.mechanics as me
 
-<<<<<<< HEAD:tests/unit/test_user_bounds.py
 from pycollo import Bounds, OptimalControlProblem
 
-=======
-try:
-	import pycollo
-except ModuleNotFoundError:
-	from ..optimal_control_problem import OptimalControlProblem
->>>>>>> 8a81b679cd5b8f27532ab273d067a0b6348aff01:pycollo/tests/test_user_bounds.py
 
 @pytest.fixture
 def fixture_pendulum():

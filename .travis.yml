@@ -8,6 +8,12 @@ python:
   - "3.6"
   - "3.7"
   - "3.8"
+
+notifications:
+  slack: 
+    rooms: 
+      - lapysim:iK2uynW8fR6IbFVTpQwTlbwR#dev
+      - lapysim:iK2uynW8fR6IbFVTpQwTlbwR#pycollo
   
 install:
   - sudo apt-get update
@@ -30,13 +36,10 @@ install:
 
 script:
   # Tests
-  - pytest
+  - pytest --cov-report term --cov=pycollo tests/
   # Docs
   - cd docs; make clean; cd ..
   - sphinx-build -nWT -b dummy docs/source docs/build
 
-notifications:
-  slack: 
-    rooms: 
-      - lapysim:iK2uynW8fR6IbFVTpQwTlbwR#dev
-      - lapysim:iK2uynW8fR6IbFVTpQwTlbwR#pycollo
+after_success:
+  - codecov -t ff88223d-5439-4c71-95ac-dd6da5751646

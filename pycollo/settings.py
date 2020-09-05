@@ -36,8 +36,8 @@ DEFAULT_DISPLAY_MESH_REFINE_INFO : bool
     this information is generally interesting/useful to users.
 DEFAULT_DISPLAY_MESH_RESULT_GRAPH : bool
     Default value of whether graphs should be plotting displaying the state,
-    state derivatives and control variables at the end of each mesh iteration. 
-    Value is set to False as displaying these causes the NLP solver to pause 
+    state derivatives and control variables at the end of each mesh iteration.
+    Value is set to False as displaying these causes the NLP solver to pause
     between sucessive mesh iterations.
 DEFAULT_DISPLAY_MESH_RESULT_INFO : bool
     Default value of whether information about the mesh result should be
@@ -119,7 +119,6 @@ UNSUPPORTED_SCALING_METHOD : TYPE
 
 """
 
-from typing import Optional
 
 from pyproprop import processed_property
 
@@ -195,7 +194,7 @@ DEFAULT_DISPLAY_MESH_RESULT_GRAPH = False
 class Settings():
 
     """Settings class for all Pycollo OCP and NLP settings.
-    
+
     Attributes
     ----------
     backend : TYPE
@@ -241,7 +240,7 @@ class Settings():
         Description
     update_scaling : bool
         Description
-    
+
     """
 
     _BACKEND_OPTIONS = (

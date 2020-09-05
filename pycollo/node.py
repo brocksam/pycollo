@@ -7,21 +7,8 @@ import weakref
 import numpy as np
 import sympy as sym
 
-# from .operations import determine_operation
-
-
-class cachedproperty:
-
-	def __init__(self, func):
-		self.func = func
-
-	def __get__(self, instance, cls):
-		if instance is None:
-			return self
-		else:
-			value = self.func(instance)
-			setattr(instance, self.func.__name__, value)
-			return value
+from .operations import (determine_operation, PycolloUnsetOp)
+from .utils import cachedproperty
 
 
 class Cached(type):
@@ -33,11 +20,14 @@ class Cached(type):
 	def __call__(self, *args, **kwargs):
 		if args in self.__cache:
 			cached_node = self.__cache[args]
-			if kwargs.get('equation') != None:
-				cached_node.equation = kwargs['equation']
+			equation = kwargs.get('equation')
+			if equation != None:
+				cached_node.equation = equation
 			return cached_node
 		else:
 			obj = super().__call__(*args, **kwargs)
+			self.__cache[args] = obj
+			args = (obj.symbol, ) + args[1:]
 			self.__cache[args] = obj
 			return obj
 	
@@ -47,17 +37,20 @@ class Node(metaclass=Cached):
 	def __init__(self, key, graph, *, value=None, equation=None):
 		self.graph = graph
 		self.key = key
-		self._operation = None
+		self._operation = PycolloUnsetOp(self)
 		self._set_node_type_stateful_object()
 		self._associate_new_node_with_graph()
 		self._child_nodes = set()
 		self._parent_nodes = []
-		self._derivatives = {}
 		self.value = value
 		self.equation = equation
 
+	@staticmethod
+	def new_node(*args, **kwargs):
+		return Node(*args, **kwargs)
+
 	def _set_node_type_stateful_object(self):
-		if self.graph.user_to_pycollo_problem_variables_mapping_in_order.get(self.key) is not None:
+		if self.key in self.graph.problem_variables:
 			self._type = VariableNode
 		elif self.key in self.graph.lagrange_syms:
 			self._type = VariableNode
@@ -71,6 +64,7 @@ class Node(metaclass=Cached):
 	def _associate_new_node_with_graph(self):
 		self.symbol = self._type._create_or_get_new_node_symbol(self)
 		self._type._graph_node_group(self)[self.symbol] = self
+		self.graph._node_syms.add(self.symbol)
 
 	@property
 	def key(self):
@@ -91,7 +85,7 @@ class Node(metaclass=Cached):
 
 	@property
 	def parent_nodes(self):
-		return self._type.parent_nodes(self)
+		return self._type._get_parent_nodes(self)
 
 	def new_parent(self, parent):
 		self._type.new_parent(self, parent)
@@ -122,17 +116,17 @@ class Node(metaclass=Cached):
 
 	@property
 	def expression(self):
-		return self._expression
+		return self._operation.expression
 
 	def derivative_as_symbol(self, wrt):
-		node = self.derivative_as_node(wrt)
-		if node is self.graph._zero_node or node is self.graph._one_node:
-			return int(node.value)
-		else:
-			return node.symbol
+		return self.derivative_as_node(wrt).symbol
 
 	def derivative_as_node(self, wrt):
 		return self._type._get_derivative_wrt(self, wrt)
+
+	@cachedproperty
+	def differentiable_by(self):
+		return self._type._differentiable_by(self)
 
 	@cachedproperty
 	def is_root(self):
@@ -143,6 +137,10 @@ class Node(metaclass=Cached):
 		is_precomputable = self._type.is_precomputable(self)
 		if is_precomputable:
 			self.graph._precomputable_nodes.update({self.symbol: self})
+			if self.value is None:
+				sympy_op = self.operation.SYMPY_OP
+				self.value = float(sympy_op(*[parent.value 
+					for parent in self.parent_nodes]))
 		return is_precomputable
 
 	@cachedproperty
@@ -174,7 +172,6 @@ class Node(metaclass=Cached):
 	def __repr__(self):
 		cls_name = self.__class__.__name__
 		return f"{cls_name}({self.symbol})"
-
 
 
 class ExpressionNodeABC(abc.ABC):
@@ -219,7 +216,12 @@ class ExpressionNodeABC(abc.ABC):
 
 	@staticmethod
 	@abc.abstractmethod
-	def parent_nodes(node_instance):
+	def differentiable_by(node_instance):
+		pass
+
+	@staticmethod
+	@abc.abstractmethod
+	def _get_parent_nodes(node_instance):
 		pass
 
 	@staticmethod
@@ -258,7 +260,6 @@ class ExpressionNodeABC(abc.ABC):
 		pass
 
 
-
 class RootNode(ExpressionNodeABC):
 
 	_parent_nodes_not_allowed_error_message = (f"Object of type RootNode do not have parent nodes.")
@@ -276,8 +277,11 @@ class RootNode(ExpressionNodeABC):
 	def _get_derivative_wrt(node_instance, wrt):
 		raise ValueError
 
+	def _differentiable_by(node_instance):
+		return ()
+
 	@staticmethod
-	def parent_nodes(node_instance):
+	def _get_parent_nodes(node_instance):
 		raise _parent_nodes_not_allowed_error
 
 	@staticmethod
@@ -321,8 +325,11 @@ class VariableNode(RootNode):
 
 	@staticmethod
 	def _create_or_get_new_node_symbol(node_instance):
-		symbol = node_instance.graph.user_to_pycollo_problem_variables_mapping_in_order.get(node_instance.key, node_instance.key)
-		return symbol
+		return node_instance.key
+
+	@staticmethod
+	def _differentiable_by(node_instance):
+		return (node_instance, )
 
 	@staticmethod
 	def _get_derivative_wrt(node_instance, wrt):
@@ -330,6 +337,9 @@ class VariableNode(RootNode):
 			return node_instance.graph._one_node
 		else:
 			return node_instance.graph._zero_node
+
+	def differentiable_by(node_instance):
+		return (node_instance, )
 
 	@staticmethod
 	def is_precomputable(node_instance):
@@ -443,9 +453,7 @@ class IntermediateNode(ExpressionNodeABC):
 	def _inspect_parents(node_instance, equation):
 
 		def add_new_parent_node(arg):
-			parent_node = node_instance.graph.symbols_to_nodes_mapping.get(arg)
-			if parent_node is None:
-				parent_node = Node(arg, node_instance.graph)
+			parent_node = Node(arg, node_instance.graph)
 			node_instance.new_parent(parent_node)
 
 		if equation is None and node_instance.key.args:
@@ -457,25 +465,16 @@ class IntermediateNode(ExpressionNodeABC):
 					add_new_parent_node(arg)
 			else:
 				add_new_parent_node(equation)
-
-		has_parent_nodes = node_instance.parent_nodes
-		has_no_operation = node_instance._operation is None
-
-		if has_parent_nodes and has_no_operation:
-			if equation.func is sym.Symbol:
-				node_instance._operation = sym.Add
-			else:
-				node_instance._operation = equation.func
-
-			node_instance._expression = node_instance._operation(*[parent.symbol for parent in node_instance.parent_nodes])
+			node_instance._operation = determine_operation(equation.func, 
+				node_instance)
 
 	@staticmethod
-	def parent_nodes(node_instance):
+	def _get_parent_nodes(node_instance):
 		return node_instance._parent_nodes
 
 	@staticmethod
 	def new_parent(node_instance, parent):
-		node_instance.parent_nodes.append(parent)
+		node_instance._parent_nodes.append(parent)
 		parent._child_nodes.add(node_instance)
 
 	@staticmethod
@@ -483,40 +482,12 @@ class IntermediateNode(ExpressionNodeABC):
 		return tuple(parent.symbol for parent in node_instance.parent_nodes)
 
 	@staticmethod
-	def value(node_instance):
-		return node_instance._value
+	def _differentiable_by(node_instance):
+		return node_instance.operation.derivatives.keys()
 
 	@staticmethod
 	def _get_derivative_wrt(node_instance, wrt):
-		if node_instance.is_precomputable:
-			return node_instance.graph._zero_node
-		else:
-			if wrt in node_instance.parent_nodes:
-				deriv_node = node_instance._derivatives.get(wrt)
-				if deriv_node is None:
-					if isinstance(node_instance._expression, sym.Pow):
-						args = node_instance._expression.args
-						deriv = args[1] * args[0]**(args[1] - 1)
-					else:
-						deriv = node_instance._expression.diff(wrt.symbol)
-					if deriv.is_Atom:
-						if isinstance(deriv, sym.Symbol):
-							deriv_node = node_instance.graph.symbols_to_nodes_mapping.get(deriv)
-							if deriv_node is None:
-								raise ValueError
-						elif deriv.is_Number:
-							deriv_node = Node(deriv, node_instance.graph)
-						else:
-							raise TypeError
-					else:
-						deriv_node = Node(deriv, node_instance.graph)
-					return_val = deriv_node
-				else:
-					return_val = deriv_node
-			else:
-				return_val = node_instance.graph._zero_node
-			# print(f"Taking the derivative of {node_instance.symbol} = {node_instance.expression} with respect to {wrt.symbol} with answer {return_val.symbol}")
-			return return_val
+		return node_instance.operation.derivatives[wrt]
 
 	@staticmethod
 	def is_root():
@@ -531,9 +502,6 @@ class IntermediateNode(ExpressionNodeABC):
 	def is_precomputable(node_instance):
 		is_precomputable = all([parent.is_precomputable 
 			for parent in node_instance.parent_nodes])
-		if is_precomputable:
-			node_instance._value = node_instance.operation(*[parent.value 
-				for parent in node_instance.parent_nodes])
 		return is_precomputable
 
 	@staticmethod

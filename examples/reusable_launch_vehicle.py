@@ -33,9 +33,18 @@ problem.state_endpoint_constraints = [problem.initial_state[0],
 	problem.final_state[3],
 	problem.final_state[4]]
 
-problem.bounds = col.Bounds(optimal_control_problem=problem, initial_time=[0.0, 0.0], final_time=[0.0, 3000.0], state={h: [0, 80000], phi: np.deg2rad([-89, 89]), theta: np.deg2rad([-89, 89]), nu: [1, 10000], gamma: np.deg2rad([-89, 89]), psi: np.deg2rad([-179, 179])}, control={alpha: np.deg2rad([-89, 89]), beta: np.deg2rad([-89, 1])}, state_endpoint=[[260000, 260000], [0, 0], [0, 0], [25600, 25600], np.deg2rad([-1, -1]), np.deg2rad([90, 90]), [80000, 80000], [2500, 2500], np.deg2rad([-89, 89])])
+problem.bounds = col.Bounds(optimal_control_problem=problem, 
+	initial_time=[0.0, 0.0], 
+	final_time=[0.0, 3000.0], 
+	state=[[0, 80000], np.deg2rad([-89, 89]), np.deg2rad([-89, 89]), [1, 10000], np.deg2rad([-89, 89]), np.deg2rad([-179, 179])], 
+	control=[np.deg2rad([-89, 89]), np.deg2rad([-89, 1])], 
+	state_endpoint=[[260000, 260000], [0, 0], [0, 0], [25600, 25600], np.deg2rad([-1, -1]), np.deg2rad([90, 90]), [80000, 80000], [2500, 2500], np.deg2rad([-89, 89])])
 
 # Guess
-problem.initial_guess = col.Guess(optimal_control_problem=problem, time=np.array([0.0, 1000.0]), state={h: [0, 80000], phi: np.deg2rad([0, 10]), theta: np.deg2rad([0, 10]), nu: [2000, 70], gamma: np.deg2rad([-1, -5]), psi: np.deg2rad([90, -90])}, control={alpha: [0, 0], beta: [0, 0]})
+problem.initial_guess = col.Guess(optimal_control_problem=problem, 
+	time=np.array([0.0, 1000.0]), 
+	state=[[0, 80000], np.deg2rad([0, 10]), np.deg2rad([0, 10]), [2000, 70], np.deg2rad([-1, -5]), np.deg2rad([90, -90])], 
+	control=[[0, 0], [0, 0]],
+	state_endpoints_override=True)
 
 problem.solve()

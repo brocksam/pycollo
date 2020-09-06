@@ -137,11 +137,11 @@ def fast_sympify(arg):
 
 
 def format_case(item, case):
-    if case is "title":
+    if case == "title":
         return item.title()
-    elif case is "upper":
+    elif case == "upper":
         return item.upper()
-    elif case is "lower":
+    elif case == "lower":
         return item.lower()
     else:
         return item

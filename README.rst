@@ -23,7 +23,7 @@ Status
       - .. image:: https://ci.appveyor.com/api/projects/status/github/brocksam/pycollo?svg=true
             :target: https://ci.appveyor.com/project/brocksam/pycollo
     * - Coverage
-      - .. image:: https://codecov.io/gh/brocksam/pycollo/branch/master/graph/badge.svg
+      - .. image:: https://codecov.io/gh/brocksam/pycollo/branch/master/graph/badge.svg?token=X72S9D6YQ3
             :target: https://codecov.io/gh/brocksam/pycollo
 
 Getting Started:

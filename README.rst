@@ -17,7 +17,7 @@ Status
       - .. image:: https://badge.fury.io/py/pycollo.svg
             :target: https://badge.fury.io/py/pycollo
     * - Travis CI
-      - .. image:: https://travis-ci.com/brocksam/pycollo.svg?branch=master
+      - .. image:: https://travis-ci.com/brocksam/pycollo.svg?token=kRuoKG6EjqPbCjWezGYy&branch=master
             :target: https://travis-ci.com/brocksam/pycollo
     * - Appveyor
       - .. image:: https://ci.appveyor.com/api/projects/status/github/brocksam/pycollo?svg=true

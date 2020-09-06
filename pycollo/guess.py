@@ -3,6 +3,9 @@ from numbers import Number
 import numpy as np
 
 
+__all__ = ["EndpointGuess", "PhaseGuess"]
+
+
 class PhaseGuess:
 	
 	def __init__(self, phase: "Phase"):

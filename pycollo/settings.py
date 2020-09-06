@@ -120,6 +120,9 @@ UNSUPPORTED_SCALING_METHOD : TYPE
 """
 
 
+__all__ = ["Settings"]
+
+
 from pyproprop import processed_property
 
 

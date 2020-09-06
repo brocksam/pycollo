@@ -3,53 +3,46 @@ import pytest
 import sympy as sym
 import sympy.physics.mechanics as me
 
-<<<<<<< HEAD:tests/unit/test_user_bounds.py
-from pycollo import Bounds, OptimalControlProblem
+import pycollo
 
-=======
-try:
-	import pycollo
-except ModuleNotFoundError:
-	from ..optimal_control_problem import OptimalControlProblem
->>>>>>> 8a81b679cd5b8f27532ab273d067a0b6348aff01:pycollo/tests/test_user_bounds.py
 
-@pytest.fixture
-def fixture_pendulum():
+# @pytest.fixture
+# def fixture_pendulum():
 	
-	# Symbols
-	q = sym.Symbol('q')
-	u = sym.Symbol('u')
-	T = sym.Symbol('T')
-	m, l, I, g, k = sym.symbols('m l I g k')
-	ml, mgl, sinq, mglsinq = sym.symbols('ml mgl sinq mglsinq')
+# 	# Symbols
+# 	q = sym.Symbol('q')
+# 	u = sym.Symbol('u')
+# 	T = sym.Symbol('T')
+# 	m, l, I, g, k = sym.symbols('m l I g k')
+# 	ml, mgl, sinq, mglsinq = sym.symbols('ml mgl sinq mglsinq')
 
-	# Optimal Control Problem
-	problem = OptimalControlProblem(name="Pendulum swing-up problem")
-	phase = problem.new_phase("phase")	
-	phase.state_variables = [q, u]
-	phase.control_variables = T
-	phase.state_equations = [u, (m*g*l*sym.sin(q) - T)/I]
-	phase.integrand_functions = [T**2]
-	phase.auxiliary_data = {}
-	problem.objective_function = phase.integral_variables[0]
+# 	# Optimal Control Problem
+# 	problem = OptimalControlProblem(name="Pendulum swing-up problem")
+# 	phase = problem.new_phase("phase")	
+# 	phase.state_variables = [q, u]
+# 	phase.control_variables = T
+# 	phase.state_equations = [u, (m*g*l*sym.sin(q) - T)/I]
+# 	phase.integrand_functions = [T**2]
+# 	phase.auxiliary_data = {}
+# 	problem.objective_function = phase.integral_variables[0]
 
-	problem._check_variables_and_equations()
-	problem._initialise_backend()
+# 	problem._check_variables_and_equations()
+# 	problem._initialise_backend()
 
-	return problem
+# 	return problem
 
 
-def test_bounds_mapping(fixture_pendulum):
+# def test_bounds_mapping(fixture_pendulum):
 
-	q = sym.Symbol('q')
-	u = sym.Symbol('u')
-	fixture_pendulum.phases[0].bounds.state_variables = {
-		q: [0, np.pi],
-		u: [-10, 10],
-		}
+# 	q = sym.Symbol('q')
+# 	u = sym.Symbol('u')
+# 	fixture_pendulum.phases[0].bounds.state_variables = {
+# 		q: [0, np.pi],
+# 		u: [-10, 10],
+# 		}
 
-	with pytest.raises(NotImplementedError):
-		fixture_pendulum._check_problem_and_phase_bounds()
+# 	with pytest.raises(NotImplementedError):
+# 		fixture_pendulum._check_problem_and_phase_bounds()
 
 # def test_bounds_point_time_float(fixture_pendulum):
 
@@ -166,13 +159,3 @@ def test_bounds_mapping(fixture_pendulum):
 
 # 	with pytest.raises(ValueError):
 # 		fixture_pendulum.bounds = Bounds(optimal_control_problem=fixture_pendulum, control={fixture_pendulum.state_variables[0]: 0.0, fixture_pendulum.control_variables[0]: 0.0})
-
-
-
-
-
-
-
-
-
-

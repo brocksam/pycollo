@@ -6,19 +6,19 @@ import sympy as sym
 from .utils import cachedproperty
 
 
-SYMPY_ZERO = sym.numbers.Zero()
-SYMPY_ONE = sym.numbers.One()
-SYMPY_TWO = sym.numbers.Integer(2)
-SYMPY_THREE = sym.numbers.Integer(3)
-SYMPY_HALF = sym.numbers.Half()
-SYMPY_THIRD = sym.numbers.Rational(1/3)
-SYMPY_2THIRDS = sym.numbers.Rational(2/3)
-SYMPY_NEG_ONE = sym.numbers.Integer(-1)
-SYMPY_NEG_TWO = sym.numbers.Integer(-2)
-SYMPY_NEG_THREE = sym.numbers.Integer(-3)
-SYMPY_NEG_HALF = sym.numbers.Rational(-1/2)
-SYMPY_NEG_THIRD = sym.numbers.Rational(-1/3)
-SYMPY_NEG_2THIRDS = sym.numbers.Rational(-2/3)
+SYMPY_ZERO = sym.core.numbers.Zero()
+SYMPY_ONE = sym.core.numbers.One()
+SYMPY_TWO = sym.core.numbers.Integer(2)
+SYMPY_THREE = sym.core.numbers.Integer(3)
+SYMPY_HALF = sym.core.numbers.Half()
+SYMPY_THIRD = sym.core.numbers.Rational(1/3)
+SYMPY_2THIRDS = sym.core.numbers.Rational(2/3)
+SYMPY_NEG_ONE = sym.core.numbers.Integer(-1)
+SYMPY_NEG_TWO = sym.core.numbers.Integer(-2)
+SYMPY_NEG_THREE = sym.core.numbers.Integer(-3)
+SYMPY_NEG_HALF = sym.core.numbers.Rational(-1/2)
+SYMPY_NEG_THIRD = sym.core.numbers.Rational(-1/3)
+SYMPY_NEG_2THIRDS = sym.core.numbers.Rational(-2/3)
 
 
 class PycolloOp(abc.ABC):

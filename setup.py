@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='Pycollo',
-    version='0.0.dev0',
+    version='0.0.0-alpha',
     author='Sam Brockie',
     author_email='sgb39@cam.ac.uk',
     packages=find_packages(),

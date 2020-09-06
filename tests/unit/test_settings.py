@@ -15,7 +15,7 @@ class TestSettings:
     @pytest.fixture(autouse=True)
     def _ocp_fixture(self):
         """Simple fixture setting up an empty :obj:`OptimalControlProblem`."""
-        self.ocp = pycollo.OptimalControlProblem()
+        self.ocp = pycollo.OptimalControlProblem("Test OCP")
         self.settings = self.ocp.settings
 
     def test_ocp_settings_attr_type(self):

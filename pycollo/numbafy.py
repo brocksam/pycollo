@@ -237,6 +237,8 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 	function_string = (
 		# f"@nb.njit(parallel=True)\n"
 		f"def numbafied_func({function_arguments}):\n"
+		f"    def sec(args):\n"
+		f"        return 1 / cos(args)\n"
 		f"    {numpy_default_arrays}\n"
 		f"    {precomputed_constants}\n"
 		f"    {intermediate_substitutions}\n"

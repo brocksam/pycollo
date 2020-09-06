@@ -156,6 +156,8 @@ def numbafy_continuous_hessian(*args, **kwargs):
 
 	function_string = (
 		f"def numbafied_func({function_arguments}):\n"
+		f"    def sec(args):\n"
+		f"        return 1 / cos(args)\n"
 		f"    {precomputed_constants}\n"
 		f"    {intermediate_substitutions}\n"
 		f"    return {return_value}")

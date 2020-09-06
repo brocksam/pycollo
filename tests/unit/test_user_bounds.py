@@ -3,7 +3,7 @@ import pytest
 import sympy as sym
 import sympy.physics.mechanics as me
 
-from pycollo import Bounds, OptimalControlProblem
+import pycollo
 
 
 # @pytest.fixture
@@ -159,13 +159,3 @@ from pycollo import Bounds, OptimalControlProblem
 
 # 	with pytest.raises(ValueError):
 # 		fixture_pendulum.bounds = Bounds(optimal_control_problem=fixture_pendulum, control={fixture_pendulum.state_variables[0]: 0.0, fixture_pendulum.control_variables[0]: 0.0})
-
-
-
-
-
-
-
-
-
-

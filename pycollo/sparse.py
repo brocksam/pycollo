@@ -8,7 +8,7 @@ from .node import Node
 
 class SparseCOOMatrix:
 
-	ZERO = sym.numbers.Zero()
+	ZERO = sym.core.numbers.Zero()
 
 	def __new__(cls, entries, n_rows, n_cols, expr_graph):
 		self = object.__new__(cls)

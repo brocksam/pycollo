@@ -2,7 +2,7 @@
 
 [run]
 branch = True
-source = pyproprop
+source = pycollo
 
 [report]
 exclude_lines =

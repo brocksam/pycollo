@@ -10,7 +10,7 @@ from ordered_set import OrderedSet
 import scipy.interpolate as interpolate
 import sympy as sym
 
-from .typing import (OptionalSymsType, TupleSymsType)
+from .typing import OptionalSymsType, TupleSymsType
 
 
 dcdxInfo = collections.namedtuple('dcdxInfo', [

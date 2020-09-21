@@ -22,6 +22,49 @@ PYCOLLO = "pycollo"
 SYMPY = "sympy"
 
 
+class BackendABC(ABC):
+
+    _DEFAULT_BACKEND = PYCOLLO
+    _BACKENDS = {PYCOLLO}
+
+    def create_bounds(self):
+        self.bounds = Bounds(self)
+        self.recollect_variables_and_slices()
+
+    def create_compiled_functions(self):
+        self.compiled_functions = CompiledFunctions(self)
+
+    def create_guess(self):
+        phase_guesses = [p.ocp_phase.guess for p in self.p]
+        endpoint_guess = self.ocp.guess
+        self.initial_guess = Guess(self, phase_guesses, endpoint_guess)
+
+    def create_initial_mesh(self):
+        phase_meshes = [p.ocp_phase.mesh for p in self.p]
+        self.initial_mesh = Mesh(self, phase_meshes)
+
+    def create_mesh_iterations(self):
+        self.mesh_iterations = []
+        _ = self.new_mesh_iteration(self.initial_mesh, self.initial_guess)
+
+    def create_quadrature(self):
+        self.quadrature = Quadrature(self)
+
+    def create_scaling(self):
+        self.scaling = Scaling(self)
+
+    def new_mesh_iteration(self, mesh, guess):
+        index = len(self.mesh_iterations)
+        new_iteration = Iteration(
+            backend=self,
+            index=index,
+            mesh=mesh,
+            guess=guess,
+        )
+        self.mesh_iterations.append(new_iteration)
+        return new_iteration
+
+
 class PycolloPhaseData:
 
     def __init__(self, ocp_backend, ocp_phase):
@@ -258,49 +301,6 @@ class PycolloPhaseData:
         self.qt_point_slice = slice(self.q_point_slice.start,
                                     self.num_point_vars)
         self.y_point_qt_point_split = self.y_point_slice.stop
-
-class BackendABC(ABC):
-
-    _DEFAULT_BACKEND = PYCOLLO
-    _BACKENDS = {PYCOLLO}
-
-    def create_bounds(self):
-        self.bounds = Bounds(self)
-        self.recollect_variables_and_slices()
-
-    def create_compiled_functions(self):
-        self.compiled_functions = CompiledFunctions(self)
-
-    def create_guess(self):
-        phase_guesses = [p.ocp_phase.guess for p in self.p]
-        endpoint_guess = self.ocp.guess
-        self.initial_guess = Guess(self, phase_guesses, endpoint_guess)
-
-    def create_initial_mesh(self):
-        phase_meshes = [p.ocp_phase.mesh for p in self.p]
-        self.initial_mesh = Mesh(self, phase_meshes)
-
-    def create_mesh_iterations(self):
-        self.mesh_iterations = []
-        first_iteration = self.new_mesh_iteration(
-            self.initial_mesh, self.initial_guess)
-
-    def create_quadrature(self):
-        self.quadrature = Quadrature(self)
-
-    def create_scaling(self):
-        self.scaling = Scaling(self)
-
-    def new_mesh_iteration(self, mesh, guess):
-        index = len(self.mesh_iterations)
-        new_iteration = Iteration(
-            backend=self,
-            index=index,
-            mesh=mesh,
-            guess=guess,
-        )
-        self.mesh_iterations.append(new_iteration)
-        return new_iteration
 
 
 class Pycollo(BackendABC):

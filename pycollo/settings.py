@@ -123,15 +123,9 @@ UNSUPPORTED_SCALING_METHOD : TYPE
 __all__ = ["Settings"]
 
 
-from pyproprop import processed_property
+from pyproprop import Options, processed_property
 
-
-# Backend constants
-BACKEND_PYCOLLO_KEYWORD = "pycollo"
-BACKEND_CASADI_KEYWORD = "casadi"
-BACKEND_SYMPY_KEYWORD = "sympy"
-DEFAULT_BACKEND = BACKEND_CASADI_KEYWORD
-UNSUPPORTED_BACKEND = (BACKEND_SYMPY_KEYWORD, )
+from .backend import BACKENDS
 
 # Matrix form constants
 MATRIX_FORM_DIFFERENTIAL_KEYWORD = "differential"
@@ -286,9 +280,16 @@ class Settings():
         "backend",
         description="Pycollo backend",
         type=str,
-        options=_BACKEND_OPTIONS,
-        unsupported_options=UNSUPPORTED_BACKEND,
+        options=BACKENDS,
     )
+
+    # backend = processed_property(
+    #     "backend",
+    #     description="Pycollo backend",
+    #     type=str,
+    #     options=_BACKEND_OPTIONS,
+    #     unsupported_options=UNSUPPORTED_BACKEND,
+    # )
     derivative_level = processed_property(
         "derivative_level",
         description="derivative level",
@@ -422,7 +423,7 @@ class Settings():
 
     def __init__(self, *,
                  optimal_control_problem=None,
-                 backend=DEFAULT_BACKEND,
+                 backend=BACKENDS.default,
                  collocation_matrix_form=DEFAULT_MATRIX_FORM,
                  nlp_solver=DEFAULT_NLP_SOLVER,
                  linear_solver=DEFAULT_LINEAR_SOLVER,

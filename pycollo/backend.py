@@ -17,6 +17,9 @@ from .utils import (console_out, dict_merge, fast_sympify,
                     format_multiple_items_for_output)
 
 
+__all__ = []
+
+
 CASADI = "casadi"
 PYCOLLO = "pycollo"
 SYMPY = "sympy"
@@ -24,8 +27,8 @@ SYMPY = "sympy"
 
 class BackendABC(ABC):
 
-    _DEFAULT_BACKEND = PYCOLLO
-    _BACKENDS = {PYCOLLO}
+    # _DEFAULT_BACKEND = PYCOLLO
+    # _BACKENDS = {PYCOLLO}
 
     def create_bounds(self):
         self.bounds = Bounds(self)
@@ -615,8 +618,5 @@ class Sympy(BackendABC):
         raise NotImplementedError
 
 
-backend_dispatcher = {
-    PYCOLLO: Pycollo,
-    CASADI: Casadi,
-    SYMPY: Sympy,
-}
+BACKENDS = Options((PYCOLLO, CASADI, SYMPY), default=CASADI, unsupported=SYMPY,
+                   handles=(Pycollo, Casadi, Sympy))

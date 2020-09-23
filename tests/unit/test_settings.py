@@ -394,8 +394,8 @@ class TestSettings:
         """'user' and 'guess' not supported scaling methods."""
         expected_error_msg = re.escape(
             f"`{repr(test_value)}` is not currently supported as a scaling "
-            f"method (`scaling_method`). Choose one of: `None`, `'none'` or "
-            f"`'bounds'`.")
+            f"method (`scaling_method`). Choose one of: `'bounds'`, "
+            f"`'default'`, `'none'` or `None`.")
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.scaling_method = test_value
 

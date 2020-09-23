@@ -37,8 +37,6 @@ DEFAULT_DISPLAY_MESH_RESULT_INFO : bool
     to interpret.
 DEFAULT_LINEAR_SOLVER : str
     Description
-DEFAULT_MATRIX_FORM : TYPE
-    Description
 DEFAULT_MAX_MESH_ITERATIONS : int
     Description
 DEFAULT_MAX_NLP_ITERATIONS : int
@@ -67,10 +65,6 @@ LINEAR_SOLVER_MA57_KEYWORD : str
     Description
 LINEAR_SOLVER_MUMPS_KEYWORD : str
     Description
-MATRIX_FORM_DIFFERENTIAL_KEYWORD : str
-    Description
-MATRIX_FORM_INTEGRAL_KEYWORD : str
-    Description
 NLP_SOLVER_BONMIN_KEYWORD : str
     Description
 NLP_SOLVER_IPOPT_KEYWORD : str
@@ -95,10 +89,6 @@ SCALING_NONE_KEYWORD : TYPE
     Description
 SCALING_USER_KEYWORD : str
     Description
-UNSUPPORTED_BACKEND : TYPE
-    Description
-UNSUPPORTED_COLLOCATION_MATRIX_FORM : TYPE
-    Description
 UNSUPPORTED_LINEAR_SOLVER : tuple
     Description
 UNSUPPORTED_NLP_SOLVER : TYPE
@@ -114,15 +104,10 @@ UNSUPPORTED_SCALING_METHOD : TYPE
 __all__ = ["Settings"]
 
 
-from pyproprop import Options, processed_property
+from pyproprop import processed_property
 
 from .backend import BACKENDS
-
-# Matrix form constants
-MATRIX_FORM_DIFFERENTIAL_KEYWORD = "differential"
-MATRIX_FORM_INTEGRAL_KEYWORD = "integral"
-DEFAULT_MATRIX_FORM = MATRIX_FORM_INTEGRAL_KEYWORD
-UNSUPPORTED_COLLOCATION_MATRIX_FORM = (MATRIX_FORM_DIFFERENTIAL_KEYWORD, )
+from .compiled import COLLOCATION_MATRIX_FORMS
 
 # Scaling method constants
 SCALING_NONE_IDENTIFIER = None
@@ -231,10 +216,6 @@ class Settings():
 
     """
 
-    _COLLOCATION_MATRIX_FORMS = (
-        MATRIX_FORM_DIFFERENTIAL_KEYWORD,
-        MATRIX_FORM_INTEGRAL_KEYWORD,
-    )
     _SCALING_METHOD_OPTIONS = (
         SCALING_NONE_IDENTIFIER,
         SCALING_NONE_KEYWORD,
@@ -280,8 +261,7 @@ class Settings():
         description="form of the collocation matrices",
         type=str,
         cast=True,
-        options=_COLLOCATION_MATRIX_FORMS,
-        unsupported_options=UNSUPPORTED_COLLOCATION_MATRIX_FORM,
+        options=COLLOCATION_MATRIX_FORMS,
     )
     quadrature_method = processed_property(
         "quadrature_method",
@@ -402,7 +382,7 @@ class Settings():
     def __init__(self, *,
                  optimal_control_problem=None,
                  backend=BACKENDS.default,
-                 collocation_matrix_form=DEFAULT_MATRIX_FORM,
+                 collocation_matrix_form=COLLOCATION_MATRIX_FORMS.default,
                  nlp_solver=DEFAULT_NLP_SOLVER,
                  linear_solver=DEFAULT_LINEAR_SOLVER,
                  nlp_tolerance=DEFAULT_NLP_TOLERANCE,

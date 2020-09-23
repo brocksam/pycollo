@@ -2,13 +2,21 @@ import abc
 
 import numpy as np
 import scipy.sparse as sparse
+from pyproprop import Options
 
 
-DEFAULT = "default"
 BOUNDS = "bounds"
-USER = "user"
+DEFAULT = "default"
 GUESS = "guess"
 NONE = "none"
+USER = "user"
+
+
+SCALING_METHODS = Options((BOUNDS, DEFAULT, GUESS, USER, NONE, None),
+                          default=BOUNDS, unsupported=(GUESS, USER))
+DEFAULT_UPDATE_SCALING = True
+DEFAULT_NUMBER_SCALING_SAMPLES = 0
+DEFAULT_SCALING_WEIGHT = 0.8
 
 
 class ScalingABC(abc.ABC):

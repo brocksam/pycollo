@@ -51,12 +51,6 @@ DEFAULT_NUMBER_SCALING_SAMPLES : int
     Description
 DEFAULT_QUADRATURE_METHOD : TYPE
     Description
-DEFAULT_SCALING_METHOD : TYPE
-    Description
-DEFAULT_SCALING_WEIGHT : float
-    Description
-DEFAULT_UPDATE_SCALING : bool
-    Description
 DERIVATIVE_LEVEL_FIRST : int
     Description
 DERIVATIVE_LEVEL_SECOND : int
@@ -79,23 +73,11 @@ QUADRATURE_LOBATTO_KEYWORD : str
     Description
 QUADRATURE_RADAU_KEYWORD : str
     Description
-SCALING_BOUNDS_KEYWORD : str
-    Description
-SCALING_GUESS_KEYWORD : str
-    Description
-SCALING_NONE_IDENTIFIER : TYPE
-    Description
-SCALING_NONE_KEYWORD : TYPE
-    Description
-SCALING_USER_KEYWORD : str
-    Description
 UNSUPPORTED_LINEAR_SOLVER : tuple
     Description
 UNSUPPORTED_NLP_SOLVER : TYPE
     Description
 UNSUPPORTED_QUADRATURE_METHOD : TYPE
-    Description
-UNSUPPORTED_SCALING_METHOD : TYPE
     Description
 
 """
@@ -108,20 +90,11 @@ from pyproprop import processed_property
 
 from .backend import BACKENDS
 from .compiled import COLLOCATION_MATRIX_FORMS
+from .scaling import DEFAULT_NUMBER_SCALING_SAMPLES
+from .scaling import DEFAULT_SCALING_WEIGHT
+from .scaling import DEFAULT_UPDATE_SCALING
+from .scaling import SCALING_METHODS
 
-# Scaling method constants
-SCALING_NONE_IDENTIFIER = None
-SCALING_NONE_KEYWORD = "none"
-SCALING_USER_KEYWORD = "user"
-SCALING_GUESS_KEYWORD = "guess"
-SCALING_BOUNDS_KEYWORD = "bounds"
-DEFAULT_SCALING_METHOD = SCALING_BOUNDS_KEYWORD
-UNSUPPORTED_SCALING_METHOD = (SCALING_USER_KEYWORD,
-                              SCALING_GUESS_KEYWORD,
-                              )
-DEFAULT_UPDATE_SCALING = True
-DEFAULT_NUMBER_SCALING_SAMPLES = 0
-DEFAULT_SCALING_WEIGHT = 0.8
 
 # Solver constants
 NLP_SOLVER_IPOPT_KEYWORD = "ipopt"
@@ -216,13 +189,6 @@ class Settings():
 
     """
 
-    _SCALING_METHOD_OPTIONS = (
-        SCALING_NONE_IDENTIFIER,
-        SCALING_NONE_KEYWORD,
-        SCALING_USER_KEYWORD,
-        SCALING_GUESS_KEYWORD,
-        SCALING_BOUNDS_KEYWORD,
-    )
     _NLP_SOLVERS = (
         NLP_SOLVER_IPOPT_KEYWORD,
         NLP_SOLVER_SNOPT_KEYWORD,
@@ -336,8 +302,7 @@ class Settings():
     scaling_method = processed_property(
         "scaling_method",
         description="scaling method",
-        options=_SCALING_METHOD_OPTIONS,
-        unsupported_options=UNSUPPORTED_SCALING_METHOD,
+        options=SCALING_METHODS,
     )
     update_scaling = processed_property(
         "update_scaling",
@@ -396,7 +361,7 @@ class Settings():
                  display_mesh_refinement_info=DEFAULT_DISPLAY_MESH_REFINE_INFO,
                  display_mesh_result_info=DEFAULT_DISPLAY_MESH_RESULT_INFO,
                  display_mesh_result_graph=DEFAULT_DISPLAY_MESH_RESULT_GRAPH,
-                 scaling_method=DEFAULT_SCALING_METHOD,
+                 scaling_method=SCALING_METHODS.default,
                  update_scaling=DEFAULT_UPDATE_SCALING,
                  number_scaling_samples=DEFAULT_NUMBER_SCALING_SAMPLES,
                  scaling_weight=DEFAULT_SCALING_WEIGHT,

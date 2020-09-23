@@ -281,12 +281,12 @@ class TestSettings:
                      st.floats(min_value=2.0, max_value=20.0)))
     def test_valid_min_max_collocation_points(self, test_value):
         """Integers between 2 and 20 can be set provided min < max."""
+        self.settings.collocation_points_min = 2
+        self.settings.collocation_points_max = 20
         self.settings.collocation_points_min = test_value
         self.settings.collocation_points_max = test_value
         assert self.settings.collocation_points_min == int(test_value)
         assert self.settings.collocation_points_max == int(test_value)
-        self.settings.collocation_points_min = 2
-        self.settings.collocation_points_max = 20
 
     @given(st.integers(max_value=1))
     def test_too_small_min_max_collocation_points(self, test_value):

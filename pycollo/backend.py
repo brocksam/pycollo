@@ -1,9 +1,27 @@
+"""
+
+Attributes
+----------
+CASADI : str
+    Constant keyword string identifier for the Pycollo-CasADi backend.
+PYCOLLO : str
+    Constant keyword string identifier for the Pycollo-only (hSAD) backend.
+SYMPY : str
+    Constant keyword string identifier for the Pycollo-Sympy backend.
+BACKENDS : :py:class:`Options <pyproprop>`
+    The default backend to be used (via its constant keyword string
+    identifier).
+
+"""
+
+
+import itertools
 from abc import (ABC, abstractmethod)
 from collections import namedtuple
-import itertools
 
 import numpy as np
 import sympy as sym
+from pyproprop import Options
 
 from .bounds import Bounds
 from .compiled import CompiledFunctions

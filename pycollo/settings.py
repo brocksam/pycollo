@@ -6,15 +6,6 @@ NLP solvers etc.
 
 Attributes
 ----------
-BACKEND_CASADI_KEYWORD : str
-    Constant keyword string identifier for the Pycollo-CasADi backend.
-BACKEND_PYCOLLO_KEYWORD : str
-    Constant keyword string identifier for the Pycollo-only (hSAD) backend.
-BACKEND_SYMPY_KEYWORD : str
-    Constant keyword string identifier for the Pycollo-Sympy backend.
-DEFAULT_BACKEND : str
-    The default backend to be used (via its constant keyword string
-    identifier).
 DEFAULT_COLLOCATION_POINTS_MAX : int
     Constant default limitation on the maximum number of collocation points
     per mesh section that a user can specify. The value of 20 has been chosen
@@ -240,11 +231,6 @@ class Settings():
 
     """
 
-    _BACKEND_OPTIONS = (
-        BACKEND_PYCOLLO_KEYWORD,
-        BACKEND_CASADI_KEYWORD,
-        BACKEND_SYMPY_KEYWORD,
-    )
     _COLLOCATION_MATRIX_FORMS = (
         MATRIX_FORM_DIFFERENTIAL_KEYWORD,
         MATRIX_FORM_INTEGRAL_KEYWORD,
@@ -282,14 +268,6 @@ class Settings():
         type=str,
         options=BACKENDS,
     )
-
-    # backend = processed_property(
-    #     "backend",
-    #     description="Pycollo backend",
-    #     type=str,
-    #     options=_BACKEND_OPTIONS,
-    #     unsupported_options=UNSUPPORTED_BACKEND,
-    # )
     derivative_level = processed_property(
         "derivative_level",
         description="derivative level",

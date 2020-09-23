@@ -45,7 +45,7 @@ import scipy.sparse as sparse
 import sympy as sym
 import sympy.physics.mechanics as me
 
-from .backend import backend_dispatcher
+from .backend import BACKENDS
 from .bounds import EndpointBounds
 from .expression_graph import ExpressionGraph
 from .guess import EndpointGuess
@@ -357,7 +357,7 @@ class OptimalControlProblem():
 		console_out(msg)
 
 	def _initialise_backend(self):
-		self._backend = backend_dispatcher[self.settings.backend](self)
+		self._backend = BACKENDS.dispatcher[self.settings.backend](self)
 		msg = "Backend initialised."
 		console_out(msg)
 

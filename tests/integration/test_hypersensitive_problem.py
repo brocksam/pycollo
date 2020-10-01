@@ -48,15 +48,21 @@ class TestHypersensitiveProblem:
 
     def test_set_phase_data(self, state):
         """Phase data (equations etc.) can be added correctly."""
+        y_eqn = -self.y**3 + self.u
+        q_eqn = 0.5 * (self.y**2 + self.u**2)
         state.ocp.phases.A.state_variables = self.y
         state.ocp.phases.A.control_variables = self.u
-        state.ocp.phases.A.state_equations = -self.y**3 + self.u
-        state.ocp.phases.A.integrand_functions = 0.5 * (self.y**2 + self.u**2)
+        state.ocp.phases.A.state_equations = y_eqn
+        state.ocp.phases.A.integrand_functions = q_eqn
         state.ocp.phases.A.auxiliary_data = {}
         assert state.ocp.phases.A.state_variables == (self.y, )
         assert state.ocp.phases.A.state_variables.y is self.y
         assert state.ocp.phases.A.control_variables == (self.u, )
         assert state.ocp.phases.A.control_variables.u is self.u
+        assert state.ocp.phases.A.state_equations == (y_eqn, )
+        assert state.ocp.phases.A.state_equations[0] == y_eqn
+        assert state.ocp.phases.A.integrand_functions == (q_eqn, )
+        assert state.ocp.phases.A.integrand_functions[0] == q_eqn
 
     def test_set_phase_bounds(self, state):
         """Phase bounds can be set and are reformatted correctly."""

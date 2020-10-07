@@ -9,8 +9,8 @@ import sympy as sym
 
 from .node import Node
 from .typing import OptionalBoundsType
-from .utils import (fast_sympify, format_multiple_items_for_output,
-    supported_iter_types)
+from .utils import (fast_sympify, format_multiple_items_for_output, 
+                    supported_iter_types)
 
 
 __all__ = ["EndpointBounds", "PhaseBounds"]
@@ -40,7 +40,8 @@ class BoundsABC(ABC):
         return needed
 
     @abstractmethod
-    def _required_variable_bounds(self): pass
+    def _required_variable_bounds(self): 
+        pass
 
 
 class EndpointBounds(BoundsABC):

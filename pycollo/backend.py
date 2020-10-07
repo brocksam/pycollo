@@ -39,14 +39,13 @@ __all__ = []
 
 
 CASADI = "casadi"
+HSAD = "hsad"
 PYCOLLO = "pycollo"
 SYMPY = "sympy"
 
 
 class BackendABC(ABC):
-
-    # _DEFAULT_BACKEND = PYCOLLO
-    # _BACKENDS = {PYCOLLO}
+    """Abstract base class for backends"""
 
     def create_bounds(self):
         self.bounds = Bounds(self)
@@ -630,11 +629,18 @@ class Casadi(BackendABC):
         raise NotImplementedError
 
 
+class Hsad(BackendABC):
+
+    def __init__(self, ocp):
+        raise NotImplementedError
+
+
 class Sympy(BackendABC):
 
     def __init__(self, ocp):
         raise NotImplementedError
 
 
-BACKENDS = Options((PYCOLLO, CASADI, SYMPY), default=CASADI, unsupported=SYMPY,
-                   handles=(Pycollo, Casadi, Sympy))
+BACKENDS = Options((PYCOLLO, HSAD, CASADI, SYMPY), default=CASADI,
+                   unsupported=(PYCOLLO, HSAD, SYMPY),
+                   handles=(Pycollo, Hsad, Casadi, Sympy))

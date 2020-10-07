@@ -534,7 +534,24 @@ class Phase:
             self._guess = guess
 
     def _check_variables_and_equations(self):
+        """Check the user-supplied variables and equations for this OCP phase.
 
+        Steps involved are:
+            * Ensure that the same number of state variables and state
+              equations are supplied.
+            * Ensure that the symbols related to the state equations are the
+              same set as the set of state variables.
+            * If the two sets are not the same then issue an informative
+              warning to the user describing what is wrong about the supplied
+              state variables and state equations.
+
+        Raises
+        ------
+        ValueError
+            If the state variables and symbols associated with the state
+            equations are not the same.
+
+        """
         try:
             set_state_variables_keys = set(self.state_variables._fields)
         except AttributeError:

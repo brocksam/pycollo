@@ -16,9 +16,10 @@ BACKENDS : :py:class:`Options <pyproprop>`
 
 
 import itertools
-from abc import (ABC, abstractmethod)
+from abc import ABC, abstractmethod
 from collections import namedtuple
 
+import casadi as ca
 import numpy as np
 import sympy as sym
 from pyproprop import Options
@@ -46,6 +47,119 @@ SYMPY = "sympy"
 
 class BackendABC(ABC):
     """Abstract base class for backends"""
+
+    def __init__(self, ocp):
+        self.ocp = ocp
+        self.create_point_variable_symbols()
+        self.create_phase_backends()
+        self.preprocess_user_problem_aux_data()
+        self.preprocess_phase_backends()
+        self.collect_variables_substitutions()
+        self.console_out_variables_constraints_preprocessed()
+
+    def create_phase_backends(self):
+        self.p = tuple(PycolloPhaseData(self, phase)
+                       for phase in self.ocp.phases)
+        self.num_phases = len(self.p)
+        self.all_phase_vars = {var for p in self.p for var in p.all_user_vars}
+        self.all_vars = self.all_phase_vars.union(set(self.s_vars_user))
+
+    def preprocess_user_problem_aux_data(self):
+        self.user_phase_aux_data_syms = {symbol
+                                         for phase in self.ocp.phases
+                                         for symbol in phase.auxiliary_data}
+        self.aux_data = {}
+        self.aux_data_phase_dependent = {}
+        self.aux_data_phase_independent = {}
+        self.aux_data_supplied_in_ocp_and_phase = {}
+        for symbol, equation in self.ocp.auxiliary_data.items():
+            self.partition_user_problem_phase_aux_data(symbol, equation)
+        self.check_user_phase_aux_data_not_user_problem_aux_data()
+        self.partition_user_problem_aux_data()
+
+    def partition_user_problem_phase_aux_data(self, symbol, equation):
+        equation = fast_sympify(equation)
+        if symbol in self.user_phase_aux_data_syms:
+            self.aux_data_supplied_in_ocp_and_phase[symbol] = equation
+        elif self.user_phase_aux_data_syms.intersection(equation.free_symbols):
+            self.aux_data_phase_dependent[symbol] = equation
+        else:
+            self.aux_data[symbol] = equation
+
+    def check_user_phase_aux_data_not_user_problem_aux_data(self):
+        if self.aux_data_supplied_in_ocp_and_phase:
+            formatted_syms = format_multiple_items_for_output(
+                self.aux_data_supplied_in_ocp_and_phase)
+            msg = (f"Auxiliary data for {formatted_syms} has been supplied at "
+                    f"a per-phase level and therefore cannot be supplied at a "
+                    f"problem level.")
+            raise ValueError(msg)
+
+    def partition_user_problem_aux_data(self):
+        for symbol, equation in self.aux_data.items():
+            self.process_aux_data_pair_is_phase_dependent(symbol, equation)
+
+    def process_aux_data_pair_is_phase_dependent(self, symbol, equation):
+        if symbol in self.aux_data_phase_dependent:
+            return True
+        elif equation in self.all_phase_vars:
+            self.new_aux_data_pair_phase_independent(symbol, equation)
+            return True
+        elif equation in self.s_vars_user:
+            return False
+        elif equation.is_Number:
+            self.new_aux_data_pair_phase_independent(symbol, equation)
+            return False
+        else:
+            return self.check_aux_data_pair_children(symbol, equation)
+
+    def new_aux_data_pair_phase_dependent(self, symbol, equation):
+        self.aux_data_phase_dependent[symbol] = equation
+
+    def new_aux_data_pair_phase_independent(self, symbol, equation):
+        self.aux_data_phase_independent[symbol] = equation
+
+    def check_aux_data_pair_children(self, symbol, equation):
+        child_syms = list(equation.free_symbols)
+        child_eqns = [self.get_child_equation(child_sym)
+                      for child_sym in child_syms]
+        child_is_phase_dependent = [
+            self.process_aux_data_pair_is_phase_dependent(child_sym, child_eqn)
+            for child_sym, child_eqn in zip(child_syms, child_eqns)]
+        if any(child_is_phase_dependent):
+            self.new_aux_data_pair_phase_dependent(symbol, equation)
+            return True
+        else:
+            self.new_aux_data_pair_phase_independent(symbol, equation)
+            return False
+
+    def get_child_equation(self, symbol):
+        all_symbol_equation_mappings = dict_merge(self.aux_data,
+                                                  self.aux_data_phase_dependent, self.aux_data_phase_independent)
+        equation = all_symbol_equation_mappings.get(symbol)
+        if symbol in self.all_vars:
+            return symbol
+        elif equation is None:
+            msg = (f"'{symbol}' is not defined.")
+            raise ValueError(msg)
+        return equation
+
+    def preprocess_phase_backends(self):
+        for p in self.p:
+            p.preprocess_auxiliary_data()
+            p.preprocess_constraints()
+            p.create_constraint_indexes_slices()
+
+    def collect_variables_substitutions(self):
+        self.all_subs_mappings = dict_merge(self.s_vars_subs_mappings,
+                                            *[p.all_subs_mappings for p in self.p])
+        self.aux_data = {phase_sym: user_eqn.xreplace(self.all_subs_mappings)
+                         for phase_sym, user_eqn in self.aux_data_phase_independent.items()}
+
+    def console_out_variables_constraints_preprocessed(self):
+        if self.ocp.settings.console_out_progress:
+            msg = "Pycollo variables and constraints preprocessed."
+            console_out(msg)
 
     def create_bounds(self):
         self.bounds = Bounds(self)
@@ -326,129 +440,8 @@ class PycolloPhaseData:
 class Pycollo(BackendABC):
 
     def __init__(self, ocp):
-        self.ocp = ocp
-        self.create_point_variable_symbols()
-        self.create_phase_backends()
-        self.preprocess_user_problem_aux_data()
-        self.preprocess_phase_backends()
-        self.collect_variables_substitutions()
-        self.console_out_variables_constraints_preprocessed()
+        super().__init__(ocp)
         self.create_expression_graph()
-
-    def create_point_variable_symbols(self):
-        self.create_parameter_variable_symbols()
-
-    def create_parameter_variable_symbols(self):
-        self.s_vars_full = tuple(sym.Symbol(f'_s{i_s}')
-                                 for i_s, _ in enumerate(self.ocp._s_vars_user))
-        self.num_s_vars_full = len(self.s_vars_full)
-        self.s_vars_subs_mappings = dict(
-            zip(self.ocp._s_vars_user, self.s_vars_full))
-        self.s_vars_user = self.ocp._s_vars_user
-
-    def create_phase_backends(self):
-        self.p = tuple(PycolloPhaseData(self, phase)
-                       for phase in self.ocp.phases)
-        self.num_phases = len(self.p)
-        self.all_phase_vars = {var for p in self.p for var in p.all_user_vars}
-        self.all_vars = self.all_phase_vars.union(set(self.s_vars_user))
-
-    def preprocess_user_problem_aux_data(self):
-        self.user_phase_aux_data_syms = {symbol
-                                         for phase in self.ocp.phases
-                                         for symbol in phase.auxiliary_data}
-        self.aux_data = {}
-        self.aux_data_phase_dependent = {}
-        self.aux_data_phase_independent = {}
-        self.aux_data_supplied_in_ocp_and_phase = {}
-        for symbol, equation in self.ocp.auxiliary_data.items():
-            self.partition_user_problem_phase_aux_data(symbol, equation)
-        self.check_user_phase_aux_data_not_user_problem_aux_data()
-        self.partition_user_problem_aux_data()
-
-    def partition_user_problem_phase_aux_data(self, symbol, equation):
-        equation = fast_sympify(equation)
-        if symbol in self.user_phase_aux_data_syms:
-            self.aux_data_supplied_in_ocp_and_phase[symbol] = equation
-        elif self.user_phase_aux_data_syms.intersection(equation.free_symbols):
-            self.aux_data_phase_dependent[symbol] = equation
-        else:
-            self.aux_data[symbol] = equation
-
-    def check_user_phase_aux_data_not_user_problem_aux_data(self):
-        if self.aux_data_supplied_in_ocp_and_phase:
-            formatted_syms = format_multiple_items_for_output(
-                self.aux_data_supplied_in_ocp_and_phase)
-            msg = (f"Auxiliary data for {formatted_syms} has been supplied at "
-                    f"a per-phase level and therefore cannot be supplied at a "
-                    f"problem level.")
-            raise ValueError(msg)
-
-    def partition_user_problem_aux_data(self):
-        for symbol, equation in self.aux_data.items():
-            self.process_aux_data_pair_is_phase_dependent(symbol, equation)
-
-    def process_aux_data_pair_is_phase_dependent(self, symbol, equation):
-        if symbol in self.aux_data_phase_dependent:
-            return True
-        elif equation in self.all_phase_vars:
-            self.new_aux_data_pair_phase_independent(symbol, equation)
-            return True
-        elif equation in self.s_vars_user:
-            return False
-        elif equation.is_Number:
-            self.new_aux_data_pair_phase_independent(symbol, equation)
-            return False
-        else:
-            return self.check_aux_data_pair_children(symbol, equation)
-
-    def new_aux_data_pair_phase_dependent(self, symbol, equation):
-        self.aux_data_phase_dependent[symbol] = equation
-
-    def new_aux_data_pair_phase_independent(self, symbol, equation):
-        self.aux_data_phase_independent[symbol] = equation
-
-    def check_aux_data_pair_children(self, symbol, equation):
-        child_syms = list(equation.free_symbols)
-        child_eqns = [self.get_child_equation(child_sym)
-                      for child_sym in child_syms]
-        child_is_phase_dependent = [
-            self.process_aux_data_pair_is_phase_dependent(child_sym, child_eqn)
-            for child_sym, child_eqn in zip(child_syms, child_eqns)]
-        if any(child_is_phase_dependent):
-            self.new_aux_data_pair_phase_dependent(symbol, equation)
-            return True
-        else:
-            self.new_aux_data_pair_phase_independent(symbol, equation)
-            return False
-
-    def get_child_equation(self, symbol):
-        all_symbol_equation_mappings = dict_merge(self.aux_data,
-                                                  self.aux_data_phase_dependent, self.aux_data_phase_independent)
-        equation = all_symbol_equation_mappings.get(symbol)
-        if symbol in self.all_vars:
-            return symbol
-        elif equation is None:
-            msg = (f"'{symbol}' is not defined.")
-            raise ValueError(msg)
-        return equation
-
-    def preprocess_phase_backends(self):
-        for p in self.p:
-            p.preprocess_auxiliary_data()
-            p.preprocess_constraints()
-            p.create_constraint_indexes_slices()
-
-    def collect_variables_substitutions(self):
-        self.all_subs_mappings = dict_merge(self.s_vars_subs_mappings,
-                                            *[p.all_subs_mappings for p in self.p])
-        self.aux_data = {phase_sym: user_eqn.xreplace(self.all_subs_mappings)
-                         for phase_sym, user_eqn in self.aux_data_phase_independent.items()}
-
-    def console_out_variables_constraints_preprocessed(self):
-        if self.ocp.settings.console_out_progress:
-            msg = "Pycollo variables and constraints preprocessed."
-            console_out(msg)
 
     def create_expression_graph(self):
         variables = self.collect_variables()
@@ -624,21 +617,23 @@ class Pycollo(BackendABC):
 
 
 class Casadi(BackendABC):
-
-    def __init__(self, ocp):
-        raise NotImplementedError
+    pass
 
 
 class Hsad(BackendABC):
 
     def __init__(self, ocp):
-        raise NotImplementedError
+        msg = ("The hSAD backend for Pycollo is not currently supported or "
+               "implemented.")
+        raise NotImplementedError(msg)
 
 
 class Sympy(BackendABC):
 
     def __init__(self, ocp):
-        raise NotImplementedError
+        msg = ("The Sympy backend for Pycollo is not currently supported or "
+               "implemented.")
+        raise NotImplementedError(msg)
 
 
 BACKENDS = Options((PYCOLLO, HSAD, CASADI, SYMPY), default=CASADI,

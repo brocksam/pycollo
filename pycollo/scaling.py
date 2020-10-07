@@ -14,9 +14,9 @@ USER = "user"
 
 SCALING_METHODS = Options((BOUNDS, DEFAULT, GUESS, USER, NONE, None),
                           default=BOUNDS, unsupported=(GUESS, USER))
-DEFAULT_UPDATE_SCALING = True
 DEFAULT_NUMBER_SCALING_SAMPLES = 0
 DEFAULT_SCALING_WEIGHT = 0.8
+DEFAULT_UPDATE_SCALING = True
 
 
 class ScalingABC(abc.ABC):

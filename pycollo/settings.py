@@ -110,6 +110,7 @@ DEFAULT_MESH_TOLERANCE = 1e-8
 DEFAULT_MAX_MESH_ITERATIONS = 10
 
 # Display constants
+DEFAULT_CONSOLE_OUT_PROGRESS = True
 DEFAULT_DISPLAY_MESH_REFINE_INFO = True
 DEFAULT_DISPLAY_MESH_RESULT_INFO = False
 DEFAULT_DISPLAY_MESH_RESULT_GRAPH = False
@@ -297,6 +298,12 @@ class Settings():
         min=0.0,
         exclusive=True,
     )
+    console_out_progress = processed_property(
+        "console_out_progress",
+        description="output Pycollo progress to the console",
+        type=bool,
+        cast=True,
+    )
     display_mesh_refinement_info = processed_property(
         "display_mesh_refinement_info",
         description="display the mesh refinement information",
@@ -330,6 +337,7 @@ class Settings():
                  mesh_tolerance=DEFAULT_MESH_TOLERANCE,
                  collocation_points_min=DEFAULT_COLLOCATION_POINTS_MIN,
                  collocation_points_max=DEFAULT_COLLOCATION_POINTS_MAX,
+                 console_out_progress=DEFAULT_CONSOLE_OUT_PROGRESS,
                  display_mesh_refinement_info=DEFAULT_DISPLAY_MESH_REFINE_INFO,
                  display_mesh_result_info=DEFAULT_DISPLAY_MESH_RESULT_INFO,
                  display_mesh_result_graph=DEFAULT_DISPLAY_MESH_RESULT_GRAPH,
@@ -369,6 +377,7 @@ class Settings():
         self.scaling_weight = scaling_weight
 
         # # Output information
+        self.console_out_progress = console_out_progress
         self.display_mesh_refinement_info = display_mesh_refinement_info
         self.display_mesh_result_info = display_mesh_result_info
         self.display_mesh_result_graph = display_mesh_result_graph

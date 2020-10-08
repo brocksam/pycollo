@@ -6,7 +6,6 @@ import numbers
 from timeit import default_timer as timer
 import weakref
 
-from ordered_set import OrderedSet
 import numpy as np
 import sympy as sym
 
@@ -77,9 +76,12 @@ class ExpressionGraph:
     def initialise_problem_variable_attributes(self, x_vars):
         x_continuous, x_endpoint = x_vars
 
-        self.problem_variables_continuous = OrderedSet(x_continuous)
-        self.problem_variables_endpoint = OrderedSet(x_endpoint)
-        self.problem_variables = OrderedSet(x_continuous + x_endpoint)
+        self.problem_variables_continuous_ordered = x_continuous
+        self.problem_variables_endpoint_ordered = x_endpoint
+        self.problem_variables_ordered = x_continuous + x_endpoint
+        self.problem_variables_continuous_set = set(x_continuous)
+        self.problem_variables_endpoint_set = set(x_endpoint)
+        self.problem_variables_set = set(x_continuous + x_endpoint)
 
         self.lagrange_syms = ()
 
@@ -107,13 +109,14 @@ class ExpressionGraph:
 
     def initialise_auxiliary_constant_nodes(self, aux_info):
         self.user_symbol_to_expression_auxiliary_mapping = {}
-        self._user_constants = OrderedSet()
+        self._user_constants_ordered = tuple()
+        self._user_constants_set = set()
         for key, value in aux_info.items():
             is_expression = isinstance(value, (sym.Expr, sym.Symbol))
             if is_expression and (not value.is_Number):
                 self.user_symbol_to_expression_auxiliary_mapping[key] = value
             else:
-                self._user_constants.add(key)
+                self._user_constants_set.add(key)
                 node = Node(key, self, value=value)
 
     def initialise_time_normalisation_nodes(self):

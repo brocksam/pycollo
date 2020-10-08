@@ -4,7 +4,6 @@ from numbers import Number
 import numba as nb
 import numpy as np
 from numpy import sin, cos, tan, exp, log, sqrt, arccos, arcsin, arctan, tanh
-from ordered_set import OrderedSet
 import scipy.interpolate as interpolate
 import sympy as sym
 

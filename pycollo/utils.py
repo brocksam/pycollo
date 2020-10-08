@@ -6,7 +6,6 @@ from typing import (Iterable, Mapping, NamedTuple, Optional, Tuple)
 import numba
 import numpy as np
 from numpy import sin, cos, tan, exp, sqrt, arctan, tanh
-from ordered_set import OrderedSet
 import scipy.interpolate as interpolate
 import sympy as sym
 

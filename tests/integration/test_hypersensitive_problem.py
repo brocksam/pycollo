@@ -73,17 +73,43 @@ class TestHypersensitiveProblem:
         state.ocp.phases.A.bounds.integral_variables = [[0, 2000]]
         state.ocp.phases.A.bounds.initial_state_constraints = [[1.0, 1.0]]
         state.ocp.phases.A.bounds.final_state_constraints = [[1.5, 1.5]]
+        assert state.ocp.phases.A.bounds.initial_time == 0.0
+        assert state.ocp.phases.A.bounds.final_time == 10000.0
+        np.testing.assert_array_equal(
+            state.ocp.phases.A.bounds.state_variables,
+            np.array([[0, 2]]))
+        np.testing.assert_array_equal(
+            state.ocp.phases.A.bounds.control_variables,
+            np.array([[-1, 8]]))
+        np.testing.assert_array_equal(
+            state.ocp.phases.A.bounds.integral_variables,
+            np.array([[0, 2000]]))
+        np.testing.assert_array_equal(
+            state.ocp.phases.A.bounds.initial_state_constraints,
+            np.array([[1.0, 1.0]]))
+        np.testing.assert_array_equal(
+            state.ocp.phases.A.bounds.final_state_constraints,
+            np.array([[1.5, 1.5]]))
 
     def test_set_phase_guess(self, state):
         """Phase guesses can be set and are reformatted correctly."""
-        state.ocp.phases.A.guess.time = np.array([0.0, 10000.0])
-        state.ocp.phases.A.guess.state_variables = np.array([[1.0, 1.5]])
-        state.ocp.phases.A.guess.control_variables = np.array([[0.0, 0.0]])
-        state.ocp.phases.A.guess.integral_variables = np.array([4])
+        state.ocp.phases.A.guess.time = [0.0, 10000.0]
+        state.ocp.phases.A.guess.state_variables = [[1.0, 1.5]]
+        state.ocp.phases.A.guess.control_variables = [[0.0, 0.0]]
+        state.ocp.phases.A.guess.integral_variables = 4
+        np.testing.assert_array_equal(
+            state.ocp.phases.A.guess.time, np.array([0.0, 10000.0]))
+        np.testing.assert_array_equal(
+            state.ocp.phases.A.guess.state_variables, np.array([[1.0, 1.5]]))
+        np.testing.assert_array_equal(
+            state.ocp.phases.A.guess.control_variables, np.array([[0.0, 0.0]]))
+        np.testing.assert_array_equal(
+            state.ocp.phases.A.guess.integral_variables, np.array([4]))
 
     def test_set_objective_function(self, state):
         """Objective function can be set."""
         state.ocp.objective_function = state.ocp.phases.A.integral_variables[0]
+        assert state.ocp.objective_function == state.ocp.phases.A.integral_variables[0]
 
     def test_set_ocp_settings(self, state):
         """Problem settings can be manipulated sucessfully."""
@@ -91,19 +117,24 @@ class TestHypersensitiveProblem:
         state.ocp.settings.derivative_level = 2
         state.ocp.settings.quadrature_method = "lobatto"
         state.ocp.settings.max_mesh_iterations = 10
+        state.ocp.settings.scaling_method = "bounds"
+        assert state.ocp.settings.display_mesh_result_graph is True
+        assert state.ocp.settings.derivative_level == 2
         assert state.ocp.settings.quadrature_method == "lobatto"
+        assert state.ocp.settings.max_mesh_iterations == 10
+        assert state.ocp.settings.scaling_method == "bounds"
 
-    @pytest.mark.xfail(reason="Initialisation not working yet")
-    def test_ocp_initialise(self, state):
-        """OCP can be initialised sucessfully."""
-        state.ocp.initialise()
+    # @pytest.mark.xfail(reason="Initialisation not working yet")
+    # def test_ocp_initialise(self, state):
+    #     """OCP can be initialised sucessfully."""
+    #     state.ocp.initialise()
 
-    @pytest.mark.xfail(reason="Solving not working yet")
-    def test_ocp_solve(self, state):
-        """OCP can be solved sucessfully."""
-        pass
+    # @pytest.mark.xfail(reason="Solving not working yet")
+    # def test_ocp_solve(self, state):
+    #     """OCP can be solved sucessfully."""
+    #     pass
 
-    @pytest.mark.xfail(reason="Solving not working yet")
-    def test_ocp_solution(self, state):
-        """OCP solution is correct."""
-        pass
+    # @pytest.mark.xfail(reason="Solving not working yet")
+    # def test_ocp_solution(self, state):
+    #     """OCP solution is correct."""
+    #     pass

@@ -6,16 +6,6 @@ NLP solvers etc.
 
 Attributes
 ----------
-DEFAULT_COLLOCATION_POINTS_MAX : int
-    Constant default limitation on the maximum number of collocation points
-    per mesh section that a user can specify. The value of 20 has been chosen
-    as above this the algorithms that are used for evaluating the orthogonal
-    polynomials become numerically unstable and raise a warning.
-DEFAULT_COLLOCATION_POINTS_MIN : int
-    Constant default limitation on the minimum number of collocation points
-    per mesh section that a user can specify. The value of 2 has been chosen
-    as this is the smallest possible value that still makes logical sense (i.e.
-    a mesh section cannot have fewer than two nodes).
 DEFAULT_DERIVATIVE_LEVEL : int
     Default derivative level to be used by the Pycollo-backends and NLP solvers
     with 1 and 2 corresponding to first- and second-order mode respectively.
@@ -67,12 +57,6 @@ NLP_SOLVER_SNOPT_KEYWORD : str
     Description
 NLP_SOLVER_WORHP_KEYWORD : str
     Description
-QUADRATURE_GAUSS_KEYWORD : str
-    Description
-QUADRATURE_LOBATTO_KEYWORD : str
-    Description
-QUADRATURE_RADAU_KEYWORD : str
-    Description
 UNSUPPORTED_LINEAR_SOLVER : tuple
     Description
 UNSUPPORTED_NLP_SOLVER : TYPE
@@ -90,6 +74,9 @@ from pyproprop import processed_property
 
 from .backend import BACKENDS
 from .compiled import COLLOCATION_MATRIX_FORMS
+from .quadrature import DEFAULT_COLLOCATION_POINTS_MIN
+from .quadrature import DEFAULT_COLLOCATION_POINTS_MAX
+from .quadrature import QUADRATURES
 from .scaling import DEFAULT_NUMBER_SCALING_SAMPLES
 from .scaling import DEFAULT_SCALING_WEIGHT
 from .scaling import DEFAULT_UPDATE_SCALING
@@ -112,15 +99,6 @@ DEFAULT_LINEAR_SOLVER = LINEAR_SOLVER_MUMPS_KEYWORD
 UNSUPPORTED_LINEAR_SOLVER = ("ma57", )
 DEFAULT_NLP_TOLERANCE = 1e-10
 DEFAULT_MAX_NLP_ITERATIONS = 2000
-
-# Quadrature constants
-QUADRATURE_GAUSS_KEYWORD = "gauss"
-QUADRATURE_LOBATTO_KEYWORD = "lobatto"
-QUADRATURE_RADAU_KEYWORD = "radau"
-DEFAULT_QUADRATURE_METHOD = QUADRATURE_LOBATTO_KEYWORD
-UNSUPPORTED_QUADRATURE_METHOD = (QUADRATURE_GAUSS_KEYWORD, )
-DEFAULT_COLLOCATION_POINTS_MIN = 4
-DEFAULT_COLLOCATION_POINTS_MAX = 10
 
 # Derivative level constants
 DERIVATIVE_LEVEL_FIRST = 1
@@ -199,11 +177,6 @@ class Settings():
         LINEAR_SOLVER_MUMPS_KEYWORD,
         LINEAR_SOLVER_MA57_KEYWORD,
     )
-    _QUADRATURE_METHOD_OPTIONS = (
-        QUADRATURE_GAUSS_KEYWORD,
-        QUADRATURE_LOBATTO_KEYWORD,
-        QUADRATURE_RADAU_KEYWORD,
-    )
     _DERIVATIVE_LEVELS = (
         DERIVATIVE_LEVEL_FIRST,
         DERIVATIVE_LEVEL_SECOND,
@@ -234,8 +207,7 @@ class Settings():
         description="quadrature method",
         type=str,
         cast=True,
-        options=_QUADRATURE_METHOD_OPTIONS,
-        unsupported_options=UNSUPPORTED_QUADRATURE_METHOD,
+        options=QUADRATURES,
     )
     nlp_solver = processed_property(
         "nlp_solver",
@@ -352,7 +324,7 @@ class Settings():
                  linear_solver=DEFAULT_LINEAR_SOLVER,
                  nlp_tolerance=DEFAULT_NLP_TOLERANCE,
                  max_nlp_iterations=DEFAULT_MAX_NLP_ITERATIONS,
-                 quadrature_method=DEFAULT_QUADRATURE_METHOD,
+                 quadrature_method=QUADRATURES.default,
                  derivative_level=DEFAULT_DERIVATIVE_LEVEL,
                  max_mesh_iterations=DEFAULT_MAX_MESH_ITERATIONS,
                  mesh_tolerance=DEFAULT_MESH_TOLERANCE,

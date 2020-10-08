@@ -37,12 +37,12 @@ class cachedproperty:
 
 
 def format_as_named_tuple(
-        iterable: OptionalSymsType, 
-        use_named: bool = True, 
+        iterable: OptionalSymsType,
+        use_named: bool = True,
         named_keys: Optional[NamedTuple] = None,
         sympify: bool = True) -> TupleSymsType:
     """Formats user supplied arguments as a named tuple."""
-    
+
     if not iterable:
         return ()
     try:
@@ -67,7 +67,7 @@ def format_as_named_tuple(
         formatted_entries = NamedTuple(*entries)
     else:
         formatted_entries = tuple(entries)
-    
+
     return formatted_entries
 
 
@@ -135,32 +135,6 @@ def fast_sympify(arg):
     return arg
 
 
-def format_case(item, case):
-    if case is "title":
-        return item.title()
-    elif case is "upper":
-        return item.upper()
-    elif case is "lower":
-        return item.lower()
-    else:
-        return item
-
-
-def format_for_output(items, *args, **kwargs):
-    return format_multiple_items_for_output(items, *args, **kwargs)
-
-
-def format_multiple_items_for_output(items, wrapping_char="'", *, prefix_char="", case=None):
-    items = (items, ) if isinstance(items, str) else items
-    items = [f"{prefix_char}{format_case(item, case)}" for item in items]
-    if len(items) == 1:
-        return f"'{items[0]}'"
-    else:
-        pad = f"{wrapping_char}, {wrapping_char}"
-        return (f"{wrapping_char}{pad.join(items[:-1])}{wrapping_char} "
-            f"and {wrapping_char}{items[-1]}{wrapping_char}")
-
-
 def parse_arg_type(arg, arg_name_str, arg_type):
     if not isinstance(arg, arg_type):
         msg = (f"`{arg_name_str}` must be a {arg_type}. {arg} of type {type(arg)} is not a valid argument.")
@@ -185,5 +159,99 @@ def parse_parameter_var(var, var_name_str, var_type):
         return tuple(var)
 
 
+def format_case(item, case):
+    """Allow :obj:`str` case formatting method application from keyword.
+
+    Parameters
+    ----------
+    item : str
+        Item to be case formatted.
+    case : str
+        Which case format method to use.
+
+    Returns
+    -------
+    str
+        :arg:`item` with case method applied.
+    """
+    if case == "title":
+        return item.title()
+    elif case == "upper":
+        return item.upper()
+    elif case == "lower":
+        return item.lower()
+    else:
+        return item
 
 
+def format_for_output(items, *args, **kwargs):
+    """Utility method for formatting console output.
+
+    Passes directly to :func:`format_multiple_items_for_output` just with a
+    shorter function name.
+
+    Parameters
+    ----------
+    items : iterable
+        Items to be formatted for output.
+    *args
+        Variable length argument list.
+    **kwargs
+        Arbitrary keyword arguments.
+
+    Returns
+    -------
+    str
+        Formatted string for console output.
+    """
+    return format_multiple_items_for_output(items, *args, **kwargs)
+
+
+def format_multiple_items_for_output(items, wrapping_char="'", *,
+                                     prefix_char="", case=None,
+                                     with_verb=False, with_or=False,
+                                     with_preposition=False):
+    """Format multiple items for pretty console output.
+
+    Args
+    ----
+    items : iterable of str
+        Items to be formatted.
+    wrapping_char : str (default `"'"`)
+        Prefix and suffix character for format wrapping.
+    prefix_char : str (default `""`)
+        Additional prefix.
+    case : str (default `None`)
+        Keyword for :func:`format_case`.
+    with_verb : bool, optional (default `False`)
+        Append the correct conjugation of "is"/"are" to end of list.
+
+    Returns
+    -------
+    str
+        Formatted string of multiple items for console output.
+    """
+    items = (items, ) if isinstance(items, str) else items
+    items = [f"{prefix_char}{format_case(item, case)}" for item in items]
+    if len(items) == 1:
+        formatted_items = f"{wrapping_char}{items[0]}{wrapping_char}"
+        if with_preposition and wrapping_char == "":
+            first_word, _ = formatted_items.split(maxsplit=1)
+            starts_with_vowel = first_word[0] in {"a", "e", "h", "i", "o", "u"}
+            is_acronym = first_word.upper() == first_word
+            if starts_with_vowel or is_acronym:
+                preposition = "an"
+            else:
+                preposition = "a"
+            formatted_items = " ".join([preposition, formatted_items])
+    else:
+        pad = f"{wrapping_char}, {wrapping_char}"
+        joiner = "or" if with_or else "and"
+        formatted_items = (f"{wrapping_char}{pad.join(items[:-1])}"
+                           f"{wrapping_char} {joiner} {wrapping_char}"
+                           f"{items[-1]}{wrapping_char}")
+    verb = "is" if len(items) == 1 else "are"
+    if with_verb:
+        formatted_items = f"{formatted_items} {verb}"
+
+    return formatted_items

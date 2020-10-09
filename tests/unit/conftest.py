@@ -45,11 +45,11 @@ def double_pendulum_fixture():
     K1_sub_expr_1 = m1 * p1 * l0 * (s0 * c1 - s1 * c0) * v0 ** 2
     K1_eqn = K1_sub_expr_0 + K1_sub_expr_1
 
-    problem = pycollo.OptimalControlProblem(name="Double Pendulum Swing-Up",
-                                            state_variables=[a0, a1, v0, v1],
-                                            control_variables=[T0, T1],
-                                            parameter_variables=[m0, p0])
+    problem = pycollo.OptimalControlProblem(name="Double Pendulum Swing-Up")
     phase = problem.new_phase(name="A")
+    phase.state_variables = [a0, a1, v0, v1]
+    phase.control_variables = [T0, T1]
+    phase.parameter_variables = [m0, p0]
     phase.state_equations = [v0,
                              v1,
                              (M11 * K0 - M01 * K1) / detM,
@@ -78,7 +78,7 @@ def double_pendulum_fixture():
                             K1: K1_eqn,
                             detM: M00 * M11 - M01 * M10}
 
-    problem.objective_function = problem.integral_variables[0]
+    problem.objective_function = phase.integral_variables[0]
 
     phase.bounds.initial_time = 0
     phase.bounds.final_time = [1, 3]

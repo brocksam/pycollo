@@ -94,8 +94,8 @@ class OptimalControlProblem():
         self.settings = settings
         self._is_initialised = False
         self._forward_dynamics = False
-        self._s_vars_user = ()
-        self._b_cons_user = ()
+        self._s_var_user = ()
+        self._b_con_user = ()
         self._phases = ()
         self.parameter_variables = parameter_variables
         self.endpoint_constraints = endpoint_constraints
@@ -222,28 +222,28 @@ class OptimalControlProblem():
 
     @property
     def parameter_variables(self):
-        return self._s_vars_user
+        return self._s_var_user
 
     @parameter_variables.setter
     def parameter_variables(self, s_vars):
-        self._s_vars_user = format_as_named_tuple(s_vars)
-        _ = check_sym_name_clash(self._s_vars_user)
+        self._s_var_user = format_as_named_tuple(s_vars)
+        _ = check_sym_name_clash(self._s_var_user)
 
     @property
     def number_parameter_variables(self):
-        len(self._s_vars_user)
+        len(self._s_var_user)
 
     @property
     def endpoint_constraints(self):
-        return self._b_cons_user
+        return self._b_con_user
 
     @endpoint_constraints.setter
     def endpoint_constraints(self, b_cons):
-        self._b_cons_user = format_as_named_tuple(b_cons, use_named=False)
+        self._b_con_user = format_as_named_tuple(b_cons, use_named=False)
 
     @property
     def number_endpoint_constraints(self):
-        return len(self._b_cons_user)
+        return len(self._b_con_user)
 
     @property
     def objective_function(self):

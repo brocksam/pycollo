@@ -2,7 +2,7 @@ import abc
 
 import numpy as np
 import scipy.sparse as sparse
-from pyproprop import Options
+from pyproprop import Options, processed_property
 
 
 BOUNDS = "bounds"
@@ -30,22 +30,18 @@ class ScalingABC(abc.ABC):
     _NUMBER_SAMPLES_DEFAULT = 100
     _UPDATE_WEIGHT_DEFAULT = 0.8
 
-    @abc.abstractmethod
-    def optimal_control_problem(self): pass
+    optimal_control_problem = processed_property("optimal_control_problem",
+                                                 read_only=True)
 
 
 class EndpointScaling(ScalingABC):
 
     def __init__(self, optimal_control_problem):
 
-        self._ocp = optimal_control_problem
+        self.optimal_control_problem = optimal_control_problem
 
         self.parameter_variables = self._NONE_SCALING_DEFAULT
         self.endpoint_constraints = self._NONE_SCALING_DEFAULT
-
-    @property
-    def optimal_control_problem(self):
-        return self._ocp
 
     def __repr__(self):
         cls_name = self.__class__.__name__
@@ -55,25 +51,16 @@ class EndpointScaling(ScalingABC):
 
 class PhaseScaling(ScalingABC):
 
+    phase = processed_property("phase", read_only=True)
+
     def __init__(self, phase):
         self.phase = phase
+        self.optimal_control_problem = phase.optimal_control_problem
         self.time = self._NONE_SCALING_DEFAULT
         self.state_variables = self._NONE_SCALING_DEFAULT
         self.control_variables = self._NONE_SCALING_DEFAULT
         self.integral_variables = self._NONE_SCALING_DEFAULT
         self.path_constraints = self._NONE_SCALING_DEFAULT
-
-    @property
-    def optimal_control_problem(self):
-        return self.phase.optimal_control_problem
-
-    @property
-    def phase(self):
-        return self._phase
-
-    @phase.setter
-    def phase(self, phase):
-        self._phase = phase
 
     # def _generate_bounds(self):
     # 	raise NotImplementedError
@@ -104,6 +91,7 @@ class Scaling(ScalingABC):
         self.ocp = backend.ocp
         self._GENERATE_DISPATCHER = {
             None: self._generate_none,
+            NONE: self._generate_none,
             USER: self._generate_user,
             BOUNDS: self._generate_bounds,
             GUESS: self._generate_guess,

@@ -30,7 +30,7 @@ def double_pendulum_fixture():
     M00, M01, M10, M11, K0, K1 = sym.symbols("M00 M01 M10 M11 K0 K1")
     detM = sym.symbols("detM")
 
-    syms = ["a0", "a1", "v0", "v1", "u0", "u1", "g", "m0", "p0", "d0", "l0",
+    syms = ["a0", "a1", "v0", "v1", "T0", "T1", "g", "m0", "p0", "d0", "l0",
             "k0", "I0", "m1", "p1", "d1", "l1", "k1", "I1", "c0", "s0", "c1",
             "s1", "M00", "M01", "M10", "M11", "K0", "K1", "detM"]
     Symbols = namedtuple("Symbols", syms)
@@ -49,7 +49,6 @@ def double_pendulum_fixture():
     phase = problem.new_phase(name="A")
     phase.state_variables = [a0, a1, v0, v1]
     phase.control_variables = [T0, T1]
-    phase.parameter_variables = [m0, p0]
     phase.state_equations = [v0,
                              v1,
                              (M11 * K0 - M01 * K1) / detM,
@@ -77,7 +76,7 @@ def double_pendulum_fixture():
                             K0: K0_eqn,
                             K1: K1_eqn,
                             detM: M00 * M11 - M01 * M10}
-
+    problem.parameter_variables = [m0, p0]
     problem.objective_function = phase.integral_variables[0]
 
     phase.bounds.initial_time = 0

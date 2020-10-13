@@ -53,13 +53,13 @@ class Phase:
                     optimal control problem.
             _phase_suffix: Protected str which is used in the naming of auto-
                     generated Pycollo variables such as the endpoint state variables.
-            _y_vars_user: Protected version of :attr:`state_variables`. 
-            _u_vars_user: Protected version of :attr:`control_variables`.
-            _q_vars_user: Protected version of :attr:`integral_variables`.
-            _t_vars_user: Protected version of :attr:`time_variables`.
-            _y_eqns_user: Protected version of :attr:`state_equations`. 
-            _c_cons_user: Protected version of :attr:`path_constraints`. 
-            _q_funcs_user: Protected version of :attr:`integrand_functions`.
+            _y_var_user: Protected version of :attr:`state_variables`. 
+            _u_var_user: Protected version of :attr:`control_variables`.
+            _q_var_user: Protected version of :attr:`integral_variables`.
+            _t_var_user: Protected version of :attr:`time_variables`.
+            _y_eqn_user: Protected version of :attr:`state_equations`. 
+            _c_con_user: Protected version of :attr:`path_constraints`. 
+            _q_fnc_user: Protected version of :attr:`integrand_functions`.
             _t0_USER: Protected version of :attr:`initial_time_variable`.
             _tF_USER: Protected version of :attr:`final_time_variable`.
             _t0: Internal Pycollo symbol for phase initial time.
@@ -129,14 +129,14 @@ class Phase:
         self._phase_number = None
         self._phase_suffix = "X"
 
-        self._y_vars_user = ()
-        self._u_vars_user = ()
-        self._q_vars_user = ()
-        self._t_vars_user = ()
+        self._y_var_user = ()
+        self._u_var_user = ()
+        self._q_var_user = ()
+        self._t_var_user = ()
 
-        self._y_eqns_user = ()
-        self._c_cons_user = ()
-        self._q_funcs_user = ()
+        self._y_eqn_user = ()
+        self._c_con_user = ()
+        self._q_fnc_user = ()
 
         if optimal_control_problem is not None:
             self.optimal_control_problem = optimal_control_problem
@@ -362,13 +362,13 @@ class Phase:
         and `_y_tF_user` and accessing either the `initial_state` or 
         `final_state` property will raise an AttributeError.
         """
-        return self._y_vars_user
+        return self._y_var_user
 
     @state_variables.setter
     def state_variables(self, y_vars: OptionalSymsType):
 
-        self._y_vars_user = format_as_named_tuple(y_vars)
-        check_sym_name_clash(self._y_vars_user)
+        self._y_var_user = format_as_named_tuple(y_vars)
+        check_sym_name_clash(self._y_var_user)
 
         # Generate the state endpoint variable symbols only if phase has number
         if self.optimal_control_problem is not None:
@@ -378,26 +378,26 @@ class Phase:
             self._tF = sym.Symbol(f'_tF_P{self._phase_suffix}')
             self._STRETCH = 0.5 * (self._tF - self._t0)
             self._SHIFT = 0.5 * (self._t0 + self._tF)
-            self._t_vars_user = (self._t0_USER, self._tF_USER)
+            self._t_var_user = (self._t0_USER, self._tF_USER)
 
             try:
-                named_keys = self._y_vars_user._fields
+                named_keys = self._y_var_user._fields
             except AttributeError:
                 named_keys = ()
 
             self._y_t0_user = format_as_named_tuple(
                 (sym.Symbol(f'{y}_P{self._phase_suffix}(t0)')
-                 for y in self._y_vars_user),
+                 for y in self._y_var_user),
                 named_keys=named_keys)
             self._y_tF_user = format_as_named_tuple(
                 (sym.Symbol(f'{y}_P{self._phase_suffix}(tF)')
-                 for y in self._y_vars_user),
+                 for y in self._y_var_user),
                 named_keys=named_keys)
 
     @property
     def number_state_variables(self) -> int:
         """Integer number of state variables in the phase."""
-        return len(self._y_vars_user)
+        return len(self._y_var_user)
 
     @property
     def control_variables(self) -> TupleSymsType:
@@ -407,17 +407,17 @@ class Phase:
         The supplied argument is handled by the `format_as_tuple` method from 
         the `utils` module.
         """
-        return self._u_vars_user
+        return self._u_var_user
 
     @control_variables.setter
     def control_variables(self, u_vars: OptionalSymsType):
-        self._u_vars_user = format_as_named_tuple(u_vars)
-        check_sym_name_clash(self._u_vars_user)
+        self._u_var_user = format_as_named_tuple(u_vars)
+        check_sym_name_clash(self._u_var_user)
 
     @property
     def number_control_variables(self) -> int:
         """Integer number of control variables in the phase."""
-        return len(self._u_vars_user)
+        return len(self._u_var_user)
 
     @property
     def integral_variables(self) -> TupleSymsType:
@@ -426,12 +426,12 @@ class Phase:
         These symbols are auto generated as required by the user-supplied 
         integrand functions.
         """
-        return self._q_vars_user
+        return self._q_var_user
 
     @property
     def number_integral_variables(self) -> int:
         """Integer number of integral variables in the phase."""
-        return len(self._q_vars_user)
+        return len(self._q_var_user)
 
     @property
     def state_equations(self) -> Tuple[sym.Expr, ...]:
@@ -443,15 +443,15 @@ class Phase:
 
         State equations can be supplied in a compact form by the user defining additional auxiliary symbols and 
         """
-        return self._y_eqns_user
+        return self._y_eqn_user
 
     @state_equations.setter
     def state_equations(self, y_eqns: OptionalExprsType):
         try:
-            named_keys = self._y_vars_user._fields
+            named_keys = self._y_var_user._fields
         except AttributeError:
             named_keys = ()
-        self._y_eqns_user = format_as_named_tuple(y_eqns, use_named=True,
+        self._y_eqn_user = format_as_named_tuple(y_eqns, use_named=True,
                                                   named_keys=named_keys)
 
     @property
@@ -461,33 +461,33 @@ class Phase:
         Should be the same as the number of state variables, i.e. there should 
         be a direct mapping between the two.
         """
-        return len(self._y_eqns_user)
+        return len(self._y_eqn_user)
 
     @property
     def path_constraints(self):
-        return self._c_cons_user
+        return self._c_con_user
 
     @path_constraints.setter
     def path_constraints(self, c_cons):
-        self._c_cons_user = format_as_named_tuple(c_cons, use_named=False)
+        self._c_con_user = format_as_named_tuple(c_cons, use_named=False)
 
     @property
     def number_path_constraints(self):
-        return len(self._c_cons_user)
+        return len(self._c_con_user)
 
     @property
     def integrand_functions(self):
-        return self._q_funcs_user
+        return self._q_fnc_user
 
     @integrand_functions.setter
     def integrand_functions(self, integrands):
-        self._q_funcs_user = format_as_named_tuple(integrands, use_named=False)
-        self._q_vars_user = tuple(sym.Symbol(f'q{i_q}_P{self._phase_suffix}')
-                                  for i_q, _ in enumerate(self._q_funcs_user))
+        self._q_fnc_user = format_as_named_tuple(integrands, use_named=False)
+        self._q_var_user = tuple(sym.Symbol(f'q{i_q}_P{self._phase_suffix}')
+                                  for i_q, _ in enumerate(self._q_fnc_user))
 
     @property
     def number_integrand_functions(self):
-        return len(self._q_funcs_user)
+        return len(self._q_fnc_user)
 
     @property
     def bounds(self):

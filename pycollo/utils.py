@@ -3,6 +3,7 @@ import itertools
 from numbers import Number
 from typing import (Iterable, Mapping, NamedTuple, Optional, Tuple)
 
+import casadi as ca
 import numba
 import numpy as np
 from numpy import sin, cos, tan, exp, sqrt, arctan, tanh
@@ -12,14 +13,18 @@ import sympy as sym
 from .typing import OptionalSymsType, TupleSymsType
 
 
-dcdxInfo = collections.namedtuple('dcdxInfo', [
-            'zeta_y', 'zeta_u', 'zeta_s',
-            'gamma_y', 'gamma_u', 'gamma_s',
-            'rho_y', 'rho_u', 'rho_s',
-            ])
+dcdx_info_fields = ["zeta_y", "zeta_u", "zeta_s", "gamma_y", "gamma_u",
+                    "gamma_s", "rho_y", "rho_u", "rho_s"]
+dcdxInfo = collections.namedtuple("dcdxInfo", dcdx_info_fields)
 
 
 supported_iter_types = (tuple, list, np.ndarray)
+
+
+SYMPY_TO_CASADI_API_MAPPING = {"ImmutableDenseMatrix": ca.blockcat,
+                               "MutableDenseMatrix": ca.blockcat,
+                               "Abs": ca.fabs,
+                               }
 
 
 class cachedproperty:
@@ -34,6 +39,56 @@ class cachedproperty:
             value = self.func(instance)
             setattr(instance, self.func.__name__, value)
             return value
+
+
+def sympy_to_casadi(sympy_expr, sympy_to_casadi_sym_mapping):
+    """Convert a Sympy expression to a CasADi one.
+
+    Recipe adapted from one by Joris Gillis taken from:
+    https://gist.github.com/jgillis/80bb594a6c8fcf55891d1d88b12b68b8
+
+    Example
+    -------
+    This example creates some primitive symbols using both Sympy and CasADi.
+
+    >>> x, y = sym.symbols("x, y")
+    >>> X = ca.SX.sym("x")
+    >>> Y = ca.SX.sym("y")
+    >>> xy = sym.Matrix([x, y])
+
+    A matrix consisting of some arbitrary expressions is created to showcase
+    the differences in syntax between Sympy's and CasADi's internal
+    mathematical functions.
+
+    >>> e = sym.Matrix([x * sym.sqrt(y), sym.sin(x + y), abs(x - y)])
+    >>> XY = ca.vertcat(X, Y)
+    >>> E = sympy_to_casadi(e, xy, XY)
+
+    Display the Sympy expression.
+
+    >>> print(e)
+    Matrix([[x*sqrt(y)], [sin(x + y)], [Abs(x - y)]])
+
+    Display the CasADi expression and note that it is mathematically equivalent
+    to the Sympy one.
+
+    >>> print(E)
+    [(x*sqrt(y)), sin((x+y)), fabs((x-y))]
+
+    """
+    sympy_vars = sym.Matrix(list(sympy_to_casadi_sym_mapping.keys()))
+    casadi_vars = ca.vertcat(*sympy_to_casadi_sym_mapping.values())
+    if casadi_vars.shape[1] > 1:
+        casadi_vars = casadi_vars.T
+    vars_not_in_mapping = sympy_expr.free_symbols.difference(set(sympy_vars))
+    for sympy_var in vars_not_in_mapping:
+        casadi_var = ca.SX.sym(str(sympy_var))
+        sympy_to_casadi_sym_mapping.update({sympy_var: casadi_var})
+        sympy_vars = sym.Matrix.vstack(sympy_vars, sym.Matrix([[sympy_var]]))
+        casadi_vars = ca.vertcat(casadi_vars, casadi_var)
+    f = sym.lambdify(sympy_vars, sympy_expr,
+                     modules=[SYMPY_TO_CASADI_API_MAPPING, ca])
+    return f(*ca.vertsplit(casadi_vars)), sympy_to_casadi_sym_mapping
 
 
 def format_as_named_tuple(

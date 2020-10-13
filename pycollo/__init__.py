@@ -7,4 +7,7 @@ from .settings import *
 from .optimal_control_problem import *
 
 # Modules accessible as submodules
+from . import backend
 from . import quadrature
+from . import scaling
+from . import utils

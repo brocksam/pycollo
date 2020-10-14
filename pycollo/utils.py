@@ -92,6 +92,28 @@ def sympy_to_casadi(sympy_expr, sympy_to_casadi_sym_mapping, *, phase=None):
     return f(*ca.vertsplit(casadi_vars)), sympy_to_casadi_sym_mapping
 
 
+def casadi_substitute(casadi_eqn, casadi_sym_mapping):
+    """Substitute a CasADi SX expression with symbols from a mapping.
+
+    Args
+    ----
+    casadi_eqn : ca.SX
+
+    casadi_sym_mapping : Dict[ca.SX, ca.SX]
+        Mapping of CasADi SX symbols to be replaced (keys) to CasADi SX symbols
+        to replace with (values).
+
+    Returns
+    -------
+    ca.SX
+        The substituted expression.
+
+    """
+    remove_sym = ca.vertcat(*casadi_sym_mapping.keys())
+    add_sym = ca.vertcat(*casadi_sym_mapping.values())
+    return ca.substitute(casadi_eqn, remove_sym, add_sym)
+
+
 def format_as_named_tuple(
         iterable: OptionalSymsType,
         use_named: bool = True,

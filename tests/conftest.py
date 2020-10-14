@@ -75,6 +75,9 @@ class Utils:
         elif isinstance(expr, (sym.Expr, sym.Matrix)):
             prims = list(expr.free_symbols)
             names = [str(prim) for prim in prims]
+        elif isinstance(expr, (float, ca.DM)):
+            prims = []
+            names = []
         else:
             msg = "Unexpected expression type. Expecting CasADi or Sympy."
             raise TypeError(msg)
@@ -93,7 +96,10 @@ class Utils:
             return ca.Function("base_func", prims, [expr])
         elif isinstance(expr, (sym.Expr, sym.Matrix)):
             return sym.lambdify(prims, expr, "numpy")
-        print(type(expr))
+        elif isinstance(expr, float):
+            return lambda: expr
+        elif isinstance(expr, ca.DM):
+            return lambda: expr[0]
         msg = "Unexpected expression type. Expecting CasADi or Sympy."
         raise TypeError(msg)
 

@@ -1,5 +1,7 @@
 """Generic pytest-related classes/functions used throughout test suite."""
 
+import itertools
+
 import casadi as ca
 import numpy as np
 import pytest
@@ -24,6 +26,12 @@ class Utils:
         for sym in syms[1:]:
             assert syms[0].name() == sym.name()
             assert syms[0].size() == sym.size()
+
+    @classmethod
+    def assert_ca_syms_identical(cls, *syms_iterables):
+        """Check all symbols in iterables using `assert_ca_sym_identical`."""
+        for syms in itertools.zip_longest(*syms_iterables):
+            cls.assert_ca_sym_identical(*syms)
 
     @classmethod
     def assert_ca_expr_identical(cls, *exprs, n=10):

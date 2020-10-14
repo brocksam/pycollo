@@ -41,7 +41,7 @@ class cachedproperty:
             return value
 
 
-def sympy_to_casadi(sympy_expr, sympy_to_casadi_sym_mapping):
+def sympy_to_casadi(sympy_expr, sympy_to_casadi_sym_mapping, *, phase=None):
     """Convert a Sympy expression to a CasADi one.
 
     Recipe adapted from one by Joris Gillis taken from:
@@ -82,7 +82,8 @@ def sympy_to_casadi(sympy_expr, sympy_to_casadi_sym_mapping):
         casadi_vars = casadi_vars.T
     vars_not_in_mapping = sympy_expr.free_symbols.difference(set(sympy_vars))
     for sympy_var in vars_not_in_mapping:
-        casadi_var = ca.SX.sym(str(sympy_var))
+        casadi_var_name_suffix = f"_P{phase}" if phase is not None else ""
+        casadi_var = ca.SX.sym(f"{str(sympy_var)}{casadi_var_name_suffix}")
         sympy_to_casadi_sym_mapping.update({sympy_var: casadi_var})
         sympy_vars = sym.Matrix.vstack(sympy_vars, sym.Matrix([[sympy_var]]))
         casadi_vars = ca.vertcat(casadi_vars, casadi_var)

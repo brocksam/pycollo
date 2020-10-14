@@ -403,8 +403,8 @@ class Phase:
     def control_variables(self) -> TupleSymsType:
         """Symbols for this phase's control variables in order added by user.
 
-        The user may supply either a single symbol or an iterable of symbols. 
-        The supplied argument is handled by the `format_as_tuple` method from 
+        The user may supply either a single symbol or an iterable of symbols.
+        The supplied argument is handled by the `format_as_tuple` method from
         the `utils` module.
         """
         return self._u_var_user
@@ -423,10 +423,15 @@ class Phase:
     def integral_variables(self) -> TupleSymsType:
         """Symbols for this phase's integral variables.
 
-        These symbols are auto generated as required by the user-supplied 
+        These symbols are auto generated as required by the user-supplied
         integrand functions.
         """
         return self._q_var_user
+
+    @property
+    def time_variables(self) -> TupleSymsType:
+        """The initial and final time symbols as a pair."""
+        return (self.initial_time_variable, self.final_time_variable)
 
     @property
     def number_integral_variables(self) -> int:

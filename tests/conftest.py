@@ -66,6 +66,12 @@ class Utils:
                 other_eval = other_func(*data[indices])
                 np.testing.assert_almost_equal(base_eval, other_eval)
 
+    @classmethod
+    def assert_ca_exprs_identical(cls, *exprs_iterables, n=10):
+        """Check all exprs in iterables using `assert_ca_expr_identical`."""
+        for exprs in itertools.zip_longest(*exprs_iterables):
+            cls.assert_ca_expr_identical(*exprs, n=n)
+
     @staticmethod
     def get_primitives_and_names(expr):
         """Return correct expr primitives depending on expr type."""
@@ -75,11 +81,12 @@ class Utils:
         elif isinstance(expr, (sym.Expr, sym.Matrix)):
             prims = list(expr.free_symbols)
             names = [str(prim) for prim in prims]
-        elif isinstance(expr, (float, ca.DM)):
+        elif isinstance(expr, (float, int, ca.DM)):
             prims = []
             names = []
         else:
-            msg = "Unexpected expression type. Expecting CasADi or Sympy."
+            msg = (f"Unexpected expression type of {type(expr)}. Expecting "
+                   f"CasADi or Sympy.")
             raise TypeError(msg)
         return (prims, names)
 
@@ -96,11 +103,12 @@ class Utils:
             return ca.Function("base_func", prims, [expr])
         elif isinstance(expr, (sym.Expr, sym.Matrix)):
             return sym.lambdify(prims, expr, "numpy")
-        elif isinstance(expr, float):
+        elif isinstance(expr, (float, int)):
             return lambda: expr
         elif isinstance(expr, ca.DM):
             return lambda: expr[0]
-        msg = "Unexpected expression type. Expecting CasADi or Sympy."
+        msg = (f"Unexpected expression type of {type(expr)}. Expecting CasADi "
+               f"or Sympy.")
         raise TypeError(msg)
 
 

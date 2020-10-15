@@ -341,7 +341,7 @@ class OptimalControlProblem():
         self._check_problem_and_phase_bounds()
         self._initialise_scaling()
         self._initialise_quadrature()
-        self._compile_nlp_functions()
+        self._postprocess_backend()
         self._initialise_initial_mesh()
         self._check_initial_guess()
         self._initialise_first_mesh_iteration()
@@ -381,9 +381,9 @@ class OptimalControlProblem():
         msg = "Initial guess checked."
         console_out(msg)
 
-    def _compile_nlp_functions(self):
-        self._backend.create_compiled_functions()
-        msg = "NLP functions compiled."
+    def _postprocess_backend(self):
+        self._backend.postprocess_problem_backend()
+        msg = "Backend postprocessing complete."
         console_out(msg)
 
     def _initialise_initial_mesh(self):

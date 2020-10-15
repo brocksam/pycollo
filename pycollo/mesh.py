@@ -335,6 +335,18 @@ class Mesh:
 
         h_K_expanded = np.array(h_K_expanded)
 
-        data = (tau, h, N, K, mesh_index_boundaries, h_K, h_K_expanded, N_K,
-                num_c_defect_per_y, W_matrix, sA_matrix, sD_matrix, A_index_array, D_index_array)
+        data = (tau,
+                h,
+                N,
+                K,
+                mesh_index_boundaries,
+                h_K,
+                h_K_expanded,
+                N_K,
+                num_c_defect_per_y,
+                W_matrix,
+                sA_matrix,
+                sD_matrix,
+                A_index_array,
+                D_index_array)
         return data

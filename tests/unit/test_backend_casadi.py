@@ -11,8 +11,6 @@ HS_FIXTURE_REF : :py:func:`fixture_ref <pytest_cases>`
 
 """
 
-import itertools
-
 import casadi as ca
 import pytest
 import pytest_cases

@@ -593,6 +593,7 @@ class BackendABC(ABC):
         self.bounds = Bounds(self)
         self.recollect_variables()
         self.process_point_constraints()
+        self.collect_constraints()
 
     def recollect_variables(self):
         """Take in to account variables that Pycollo's determined constant."""
@@ -695,6 +696,43 @@ class BackendABC(ABC):
             b_cons.append(b_con)
         self.b_con = tuple(b_cons)
         self.num_b_con = len(self.b_con)
+
+    def collect_constraints(self):
+        """Collect phase and problem constraints and related data."""
+        phase_c = itertools.chain.from_iterable(p.c for p in self.p)
+        self.c = (tuple(phase_c) + self.b_con)
+        self.num_c = len(self.c)
+
+        self.phase_y_eqn_slices = []
+        self.phase_p_con_slices = []
+        self.phase_q_fnc_slices = []
+        self.phase_c_slices = []
+        phase_start = 0
+        for p in self.p:
+            start = phase_start
+            stop = start + p.num_y_eqn
+            p_slice = slice(start, stop)
+            self.phase_y_eqn_slices.append(p_slice)
+            start = stop
+            stop = start + p.num_p_con
+            p_slice = slice(start, stop)
+            self.phase_p_con_slices.append(p_slice)
+            start = stop
+            stop = start + p.num_q_fnc
+            p_slice = slice(start, stop)
+            self.phase_q_fnc_slices.append(p_slice)
+            start = stop
+            phase_stop = phase_start + p.num_c
+            p_slice = slice(phase_start, phase_stop)
+            self.phase_c_slices.append(p_slice)
+            phase_start = phase_stop
+
+        start = 0
+        stop = self.phase_c_slices[-1].stop
+        self.c_continuous_slice = slice(start, stop)
+        start = stop
+        stop = start + self.num_b_con
+        self.c_endpoint_slice = slice(start, stop)
 
     def create_guess(self):
         phase_guesses = [p.ocp_phase.guess for p in self.p]
@@ -1206,43 +1244,6 @@ class Pycollo(BackendABC):
 
     def create_compiled_functions(self):
         self.compiled_functions = CompiledFunctions(self)
-
-    def collect_constraints(self):
-        constraints = (tuple(itertools.chain.from_iterable(p.c
-                                                           for p in self.p)) + self.beta)
-
-        self.num_c = len(constraints)
-        self.phase_defect_constraint_slices = []
-        self.phase_path_constraint_slices = []
-        self.phase_integral_constraint_slices = []
-        self.phase_constraint_slices = []
-        phase_start = 0
-        for p in self.p:
-            start = phase_start
-            stop = start + p.num_c_defect
-            p_slice = slice(start, stop)
-            self.phase_defect_constraint_slices.append(p_slice)
-            start = stop
-            stop = start + p.num_c_path
-            p_slice = slice(start, stop)
-            self.phase_path_constraint_slices.append(p_slice)
-            start = stop
-            stop = start + p.num_c_integral
-            p_slice = slice(start, stop)
-            self.phase_integral_constraint_slices.append(p_slice)
-            start = stop
-            phase_stop = phase_start + p.num_c
-            p_slice = slice(phase_start, phase_stop)
-            self.phase_constraint_slices.append(p_slice)
-            phase_start = phase_stop
-
-        start = 0
-        stop = self.phase_constraint_slices[-1].stop
-        self.c_continuous_slice = slice(start, stop)
-        start = stop
-        stop = start + self.num_c_endpoint
-        self.c_endpoint_slice = slice(start, stop)
-        return constraints
 
 
 class Casadi(BackendABC):

@@ -104,6 +104,7 @@ class BackendABC(ABC):
         self.create_phase_backends()
         self.preprocess_user_problem_aux_data()
         self.preprocess_phase_backends()
+        self.preprocess_problem_backend()
         self.console_out_variables_constraints_preprocessed()
 
     @staticmethod
@@ -600,6 +601,26 @@ class BackendABC(ABC):
                 self.aux_data[backend_sym] = backend_eqn
                 before_prims = after_prims
 
+    def preprocess_problem_backend(self):
+        """Abstraction layer for backend-specific postprocessing."""
+        self.process_objective_function()
+
+    def process_objective_function(self):
+        """Substitute objetive function with backend symbols.
+
+        Raises
+        ------
+        NotImplementedError
+            If a backend other than CasADi is used as a refactor is required.
+
+        """
+        if self.ocp.settings.backend != "casadi":
+            msg = (f"Refactor required to used other backend.")
+            raise NotImplementedError(msg)
+        J = self.ocp.objective_function
+        J, _ = sympy_to_casadi(J, self.user_to_backend_mapping)
+        self.J = casadi_substitute(J, self.aux_data)
+
     def console_out_variables_constraints_preprocessed(self):
         """Console out success message variable/constraint preprocessing."""
         if self.ocp.settings.console_out_progress:
@@ -607,11 +628,101 @@ class BackendABC(ABC):
             console_out(msg)
 
     def create_bounds(self):
+        """Create bounds object for backend."""
         self.bounds = Bounds(self)
-        self.recollect_variables_and_slices()
+        self.recollect_variables()
+        self.process_point_constraints()
 
-    def create_compiled_functions(self):
-        self.compiled_functions = CompiledFunctions(self)
+    def recollect_variables(self):
+        """Take in to account variables that Pycollo's determined constant."""
+        for p in self.p:
+            p.collect_pycollo_variables()
+            p.create_variable_indexes_slices()
+
+        self.s_var = tuple(np.array(self.s_var_full)[
+                            self.ocp.bounds._s_needed].tolist())
+        self.num_s_var = len(self.s_var)
+
+        continuous_var = (tuple(itertools.chain.from_iterable(p.x_var
+                                                               for p in self.p)) + self.s_var)
+        self.x_var = continuous_var
+        self.num_var = len(continuous_var)
+        endpoint_var = (tuple(itertools.chain.from_iterable(p.x_point_var
+                                                             for p in self.p)) + self.s_var)
+        self.x_point_var = endpoint_var
+        self.num_point_var = len(endpoint_var)
+        self.variables = (continuous_var, endpoint_var)
+
+        self.phase_y_var_slices = []
+        self.phase_u_var_slices = []
+        self.phase_q_var_slices = []
+        self.phase_t_var_slices = []
+        self.phase_variable_slices = []
+        phase_start = 0
+        for p in self.p:
+            start = phase_start
+            stop = start + p.num_y_var
+            p_slice = slice(start, stop)
+            self.phase_y_var_slices.append(p_slice)
+            start = stop
+            stop = start + p.num_u_var
+            p_slice = slice(start, stop)
+            self.phase_u_var_slices.append(p_slice)
+            start = stop
+            stop = start + p.num_q_var
+            p_slice = slice(start, stop)
+            self.phase_q_var_slices.append(p_slice)
+            start = stop
+            stop = start + p.num_t_var
+            p_slice = slice(start, stop)
+            self.phase_t_var_slices.append(p_slice)
+            start = stop
+            phase_stop = phase_start + p.num_var
+            p_slice = slice(phase_start, phase_stop)
+            self.phase_variable_slices.append(p_slice)
+            phase_start = phase_stop
+        self.s_var_slice = slice(
+            self.num_var - self.num_s_var, self.num_var)
+        self.variable_slice = self.s_var_slice
+
+        self.phase_endpoint_variable_slices = []
+        start = 0
+        for p in self.p:
+            stop = start + p.num_point_var
+            p_slice = slice(start, stop)
+            start = stop
+            self.phase_endpoint_variable_slices.append(p_slice)
+        self.endpoint_variable_slice = slice(
+            self.num_point_var - self.num_s_var, self.num_point_var)
+
+    def process_point_constraints(self):
+        all_y_var = []
+        all_y_t0_var = []
+        all_y_tF_var = []
+        for p in self.p:
+            all_y_var.extend(list(p.y_var))
+            all_y_t0_var.extend(list(p.y_t0_var))
+            all_y_tF_var.extend(list(p.y_tF_var))
+        all_y_var_set = set(all_y_var)
+        all_y_bnds = []
+        for var, x_bnds in zip(self.x_var, self.bounds.x_bnds):
+            if var in all_y_var_set:
+                all_y_bnds.append(x_bnds)
+        endpoint_state_constraints = []
+        endpoint_state_constraints_bounds = []
+        for y_t0_var, y_tF_var, y_bnds, y_t0_bnds, y_tF_bnds in zip(
+                all_y_t0_var, all_y_tF_var, all_y_bnds, self.bounds.y_t0_bnds, self.bounds.y_tF_bnds):
+            if np.any(~np.isclose(np.array(y_t0_bnds), np.array(y_bnds))):
+                endpoint_state_constraints.append(y_t0_var)
+                endpoint_state_constraints_bounds.append(y_t0_bnds)
+            if np.any(~np.isclose(np.array(y_tF_bnds), np.array(y_bnds))):
+                endpoint_state_constraints.append(y_tF_var)
+                endpoint_state_constraints_bounds.append(y_tF_bnds)
+        self.y_beta = tuple(endpoint_state_constraints)
+        self.bounds.c_y_bnds = endpoint_state_constraints_bounds
+        self.beta = tuple(b_con.xreplace(self.all_subs_mappings)
+                          for b_con in self.ocp.endpoint_constraints)
+        self.num_c_endpoint = self.ocp.number_endpoint_constraints
 
     def create_guess(self):
         phase_guesses = [p.ocp_phase.guess for p in self.p]
@@ -631,6 +742,11 @@ class BackendABC(ABC):
 
     def create_scaling(self):
         self.scaling = Scaling(self)
+
+    @abstractmethod
+    def postprocess_problem_backend(self):
+        """Abstraction layer for backend-specific postprocessing."""
+        pass
 
     def new_mesh_iteration(self, mesh, guess):
         index = len(self.mesh_iterations)
@@ -1009,15 +1125,23 @@ class PycolloPhaseData:
         self.q_fnc_slice = slice(q_fnc_start, c_end)
 
     def collect_pycollo_variables(self):
-        self.y_var = tuple(np.array(self.y_var_full)[
-                           self.ocp_phase.bounds._y_needed].tolist())
-        self.u_var = tuple(np.array(self.u_var_full)[
-                           self.ocp_phase.bounds._u_needed].tolist())
-        self.q_var = tuple(np.array(self.q_var_full)[
-                           self.ocp_phase.bounds._q_needed].tolist())
-        self.t_var = tuple(np.array(self.t_var_full)[
-                           self.ocp_phase.bounds._t_needed].tolist())
-        self.x_var = self.y_var + self.u_var + self.q_var + self.t_var
+        """Recollect Pycollo variables accounting for 'constant' variables."""
+
+        def needed_to_tuple(var_full, needed):
+            return tuple(np.array(var_full)[needed].tolist())
+
+        self.y_var = needed_to_tuple(self.y_var_full,
+                                     self.ocp_phase.bounds._y_needed)
+        self.u_var = needed_to_tuple(self.u_var_full,
+                                     self.ocp_phase.bounds._u_needed)
+        self.q_var = needed_to_tuple(self.q_var_full,
+                                     self.ocp_phase.bounds._q_needed)
+        self.t_var = needed_to_tuple(self.t_var_full,
+                                     self.ocp_phase.bounds._t_needed)
+        self.x_var = itertools.chain(self.y_var,
+                                     self.u_var,
+                                     self.q_var,
+                                     self.t_var)
 
         self.num_y_var = len(self.y_var)
         self.num_u_var = len(self.u_var)
@@ -1025,48 +1149,73 @@ class PycolloPhaseData:
         self.num_t_var = len(self.t_var)
         self.num_var = len(self.x_var)
 
-        self.y_t0_var = tuple(np.array(self.y_t0_var_full)[
-                              self.ocp_phase.bounds._y_needed].tolist())
-        self.y_tF_var = tuple(np.array(self.y_tF_var_full)[
-                              self.ocp_phase.bounds._y_needed].tolist())
+        self.y_var = needed_to_tuple(self.V_y_var_full,
+                                     self.ocp_phase.bounds._y_needed)
+        self.u_var = needed_to_tuple(self.V_u_var_full,
+                                     self.ocp_phase.bounds._u_needed)
+        self.q_var = needed_to_tuple(self.V_q_var_full,
+                                     self.ocp_phase.bounds._q_needed)
+        self.V_x_var = itertools.chain(self.V_y_var,
+                                       self.V_u_var,
+                                       self.V_q_var)
+        self.y_var = needed_to_tuple(self.r_y_var_full,
+                                     self.ocp_phase.bounds._y_needed)
+        self.u_var = needed_to_tuple(self.r_u_var_full,
+                                     self.ocp_phase.bounds._u_needed)
+        self.q_var = needed_to_tuple(self.r_q_var_full,
+                                     self.ocp_phase.bounds._q_needed)
+        self.r_x_var = itertools.chain(self.r_y_var,
+                                       self.r_u_var,
+                                       self.r_q_var)
+
+        self.y_t0_var = needed_to_tuple(self.y_t0_var_full,
+                                        self.ocp_phase.bounds._y_needed)
+        self.y_tF_var = needed_to_tuple(self.y_tF_var_full,
+                                        self.ocp_phase.bounds._y_needed)
         y_point_var = (y for y in zip(self.y_t0_var, self.y_tF_var))
         self.y_point_var = tuple(itertools.chain.from_iterable(y_point_var))
         self.num_y_point_var = len(self.y_point_var)
 
-        self.num_each_var = (self.num_y_var, self.num_u_var,
-                             self.num_q_var, self.num_t_var)
+        self.num_each_var = (self.num_y_var,
+                             self.num_u_var,
+                             self.num_q_var,
+                             self.num_t_var)
         self.x_point_var = itertools.chain(self.y_point_var,
                                            self.q_var,
                                            self.t_var)
         self.num_point_var = len(self.x_point_var)
 
-        self.create_variable_indexes_slices()
-
     def create_variable_indexes_slices(self):
+        """Abstraction layer for creating continuous/point var index slices."""
         self.create_continuous_variable_indexes_slices()
         self.create_point_variable_indexes_slices()
 
     def create_continuous_variable_indexes_slices(self):
-        self.y_slice = slice(0, self.num_y_var)
-        self.u_slice = slice(self.y_slice.stop,
-                             self.y_slice.stop + self.num_u_var)
-        self.q_slice = slice(self.u_slice.stop,
-                             self.u_slice.stop + self.num_q_var)
-        self.t_slice = slice(self.q_slice.stop, self.num_var)
-        self.yu_slice = slice(self.y_slice.start,
-                              self.u_slice.stop)
-        self.qt_slice = slice(self.q_slice.start, self.num_var)
-        self.yu_qt_split = self.yu_slice.stop
+        """Create variable index slices for phase continuous variables."""
+        y_start = 0
+        u_start = y_start + self.num_y_var
+        q_start = u_start + self.num_u_var
+        t_start = q_start + self.num_q_var
+        x_end = self.num_var
+        self.y_slice = slice(y_start, u_start)
+        self.u_slice = slice(u_start, q_start)
+        self.q_slice = slice(q_start, t_start)
+        self.t_slice = slice(t_start, x_end)
+        self.yu_slice = slice(y_start, q_start)
+        self.qt_slice = slice(q_start, x_end)
+        self.yu_qt_split = q_start
 
     def create_point_variable_indexes_slices(self):
-        self.y_point_slice = slice(0, self.num_y_point_var)
-        self.q_point_slice = slice(self.y_point_slice.stop,
-                                   self.y_point_slice.stop + self.num_q_var)
-        self.t_point_slice = slice(self.q_point_slice.stop,
-                                   self.num_point_var)
-        self.qt_point_slice = slice(self.q_point_slice.start,
-                                    self.num_point_var)
-        self.y_point_qt_point_split = self.y_point_slice.stop
+        """Create variable index slices for phase point variables."""
+        y_point_start = 0
+        q_point_start = y_point_start + self.num_y_point_var
+        t_point_start = q_point_start + self.num_q_var
+        x_point_end = self.num_point_var
+        self.y_point_slice = slice(y_point_start, q_point_start)
+        self.q_point_slice = slice(q_point_start, t_point_start)
+        self.t_point_slice = slice(t_point_start, x_point_end)
+        self.qt_point_slice = slice(q_point_start, x_point_end)
+        self.y_point_qt_point_split = q_point_start
 
 
 class Pycollo(BackendABC):
@@ -1081,131 +1230,13 @@ class Pycollo(BackendABC):
             return sym.Symbol(name)
         raise NotImplementedError
 
-    def create_expression_graph(self):
-        variables = self.collect_variables()
-        objective = None
-        constraints = None
-        aux_data = self.collect_aux_data()
-        self.expression_graph_full = ExpressionGraph(self, variables, objective,
-                                                     constraints, aux_data)
-
-    def collect_variables(self):
-        continuous_var_full = (tuple(itertools.chain.from_iterable(p.x_var_full
-                                                                    for p in self.p)) + self.s_var_full)
-        self.num_var_full = len(continuous_var_full)
-        endpoint_var_full = (tuple(itertools.chain.from_iterable(p.x_point_var_full
-                                                                  for p in self.p)) + self.s_var_full)
-        variables = (continuous_var_full, endpoint_var_full)
-        self.phase_variable_full_slices = []
-        start = 0
-        for p in self.p:
-            stop = start + p.num_var_full
-            p_slice = slice(start, stop)
-            start = stop
-            self.phase_variable_full_slices.append(p_slice)
-        return variables
-
-    def collect_aux_data(self):
-        aux_data = dict_merge(self.aux_data, *(p.aux_data for p in self.p))
-        return aux_data
-
-    def recollect_variables_and_slices(self):
-        self.recollect_variables()
-        self.process_objective_function()
-        self.process_point_constraints()
+    def postprocess_problem_backend(self):
+        """Abstraction layer for backend-specific postprocessing."""
         self.build_expression_graph()
+        self.create_compiled_functions()
 
-    def recollect_variables(self):
-        for p in self.p:
-            p.collect_pycollo_variables()
-
-        self.s_var = tuple(np.array(self.s_var_full)[
-                            self.ocp.bounds._s_needed].tolist())
-        self.num_s_var = len(self.s_var)
-
-        continuous_var = (tuple(itertools.chain.from_iterable(p.x_var
-                                                               for p in self.p)) + self.s_var)
-        self.x_var = continuous_var
-        self.num_var = len(continuous_var)
-        endpoint_var = (tuple(itertools.chain.from_iterable(p.x_point_var
-                                                             for p in self.p)) + self.s_var)
-        self.x_point_var = endpoint_var
-        self.num_point_var = len(endpoint_var)
-        self.variables = (continuous_var, endpoint_var)
-
-        self.phase_y_var_slices = []
-        self.phase_u_var_slices = []
-        self.phase_q_var_slices = []
-        self.phase_t_var_slices = []
-        self.phase_variable_slices = []
-        phase_start = 0
-        for p in self.p:
-            start = phase_start
-            stop = start + p.num_y_var
-            p_slice = slice(start, stop)
-            self.phase_y_var_slices.append(p_slice)
-            start = stop
-            stop = start + p.num_u_var
-            p_slice = slice(start, stop)
-            self.phase_u_var_slices.append(p_slice)
-            start = stop
-            stop = start + p.num_q_var
-            p_slice = slice(start, stop)
-            self.phase_q_var_slices.append(p_slice)
-            start = stop
-            stop = start + p.num_t_var
-            p_slice = slice(start, stop)
-            self.phase_t_var_slices.append(p_slice)
-            start = stop
-            phase_stop = phase_start + p.num_var
-            p_slice = slice(phase_start, phase_stop)
-            self.phase_variable_slices.append(p_slice)
-            phase_start = phase_stop
-        self.s_var_slice = slice(
-            self.num_var - self.num_s_var, self.num_var)
-        self.variable_slice = self.s_var_slice
-
-        self.phase_endpoint_variable_slices = []
-        start = 0
-        for p in self.p:
-            stop = start + p.num_point_var
-            p_slice = slice(start, stop)
-            start = stop
-            self.phase_endpoint_variable_slices.append(p_slice)
-        self.endpoint_variable_slice = slice(
-            self.num_point_var - self.num_s_var, self.num_point_var)
-
-    def process_objective_function(self):
-        self.J = self.ocp.objective_function.xreplace(self.all_subs_mappings)
-
-    def process_point_constraints(self):
-        all_y_var = []
-        all_y_t0_var = []
-        all_y_tF_var = []
-        for p in self.p:
-            all_y_var.extend(list(p.y_var))
-            all_y_t0_var.extend(list(p.y_t0_var))
-            all_y_tF_var.extend(list(p.y_tF_var))
-        all_y_var_set = set(all_y_var)
-        all_y_bnds = []
-        for var, x_bnds in zip(self.x_var, self.bounds.x_bnds):
-            if var in all_y_var_set:
-                all_y_bnds.append(x_bnds)
-        endpoint_state_constraints = []
-        endpoint_state_constraints_bounds = []
-        for y_t0_var, y_tF_var, y_bnds, y_t0_bnds, y_tF_bnds in zip(
-                all_y_t0_var, all_y_tF_var, all_y_bnds, self.bounds.y_t0_bnds, self.bounds.y_tF_bnds):
-            if np.any(~np.isclose(np.array(y_t0_bnds), np.array(y_bnds))):
-                endpoint_state_constraints.append(y_t0_var)
-                endpoint_state_constraints_bounds.append(y_t0_bnds)
-            if np.any(~np.isclose(np.array(y_tF_bnds), np.array(y_bnds))):
-                endpoint_state_constraints.append(y_tF_var)
-                endpoint_state_constraints_bounds.append(y_tF_bnds)
-        self.y_beta = tuple(endpoint_state_constraints)
-        self.bounds.c_y_bnds = endpoint_state_constraints_bounds
-        self.beta = tuple(b_con.xreplace(self.all_subs_mappings)
-                          for b_con in self.ocp.endpoint_constraints)
-        self.num_c_endpoint = self.ocp.number_endpoint_constraints
+    def create_compiled_functions(self):
+        self.compiled_functions = CompiledFunctions(self)
 
     def collect_constraints(self):
         constraints = (tuple(itertools.chain.from_iterable(p.c
@@ -1244,15 +1275,6 @@ class Pycollo(BackendABC):
         self.c_endpoint_slice = slice(start, stop)
         return constraints
 
-    def build_expression_graph(self):
-        variables = self.variables
-        objective = self.J
-        constraints = self.collect_constraints()
-        aux_data = dict_merge(self.aux_data, *(p.aux_data for p in self.p), self.bounds.aux_data)
-        self.expression_graph = ExpressionGraph(self, variables, objective,
-                                                constraints, aux_data)
-        self.expression_graph.form_functions_and_derivatives()
-
 
 class Casadi(BackendABC):
 
@@ -1264,26 +1286,9 @@ class Casadi(BackendABC):
     def const(val):
         return ca.DM(val)
 
-    """
-
-        if user_sym in self.user_aux_data_mapping:
-            backend_sym = self.user_aux_data_mapping[user_sym]
-        else:
-            backend_sym = self.sym(str(user_sym))
-            self.user_aux_data_mapping[user_sym] = backend_sym
-        if isinstance(user_eqn, sym.Expr):
-            backend_eqn, self.user_aux_data_mapping = sympy_to_casadi(
-                user_eqn, self.user_aux_data_mapping)
-        else:
-            backend_eqn = self.const(user_eqn)
-        eqn_prims = symbol_primitives(backend_eqn)
-        if user_sym in self.user_phase_aux_data_syms:
-            self.aux_data_supplied_in_ocp_and_phase[user_sym] = backend_eqn
-        elif self.user_phase_aux_data_syms.intersection(eqn_prims):
-            self.aux_data_phase_dependent[user_sym] = backend_eqn
-        else:
-            self.aux_data[user_sym] = backend_eqn
-        """
+    def postprocess_problem_backend(self):
+        """CasADi backend doesn't need to do any postprocessing."""
+        pass
 
 
 class Hsad(BackendABC):
@@ -1302,6 +1307,10 @@ class Hsad(BackendABC):
     def const(val):
         raise NotImplementedError(not_implemented_error_msg)
 
+    def postprocess_problem_backend(self):
+        """Abstraction layer for backend-specific postprocessing."""
+        pass
+
 
 class Sympy(BackendABC):
 
@@ -1318,6 +1327,10 @@ class Sympy(BackendABC):
     @staticmethod
     def const(val):
         raise NotImplementedError(not_implemented_error_msg)
+
+    def postprocess_problem_backend(self):
+        """Abstraction layer for backend-specific postprocessing."""
+        pass
 
 
 BACKENDS = Options((PYCOLLO, HSAD, CASADI, SYMPY), default=CASADI,

@@ -73,6 +73,8 @@ __all__ = ["Settings"]
 from pyproprop import processed_property
 
 from .backend import BACKENDS
+from .bounds import DEFAULT_ASSUME_INF_BOUNDS
+from .bounds import DEFAULT_INF_VALUE
 from .compiled import COLLOCATION_MATRIX_FORMS
 from .quadrature import DEFAULT_COLLOCATION_POINTS_MIN
 from .quadrature import DEFAULT_COLLOCATION_POINTS_MAX
@@ -114,10 +116,6 @@ DEFAULT_CONSOLE_OUT_PROGRESS = True
 DEFAULT_DISPLAY_MESH_REFINE_INFO = True
 DEFAULT_DISPLAY_MESH_RESULT_INFO = False
 DEFAULT_DISPLAY_MESH_RESULT_GRAPH = False
-
-# Bounds constants
-DEFAULT_INF_VALUE = 10e19
-DEFAULT_ASSUME_INF_BOUNDS = True
 
 
 class Settings():

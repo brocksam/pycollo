@@ -24,11 +24,11 @@ class ScalingABC(abc.ABC):
     _NONE_SCALING_DEFAULT = 1
     _SCALE_DEFAULT = 1
     _SHIFT_DEFAULT = 0
-    _METHOD_OPTIONS = {DEFAULT, BOUNDS, USER, GUESS, NONE, None}
-    _METHOD_DEFAULT = BOUNDS
-    _UPDATE_DEFAULT = False
-    _NUMBER_SAMPLES_DEFAULT = 100
-    _UPDATE_WEIGHT_DEFAULT = 0.8
+    # _METHOD_OPTIONS = {DEFAULT, BOUNDS, USER, GUESS, NONE, None}
+    # _METHOD_DEFAULT = BOUNDS
+    # _UPDATE_DEFAULT = False
+    # _NUMBER_SAMPLES_DEFAULT = 100
+    # _UPDATE_WEIGHT_DEFAULT = 0.8
 
     optimal_control_problem = processed_property("optimal_control_problem",
                                                  read_only=True)
@@ -108,8 +108,8 @@ class Scaling(ScalingABC):
         self.c_scales = self._generate_constraint_base()
 
     def _generate_bounds(self):
-        x_l = self.backend.bounds.x_bnds_lower
-        x_u = self.backend.bounds.x_bnds_upper
+        x_l = self.backend.bounds.x_bnd_lower
+        x_u = self.backend.bounds.x_bnd_upper
         scales = 1 / (x_u - x_l)
         shifts = (x_l + x_u) / 2
         # shifts = 0.5 - x_u / (x_u - x_l)
@@ -129,13 +129,13 @@ class Scaling(ScalingABC):
 
     def _generate_constraint_base(self):
         scales = np.ones(self.backend.num_c)
-        slices = zip(self.backend.phase_y_vars_slices,
-                     self.backend.phase_q_vars_slices,
-                     self.backend.phase_defect_constraint_slices,
-                     self.backend.phase_integral_constraint_slices)
-        for y_slice, q_slice, defect_slice, integral_slice in slices:
-            scales[defect_slice] = self.x_scales[y_slice]
-            scales[integral_slice] = self.x_scales[q_slice]
+        slices = zip(self.backend.phase_y_var_slices,
+                     self.backend.phase_q_var_slices,
+                     self.backend.phase_y_eqn_slices,
+                     self.backend.phase_q_fnc_slices)
+        for y_slice, q_slice, y_eqn_slice, q_fnc_slice in slices:
+            scales[y_eqn_slice] = self.x_scales[y_slice]
+            scales[q_fnc_slice] = self.x_scales[q_slice]
         return scales
 
 

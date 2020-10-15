@@ -64,3 +64,56 @@ class TestUserGuess:
     def test_integral_variables_guess_uninitialised_is_none(self):
         """Integral guess initialised to None."""
         assert self.ocp.phases.A.guess.integral_variables is None
+
+
+def test_user_guess_dp_specific(double_pendulum_fixture):
+    ocp, user_syms = double_pendulum_fixture
+    phase = ocp.phases.A
+
+    pi_by_2 = 0.5 * np.pi
+    np.testing.assert_allclose(phase.guess.time, np.array([0, 2]))
+    np.testing.assert_allclose(phase.guess.state_variables,
+                               np.array([[-pi_by_2, pi_by_2],
+                                         [-pi_by_2, pi_by_2],
+                                         [0, 0],
+                                         [0, 0],
+                                         ]))
+    np.testing.assert_allclose(phase.guess.control_variables,
+                               np.array([[0, 0], [0, 0]]))
+    np.testing.assert_allclose(phase.guess.integral_variables,
+                               np.array([100]))
+    np.testing.assert_allclose(ocp.guess.parameter_variables,
+                               np.array([1.0, 1.0]))
+
+    ocp._console_out_initialisation_message()
+    ocp._check_variables_and_equations()
+    ocp._initialise_backend()
+    ocp._check_problem_and_phase_bounds()
+    ocp._initialise_scaling()
+    ocp._check_initial_guess()
+
+    guess = ocp._backend.initial_guess
+
+    assert isinstance(guess.tau, list)
+    assert len(guess.tau) == 1
+    np.testing.assert_allclose(guess.tau[0], np.array([-1, 1]))
+    assert isinstance(guess.t0, list)
+    assert len(guess.t0) == 1
+    assert guess.t0[0] == 0.0
+    assert isinstance(guess.tF, list)
+    assert len(guess.tF) == 1
+    assert guess.tF[0] == 2.0
+    assert isinstance(guess.y, list)
+    assert len(guess.y) == 1
+    np.testing.assert_allclose(guess.y[0], np.array([[-pi_by_2, pi_by_2],
+                                                     [-pi_by_2, pi_by_2],
+                                                     [0, 0],
+                                                     [0, 0],
+                                                     ]))
+    assert isinstance(guess.u, list)
+    assert len(guess.u) == 1
+    np.testing.assert_allclose(guess.u[0], np.array([[0, 0], [0, 0]]))
+    assert isinstance(guess.q, list)
+    assert len(guess.q) == 1
+    np.testing.assert_allclose(guess.q[0], np.array([100]))
+    np.testing.assert_allclose(guess.s, np.array([1.0, 1.0]))

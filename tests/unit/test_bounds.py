@@ -11,14 +11,7 @@ HS_FIXTURE_REF : :py:func:`fixture_ref <pytest_cases>`
 
 """
 
-import itertools
-
-import casadi as ca
-import pytest
 import pytest_cases
-import sympy as sym
-
-import pycollo
 
 
 HS_FIXTURE_REF = pytest_cases.fixture_ref("hypersensitive_problem_fixture")
@@ -42,3 +35,21 @@ def test_bounds_check_sucessful(ocp_fixture):
     ocp._check_variables_and_equations()
     ocp._initialise_backend()
     ocp._check_problem_and_phase_bounds()
+
+
+def test_bounds_check_correct_dp_specific(double_pendulum_fixture):
+    """Check OCP initialisation completes bounds checking successfully."""
+    ocp, user_syms = double_pendulum_fixture
+    ocp._console_out_initialisation_message()
+    ocp._check_variables_and_equations()
+    ocp._initialise_backend()
+    ocp._check_problem_and_phase_bounds()
+
+    backend = ocp._backend
+    phase_backend = backend.p[0]
+
+    assert phase_backend.num_y_eqn == 4
+    assert phase_backend.num_p_con == 0
+    assert phase_backend.num_q_fnc == 1
+    assert backend.num_y_con == 8
+    assert backend.num_b_con == 0

@@ -115,6 +115,10 @@ DEFAULT_DISPLAY_MESH_REFINE_INFO = True
 DEFAULT_DISPLAY_MESH_RESULT_INFO = False
 DEFAULT_DISPLAY_MESH_RESULT_GRAPH = False
 
+# Bounds constants
+DEFAULT_INF_VALUE = 10e19
+DEFAULT_ASSUME_INF_BOUNDS = True
+
 
 class Settings():
 
@@ -329,6 +333,12 @@ class Settings():
         cast=True,
         min=0,
     )
+    assume_inf_bounds = processed_property(
+        "assume_inf_bounds",
+        description="assume missing bounds are (numerically) infinite",
+        type=bool,
+        cast=True,
+    )
 
     def __init__(self, *,
                  optimal_control_problem=None,
@@ -352,6 +362,8 @@ class Settings():
                  update_scaling=DEFAULT_UPDATE_SCALING,
                  number_scaling_samples=DEFAULT_NUMBER_SCALING_SAMPLES,
                  scaling_weight=DEFAULT_SCALING_WEIGHT,
+                 inf_value=DEFAULT_INF_VALUE,
+                 assume_inf_bounds=DEFAULT_ASSUME_INF_BOUNDS,
                  ):
 
         # Optimal Control Problem
@@ -389,8 +401,9 @@ class Settings():
         self.display_mesh_result_info = display_mesh_result_info
         self.display_mesh_result_graph = display_mesh_result_graph
 
-        # Other
-        self.inf_value = 10e19
+        # Bounds
+        self.inf_value = inf_value
+        self.assume_inf_bounds = assume_inf_bounds
 
     @property
     def optimal_control_problem(self):

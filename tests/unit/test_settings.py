@@ -368,7 +368,7 @@ class TestSettings:
         expected_error_msg = re.escape(
             f"`{repr(test_value)}` is not currently supported as a scaling "
             f"method (`scaling_method`). Choose one of: `'bounds'`, "
-            f"`'default'`, `'none'` or `None`.")
+            f"`'none'` or `None`.")
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.scaling_method = test_value
 

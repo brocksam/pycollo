@@ -596,20 +596,22 @@ class BackendABC(ABC):
 
     def recollect_variables(self):
         """Take in to account variables that Pycollo's determined constant."""
+        chain_from_iterable = itertools.chain.from_iterable
+
         for p in self.p:
             p.collect_pycollo_variables()
             p.create_variable_indexes_slices()
 
         self.s_var = tuple(np.array(self.s_var_full)[
-                            self.ocp.bounds._s_needed].tolist())
+                           self.ocp.bounds._s_needed].tolist())
         self.num_s_var = len(self.s_var)
 
-        continuous_var = (tuple(itertools.chain.from_iterable(p.x_var
-                                                               for p in self.p)) + self.s_var)
+        all_phase_var = chain_from_iterable(p.x_var for p in self.p)
+        continuous_var = tuple(all_phase_var) + self.s_var
         self.x_var = continuous_var
         self.num_var = len(continuous_var)
-        endpoint_var = (tuple(itertools.chain.from_iterable(p.x_point_var
-                                                             for p in self.p)) + self.s_var)
+        all_point_var = chain_from_iterable(p.x_point_var for p in self.p)
+        endpoint_var = tuple(all_point_var) + self.s_var
         self.x_point_var = endpoint_var
         self.num_point_var = len(endpoint_var)
         self.variables = (continuous_var, endpoint_var)
@@ -657,6 +659,7 @@ class BackendABC(ABC):
             self.num_point_var - self.num_s_var, self.num_point_var)
 
     def process_point_constraints(self):
+        """Process user-supplied point constraints."""
         all_y_var = []
         all_y_t0_var = []
         all_y_tF_var = []
@@ -665,25 +668,33 @@ class BackendABC(ABC):
             all_y_t0_var.extend(list(p.y_t0_var))
             all_y_tF_var.extend(list(p.y_tF_var))
         all_y_var_set = set(all_y_var)
-        all_y_bnds = []
-        for var, x_bnds in zip(self.x_var, self.bounds.x_bnds):
+        all_y_bnd = []
+        for var, x_bnd in zip(self.x_var, self.bounds.x_bnd):
             if var in all_y_var_set:
-                all_y_bnds.append(x_bnds)
+                all_y_bnd.append(x_bnd)
         endpoint_state_constraints = []
         endpoint_state_constraints_bounds = []
-        for y_t0_var, y_tF_var, y_bnds, y_t0_bnds, y_tF_bnds in zip(
-                all_y_t0_var, all_y_tF_var, all_y_bnds, self.bounds.y_t0_bnds, self.bounds.y_tF_bnds):
-            if np.any(~np.isclose(np.array(y_t0_bnds), np.array(y_bnds))):
+        zipped = zip(all_y_t0_var,
+                     all_y_tF_var,
+                     all_y_bnd,
+                     self.bounds.y_t0_bnd,
+                     self.bounds.y_tF_bnd)
+        for y_t0_var, y_tF_var, y_bnd, y_t0_bnd, y_tF_bnd in zipped:
+            if np.any(~np.isclose(np.array(y_t0_bnd), np.array(y_bnd))):
                 endpoint_state_constraints.append(y_t0_var)
-                endpoint_state_constraints_bounds.append(y_t0_bnds)
-            if np.any(~np.isclose(np.array(y_tF_bnds), np.array(y_bnds))):
+                endpoint_state_constraints_bounds.append(y_t0_bnd)
+            if np.any(~np.isclose(np.array(y_tF_bnd), np.array(y_bnd))):
                 endpoint_state_constraints.append(y_tF_var)
-                endpoint_state_constraints_bounds.append(y_tF_bnds)
-        self.y_beta = tuple(endpoint_state_constraints)
-        self.bounds.c_y_bnds = endpoint_state_constraints_bounds
-        self.beta = tuple(b_con.xreplace(self.all_subs_mappings)
-                          for b_con in self.ocp.endpoint_constraints)
-        self.num_c_endpoint = self.ocp.number_endpoint_constraints
+                endpoint_state_constraints_bounds.append(y_tF_bnd)
+        self.y_con = tuple(endpoint_state_constraints)
+        self.num_y_con = len(self.y_con)
+        self.bounds.c_y_bnd = endpoint_state_constraints_bounds
+        b_cons = []
+        for b_con in self.ocp.endpoint_constraints:
+            b_con = self.substitute_pycollo_sym(b_con)
+            b_cons.append(b_con)
+        self.b_con = tuple(b_cons)
+        self.num_b_con = len(self.b_con)
 
     def create_guess(self):
         phase_guesses = [p.ocp_phase.guess for p in self.p]
@@ -1096,10 +1107,10 @@ class PycolloPhaseData:
                                      self.ocp_phase.bounds._q_needed)
         self.t_var = needed_to_tuple(self.t_var_full,
                                      self.ocp_phase.bounds._t_needed)
-        self.x_var = itertools.chain(self.y_var,
-                                     self.u_var,
-                                     self.q_var,
-                                     self.t_var)
+        self.x_var = tuple(itertools.chain(self.y_var,
+                                           self.u_var,
+                                           self.q_var,
+                                           self.t_var))
 
         self.num_y_var = len(self.y_var)
         self.num_u_var = len(self.u_var)
@@ -1107,24 +1118,24 @@ class PycolloPhaseData:
         self.num_t_var = len(self.t_var)
         self.num_var = len(self.x_var)
 
-        self.y_var = needed_to_tuple(self.V_y_var_full,
-                                     self.ocp_phase.bounds._y_needed)
-        self.u_var = needed_to_tuple(self.V_u_var_full,
-                                     self.ocp_phase.bounds._u_needed)
-        self.q_var = needed_to_tuple(self.V_q_var_full,
-                                     self.ocp_phase.bounds._q_needed)
-        self.V_x_var = itertools.chain(self.V_y_var,
-                                       self.V_u_var,
-                                       self.V_q_var)
-        self.y_var = needed_to_tuple(self.r_y_var_full,
-                                     self.ocp_phase.bounds._y_needed)
-        self.u_var = needed_to_tuple(self.r_u_var_full,
-                                     self.ocp_phase.bounds._u_needed)
-        self.q_var = needed_to_tuple(self.r_q_var_full,
-                                     self.ocp_phase.bounds._q_needed)
-        self.r_x_var = itertools.chain(self.r_y_var,
-                                       self.r_u_var,
-                                       self.r_q_var)
+        self.V_y_var = needed_to_tuple(self.V_y_var_full,
+                                       self.ocp_phase.bounds._y_needed)
+        self.V_u_var = needed_to_tuple(self.V_u_var_full,
+                                       self.ocp_phase.bounds._u_needed)
+        self.V_q_var = needed_to_tuple(self.V_q_var_full,
+                                       self.ocp_phase.bounds._q_needed)
+        self.V_x_var = tuple(itertools.chain(self.V_y_var,
+                                             self.V_u_var,
+                                             self.V_q_var))
+        self.r_y_var = needed_to_tuple(self.r_y_var_full,
+                                       self.ocp_phase.bounds._y_needed)
+        self.r_u_var = needed_to_tuple(self.r_u_var_full,
+                                       self.ocp_phase.bounds._u_needed)
+        self.r_q_var = needed_to_tuple(self.r_q_var_full,
+                                       self.ocp_phase.bounds._q_needed)
+        self.r_x_var = tuple(itertools.chain(self.r_y_var,
+                                             self.r_u_var,
+                                             self.r_q_var))
 
         self.y_t0_var = needed_to_tuple(self.y_t0_var_full,
                                         self.ocp_phase.bounds._y_needed)
@@ -1138,9 +1149,9 @@ class PycolloPhaseData:
                              self.num_u_var,
                              self.num_q_var,
                              self.num_t_var)
-        self.x_point_var = itertools.chain(self.y_point_var,
-                                           self.q_var,
-                                           self.t_var)
+        self.x_point_var = tuple(itertools.chain(self.y_point_var,
+                                                 self.q_var,
+                                                 self.t_var))
         self.num_point_var = len(self.x_point_var)
 
     def create_variable_indexes_slices(self):

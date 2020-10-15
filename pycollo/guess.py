@@ -120,7 +120,7 @@ class Guess:
         self.generate()
 
     def generate(self):
-
+        self.num_tau = []
         self.tau = []
         self.t0 = []
         self.tF = []
@@ -129,7 +129,9 @@ class Guess:
         self.q = []
         self.t = []
         for p, p_guess in zip(self.backend.p, self.p):
-            data = self.generate_single_phase(p_guess)
+            num_tau = self.check_time_guess(p_guess.time)
+            self.num_tau.append(num_tau)
+            data = self.generate_single_phase(p, p_guess, num_tau)
             tau, t0, tF, y, u, q, t = data
             self.tau.append(tau)
             self.t0.append(t0)
@@ -138,8 +140,9 @@ class Guess:
             self.u.append(u[p.ocp_phase.bounds._u_needed])
             self.q.append(q[p.ocp_phase.bounds._q_needed])
             self.t.append(t[p.ocp_phase.bounds._t_needed])
-        s_needed = self.backend.ocp.bounds._s_needed
-        self.s = self.endpoint.parameter_variables[s_needed]
+        s = self.check_guess(self.endpoint.parameter_variables,
+                             self.backend.num_s_var)
+        self.s = s[self.backend.ocp.bounds._s_needed]
 
         # print(self.tau)
         # print(self.y)
@@ -150,18 +153,45 @@ class Guess:
         # print('\n\n\n')
         # raise NotImplementedError
 
-    def generate_single_phase(self, p_guess):
+    def check_time_guess(self, t_guess):
+        if t_guess.ndim != 1:
+            msg = (f"Time guess must be a 1d array.")
+            raise ValueError(msg)
+        return t_guess.size
+
+    def generate_single_phase(self, p, p_guess, num_tau):
         t0 = p_guess.time[0]
         tF = p_guess.time[-1]
         stretch = 0.5 * (tF - t0)
         shift = 0.5 * (t0 + tF)
         tau = np.array(p_guess.time - shift) / stretch
-        y = p_guess.state_variables
-        u = p_guess.control_variables
-        q = p_guess.integral_variables
+        y = self.check_guess(p_guess.state_variables, p.num_y_var, num_tau)
+        u = self.check_guess(p_guess.control_variables, p.num_u_var, num_tau)
+        q = self.check_guess(p_guess.integral_variables, p.num_q_var)
         t = np.array([t0, tF])
         data = (tau, t0, tF, y, u, q, t)
         return data
+
+    def check_guess(self, guess, num_var, num_t=None):
+        if guess is None:
+            if num_var != 0:
+                msg = "A guess must be supplied."
+                raise ValueError(msg)
+            if num_t is not None:
+                return np.empty((0, num_t))
+            else:
+                return np.empty((0, ))
+        if num_t is not None:
+            if guess.shape != (num_var, num_t):
+                msg = "A guess must be supplied for every symbol and time."
+                raise ValueError(msg)
+            return guess
+        else:
+            if guess.shape != (num_var, ):
+                msg = "A guess must be supplied for every symbol."
+                raise ValueError(msg)
+            return guess
+
 
         # # Set optimal control problem
         # self._ocp = optimal_control_problem

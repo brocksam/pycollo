@@ -333,8 +333,8 @@ class Settings():
         type=bool,
         cast=True,
     )
-    bounds_clash_tolerance = processed_property(
-        "bounds_clash_tolerance",
+    bound_clash_tolerance = processed_property(
+        "bound_clash_tolerance",
         description="tolerance to wish clashing bounds are assumed equal",
         type=float,
         cast=True,
@@ -385,7 +385,7 @@ class Settings():
                  number_scaling_samples=DEFAULT_NUMBER_SCALING_SAMPLES,
                  scaling_weight=DEFAULT_SCALING_WEIGHT,
                  assume_inf_bounds=DEFAULT_ASSUME_INF_BOUNDS,
-                 bounds_clash_tolerance=DEFAULT_BOUND_CLASH_TOLERANCE,
+                 bound_clash_tolerance=DEFAULT_BOUND_CLASH_TOLERANCE,
                  numerical_inf=DEFAULT_NUMERICAL_INF,
                  override_endpoint_bounds=DEFAULT_OVERRIDE_ENDPOINTS,
                  remove_constant_variables=DEFAULT_REMOVE_CONSTANT_VARIABLES,
@@ -428,7 +428,7 @@ class Settings():
 
         # Bounds
         self.assume_inf_bounds = assume_inf_bounds
-        self.bounds_clash_tolerance = bounds_clash_tolerance
+        self.bound_clash_tolerance = bound_clash_tolerance
         self.numerical_inf = numerical_inf
         self.override_endpoint_bounds = override_endpoint_bounds
         self.remove_constant_variables = remove_constant_variables

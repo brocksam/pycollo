@@ -74,7 +74,10 @@ from pyproprop import processed_property
 
 from .backend import BACKENDS
 from .bounds import DEFAULT_ASSUME_INF_BOUNDS
-from .bounds import DEFAULT_INF_VALUE
+from .bounds import DEFAULT_BOUND_CLASH_TOLERANCE
+from .bounds import DEFAULT_NUMERICAL_INF
+from .bounds import DEFAULT_OVERRIDE_ENDPOINTS
+from .bounds import DEFAULT_REMOVE_CONSTANT_VARIABLES
 from .compiled import COLLOCATION_MATRIX_FORMS
 from .quadrature import DEFAULT_COLLOCATION_POINTS_MIN
 from .quadrature import DEFAULT_COLLOCATION_POINTS_MAX
@@ -324,21 +327,42 @@ class Settings():
         type=bool,
         cast=True,
     )
-    inf_value = processed_property(
-        "inf_value",
-        description="numerical approximation to infinity for calculations",
-        type=float,
-        cast=True,
-        min=0,
-    )
     assume_inf_bounds = processed_property(
         "assume_inf_bounds",
         description="assume missing bounds are (numerically) infinite",
         type=bool,
         cast=True,
     )
+    bounds_clash_tolerance = processed_property(
+        "bounds_clash_tolerance",
+        description="tolerance to wish clashing bounds are assumed equal",
+        type=float,
+        cast=True,
+        min=0,
+        max=1,
+    )
+    numerical_inf = processed_property(
+        "numerical_inf",
+        description="numerical approximation to infinity for calculations",
+        type=float,
+        cast=True,
+        min=0,
+    )
+    override_endpoint_bounds = processed_property(
+        "override_endpoint_bounds",
+        description="override bounds at endpoint if value available",
+        type=bool,
+        cast=True,
+    )
+    remove_constant_variables = processed_property(
+        "remove_constant_variables",
+        description="treat variables with equal bounds as constants",
+        type=bool,
+        cast=True,
+    )
 
-    def __init__(self, *,
+    def __init__(self,
+                 *,
                  optimal_control_problem=None,
                  backend=BACKENDS.default,
                  collocation_matrix_form=COLLOCATION_MATRIX_FORMS.default,
@@ -360,8 +384,11 @@ class Settings():
                  update_scaling=DEFAULT_UPDATE_SCALING,
                  number_scaling_samples=DEFAULT_NUMBER_SCALING_SAMPLES,
                  scaling_weight=DEFAULT_SCALING_WEIGHT,
-                 inf_value=DEFAULT_INF_VALUE,
                  assume_inf_bounds=DEFAULT_ASSUME_INF_BOUNDS,
+                 bounds_clash_tolerance=DEFAULT_BOUND_CLASH_TOLERANCE,
+                 numerical_inf=DEFAULT_NUMERICAL_INF,
+                 override_endpoint_bounds=DEFAULT_OVERRIDE_ENDPOINTS,
+                 remove_constant_variables=DEFAULT_REMOVE_CONSTANT_VARIABLES,
                  ):
 
         # Optimal Control Problem
@@ -400,8 +427,11 @@ class Settings():
         self.display_mesh_result_graph = display_mesh_result_graph
 
         # Bounds
-        self.inf_value = inf_value
         self.assume_inf_bounds = assume_inf_bounds
+        self.bounds_clash_tolerance = bounds_clash_tolerance
+        self.numerical_inf = numerical_inf
+        self.override_endpoint_bounds = override_endpoint_bounds
+        self.remove_constant_variables = remove_constant_variables
 
     @property
     def optimal_control_problem(self):

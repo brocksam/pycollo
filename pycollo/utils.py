@@ -18,9 +18,7 @@ dcdx_info_fields = ["zeta_y", "zeta_u", "zeta_s", "gamma_y", "gamma_u",
 dcdxInfo = collections.namedtuple("dcdxInfo", dcdx_info_fields)
 
 
-supported_iter_types = (tuple, list, np.ndarray)
-
-
+SUPPORTED_ITER_TYPES = (tuple, list, np.ndarray)
 SYMPY_TO_CASADI_API_MAPPING = {"ImmutableDenseMatrix": ca.blockcat,
                                "MutableDenseMatrix": ca.blockcat,
                                "Abs": ca.fabs,
@@ -39,6 +37,51 @@ class cachedproperty:
             value = self.func(instance)
             setattr(instance, self.func.__name__, value)
             return value
+
+
+def symbol_name(symbol):
+    """Return a symbol primitive's name/identifier.
+
+    This function is required as Pycollo supports multiple different
+    types of symbol primitives from different packages which do not have a
+    consistent API/set of attributes/methods. This method provides that.
+
+    Args
+    ----
+    symbol : Union[ca.SX, sym.Symbol]
+        Symbol to get name of.
+
+    Raises
+    ------
+    NotImplementedError
+        If a name is requested for an unsupported symbol type.
+
+    """
+    if isinstance(symbol, ca.SX):
+        return symbol.name()
+    elif isinstance(symbol, sym.Symbol):
+        return symbol.name
+    msg = f"Cannot get name for symbol of type {type(eqn)}."
+    raise NotImplementedError(msg)
+
+
+def symbol_primitives(eqn):
+    """Return primitives associated with equation as set of symbols.
+
+    Raises
+    ------
+    NotImplementedError
+        If an equation of an unsupported type is passed.
+
+    """
+    if isinstance(eqn, sym.Expr):
+        return eqn.free_symbols
+    elif isinstance(eqn, (ca.DM, float, int)):
+        return set()
+    elif isinstance(eqn, ca.SX):
+        return ca.symvar(eqn)
+    msg = f"Cannot get primitives for type {type(eqn)}."
+    raise NotImplementedError(msg)
 
 
 def sympy_to_casadi(sympy_expr, sympy_to_casadi_sym_mapping, *, phase=None):

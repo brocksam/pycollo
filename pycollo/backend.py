@@ -32,8 +32,15 @@ from .iteration import Iteration
 from .mesh import Mesh
 from .quadrature import Quadrature
 from .scaling import Scaling
-from .utils import (casadi_substitute, console_out, dict_merge, fast_sympify,
-                    format_multiple_items_for_output, sympy_to_casadi)
+from .utils import (casadi_substitute,
+                    console_out,
+                    dict_merge,
+                    fast_sympify,
+                    format_multiple_items_for_output,
+                    symbol_name,
+                    symbol_primitives,
+                    sympy_to_casadi,
+                    )
 
 
 __all__ = []
@@ -43,51 +50,6 @@ CASADI = "casadi"
 HSAD = "hsad"
 PYCOLLO = "pycollo"
 SYMPY = "sympy"
-
-
-def symbol_name(symbol):
-    """Return a symbol primitive's name/identifier.
-
-    This function is required as Pycollo supports multiple different
-    types of symbol primitives from different packages which do not have a
-    consistent API/set of attributes/methods. This method provides that.
-
-    Args
-    ----
-    symbol : Union[ca.SX, sym.Symbol]
-        Symbol to get name of.
-
-    Raises
-    ------
-    NotImplementedError
-        If a name is requested for an unsupported symbol type.
-
-    """
-    if isinstance(symbol, ca.SX):
-        return symbol.name()
-    elif isinstance(symbol, sym.Symbol):
-        return symbol.name
-    msg = f"Cannot get name for symbol of type {type(eqn)}."
-    raise NotImplementedError(msg)
-
-
-def symbol_primitives(eqn):
-    """Return primitives associated with equation as set of symbols.
-
-    Raises
-    ------
-    NotImplementedError
-        If an equation of an unsupported type is passed.
-
-    """
-    if isinstance(eqn, sym.Expr):
-        return eqn.free_symbols
-    elif isinstance(eqn, (ca.DM, float, int)):
-        return set()
-    elif isinstance(eqn, ca.SX):
-        return ca.symvar(eqn)
-    msg = f"Cannot get primitives for type {type(eqn)}."
-    raise NotImplementedError(msg)
 
 
 class BackendABC(ABC):
@@ -136,6 +98,17 @@ class BackendABC(ABC):
         ----
         val : float
             The numerical value to be converted in type.
+
+        """
+        pass
+
+    @abstractmethod
+    def substitute_pycollo_sym(self, expr):
+        """Substitute an expression for backend Pycollo symbols.
+
+        Returns
+        -------
+        Union[ca.SX, sym.Expr, pycollo.Expression]
 
         """
         pass
@@ -606,20 +579,8 @@ class BackendABC(ABC):
         self.process_objective_function()
 
     def process_objective_function(self):
-        """Substitute objetive function with backend symbols.
-
-        Raises
-        ------
-        NotImplementedError
-            If a backend other than CasADi is used as a refactor is required.
-
-        """
-        if self.ocp.settings.backend != "casadi":
-            msg = (f"Refactor required to used other backend.")
-            raise NotImplementedError(msg)
-        J = self.ocp.objective_function
-        J, _ = sympy_to_casadi(J, self.user_to_backend_mapping)
-        self.J = casadi_substitute(J, self.aux_data)
+        """Substitute objetive function with backend symbols."""
+        self.J = self.substitute_pycollo_sym(self.ocp.objective_function)
 
     def console_out_variables_constraints_preprocessed(self):
         """Console out success message variable/constraint preprocessing."""
@@ -1059,8 +1020,7 @@ class PycolloPhaseData:
         """Substitute state equations with backend symbols."""
         y_eqns = []
         for y_eqn in self.ocp_phase.state_equations:
-            y_eqn, _ = sympy_to_casadi(y_eqn, self.all_user_to_backend_mapping)
-            y_eqn = casadi_substitute(y_eqn, self.ocp_backend.aux_data)
+            y_eqn = self.ocp_backend.substitute_pycollo_sym(y_eqn, self)
             y_eqns.append(y_eqn)
         self.y_eqn = tuple(y_eqns)
         self.num_y_eqn = self.ocp_phase.number_state_equations
@@ -1069,8 +1029,7 @@ class PycolloPhaseData:
         """Substitute path constraint equations with backend symbols."""
         p_cons = []
         for p_con in self.ocp_phase.path_constraints:
-            p_con, _ = sympy_to_casadi(p_con, self.all_user_to_backend_mapping)
-            p_con = casadi_substitute(p_con, self.ocp_backend.aux_data)
+            p_con = self.ocp_backend.substitute_pycollo_sym(p_con, self)
             p_cons.append(p_con)
         self.p_con = tuple(p_cons)
         self.num_p_con = self.ocp_phase.number_path_constraints
@@ -1079,8 +1038,7 @@ class PycolloPhaseData:
         """Substitute integrand functions with backend symbols."""
         q_fncs = []
         for q_fnc in self.ocp_phase.integrand_functions:
-            q_fnc, _ = sympy_to_casadi(q_fnc, self.all_user_to_backend_mapping)
-            q_fnc = casadi_substitute(q_fnc, self.ocp_backend.aux_data)
+            q_fnc = self.ocp_backend.substitute_pycollo_sym(q_fnc, self)
             q_fncs.append(q_fnc)
         self.q_fnc = tuple(q_fncs)
         self.num_q_fnc = self.ocp_phase.number_integrand_functions
@@ -1286,6 +1244,25 @@ class Casadi(BackendABC):
     def const(val):
         return ca.DM(val)
 
+    def substitute_pycollo_sym(self, expr, phase=None):
+        """Convert to ca.SX and replace user syms with Pycollo backend syms."""
+        if isinstance(expr, sym.Expr):
+            if isinstance(phase, PycolloPhaseData):
+                user_to_backend_mapping = phase.all_user_to_backend_mapping
+            elif isinstance(phase, int):
+                phase = self.p[phase]
+                user_to_backend_mapping = phase.all_user_to_backend_mapping
+            elif phase is None:
+                user_to_backend_mapping = self.user_to_backend_mapping
+            expr, _ = sympy_to_casadi(expr, user_to_backend_mapping)
+        # if isinstance(expr, (ca.DM, float, int, np.ndarray)):
+        #     return expr
+        if not isinstance(expr, ca.SX):
+            msg = (f"Unsupported type of {type(expr)} for substitution.")
+            raise NotImplementedError(msg)
+        expr = casadi_substitute(expr, self.aux_data)
+        return expr
+
     def postprocess_problem_backend(self):
         """CasADi backend doesn't need to do any postprocessing."""
         pass
@@ -1307,6 +1284,9 @@ class Hsad(BackendABC):
     def const(val):
         raise NotImplementedError(not_implemented_error_msg)
 
+    def substitute_pycollo_sym(self, expr):
+        raise NotImplementedError(not_implemented_error_msg)
+
     def postprocess_problem_backend(self):
         """Abstraction layer for backend-specific postprocessing."""
         pass
@@ -1326,6 +1306,9 @@ class Sympy(BackendABC):
 
     @staticmethod
     def const(val):
+        raise NotImplementedError(not_implemented_error_msg)
+
+    def substitute_pycollo_sym(self, expr):
         raise NotImplementedError(not_implemented_error_msg)
 
     def postprocess_problem_backend(self):

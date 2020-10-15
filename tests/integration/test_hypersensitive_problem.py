@@ -124,10 +124,9 @@ class TestHypersensitiveProblem:
         assert state.ocp.settings.max_mesh_iterations == 10
         assert state.ocp.settings.scaling_method == "bounds"
 
-    # @pytest.mark.xfail(reason="Initialisation not working yet")
-    # def test_ocp_initialise(self, state):
-    #     """OCP can be initialised sucessfully."""
-    #     state.ocp.initialise()
+    def test_ocp_initialise(self, state):
+        """OCP can be initialised sucessfully."""
+        state.ocp.initialise()
 
     # @pytest.mark.xfail(reason="Solving not working yet")
     # def test_ocp_solve(self, state):

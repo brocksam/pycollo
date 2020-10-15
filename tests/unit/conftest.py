@@ -109,9 +109,9 @@ def double_pendulum_fixture():
     phase.guess.state_variables = [[-0.5 * np.pi, 0.5 * np.pi],
                                    [-0.5 * np.pi, 0.5 * np.pi],
                                    [0, 0],
-                                   [0, 0]],
-    phase.guess.control_variables = [[0, 0], [0, 0]],
-    phase.guess.integral_variables = [100]
+                                   [0, 0]]
+    phase.guess.control_variables = [[0, 0], [0, 0]]
+    phase.guess.integral_variables = [[100]]
 
     problem.guess.parameter_variables = [1.0, 1.0]
 

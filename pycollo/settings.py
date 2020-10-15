@@ -322,6 +322,13 @@ class Settings():
         type=bool,
         cast=True,
     )
+    inf_value = processed_property(
+        "inf_value",
+        description="numerical approximation to infinity for calculations",
+        type=float,
+        cast=True,
+        min=0,
+    )
 
     def __init__(self, *,
                  optimal_control_problem=None,
@@ -376,11 +383,14 @@ class Settings():
         self.number_scaling_samples = number_scaling_samples
         self.scaling_weight = scaling_weight
 
-        # # Output information
+        # Output information
         self.console_out_progress = console_out_progress
         self.display_mesh_refinement_info = display_mesh_refinement_info
         self.display_mesh_result_info = display_mesh_result_info
         self.display_mesh_result_graph = display_mesh_result_graph
+
+        # Other
+        self.inf_value = 10e19
 
     @property
     def optimal_control_problem(self):

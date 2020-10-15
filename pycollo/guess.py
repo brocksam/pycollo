@@ -100,9 +100,14 @@ class EndpointGuess:
 
     optimal_control_problem = processed_property("optimal_control_problem",
                                                  read_only=True)
-    parameter_variables = processed_property("parameter_variables",
-        description="static parameter variables guess", type=np.ndarray,
-        cast=True, optional=True, method=np.ndarray.flatten)
+    parameter_variables = processed_property(
+        "parameter_variables",
+        description="static parameter variables guess",
+        type=np.ndarray,
+        cast=True,
+        optional=True,
+        method=np.ndarray.flatten
+    )
 
     def __init__(self, optimal_control_problem: "OptimalControlProblem",
                  parameter_variables=None):

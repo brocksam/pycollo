@@ -78,7 +78,7 @@ class PhaseGuess:
         cast=True, optional=True)
     integral_variables = processed_property("integral_variables",
         description="phase integral variables guess", type=np.ndarray,
-        iterable_allowed=True, cast=True, optional=True)
+        cast=True, optional=True, method=np.ndarray.flatten)
 
     def __init__(self,
                  phase: "Phase",
@@ -102,7 +102,7 @@ class EndpointGuess:
                                                  read_only=True)
     parameter_variables = processed_property("parameter_variables",
         description="static parameter variables guess", type=np.ndarray,
-        iterable_allowed=True, cast=True, optional=True)
+        cast=True, optional=True, method=np.ndarray.flatten)
 
     def __init__(self, optimal_control_problem: "OptimalControlProblem",
                  parameter_variables=None):
@@ -113,12 +113,10 @@ class EndpointGuess:
 class Guess:
 
     def __init__(self, backend, phase_guesses, endpoint_guess):
-
         self.backend = backend
         self.p = phase_guesses
         self.endpoint = endpoint_guess
         self.settings = self.backend.ocp.settings
-
         self.generate()
 
     def generate(self):
@@ -130,11 +128,9 @@ class Guess:
         self.u = []
         self.q = []
         self.t = []
-
         for p, p_guess in zip(self.backend.p, self.p):
             data = self.generate_single_phase(p_guess)
             tau, t0, tF, y, u, q, t = data
-
             self.tau.append(tau)
             self.t0.append(t0)
             self.tF.append(tF)
@@ -142,8 +138,8 @@ class Guess:
             self.u.append(u[p.ocp_phase.bounds._u_needed])
             self.q.append(q[p.ocp_phase.bounds._q_needed])
             self.t.append(t[p.ocp_phase.bounds._t_needed])
-
-        self.s = self.endpoint.parameter_variables[self.backend.ocp.bounds._s_needed]
+        s_needed = self.backend.ocp.bounds._s_needed
+        self.s = self.endpoint.parameter_variables[s_needed]
 
         # print(self.tau)
         # print(self.y)
@@ -155,21 +151,16 @@ class Guess:
         # raise NotImplementedError
 
     def generate_single_phase(self, p_guess):
-
         t0 = p_guess.time[0]
         tF = p_guess.time[-1]
         stretch = 0.5 * (tF - t0)
         shift = 0.5 * (t0 + tF)
         tau = np.array(p_guess.time - shift) / stretch
-
-        y = np.array(p_guess.state_variables)
-        u = np.array(p_guess.control_variables)
-        q = np.array(p_guess.integral_variables)
-        # np.array([t for t, t_needed in zip([t0, tF], self._ocp._bounds._t_needed) if t_needed])
+        y = p_guess.state_variables
+        u = p_guess.control_variables
+        q = p_guess.integral_variables
         t = np.array([t0, tF])
-
         data = (tau, t0, tF, y, u, q, t)
-
         return data
 
         # # Set optimal control problem

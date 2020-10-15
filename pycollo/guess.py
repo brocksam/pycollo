@@ -165,11 +165,12 @@ class Guess:
         return t_guess.size
 
     def generate_single_phase(self, p, p_guess, num_tau):
-        t0 = p_guess.time[0]
-        tF = p_guess.time[-1]
+        time = p_guess.time.astype(np.float64)
+        t0 = time[0]
+        tF = time[-1]
         stretch = 0.5 * (tF - t0)
         shift = 0.5 * (t0 + tF)
-        tau = np.array(p_guess.time - shift) / stretch
+        tau = np.array(time - shift) / stretch
         y = self.check_guess(p_guess.state_variables, p.num_y_var, num_tau)
         u = self.check_guess(p_guess.control_variables, p.num_u_var, num_tau)
         q = self.check_guess(p_guess.integral_variables, p.num_q_var)
@@ -190,12 +191,12 @@ class Guess:
             if guess.shape != (num_var, num_t):
                 msg = "A guess must be supplied for every symbol and time."
                 raise ValueError(msg)
-            return guess
+            return guess.astype(np.float64)
         else:
             if guess.shape != (num_var, ):
                 msg = "A guess must be supplied for every symbol."
                 raise ValueError(msg)
-            return guess
+            return guess.astype(np.float64)
 
 
         # # Set optimal control problem

@@ -6,13 +6,12 @@ from pyproprop import Options, processed_property
 
 
 BOUNDS = "bounds"
-DEFAULT = "default"
 GUESS = "guess"
 NONE = "none"
 USER = "user"
 
 
-SCALING_METHODS = Options((BOUNDS, DEFAULT, GUESS, USER, NONE, None),
+SCALING_METHODS = Options((BOUNDS, GUESS, USER, NONE, None),
                           default=BOUNDS, unsupported=(GUESS, USER))
 DEFAULT_NUMBER_SCALING_SAMPLES = 0
 DEFAULT_SCALING_WEIGHT = 0.8
@@ -110,16 +109,15 @@ class Scaling(ScalingABC):
     def _generate_bounds(self):
         x_l = self.backend.bounds.x_bnd_lower
         x_u = self.backend.bounds.x_bnd_upper
-        scales = 1 / (x_u - x_l)
-        shifts = (x_l + x_u) / 2
-        # shifts = 0.5 - x_u / (x_u - x_l)
+        scales = (x_u - x_l)
+        shifts = x_u - (x_u - x_l) / 2
         return scales, shifts
 
     def _generate_guess(self):
         raise NotImplementedError
 
     def _generate_none(self):
-        num_needed = self.backend.num_vars
+        num_needed = self.backend.num_var
         scales = self._SCALE_DEFAULT * np.ones(num_needed)
         shifts = self._SHIFT_DEFAULT * np.ones(num_needed)
         return scales, shifts

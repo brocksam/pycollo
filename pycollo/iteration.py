@@ -28,9 +28,12 @@ from .utils import console_out
 class Iteration:
     """A single mesh iteration (OCP transcription to an NLP)."""
 
+    backend = processed_property("backend", read_only=True)
     ocp = processed_property("ocp", read_only=True)
     mesh = processed_property("mesh", read_only=True)
     solution = processed_property("solution", read_only=True)
+    index = processed_property("index", read_only=True)
+    number = processed_property("number", read_only=True)
 
     def __init__(self, backend, index, mesh, guess):
         """Initialise the iteration object.
@@ -59,7 +62,7 @@ class Iteration:
         self.ocp = self.backend.ocp
         self.index = index
         self.number = index + 1
-        self._mesh = mesh
+        self.mesh = mesh
         self.prev_guess = guess
         self.initialise()
 
@@ -70,16 +73,22 @@ class Iteration:
 
     def initialise(self):
         """Abstraction layer for all steps in initialising iteration."""
+
+        # COMPLETED
         self.console_out_initialising_iteration()
         self.interpolate_guess_to_mesh(self.prev_guess)
         self.create_variable_constraint_counts_slices()
         self.initialise_scaling()
-        self.generate_nlp_lambdas()
+
+        # TODO
+        self.scale_guess()  # NEW
+        self.generate_nlp()  # NEW - replace self.generate_nlp_lambdas()
+        # self.generate_nlp_lambdas()
         self.generate_bounds()
         self.generate_scaling()
         self.scale_bounds()
         # self.shift_scale_variable_bounds()
-        self.initialise_nlp()
+        # self.initialise_nlp()
         self.check_nlp_functions()
 
     def console_out_initialising_iteration(self):
@@ -338,10 +347,15 @@ class Iteration:
             self.q_fnc_slices.append(slice(q_fnc_start, c_con_stop))
 
     def initialise_scaling(self):
-        """Summary
+        """Initialise iteration-specific scaling.
+
+        Create and initialise the :py:class:`IterationScaling` object with
+        scaling variables expanded to cover the specific mesh for this
+        iteration.
+
         """
-        self.scaling = IterationScaling(self)
-        self.guess_x = self.scaling.scale_x(self.guess_x)
+        self.scaling = self.backend.iteration_scaling(self)
+        # self.guess_x = self.scaling.scale_x(self.guess_x)
         msg = "Scaling initialised."
         console_out(msg)
 

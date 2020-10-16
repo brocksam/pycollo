@@ -31,7 +31,12 @@ from .guess import Guess
 from .iteration import Iteration
 from .mesh import Mesh
 from .quadrature import Quadrature
-from .scaling import Scaling
+from .scaling import (Scaling,
+                      CasadiIterationScaling,
+                      HsadIterationScaling,
+                      PycolloIterationScaling,
+                      SympyIterationScaling,
+                      )
 from .utils import (casadi_substitute,
                     console_out,
                     dict_merge,
@@ -109,6 +114,20 @@ class BackendABC(ABC):
         Returns
         -------
         Union[ca.SX, sym.Expr, pycollo.Expression]
+            The substituted expression.
+
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def iteration_scaling(*args, **kwargs):
+        """Instantiate an IterationScaling object specific to the backend type.
+
+        Returns
+        -------
+        IterationScaling
+            Of the specific backend type.
 
         """
         pass
@@ -1237,6 +1256,18 @@ class Pycollo(BackendABC):
             return sym.Symbol(name)
         raise NotImplementedError
 
+    @staticmethod
+    def iteration_scaling(*args, **kwargs):
+        """Instantiate a PycolloIterationScaling object for iteration.
+
+        Returns
+        -------
+        PycolloIterationScaling
+            Initialised iteration scaling for a mesh iteration.
+
+        """
+        return PycolloIterationScaling(*args, **kwargs)
+
     def postprocess_problem_backend(self):
         """Abstraction layer for backend-specific postprocessing."""
         self.build_expression_graph()
@@ -1267,13 +1298,24 @@ class Casadi(BackendABC):
             elif phase is None:
                 user_to_backend_mapping = self.user_to_backend_mapping
             expr, _ = sympy_to_casadi(expr, user_to_backend_mapping)
-        # if isinstance(expr, (ca.DM, float, int, np.ndarray)):
-        #     return expr
         if not isinstance(expr, ca.SX):
             msg = (f"Unsupported type of {type(expr)} for substitution.")
             raise NotImplementedError(msg)
         expr = casadi_substitute(expr, self.aux_data)
         return expr
+
+    @staticmethod
+    def iteration_scaling(*args, **kwargs):
+        """Instantiate a CasadiIterationScaling object for iteration.
+
+        Returns
+        -------
+        CasadiIterationScaling
+            Initialised iteration scaling for a mesh iteration.
+
+        """
+        scaling = CasadiIterationScaling(*args, **kwargs)
+        return scaling
 
     def postprocess_problem_backend(self):
         """CasADi backend doesn't need to do any postprocessing."""
@@ -1299,6 +1341,18 @@ class Hsad(BackendABC):
     def substitute_pycollo_sym(self, expr):
         raise NotImplementedError(not_implemented_error_msg)
 
+    @staticmethod
+    def iteration_scaling(*args, **kwargs):
+        """Instantiate a `HsadIterationScaling` object for iteration.
+
+        Returns
+        -------
+        HsadIterationScaling
+            Initialised iteration scaling for a mesh iteration.
+
+        """
+        return HsadIterationScaling(*args, **kwargs)
+
     def postprocess_problem_backend(self):
         """Abstraction layer for backend-specific postprocessing."""
         pass
@@ -1322,6 +1376,18 @@ class Sympy(BackendABC):
 
     def substitute_pycollo_sym(self, expr):
         raise NotImplementedError(not_implemented_error_msg)
+
+    @staticmethod
+    def iteration_scaling(*args, **kwargs):
+        """Instantiate a `SympyIterationScaling` object for iteration.
+
+        Returns
+        -------
+        SympyIterationScaling
+            Initialised iteration scaling for a mesh iteration.
+
+        """
+        return SympyIterationScaling(*args, **kwargs)
 
     def postprocess_problem_backend(self):
         """Abstraction layer for backend-specific postprocessing."""

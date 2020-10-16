@@ -463,11 +463,17 @@ def test_create_time_variable_symbols(ocp_fixture,
     _t0 = ca.SX.sym("_t0_P0")
     _tF = ca.SX.sym("_tF_P0")
 
+    _V_t0 = ca.SX.sym("_V_t0_P0")
+    _V_tF = ca.SX.sym("_V_tF_P0")
+
+    _r_t0 = ca.SX.sym("_r_t0_P0")
+    _r_tF = ca.SX.sym("_r_tF_P0")
+
     expect_sub_mapping = {user_t0: t0,
                           user_tF: tF,
                           }
-    expect_aux_data = {t0: _t0,
-                       tF: _tF,
+    expect_aux_data = {t0: _V_t0 * _t0 + _r_t0,
+                       tF: _V_tF * _tF + _r_tF,
                        }
 
     assert phase_backend.t_var_user == phase.time_variables
@@ -475,8 +481,8 @@ def test_create_time_variable_symbols(ocp_fixture,
     assert phase_backend.num_t_var_full == 2
 
     utils.assert_ca_syms_identical(phase_backend.t_var_full, (_t0, _tF))
-    assert not hasattr(phase_backend, "V_t_var_full")
-    assert not hasattr(phase_backend, "r_t_var_full")
+    assert hasattr(phase_backend, "V_t_var_full")
+    assert hasattr(phase_backend, "r_t_var_full")
 
     for expect_user_sym, expect_backend_sym in expect_sub_mapping.items():
         expect_backend_expr = expect_aux_data[expect_backend_sym]
@@ -486,6 +492,8 @@ def test_create_time_variable_symbols(ocp_fixture,
         assert backend_sym in backend.aux_data
         backend_expr = backend.aux_data[backend_sym]
         utils.assert_ca_sym_identical(backend_sym, expect_backend_sym)
+        print(backend_expr)
+        print(expect_backend_expr)
         utils.assert_ca_expr_identical(backend_expr, expect_backend_expr)
 
     iterable = phase_backend.phase_user_to_backend_mapping.items()

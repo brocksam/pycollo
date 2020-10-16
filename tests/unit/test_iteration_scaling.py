@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 import pycollo
+
 from .iteration_scaling_test_data import (EXPECT_V,
                                           EXPECT_R,
                                           EXPECT_V_INV,

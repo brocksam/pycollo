@@ -15,7 +15,7 @@ SCALING_METHODS = Options((BOUNDS, GUESS, USER, NONE, None),
                           default=BOUNDS, unsupported=(GUESS, USER))
 DEFAULT_NUMBER_SCALING_SAMPLES = 0
 DEFAULT_SCALING_WEIGHT = 0.8
-DEFAULT_UPDATE_SCALING = True
+DEFAULT_UPDATE_SCALING = False
 
 
 class ScalingABC(abc.ABC):
@@ -191,7 +191,7 @@ class IterationScaling:
 
     def unscale_J(self, J_tilde):
         """Convert J for the scaled NLP to the user basis."""
-        J = self.w * J_tilde
+        J = (1 / self.w) * J_tilde
         return J
 
     def scale_g(self, g):

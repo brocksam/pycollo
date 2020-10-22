@@ -530,18 +530,18 @@ class PhaseBounds(BoundsABC):
         elif isinstance(bnd_info.user_bnd, SUPPORTED_ITER_TYPES):
             bnd = self._process_iterable_bounds_instance(bnd_info, p_info)
         else:
-            bnd = self._process_single_type_value(bnd_info, p_info)
+            bnd = self._process_single_type_bounds_instance(bnd_info, p_info)
         bnd, needed = self._check_lower_against_upper(bnd, bnd_info, p_info)
         return bnd, needed
 
-    def _process_mapping_bounds_instance(self, bnd_info, p_info):
-        if any(user_sym is None for user_sym in bnd_info.user_syms):
-            msg = f"Can't use mapping for {bnd_info.bnd_type} bounds."
+    def _process_mapping_bounds_instance(self, bnds_info, p_info):
+        if any(user_sym is None for user_sym in bnds_info.user_sym):
+            msg = f"Can't use mapping for {bnds_info.bnd_type} bounds."
             raise TypeError(msg)
         bnds = []
-        for bnd_i, user_sym in enumerate(bnd_info.user_syms):
-            bnd = bnd_info.user_bnd.get(user_sym)
-            bnd_info = BoundInfo(bnd, user_sym, bnd_info.bnd_type, bnd_i)
+        for bnd_i, user_sym in enumerate(bnds_info.user_sym):
+            bnd = bnds_info.user_bnd.get(user_sym)
+            bnd_info = BoundInfo(bnd, user_sym, bnds_info.bnd_type, bnd_i)
             self._check_user_bound_missing(bnd_info, p_info)
             bnd = self._as_lower_upper_pair(bnd_info, p_info)
             bnds.append(bnd)

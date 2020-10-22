@@ -51,6 +51,7 @@ phase.guess.state_variables = np.array([[x0, xf], [y0, yf], [v0, v0]])
 phase.guess.control_variables = np.array([[0, umax]])
 
 problem.settings.display_mesh_result_graph = True
+problem.settings.max_mesh_iterations = 2
 
 problem.initialise()
 problem.solve()

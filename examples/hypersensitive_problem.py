@@ -1,5 +1,3 @@
-import sys
-
 import numpy as np
 import sympy as sym
 
@@ -14,6 +12,9 @@ phase.control_variables = u
 phase.state_equations = [-y**3 + u]
 phase.integrand_functions = [0.5*(y**2 + u**2)]
 phase.auxiliary_data = {}
+
+phase.mesh.number_mesh_sections = 10
+phase.mesh.number_mesh_section_nodes = 4
 
 phase.bounds.initial_time = 0.0
 phase.bounds.final_time = 10000.0
@@ -32,7 +33,6 @@ problem.objective_function = phase.integral_variables[0]
 
 problem.settings.display_mesh_result_graph = True
 problem.settings.derivative_level = 2
-# problem.settings.scaling_method = None
 problem.settings.quadrature_method = "lobatto"
 problem.settings.max_mesh_iterations = 10
 

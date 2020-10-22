@@ -59,6 +59,11 @@ class PhaseMesh:
         if (self._mesh_sec_sizes is not None
                 and (len(self._mesh_sec_sizes) != self._num_mesh_secs)):
             self.mesh_section_sizes = None
+            if max(self.number_mesh_section_nodes) == min(self.number_mesh_section_nodes):
+                self.number_mesh_section_nodes = self.number_mesh_section_nodes[0]
+            else:
+                msg = "Mismatch between mesh section sizes and mesh section nodes."
+                raise ValueError(msg)
 
     @property
     def mesh_section_sizes(self):
@@ -208,8 +213,8 @@ class Mesh:
         self.N_K = []
         self.num_c_defect_per_y = []
         self.W_matrix = []
+        self.sI_matrix = []
         self.sA_matrix = []
-        self.sD_matrix = []
         self.A_index_array = []
         self.D_index_array = []
         for p in self.p:
@@ -224,8 +229,8 @@ class Mesh:
             self.N_K.append(data[7])
             self.num_c_defect_per_y.append(data[8])
             self.W_matrix.append(data[9])
-            self.sA_matrix.append(data[10])
-            self.sD_matrix.append(data[11])
+            self.sI_matrix.append(data[10])
+            self.sA_matrix.append(data[11])
             self.A_index_array.append(data[12])
             self.D_index_array.append(data[13])
 

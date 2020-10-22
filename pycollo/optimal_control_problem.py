@@ -406,18 +406,10 @@ class OptimalControlProblem():
                 Option for whether progress updates should be outputted to the
                 console during solving. Defaults to False.
         """
-
         self._set_solve_options(display_progress)
-        # self._check_if_initialisation_required_before_solve()
-
-        # Solve the transcribed NLP on the initial mesh
-        # solve_return = self._backend.mesh_iterations[0].solve()
-        # mesh_tolerance_met, new_iteration_mesh, new_iteration_guess = solve_return
-        # mesh_iterations_met = self.settings.max_mesh_iterations == 1
         tolerances_met = False
         while not tolerances_met:
             tolerances_met = self._solve_iteration()
-
         self._final_output()
 
     def _solve_iteration(self):
@@ -434,21 +426,25 @@ class OptimalControlProblem():
         def tolerances_met(mesh_tolerance_met, mesh_iterations_met):
             return (mesh_iterations_met or mesh_tolerance_met)
 
-        new_iteration = self._backend.new_mesh_iteration(
-            new_iteration_mesh, new_iteration_guess)
-        solve_return = self._backend.mesh_iterations[-1].solve()
-        # TODO: refactor to named tuple
-        mesh_tolerance_met, new_iteration_mesh, new_iteration_guess = solve_return
-        if mesh_tolerance_met:
+        if self._backend.mesh_iterations[-1].solved:
+            _ = self._backend.new_mesh_iteration(self._next_iteration_mesh,
+                                                 self._next_iteration_guess)
+        result = self._backend.mesh_iterations[-1].solve()
+        mesh_tolerance_met = result.mesh_tolerance_met
+        self._next_iteration_mesh = result.next_iteration_mesh
+        self._next_iteration_guess = result.next_iteration_guess
+        if result.mesh_tolerance_met:
             msg = (f"Mesh tolerance met in mesh iteration "
                    f"{self.num_mesh_iterations}.\n")
             print(msg)
-        elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
+        if self.num_mesh_iterations >= self.settings.max_mesh_iterations:
             mesh_iterations_met = True
-            msg = ("Maximum number of mesh iterations reached. Pycollo exiting"
-                   "before mesh tolerance met.\n")
+            msg = ("Maximum number of mesh iterations reached. Pycollo "
+                   "exiting before mesh tolerance met.\n")
             print(msg)
-        return tolerances_met(mesh_tolerance_met, mesh_iterations_met)
+        else:
+            mesh_iterations_met = False
+        return tolerances_met(result.mesh_tolerance_met, mesh_iterations_met)
 
     def _set_solve_options(self, display_progress):
         self._display_progress = display_progress

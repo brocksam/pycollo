@@ -79,6 +79,7 @@ from .bounds import DEFAULT_NUMERICAL_INF
 from .bounds import DEFAULT_OVERRIDE_ENDPOINTS
 from .bounds import DEFAULT_REMOVE_CONSTANT_VARIABLES
 from .compiled import COLLOCATION_MATRIX_FORMS
+from .mesh_refinement import MESH_REFINEMENT_ALGORITHMS
 from .quadrature import DEFAULT_COLLOCATION_POINTS_MIN
 from .quadrature import DEFAULT_COLLOCATION_POINTS_MAX
 from .quadrature import QUADRATURES
@@ -104,6 +105,7 @@ DEFAULT_LINEAR_SOLVER = LINEAR_SOLVER_MUMPS_KEYWORD
 UNSUPPORTED_LINEAR_SOLVER = ("ma57", )
 DEFAULT_NLP_TOLERANCE = 1e-10
 DEFAULT_MAX_NLP_ITERATIONS = 2000
+DEFAULT_WARM_START = True
 
 # Derivative level constants
 DERIVATIVE_LEVEL_FIRST = 1
@@ -119,6 +121,9 @@ DEFAULT_CONSOLE_OUT_PROGRESS = True
 DEFAULT_DISPLAY_MESH_REFINE_INFO = True
 DEFAULT_DISPLAY_MESH_RESULT_INFO = False
 DEFAULT_DISPLAY_MESH_RESULT_GRAPH = False
+
+# Debug
+DEFAULT_CHECK_NLP_FUNCTIONS = False
 
 
 class Settings():
@@ -192,6 +197,7 @@ class Settings():
         "backend",
         description="Pycollo backend",
         type=str,
+        cast=True,
         options=BACKENDS,
     )
     derivative_level = processed_property(
@@ -243,6 +249,12 @@ class Settings():
         type=int,
         cast=True,
         min=1,
+    )
+    warm_start = processed_property(
+        "warm_start",
+        description="warm-start the mesh iteration using previous solution",
+        type=bool,
+        cast=True,
     )
     collocation_points_min = processed_property(
         "collocation_points_min",
@@ -360,6 +372,19 @@ class Settings():
         type=bool,
         cast=True,
     )
+    check_nlp_functions = processed_property(
+        "check_nlp_functions",
+        description="dump evaluated NLP functions to .json file",
+        type=bool,
+        cast=True,
+    )
+    mesh_refinement_algorithm = processed_property(
+        "mesh_refinement_algorithm",
+        description="algorithm used to refine the mesh for the next iteration",
+        type=str,
+        cast=True,
+        options=MESH_REFINEMENT_ALGORITHMS,
+    )
 
     def __init__(self,
                  *,
@@ -370,6 +395,7 @@ class Settings():
                  linear_solver=DEFAULT_LINEAR_SOLVER,
                  nlp_tolerance=DEFAULT_NLP_TOLERANCE,
                  max_nlp_iterations=DEFAULT_MAX_NLP_ITERATIONS,
+                 warm_start=DEFAULT_WARM_START,
                  quadrature_method=QUADRATURES.default,
                  derivative_level=DEFAULT_DERIVATIVE_LEVEL,
                  max_mesh_iterations=DEFAULT_MAX_MESH_ITERATIONS,
@@ -389,6 +415,8 @@ class Settings():
                  numerical_inf=DEFAULT_NUMERICAL_INF,
                  override_endpoint_bounds=DEFAULT_OVERRIDE_ENDPOINTS,
                  remove_constant_variables=DEFAULT_REMOVE_CONSTANT_VARIABLES,
+                 mesh_refinement_algorithm=MESH_REFINEMENT_ALGORITHMS.default,
+                 check_nlp_functions=DEFAULT_CHECK_NLP_FUNCTIONS,
                  ):
 
         # Optimal Control Problem
@@ -402,6 +430,7 @@ class Settings():
         self.linear_solver = linear_solver
         self.nlp_tolerance = nlp_tolerance
         self.max_nlp_iterations = max_nlp_iterations
+        self.warm_start = warm_start
 
         # Collocation and quadrature
         self.collocation_matrix_form = collocation_matrix_form
@@ -432,6 +461,12 @@ class Settings():
         self.numerical_inf = numerical_inf
         self.override_endpoint_bounds = override_endpoint_bounds
         self.remove_constant_variables = remove_constant_variables
+
+        # Mesh refinement
+        self.mesh_refinement_algorithm = mesh_refinement_algorithm
+
+        # Debugging
+        self.check_nlp_functions = check_nlp_functions
 
     @property
     def optimal_control_problem(self):

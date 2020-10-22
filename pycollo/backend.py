@@ -18,9 +18,11 @@ BACKENDS : :py:class:`Options <pyproprop>`
 import itertools
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from timeit import default_timer as timer
 
 import casadi as ca
 import numpy as np
+import scipy.sparse as sparse
 import sympy as sym
 from pyproprop import Options, processed_property
 
@@ -37,6 +39,7 @@ from .scaling import (Scaling,
                       PycolloIterationScaling,
                       SympyIterationScaling,
                       )
+from .solution import CasadiSolution, NlpResult
 from .utils import (casadi_substitute,
                     console_out,
                     dict_merge,
@@ -643,6 +646,11 @@ class BackendABC(ABC):
         self.r_s_var = tuple(np.array(self.r_s_var_full)[
                              self.ocp.bounds._s_needed].tolist())
 
+        self.V_x_var = tuple(itertools.chain(*list(p.V_x_var for p in self.p),
+                                             self.V_s_var))
+        self.r_x_var = tuple(itertools.chain(*list(p.r_x_var for p in self.p),
+                                             self.r_s_var))
+
         all_phase_var = chain_from_iterable(p.x_var for p in self.p)
         continuous_var = tuple(all_phase_var) + self.s_var
         self.x_var = continuous_var
@@ -881,7 +889,9 @@ class PycolloPhaseData:
         y_t0 = tuple(self.sym(symbol_name(var)) for var in self.y_t0_var_user)
         y_tF = tuple(self.sym(symbol_name(var)) for var in self.y_tF_var_user)
         self.add_phase_user_to_backend_mapping(self.y_t0_var_user, y_t0)
+        self.ocp_backend.add_user_to_backend_mapping(self.y_t0_var_user, y_t0)
         self.add_phase_user_to_backend_mapping(self.y_tF_var_user, y_tF)
+        self.ocp_backend.add_user_to_backend_mapping(self.y_tF_var_user, y_tF)
         y_t0_tilde = (self.sym(f"_y{i_y}_t0_P{self.i}")
                       for i_y in range(self.num_y_var_full))
         y_tF_tilde = (self.sym(f"_y{i_y}_tF_P{self.i}")
@@ -921,6 +931,7 @@ class PycolloPhaseData:
         self.num_q_var_full = len(self.q_var_user)
         q = tuple(self.sym(symbol_name(var)) for var in self.q_var_user)
         self.add_phase_user_to_backend_mapping(self.q_var_user, q)
+        self.ocp_backend.add_user_to_backend_mapping(self.q_var_user, q)
         q_tilde = (self.sym(f"_q{i_q}_P{self.i}")
                    for i_q in range(self.num_q_var_full))
         self.q_var_full = tuple(q_tilde)
@@ -938,6 +949,7 @@ class PycolloPhaseData:
         self.num_t_var_full = 2
         t = tuple(self.sym(symbol_name(var)) for var in self.t_var_user)
         self.add_phase_user_to_backend_mapping(self.t_var_user, t)
+        self.ocp_backend.add_user_to_backend_mapping(self.t_var_user, t)
         t_tilde = (self.sym(f"_t0_P{self.i}"), self.sym(f"_tF_P{self.i}"))
         self.t_var_full = tuple(t_tilde)
         V_t, r_t = self.ocp_backend.create_variable_scaling_symbols(
@@ -1305,6 +1317,7 @@ class Casadi(BackendABC):
 
     def substitute_pycollo_sym(self, expr, phase=None):
         """Convert to ca.SX and replace user syms with Pycollo backend syms."""
+        expr_sym = expr
         if isinstance(expr, sym.Expr):
             if isinstance(phase, PycolloPhaseData):
                 user_to_backend_mapping = phase.all_user_to_backend_mapping
@@ -1348,32 +1361,13 @@ class Casadi(BackendABC):
         self.generate_jacobian_constraint_function_callable()
 
     def create_iteration_specific_symbols(self):
-        """Abstraction layer for creating iteration-specific symbols."""
-        self.create_iteration_specific_variable_symbols()
-        self.create_iteration_specific_scaling_symbols()
-
-    def create_iteration_specific_variable_symbols(self):
-        """Create iteration specific variabiel symbols.
+        """Abstraction layer for creating iteration-specific symbols.
 
         There is a 1:1 mapping from temporal node on the mesh discretisation to
         the state and control variables (which are continuous functions of
         time). Integral, time and static parameters variables can just use the
         variables previously created as these do not change when the mesh
         discretisation changes.
-
-        """
-        mapping = {}
-        for p, N in zip(self.p, self.current_iteration.mesh.N):
-            mapping.update({y: self.sym(symbol_name(y), N) for y in p.y_var})
-            mapping.update({u: self.sym(symbol_name(u), N) for u in p.u_var})
-            mapping.update({q: q for q in p.q_var})
-            mapping.update({t: t for t in p.t_var})
-        mapping.update({s: s for s in self.s_var})
-        self.ocp_iter_sym_mapping = mapping
-        self.x_var_iter = ca.vertcat(*list(v for v in mapping.values()))
-
-    def create_iteration_specific_scaling_symbols(self):
-        """Create iteration-specific scaling symbols.
 
         This includes the stretch and shift symbols for the OCP variables, as
         well as the scaling symbols for the objective function and constraint
@@ -1382,38 +1376,319 @@ class Casadi(BackendABC):
         the scaling symbols for the defect and path constraints.
 
         """
+        self.create_iteration_specific_variable_symbols()
+        self.create_iteration_specific_variable_scaling_mappings()
+        self.create_iteration_specific_constraint_scaling_symbols()
+
+    def create_iteration_specific_variable_symbols(self):
+        """Create iteration specific variabiel symbols."""
         mapping = {}
+        mapping_point = {}
         for p, N in zip(self.p, self.current_iteration.mesh.N):
-            mapping.update({y: self.sym(symbol_name(y), N) for y in p.V_y_var})
-            mapping.update({u: self.sym(symbol_name(u), N) for u in p.V_u_var})
-            mapping.update({q: q for q in p.V_q_var})
-            mapping.update({t: 1 for t in p.V_t_var})
-        mapping.update({s: s for s in self.V_s_var})
-        self.ocp_iter_var_V_scaling_sym_mapping = mapping
-        self.x_var_iter = ca.vertcat(*list(v for v in mapping.values()))
+            mapping.update({y: self.sym(symbol_name(y), N) for y in p.y_var})
+            mapping_point.update({y_t0: mapping[y][0]
+                                  for y, y_t0 in zip(p.y_var, p.y_t0_var)})
+            mapping_point.update({y_tF: mapping[y][-1]
+                                  for y, y_tF in zip(p.y_var, p.y_tF_var)})
+            mapping.update({u: self.sym(symbol_name(u), N) for u in p.u_var})
+            mapping_point.update({q: q for q in p.q_var})
+            mapping_point.update({t: t for t in p.t_var})
+        mapping_point.update({s: s for s in self.s_var})
+        self.ocp_iter_sym_mapping = mapping
+        self.ocp_iter_sym_point_mapping = mapping_point
+        var_iter = []
+        for x in self.x_var:
+            var = self.ocp_iter_sym_mapping.get(x)
+            if var is not None:
+                var_iter.append(var)
+            var = self.ocp_iter_sym_point_mapping.get(x)
+            if var is not None:
+                var_iter.append(var)
+        self.x_var_iter = ca.vertcat(*var_iter)
 
-        mapping = {}
-        for p, N in zip(self.p, self.current_iteration.mesh.N):
-            mapping.update({y: self.sym(symbol_name(y), N) for y in p.r_y_var})
-            mapping.update({u: self.sym(symbol_name(u), N) for u in p.r_u_var})
-            mapping.update({q: q for q in p.r_q_var})
-            mapping.update({t: 0 for t in p.r_t_var})
-        mapping.update({s: s for s in self.r_s_var})
-        self.ocp_iter_var_r_scaling_sym_mapping = mapping
+    def create_iteration_specific_variable_scaling_mappings(self):
+        """Create iteration-specific stretch/shift scaling mappings."""
+        scaling = self.current_iteration.scaling
+        self.V_sym_val_mapping_iter = dict(zip(self.V_x_var, scaling.V_ocp))
+        self.r_sym_val_mapping_iter = dict(zip(self.r_x_var, scaling.r_ocp))
 
+    def create_iteration_specific_constraint_scaling_symbols(self):
+        """Create iteration-specific constraint scaling symbols.
 
+        (1) w_J - objective function
+        (2) W_d - defect constraints (mesh-specific)
+        (3) W_p - path constraints (mesh-specific)
+        (4) W_i - integral constraints
+        (5) W_b - endpoint constraints
+
+        """
+        self.w_J_iter = self.sym("w_J")
+        W = []
+        self.W_iter_mapping = {}
+        for p in self.p:
+            phase_W_iter_mapping = {}
+            W_d = list(self.sym(f"W_d{i}") for i in range(p.num_y_eqn))
+            phase_W_iter_mapping["d"] = W_d
+            W.extend(W_d)
+            W_p = list(self.sym(f"W_p{i}") for i in range(p.num_p_con))
+            phase_W_iter_mapping["p"] = W_p
+            W.extend(W_p)
+            W_i = list(self.sym(f"W_i{i}") for i in range(p.num_q_fnc))
+            phase_W_iter_mapping["i"] = W_i
+            W.extend(W_i)
+            self.W_iter_mapping[p] = phase_W_iter_mapping
+        W_e = list(self.sym(f"W_b{i}") for i in range(self.num_b_con))
+        self.W_iter_mapping["e"] = W_e
+        W.extend(W_e)
+        self.W_iter = ca.vertcat(*W)
 
     def generate_objective_function_callable(self):
-        pass
+        """Compile a callable function to evaluate J."""
+        J = self.w_J_iter * self.J
+        subs = dict_merge(self.ocp_iter_sym_point_mapping,
+                          self.V_sym_val_mapping_iter,
+                          self.r_sym_val_mapping_iter)
+        self.J_iter = casadi_substitute(J, subs)
+        args = ca.vertcat(self.x_var_iter,
+                          self.w_J_iter)
+        self.J_iter_scale_callable = ca.Function("J", [args], [self.J_iter])
 
     def generate_objective_function_gradient_callable(self):
-        pass
+        """Compile a callable function to evaluate g."""
+        self.g_iter = ca.gradient(self.J_iter, self.x_var_iter)
+        args = ca.vertcat(self.x_var_iter,
+                          self.w_J_iter)
+        self.g_iter_scale_callable = ca.Function("g", [args], [self.g_iter])
 
     def generate_constraint_function_callable(self):
-        pass
+        """Compile a function to evaluate c.
+
+        Generate the iteration-specific constraint vector. The involves
+        constructing the iteration-specific: (1) defect constraints, (2) path
+        constraints, (3) integral constraints, and (4) endpoint constraints.
+        Note that endpoint constraints are iteration specfific and if they
+        contain state variables at a phase final time then these are iteration-
+        specific due to the fact that mesh sizes (and therefore the number of
+        discretised states) vary between mesh iterations.
+
+        """
+
+        def make_all_phase_mapping(mesh):
+            """Create mapping from OCP symbol to iteration symbols."""
+            all_phase_mapping = {}
+            for p, N in zip(self.p, mesh.N):
+                phase_mapping = {}
+                for i in range(N):
+                    mapping = {k: v[i]
+                               for k, v in self.ocp_iter_sym_mapping.items()}
+                    phase_mapping[i] = mapping
+                all_phase_mapping[p] = phase_mapping
+            return all_phase_mapping
+
+        def make_state_derivatives(all_phase_mapping, mesh):
+            """Construct all state derivatives for the mesh iteration."""
+            dy = []
+            for p in self.p:
+                phase_mapping = all_phase_mapping[p]
+                for y_eqn in p.y_eqn:
+                    y_eqn = expand_eqn_to_vec(y_eqn, phase_mapping)
+                    dy.append(y_eqn)
+            return ca.vertcat(*dy)
+
+        def make_constraints(all_phase_mapping, mesh):
+            """Construct all constraints for the mesh iteration."""
+            c = []
+            c = make_defect_constraints(c, all_phase_mapping, mesh)
+            c = make_path_constraints(c, all_phase_mapping)
+            c = make_integral_constraints(c, all_phase_mapping, mesh)
+            c = make_endpoint_constraints(c)
+            return ca.vertcat(*c)
+
+        def expand_eqn_to_vec(eqn, phase_mapping):
+            """Convert an equation in OCP base to vector iteration base."""
+            vec = []
+            for mapping in phase_mapping.values():
+                vec.append(casadi_substitute(eqn, mapping))
+            return ca.vertcat(*vec)
+
+        def make_defect_constraints(c, all_phase_mapping, mesh):
+            """Constraint all defect constraints for the mesh iteration."""
+            for p, A_mat, I_mat in zip(self.p, mesh.sA_matrix, mesh.sI_matrix):
+                phase_mapping = all_phase_mapping[p]
+                W_d_phase = self.W_iter_mapping[p]["d"]
+                zipped = zip(p.y_var, p.V_y_var, p.r_y_var, p.y_eqn, W_d_phase)
+                for y_var, V_y_var, r_y_var, y_eqn, W_d in zipped:
+                    y_var = self.ocp_iter_sym_mapping[y_var]
+                    y_var_unscaled = V_y_var * y_var + r_y_var
+                    y_eqn = expand_eqn_to_vec(y_eqn, phase_mapping)
+                    c.append(W_d * make_defect_constraint(y_var_unscaled,
+                                                          y_eqn,
+                                                          *p.t_var_full,
+                                                          A_mat,
+                                                          I_mat))
+            return c
+
+        def make_defect_constraint(y, y_eqn, t0, tF, A, I):
+            """Construct a defect constraint from components."""
+            return ca.mtimes(A, y) + 0.5 * (tF - t0) * ca.mtimes(I, y_eqn)
+
+        def make_path_constraints(c, all_phase_mapping):
+            """Constraint all path constraints for the mesh iteration."""
+            for p in self.p:
+                phase_mapping = all_phase_mapping[p]
+                W_p_phase = self.W_iter_mapping[p]["p"]
+                for p_con, W_p in zip(p.p_con, W_p_phase):
+                    p_con = expand_eqn_to_vec(p_con, phase_mapping)
+                    c.append(W_p * p_con)
+            return c
+
+        def make_integral_constraints(c, all_phase_mapping, mesh):
+            """Constraint all integral constraints for the mesh iteration."""
+            for p, W_mat in zip(self.p, mesh.W_matrix):
+                phase_mapping = all_phase_mapping[p]
+                W_i_phase = self.W_iter_mapping[p]["i"]
+                zipped = zip(p.q_var, p.V_q_var, p.r_q_var, p.q_fnc, W_i_phase)
+                for q_var, V_q_var, r_q_var, q_fnc, W_i in zipped:
+                    q_var_unscaled = V_q_var * q_var + r_q_var
+                    q_fnc = expand_eqn_to_vec(q_fnc, phase_mapping)
+                    c.append(W_i * make_integral_constraint(q_var_unscaled,
+                                                            q_fnc,
+                                                            *p.t_var_full,
+                                                            W_mat))
+            return c
+
+        def make_integral_constraint(q, q_fnc, t0, tF, W):
+            """Construct an integral constraint from components."""
+            return q - 0.5 * (tF - t0) * ca.dot(W, q_fnc)
+
+        def make_endpoint_constraints(c):
+            """Constraint all endpoint constraints for the mesh iteration."""
+            W_e_problem = self.W_iter_mapping["e"]
+            for b_con, W_e in zip(self.b_con, W_e_problem):
+                c.append(W_e * b_con)
+            return c
+
+        all_phase_mapping = make_all_phase_mapping(self.current_iteration.mesh)
+        dy = make_state_derivatives(all_phase_mapping,
+                                    self.current_iteration.mesh)
+        c = make_constraints(all_phase_mapping, self.current_iteration.mesh)
+        subs = dict_merge(self.ocp_iter_sym_point_mapping,
+                          self.V_sym_val_mapping_iter,
+                          self.r_sym_val_mapping_iter,
+                          self.bounds.aux_data)
+        self.dy_iter = casadi_substitute(dy, subs)
+        self.dy_iter_callable = ca.Function("dy",
+                                            [self.x_var_iter],
+                                            [self.dy_iter])
+        self.c_iter = casadi_substitute(c, subs)
+        args = ca.vertcat(self.x_var_iter,
+                          self.W_iter)
+        self.c_iter_scale_callable = ca.Function("c", [args], [self.c_iter])
 
     def generate_jacobian_constraint_function_callable(self):
-        pass
+        """Compile a callable function to evaluate G."""
+        self.G_iter = ca.jacobian(self.c_iter, self.x_var_iter)
+        args = ca.vertcat(self.x_var_iter,
+                          self.W_iter)
+        self.G_iter_scale_callable = ca.Function("G", [args], [self.G_iter])
+
+    def create_nlp_solver(self):
+        """"""
+        x_iter = self.x_var_iter
+        J_subs = {self.w_J_iter: self.current_iteration.scaling.w}
+        J_iter = casadi_substitute(self.J_iter, J_subs)
+        c_subs = {}
+        for i, W_val in enumerate(self.current_iteration.scaling.W_ocp):
+            c_subs.update({self.W_iter[i]: W_val})
+        c_iter = casadi_substitute(self.c_iter, c_subs)
+        nlp = {"x": x_iter, "f": J_iter, "g": c_iter}
+        self.nlp_solver = ca.nlpsol("solver", "ipopt", nlp)
+
+    def evaluate_dy(self, x):
+
+        return dy
+
+    def evaluate_J(self, x):
+        return self.nlp_solver.get_function("nlp_f")(x, False)
+
+    def evaluate_g(self, x):
+        g = np.array(self.nlp_solver.get_function("nlp_grad_f")(x, False)[1]).squeeze()
+        return g
+
+    def evaluate_c(self, x):
+        c = np.array(self.nlp_solver.get_function("nlp_g")(x, False)).squeeze()
+        return c
+
+    def evaluate_G(self, x):
+        G = self.nlp_solver.get_function("nlp_jac_g")(x, False)[1]
+        sG = sparse.coo_matrix(np.array(G))
+        return sG
+
+    def evaluate_G_nonzeros(self, x):
+        G = self.nlp_solver.get_function("nlp_jac_g")(x, False)[1].nonzeros()
+        return G
+
+    def evaluate_G_structure(self):
+        G = self.nlp_solver.get_function("nlp_jac_g").sx_out()[1]
+        arg_1 = range(G.size2())
+        arg_2 = np.diff(np.array(G.colind(), dtype=int))
+        zipped = zip(arg_1, arg_2)
+        iterable = (itertools.repeat(*args) for args in zipped)
+        col_indices = np.array(list(itertools.chain.from_iterable(iterable)))
+        row_indices = np.array(G.row(), dtype=int)
+        return (row_indices, col_indices)
+
+    def evaluate_G_num_nonzero(self):
+        G = self.nlp_solver.get_function("nlp_jac_g").sx_out()[1]
+        nnz = G.nnz()
+        return nnz
+
+    def evaluate_H(self, x, obj, l):
+        raise NotImplementedError
+
+    def evaluate_G_nonzeros(self, x):
+        raise NotImplementedError
+
+    def evaluate_G_structure(self):
+        raise NotImplementedError
+
+    def evaluate_G_num_nonzero(self):
+        raise NotImplementedError
+
+    def solve_nlp(self):
+        """Solve the NLP.
+
+        Returns
+        -------
+        NlpResult
+            Named tuple including the solution, solution info, and solve time.
+
+        """
+        nlp_start_time = timer()
+        nlp_solver_output = self.nlp_solver(x0=self.current_iteration.guess_x,
+                                            lbx=self.current_iteration.x_bnd_l,
+                                            ubx=self.current_iteration.x_bnd_u,
+                                            lbg=self.current_iteration.c_bnd_l,
+                                            ubg=self.current_iteration.c_bnd_u)
+        nlp_stop_time = timer()
+        nlp_solve_time = nlp_stop_time - nlp_start_time
+        nlp_result = NlpResult(solution=nlp_solver_output,
+                               info=None,
+                               solve_time=nlp_solve_time)
+        return nlp_result
+
+    @staticmethod
+    def process_solution(*args, **kwargs):
+        """Instantiate a CasadiSolution object for iteration.
+
+        Returns
+        -------
+        CasadiSolution
+            Solution class with processed NLP solution.
+
+        """
+        solution = CasadiSolution(*args, **kwargs)
+        return solution
 
 
 class Hsad(BackendABC):

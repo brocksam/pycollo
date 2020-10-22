@@ -6,7 +6,6 @@ import csv
 import itertools
 import json
 from timeit import default_timer as timer
-import time
 
 import matplotlib.pyplot as plt
 import numba as nb
@@ -20,7 +19,6 @@ from pyproprop import processed_property
 from .guess import (PhaseGuess, EndpointGuess, Guess)
 from .mesh import Mesh
 from .nlp import initialise_nlp_backend
-from .solution import Solution
 from .scaling import IterationScaling
 from .utils import console_out
 
@@ -34,6 +32,7 @@ class Iteration:
     solution = processed_property("solution", read_only=True)
     index = processed_property("index", read_only=True)
     number = processed_property("number", read_only=True)
+    solved = processed_property("solved", type=bool)
 
     def __init__(self, backend, index, mesh, guess):
         """Initialise the iteration object.
@@ -71,24 +70,19 @@ class Iteration:
         """Alias to `self.ocp`."""
         return self.ocp
 
+    @property
+    def solved(self):
+        return hasattr(self, "_solution")
+
     def initialise(self):
         """Abstraction layer for all steps in initialising iteration."""
-
-        # COMPLETED
         self.console_out_initialising_iteration()
         self.interpolate_guess_to_mesh(self.prev_guess)
         self.create_variable_constraint_counts_slices()
         self.initialise_scaling()
-
-        # TODO
-        self.scale_guess()  # NEW
-        self.generate_nlp()  # NEW - replace self.generate_nlp_lambdas()
-        # self.generate_nlp_lambdas()
+        self.scale_guess()
+        self.generate_nlp()
         self.generate_bounds()
-        self.generate_scaling()
-        self.scale_bounds()
-        # self.shift_scale_variable_bounds()
-        # self.initialise_nlp()
         self.check_nlp_functions()
 
     def console_out_initialising_iteration(self):
@@ -330,6 +324,7 @@ class Iteration:
         (`q_fnc`).
 
         """
+        self.dy_slices = []
         self.y_eqn_slices = []
         self.p_con_slices = []
         self.q_fnc_slices = []
@@ -337,14 +332,17 @@ class Iteration:
                      self.num_c_path_per_phase,
                      self.num_c_integral_per_phase,
                      self.mesh.N)
+        dy_total = 0
         for num_y, num_c_path, num_c_integral, N in zipped:
             y_eqn_start = 0
             p_con_start = y_eqn_start + num_y
             q_fnc_start = p_con_start + num_c_path
             c_con_stop = q_fnc_start + num_c_integral * N
+            self.dy_slices.append(slice(dy_total, dy_total + num_y))
             self.y_eqn_slices.append(slice(y_eqn_start, p_con_start))
             self.p_con_slices.append(slice(p_con_start, q_fnc_start))
             self.q_fnc_slices.append(slice(q_fnc_start, c_con_stop))
+            dy_total += num_y
 
     def initialise_scaling(self):
         """Initialise iteration-specific scaling.
@@ -355,9 +353,259 @@ class Iteration:
 
         """
         self.scaling = self.backend.iteration_scaling(self)
-        # self.guess_x = self.scaling.scale_x(self.guess_x)
+
         msg = "Scaling initialised."
         console_out(msg)
+
+    def scale_guess(self):
+        """Scale guess from x to x-tilde if first iteration.
+
+        Only the initial iteration requires this scaling of the guess as for
+        subsequent mesh iterations the guess comes from the solution on the
+        previous mesh which is already in the scaled basis (i.e. x-tilde).
+
+        """
+        if self.index == 0:
+            self.guess_x = self.scaling.scale_x(self.guess_x)
+
+            msg = "Initial guess scaled."
+            console_out(msg)
+
+    def generate_nlp(self):
+        """Generate the NLP and all required components (backend-specific)."""
+        self.backend.generate_nlp_function_callables(self)
+        self.generate_scaling()
+        self.backend.create_nlp_solver()
+
+    def generate_scaling(self):
+        """Generate objective function and constraint scaling."""
+        self.scaling.generate_J_c_scaling()
+        msg = "Scaling generated."
+        console_out(msg)
+
+    def generate_bounds(self):
+        """Generate bounds for the mesh iteration NLP."""
+        self.generate_variable_bounds()
+        self.generate_constraint_bounds()
+        self.scale_bounds()
+        msg = "Mesh-specific bounds generated."
+        console_out(msg)
+
+    def generate_variable_bounds(self):
+        """Generate bounds for the NLP variables."""
+        bnds = []
+        for p, N in zip(self.backend.p, self.mesh.N):
+            p_bnds = p.ocp_phase.bounds
+            y_bnds = p_bnds._y_bnd[p_bnds._y_needed]
+            y_t0_bnds = p_bnds._y_t0_bnd[p_bnds._y_needed]
+            y_tF_bnds = p_bnds._y_tF_bnd[p_bnds._y_needed]
+            u_bnds = p_bnds._u_bnd[p_bnds._u_needed]
+            q_bnds = p_bnds._q_bnd[p_bnds._q_needed]
+            t_bnds = p_bnds._t_bnd[p_bnds._t_needed]
+            for y_bnd, y_t0_bnd, y_tF_bnd in zip(y_bnds, y_t0_bnds, y_tF_bnds):
+                bnds.extend([y_t0_bnd] + [y_bnd] * (N - 2) + [y_tF_bnd])
+            for u_bnd in u_bnds:
+                bnds.extend([u_bnd] * N)
+            bnds.extend(q_bnds)
+            bnds.extend(t_bnds)
+        s_bnds = self.ocp.bounds._s_bnd[self.ocp.bounds._s_needed]
+        bnds.extend(s_bnds)
+        bnds = np.array(bnds)
+        self.x_bnd_l = bnds[:, 0]
+        self.x_bnd_u = bnds[:, 1]
+
+    def generate_constraint_bounds(self):
+        """Generate bounds for the NLP constraints."""
+        bnds = []
+        zipped = zip(self.backend.p,
+                     self.mesh.N,
+                     self.num_c_defect_per_phase,
+                     self.num_c_integral_per_phase)
+        for p, N, num_c_defect, num_c_integral in zipped:
+            bnds.extend([np.array((0, 0))] * num_c_defect)
+            for c_bnd in p.ocp_phase.bounds._p_con_bnd:
+                bnds.extend([c_bnd] * N)
+            bnds.extend([np.array((0, 0))] * num_c_integral)
+        bnds.extend(self.backend.ocp.bounds._b_con_bnd)
+        bnds = np.array(bnds)
+        self.c_bnd_l = bnds[:, 0]
+        self.c_bnd_u = bnds[:, 1]
+
+    def scale_bounds(self):
+        """Scale bounds from user basis to tilde basis."""
+        self.x_bnd_l = self.scaling.scale_x(self.x_bnd_l)
+        self.x_bnd_u = self.scaling.scale_x(self.x_bnd_u)
+        self.c_bnd_l = self.scaling.scale_c(self.c_bnd_l)
+        self.c_bnd_u = self.scaling.scale_c(self.c_bnd_u)
+
+    def solve(self):
+        """Solve the NLP.
+
+        Returns
+        -------
+        bool
+            Whether the mesh tolerance has been met or not.
+        Mesh
+            Refined mesh for the next mesh iteration.
+        Guess
+            Guess to be used for the next mesh iteration.
+
+        """
+        nlp_result = self.backend.solve_nlp()
+        self.solution = self.backend.process_solution(self, nlp_result)
+        next_iter_mesh = self.solution.refine_mesh()
+        next_iter_guess = self.generate_guess_for_next_mesh_iteration()
+        mesh_tolerance_met = self.check_if_mesh_tolerance_met(next_iter_mesh)
+        self.display_mesh_iteration_info(mesh_tolerance_met, next_iter_mesh)
+        mesh_iteration_result = MeshIterationResult(mesh_tolerance_met,
+                                                    next_iter_mesh,
+                                                    next_iter_guess)
+        return mesh_iteration_result
+
+    def check_nlp_functions(self):
+        """Dumps values of the NLP callables evaluated at the initial guess."""
+        if self.backend.ocp.settings.check_nlp_functions:
+            raise NotImplementedError
+
+    def generate_guess_for_next_mesh_iteration(self):
+        """Abstraction collecting and combining phase and problem guesses.
+
+        Returns
+        -------
+        Guess
+            The guess for the next mesh iteration.
+        """
+        phase_guesses = self.collect_next_mesh_iteration_phase_guesses()
+        endpoint_guess = self.collect_next_mesh_iteration_endpoint_guess()
+        next_guess = Guess(self.backend, phase_guesses, endpoint_guess)
+        return next_guess
+
+    def collect_next_mesh_iteration_phase_guesses(self):
+        """Summary
+
+        Returns
+        -------
+        TYPE
+            Description
+        """
+        phase_guesses = [self.collect_single_next_mesh_iteration_phase_guess(p)
+                         for p in self.backend.p]
+        return phase_guesses
+
+    def collect_single_next_mesh_iteration_phase_guess(self, phase_backend):
+        """Summary
+
+        Parameters
+        ----------
+        phase_backend : TYPE
+            Description
+
+        Returns
+        -------
+        TYPE
+            Description
+        """
+        phase_guess = PhaseGuess(phase_backend)
+        phase_guess.time = self.solution._time_[phase_backend.i]
+        phase_guess.state_variables = self.solution._y[phase_backend.i]
+        phase_guess.control_variables = self.solution._u[phase_backend.i]
+        phase_guess.integral_variables = self.solution._q[phase_backend.i]
+        return phase_guess
+
+    def collect_next_mesh_iteration_endpoint_guess(self):
+        """Summary
+
+        Returns
+        -------
+        TYPE
+            Description
+        """
+        endpoint_guess = EndpointGuess(self.optimal_control_problem)
+        endpoint_guess.parameter_variables = self.solution._s
+        return endpoint_guess
+
+    def check_if_mesh_tolerance_met(self, next_iter_mesh):
+        """Summary
+
+        Parameters
+        ----------
+        next_iter_mesh : TYPE
+            Description
+
+        Returns
+        -------
+        TYPE
+            Description
+        """
+        mesh_tol = self.optimal_control_problem.settings.mesh_tolerance
+        error_over_max_mesh_tol = []
+        mesh_refinement = self.solution.mesh_refinement
+        for max_rel_mesh_errors in mesh_refinement.maximum_relative_mesh_errors:
+            is_greater_than = np.max(max_rel_mesh_errors) > mesh_tol
+            error_over_max_mesh_tol.append(is_greater_than)
+        mesh_tol_met = not any(error_over_max_mesh_tol)
+        return mesh_tol_met
+
+    def display_mesh_iteration_info(self, mesh_tol_met, next_iter_mesh):
+        """Summary
+    
+        Parameters
+        ----------
+        mesh_tol_met : TYPE
+            Description
+        next_iter_mesh : TYPE
+            Description
+        
+        Raises
+        ------
+        NotImplementedError
+            Description
+        """
+        msg = (f"Pycollo Analysis of Mesh Iteration {self.number}")
+        console_out(msg, subheading=True, suffix=":")
+
+        max_rel_mesh_error = np.max(np.array([np.max(el)
+            for el in self.solution.mesh_refinement.maximum_relative_mesh_errors]))
+
+        print(f'Objective Evaluation:       {self.solution.objective}')
+        print(f'Max Relative Mesh Error:    {max_rel_mesh_error}\n')
+        if mesh_tol_met:
+            print(f'Adjusting Collocation Mesh: {next_iter_mesh.K} mesh sections\n')
+
+        settings = self.optimal_control_problem.settings
+        if settings.display_mesh_result_info:
+            raise NotImplementedError
+
+        if settings.display_mesh_result_graph:
+            self.solution.plot()
+
+
+mesh_iteration_result_fields = ("mesh_tolerance_met",
+                                "next_iteration_mesh",
+                                "next_iteration_guess")
+MeshIterationResult = collections.namedtuple("MeshIterationResult",
+                                             mesh_iteration_result_fields)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class IterationOld:
 
     def generate_nlp_lambdas(self):
         """Summary
@@ -840,126 +1088,51 @@ class Iteration:
         msg = "Hessian of the Lagrangian lambda generated successfully."
         console_out(msg)
 
-    def generate_bounds(self):
-        """Summary
-        """
-        self.generate_variable_bounds()
-        self.generate_constraint_bounds()
-        msg = "Mesh-specific bounds generated."
-        console_out(msg)
-
-    def generate_variable_bounds(self):
-        """Summary
-        """
-        bnds = []
-        for p, N in zip(self.backend.p, self.mesh.N):
-            p_bnds = p.ocp_phase.bounds
-            y_bnds = p_bnds._y_bnds[p_bnds._y_needed]
-            y_t0_bnds = p_bnds._y_t0_bnds[p_bnds._y_needed]
-            y_tF_bnds = p_bnds._y_tF_bnds[p_bnds._y_needed]
-            u_bnds = p_bnds._u_bnds[p_bnds._u_needed]
-            q_bnds = p_bnds._q_bnds[p_bnds._q_needed]
-            t_bnds = p_bnds._t_bnds[p_bnds._t_needed]
-            for y_bnd, y_t0_bnd, y_tF_bnd in zip(y_bnds, y_t0_bnds, y_tF_bnds):
-                bnds.extend([y_t0_bnd] + [y_bnd]*(N-2) + [y_tF_bnd])
-            for u_bnd in u_bnds:
-                bnds.extend([u_bnd]*N)
-            bnds.extend(q_bnds)
-            bnds.extend(t_bnds)
-        bnds.extend(self.backend.ocp.bounds._s_bnds[self.backend.ocp.bounds._s_needed])
-        bnds = np.array(bnds)
-        self._x_bnd_l = bnds[:, 0]
-        self._x_bnd_u = bnds[:, 1]
-
-    def generate_constraint_bounds(self):
-        """Summary
-        """
-        bnds = []
-        for p, N, num_c_defect, num_c_integral in zip(self.backend.p, self.mesh.N, self.num_c_defect_per_phase, self.num_c_integral_per_phase):
-            bnds.extend([np.array((0, 0))]*num_c_defect)
-            for c_bnd in p.ocp_phase.bounds._c_path_bnds:
-                bnds.extend([c_bnd]*N)
-            bnds.extend([np.array((0, 0))]*num_c_integral)
-        bnds.extend(self.backend.ocp.bounds._c_endpoint_bnds)
-        bnds = np.array(bnds)
-        self._c_bnd_l = bnds[:, 0]
-        self._c_bnd_u = bnds[:, 1]
-
-    def generate_scaling(self):
-        """Summary
-        """
-        self.scaling._generate()
-        msg = "Scaling generated."
-        console_out(msg)
-
-        # print('\n')
-
-        # self._objective_lambda(self.guess_x)
-        # self._gradient_lambda(self.guess_x)
-        # self._constraint_lambda(self.guess_x)
-        # self._jacobian_lambda(self.guess_x)
-        # print('\n\n\n')
-        # raise NotImplementedError
-
-    def scale_bounds(self):
-        """Summary
-        """
-        self._x_bnd_l = self.scaling.scale_x(self._x_bnd_l)
-        self._x_bnd_u = self.scaling.scale_x(self._x_bnd_u)
-        self._c_bnd_l = self.scaling.scale_c(self._c_bnd_l)
-        self._c_bnd_u = self.scaling.scale_c(self._c_bnd_u)
-
     # def shift_scale_variable_bounds(self):
     #   self._x_bnd_l = self._x_bnd_l - self.scaling.x_shifts
     #   self._x_bnd_u = self._x_bnd_u - self.scaling.x_shifts
 
-    def initialise_nlp(self):
-        """Summary
-        """
-        self._nlp_problem, self._nlp_temp = initialise_nlp_backend(self)
-        msg = "NLP initialised successfully."
-        console_out(msg)
-
     def check_nlp_functions(self):
-        """Summary
+        """Dumps values of the NLP callables evaluated at the initial guess.
         
-        Raises
-        ------
-        NotImplementedError
-            Description
+        
+
         """
         if self.backend.ocp.settings.check_nlp_functions:
             print('\n\n\n')
             x_data = np.array(range(1, self.num_x + 1), dtype=float)
             # x_data = np.ones(self.num_x)
             
-            print(f"x Variables:\n{self.backend.x_vars}\n")
+            print(f"x Variables:\n{self.backend.x_var}\n")
             print(f"x Data:\n{x_data}\n")
 
-            if self.optimal_control_problem.settings.derivative_level == 2:
-                lagrange = np.array(range(1, self.num_c + 1), dtype=float)
-                # lagrange = np.ones(self.num_c)
-                obj_factor = 2.0
-                # obj_factor = 1
-                print(f"Objective Factor:\n{obj_factor}\n")
-                print(f"Lagrange Multipliers:\n{lagrange}\n")
+            # if self.optimal_control_problem.settings.derivative_level == 2:
+            #     lagrange = np.array(range(1, self.num_c + 1), dtype=float)
+            #     # lagrange = np.ones(self.num_c)
+            #     obj_factor = 2.0
+            #     # obj_factor = 1
+            #     print(f"Objective Factor:\n{obj_factor}\n")
+            #     print(f"Lagrange Multipliers:\n{lagrange}\n")
 
-            J = self._objective_lambda(x_data)
+            J = self.backend.evaluate_J(x_data)
             print(f"J:\n{J}\n")
 
-            g = self._gradient_lambda(x_data)
+            g = self.backend.evaluate_g(x_data)
             print(f"g:\n{g}\n")
 
-            c = self._constraint_lambda(x_data)
+            c = self.backend.evaluate_c(x_data)
             print(f"c:\n{c}\n")
 
-            G_struct = self._jacobian_structure_lambda()
+            G_struct = self.backend.evaluate_G_structure()
             print(f"G Structure:\n{G_struct[0]}\n\n{G_struct[1]}\n")
 
-            G_nnz = len(G_struct[0])
-            print(f"G Nonzeros:\n{G_nnz}\n")
+            G_nnz = self.backend.evaluate_G_num_nonzero()
+            print(f"G Number Nonzeros:\n{G_nnz}\n")
 
-            G = self._jacobian_lambda(x_data)
+            G_nz = self.backend.evaluate_G_nonzeros(x_data)
+            print(f"G Nonzeros:\n{G_nz}\n")
+
+            G = self.backend.evaluate_G(x_data)
             print(f"G:\n{G}\n")
 
             if self.optimal_control_problem.settings.derivative_level == 2:
@@ -1002,160 +1175,6 @@ class Iteration:
 
                 with open(filename_full, "w", encoding="utf-8") as file:
                     json.dump(data, file, ensure_ascii=False, indent=4)
-            
+
             print('\n\n\n')
             raise NotImplementedError
-
-    def solve(self):
-        """Summary
-        
-        Returns
-        -------
-        TYPE
-            Description
-        """
-        time_start = time.time()
-        nlp_time_start = timer()
-
-        nlp_solution, nlp_solution_info = self._nlp_problem.solve(self.guess_x)
-
-        nlp_time_stop = timer()
-        time_stop = time.time()
-        self._nlp_time = nlp_time_stop - nlp_time_start
-
-        process_results_time_start = timer()
-
-        self._solution = Solution(self, nlp_solution, nlp_solution_info)
-        next_iter_mesh = self._refine_new_mesh()
-        next_iter_guess = self.generate_guess_for_next_mesh_iteration()
-
-        process_results_time_stop = timer()
-
-        mesh_tolerance_met = self.check_if_mesh_tolerance_met(next_iter_mesh)
-        self._display_mesh_iteration_info(mesh_tolerance_met, next_iter_mesh)
-
-        self._process_results_time = process_results_time_stop - process_results_time_start
-
-        return mesh_tolerance_met, next_iter_mesh, next_iter_guess
-
-    def generate_guess_for_next_mesh_iteration(self):
-        """Summary
-        
-        Returns
-        -------
-        TYPE
-            Description
-        """
-        phase_guesses = self.collect_next_mesh_iteration_phase_guesses()
-        endpoint_guess = self.collect_next_mesh_iteration_endpoint_guess()
-        next_guess = Guess(self.backend, phase_guesses, endpoint_guess)
-        return next_guess
-
-    def collect_next_mesh_iteration_phase_guesses(self):
-        """Summary
-        
-        Returns
-        -------
-        TYPE
-            Description
-        """
-        phase_guesses = [self.collect_single_next_mesh_iteration_phase_guess(p)
-            for p in self.backend.p]
-        return phase_guesses
-
-    def collect_single_next_mesh_iteration_phase_guess(self, phase_backend):
-        """Summary
-        
-        Parameters
-        ----------
-        phase_backend : TYPE
-            Description
-        
-        Returns
-        -------
-        TYPE
-            Description
-        """
-        phase_guess = PhaseGuess(phase_backend)
-        phase_guess.time = self.solution._time[phase_backend.i]
-        phase_guess.state_variables = self.solution._y[phase_backend.i]
-        phase_guess.control_variables = self.solution._u[phase_backend.i]
-        phase_guess.integral_variables = self.solution._q[phase_backend.i]
-        return phase_guess
-
-    def collect_next_mesh_iteration_endpoint_guess(self):
-        """Summary
-        
-        Returns
-        -------
-        TYPE
-            Description
-        """
-        endpoint_guess = EndpointGuess(self.optimal_control_problem)
-        endpoint_guess.parameter_variables = self.solution._s
-        return endpoint_guess
-
-    def check_if_mesh_tolerance_met(self, next_iter_mesh):
-        """Summary
-        
-        Parameters
-        ----------
-        next_iter_mesh : TYPE
-            Description
-        
-        Returns
-        -------
-        TYPE
-            Description
-        """
-        mesh_tol = self.optimal_control_problem.settings.mesh_tolerance
-        error_over_max_mesh_tol = [np.max(max_rel_mesh_errors) > mesh_tol
-            for max_rel_mesh_errors in self.solution._maximum_relative_mesh_errors]
-        mesh_tol_met = not any(error_over_max_mesh_tol)
-        return mesh_tol_met
-
-
-    def _display_mesh_iteration_info(self, mesh_tol_met, next_iter_mesh):
-        """Summary
-        
-        Parameters
-        ----------
-        mesh_tol_met : TYPE
-            Description
-        next_iter_mesh : TYPE
-            Description
-        
-        Raises
-        ------
-        NotImplementedError
-            Description
-        """
-        msg = (f"Pycollo Analysis of Mesh Iteration {self.number}")
-        console_out(msg, subheading=True, suffix=":")
-
-        max_rel_mesh_error = np.max(np.array([np.max(element) 
-            for element in self._solution._maximum_relative_mesh_errors]))
-
-        print(f'Objective Evaluation:       {self.solution.objective}')
-        print(f'Max Relative Mesh Error:    {max_rel_mesh_error}\n')
-        if mesh_tol_met:
-            print(f'Adjusting Collocation Mesh: {next_iter_mesh.K} mesh sections\n')
-
-        settings = self.optimal_control_problem.settings
-        if settings.display_mesh_result_info:
-            raise NotImplementedError
-
-        if settings.display_mesh_result_graph:
-            self.solution._plot_interpolated_solution(plot_y=True, plot_dy=True, plot_u=True)
-
-    def _refine_new_mesh(self):
-        """Summary
-
-        Returns
-        -------
-        TYPE
-            Description
-        """
-        self.solution._patterson_rao_discretisation_mesh_error()
-        next_iter_mesh = self.solution._patterson_rao_next_iteration_mesh()
-        return next_iter_mesh

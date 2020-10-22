@@ -686,26 +686,6 @@ def test_create_full_point_variable_indexes_slices(
     assert phase_backend.y_point_qt_point_full_split == 8
 
 
-@pytest.mark.xfail(reason="Raising ValueError")
-def test_preprocess_user_problem_aux_data_dp_specific(double_pendulum_fixture,
-                                                      casadi_backend_fixture):
-    """"""
-    ocp, user_syms = double_pendulum_fixture
-    backend = casadi_backend_fixture
-    backend.ocp = ocp
-    backend.create_aux_data_containers()
-    backend.create_point_variable_symbols()
-    backend.create_phase_backends()
-    backend.preprocess_user_problem_aux_data()
-
-    print(backend.aux_data)
-    print(backend.aux_data_phase_dependent)
-    print(backend.aux_data_phase_independent)
-    print(backend.aux_data_supplied_in_ocp_and_phase)
-
-    raise ValueError
-
-
 def test_preprocess_aux_data_partition_dp_specific(double_pendulum_fixture,
                                                    casadi_backend_fixture,
                                                    utils):
@@ -1190,6 +1170,30 @@ def test_preprocess_phase_collect_cons_dp_specific(double_pendulum_fixture,
     assert phase_backend.y_eqn_slice == slice(0, 4)
     assert phase_backend.p_con_slice == slice(4, 4)
     assert phase_backend.q_fnc_slice == slice(4, 5)
+
+
+def test_preprocess_objective_fnc_dp_specific(double_pendulum_fixture,
+                                              casadi_backend_fixture,
+                                              utils):
+    """Objective function preprocessed correctly."""
+    ocp, user_syms = double_pendulum_fixture
+    backend = casadi_backend_fixture
+    backend.ocp = ocp
+    backend.create_aux_data_containers()
+    backend.create_point_variable_symbols()
+    backend.create_phase_backends()
+    backend.preprocess_user_problem_aux_data()
+    backend.preprocess_phase_backends()   
+    backend.preprocess_problem_backend()  
+    phase_backend = backend.p[0]
+
+    _q0, = phase_backend.q_var_full
+    _V_q0, = phase_backend.V_q_var_full
+    _r_q0, = phase_backend.r_q_var_full
+
+    expect_J =_V_q0 * _q0 + _r_q0
+
+    utils.assert_ca_expr_identical(backend.J, expect_J)
 
 
 def test_casadi_backend_init_hs(hypersensitive_problem_fixture):

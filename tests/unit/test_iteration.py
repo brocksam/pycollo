@@ -1,10 +1,13 @@
 """Test creation and initialisation of Iteration objects."""
 
 
+import casadi as ca
 import numpy as np
 import pytest
 
 import pycollo
+
+from .iteration_scaling_test_data import EXPECT_X, EXPECT_X_TILDE
 
 
 @pytest.fixture
@@ -142,8 +145,100 @@ def test_create_var_con_counts_slices(double_pendulum_initialised_fixture):
 
 
 def test_initialise_scaling(double_pendulum_initialised_fixture):
-    """"""
+    """Check iteration scaling initialised successfully."""
     ocp, iteration = double_pendulum_initialised_fixture
     iteration.interpolate_guess_to_mesh(iteration.prev_guess)
     iteration.create_variable_constraint_counts_slices()
     iteration.initialise_scaling()
+
+
+def test_guess_scaling(double_pendulum_initialised_fixture):
+    """Check first iteration guess scaled and unscaled correctly."""
+    ocp, iteration = double_pendulum_initialised_fixture
+    iteration.interpolate_guess_to_mesh(iteration.prev_guess)
+    iteration.create_variable_constraint_counts_slices()
+    iteration.initialise_scaling()
+
+    assert iteration.index == 0
+    np.testing.assert_allclose(iteration.guess_x, EXPECT_X)
+
+    iteration.scale_guess()
+    np.testing.assert_allclose(iteration.guess_x, EXPECT_X_TILDE)
+
+
+def test_backend_create_iter_var_symbols(double_pendulum_initialised_fixture):
+    """Check iteration-specific variables (`x`) created correctly."""
+    ocp, iteration = double_pendulum_initialised_fixture
+    backend = ocp._backend
+    iteration.interpolate_guess_to_mesh(iteration.prev_guess)
+    iteration.create_variable_constraint_counts_slices()
+    iteration.initialise_scaling()
+    iteration.scale_guess()
+    iteration.backend.generate_nlp_function_callables(iteration)
+
+    assert hasattr(backend, "x_var_iter")
+    assert isinstance(backend.x_var_iter, ca.SX)
+    assert backend.x_var_iter.size() == (iteration.num_x, 1)
+
+
+def test_backend_generate_scaling_symbols(double_pendulum_initialised_fixture):
+    """Check iteration-specific scaling syms (`w_J`, `W`) created correctly."""
+    ocp, iteration = double_pendulum_initialised_fixture
+    backend = ocp._backend
+    iteration.interpolate_guess_to_mesh(iteration.prev_guess)
+    iteration.create_variable_constraint_counts_slices()
+    iteration.initialise_scaling()
+    iteration.scale_guess()
+    iteration.backend.generate_nlp_function_callables(iteration)
+
+    assert hasattr(backend, "w_J_iter")
+    assert hasattr(backend, "W_iter")
+    assert backend.w_J_iter.size() == (1, 1)
+    assert backend.W_iter.size() == (backend.num_c, 1)
+
+
+def test_backend_generate_J_callable(double_pendulum_initialised_fixture):
+    """Check iteration-specific objective function (`J`) callable compiled."""
+    ocp, iteration = double_pendulum_initialised_fixture
+    backend = ocp._backend
+    iteration.interpolate_guess_to_mesh(iteration.prev_guess)
+    iteration.create_variable_constraint_counts_slices()
+    iteration.initialise_scaling()
+    iteration.scale_guess()
+    iteration.generate_nlp()
+
+    assert hasattr(backend, "evaluate_J")
+    assert callable(backend.evaluate_J)
+    assert backend.evaluate_J(EXPECT_X_TILDE) == 100
+
+
+def test_backend_generate_g_callable(double_pendulum_initialised_fixture):
+    """Check iteration-specific objective gradient (`g`) callable compiled."""
+    ocp, iteration = double_pendulum_initialised_fixture
+    backend = ocp._backend
+    iteration.interpolate_guess_to_mesh(iteration.prev_guess)
+    iteration.create_variable_constraint_counts_slices()
+    iteration.initialise_scaling()
+    iteration.scale_guess()
+    iteration.generate_nlp()
+
+    assert hasattr(backend, "evaluate_g")
+    assert callable(backend.evaluate_g)
+    expect_g = np.zeros(190)
+    expect_g[186] = 1000
+    g = backend.evaluate_g(EXPECT_X_TILDE)
+    np.testing.assert_allclose(np.array(g).squeeze(), expect_g)
+
+
+def test_backend_generate_c_callable(double_pendulum_initialised_fixture):
+    """Check iteration-specific constraint vector (`c`) callable compiled."""
+    ocp, iteration = double_pendulum_initialised_fixture
+    backend = ocp._backend
+    iteration.interpolate_guess_to_mesh(iteration.prev_guess)
+    iteration.create_variable_constraint_counts_slices()
+    iteration.initialise_scaling()
+    iteration.scale_guess()
+    iteration.backend.generate_nlp_function_callables(iteration)
+
+    assert hasattr(backend, "evaluate_c")
+    assert callable(backend.evaluate_c)

@@ -1593,7 +1593,7 @@ class Casadi(BackendABC):
         self.G_iter_scale_callable = ca.Function("G", [args], [self.G_iter])
 
     def create_nlp_solver(self):
-        """"""
+        """Create CasADi NLP solver interface to IPOPT."""
         x_iter = self.x_var_iter
         J_subs = {self.w_J_iter: self.current_iteration.scaling.w}
         J_iter = casadi_substitute(self.J_iter, J_subs)
@@ -1602,39 +1602,69 @@ class Casadi(BackendABC):
             c_subs.update({self.W_iter[i]: W_val})
         c_iter = casadi_substitute(self.c_iter, c_subs)
         nlp = {"x": x_iter, "f": J_iter, "g": c_iter}
-        ipopt_settings = {"tol": 1e-10,
-                          "nlp_scaling_method": "gradient-based",
-                          "mu_strategy": "adaptive",
-                          "mu_min": 1e-11,
-                          }
+        ipopt_settings = self.create_nlp_solver_settings()
         settings = {"ipopt": ipopt_settings}
         self.nlp_solver = ca.nlpsol("solver", "ipopt", nlp, settings)
 
-    def evaluate_dy(self, x):
+    def create_nlp_solver_settings(self):
+        """Create settings for CasADi IPOPT NLP solver.
 
-        return dy
+        `"mu_strategy"` and `"mu_min"` are overridden from the IPOPT defaults
+        to match the overridden settings used by Cyipopt which have been
+        amended for good performance in solving NLPs for OCPs.
+
+        """
+        warm_start = "yes" if self.ocp.settings.warm_start else "no"
+        ipopt_settings = {"tol": self.ocp.settings.nlp_tolerance,
+                          "max_iter": self.ocp.settings.max_nlp_iterations,
+                          "linear_solver": self.ocp.settings.linear_solver,
+                          "mu_strategy": "adaptive",
+                          "mu_min": 1e-11,
+                          "warm_start_init_point": warm_start,
+                          }
+        return ipopt_settings
 
     def evaluate_J(self, x):
+        """Evaluate `J` at a point `x` using CasADi compiled function."""
         return self.nlp_solver.get_function("nlp_f")(x, False)
 
     def evaluate_g(self, x):
+        """Evaluate `g` at a point `x` using CasADi compiled function."""
         g = np.array(self.nlp_solver.get_function("nlp_grad_f")(x, False)[1]).squeeze()
         return g
 
     def evaluate_c(self, x):
+        """Evaluate `c` at a point `x` using CasADi compiled function."""
         c = np.array(self.nlp_solver.get_function("nlp_g")(x, False)).squeeze()
         return c
 
     def evaluate_G(self, x):
+        """Evaluate `G` at a point `x` using CasADi compiled function.
+
+        This returns `G` as a sparse matrix, the form expected by Pycollo, but
+        which is a different form to what CasADi will naturally produce.
+
+        """
         G = self.nlp_solver.get_function("nlp_jac_g")(x, False)[1]
         sG = sparse.coo_matrix(np.array(G))
         return sG
 
     def evaluate_G_nonzeros(self, x):
+        """Evaluate `G` at a point `x` using CasADi compiled function.
+
+        This returns just the nonzero values of `G`.
+
+        """
         G = self.nlp_solver.get_function("nlp_jac_g")(x, False)[1].nonzeros()
         return G
 
     def evaluate_G_structure(self):
+        """Evaluate `G` at a point `x` using CasADi compiled function.
+
+        This returns just the row and column indices of `G` in the form
+        expected by Pycollo.
+
+        """
         G = self.nlp_solver.get_function("nlp_jac_g").sx_out()[1]
         arg_1 = range(G.size2())
         arg_2 = np.diff(np.array(G.colind(), dtype=int))
@@ -1645,20 +1675,47 @@ class Casadi(BackendABC):
         return (row_indices, col_indices)
 
     def evaluate_G_num_nonzero(self):
+        """Evaluate `G` at a point `x` using CasADi compiled function.
+
+        This returns just the number of nonzero elements in `G`.
+
+        """
         G = self.nlp_solver.get_function("nlp_jac_g").sx_out()[1]
         nnz = G.nnz()
         return nnz
 
     def evaluate_H(self, x, obj, l):
+        """Evaluate `H` at a point `x` using CasADi compiled function.
+
+        This returns `H` as a sparse matrix, the form expected by Pycollo, but
+        which is a different form to what CasADi will naturally produce.
+
+        """
         raise NotImplementedError
 
-    def evaluate_G_nonzeros(self, x):
+    def evaluate_H_nonzeros(self, x):
+        """Evaluate `H` at a point `x` using CasADi compiled function.
+
+        This returns just the nonzero values of `H`.
+
+        """
         raise NotImplementedError
 
-    def evaluate_G_structure(self):
+    def evaluate_H_structure(self):
+        """Evaluate the structure of `H` using CasADi compiled function.
+
+        This returns just the row and column indices of `H` in the form
+        expected by Pycollo.
+
+        """
         raise NotImplementedError
 
-    def evaluate_G_num_nonzero(self):
+    def evaluate_H_num_nonzero(self):
+        """Evaluate number of nonzeros in `H` using CasADi compiled function.
+
+        This returns just the number of nonzero elements in `H`.
+
+        """
         raise NotImplementedError
 
     def solve_nlp(self):

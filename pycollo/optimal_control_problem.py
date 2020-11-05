@@ -406,6 +406,7 @@ class OptimalControlProblem():
                 Option for whether progress updates should be outputted to the
                 console during solving. Defaults to False.
         """
+        self.mesh_tolerance_met = False
         self._set_solve_options(display_progress)
         tolerances_met = False
         while not tolerances_met:
@@ -434,14 +435,16 @@ class OptimalControlProblem():
         self._next_iteration_mesh = result.next_iteration_mesh
         self._next_iteration_guess = result.next_iteration_guess
         if result.mesh_tolerance_met:
+            self.mesh_tolerance_met = True
             msg = (f"Mesh tolerance met in mesh iteration "
                    f"{self.num_mesh_iterations}.\n")
             print(msg)
         if self.num_mesh_iterations >= self.settings.max_mesh_iterations:
             mesh_iterations_met = True
-            msg = ("Maximum number of mesh iterations reached. Pycollo "
-                   "exiting before mesh tolerance met.\n")
-            print(msg)
+            if not self.mesh_tolerance_met:
+                msg = ("Maximum number of mesh iterations reached. Pycollo "
+                       "exiting before mesh tolerance met.\n")
+                print(msg)
         else:
             mesh_iterations_met = False
         return tolerances_met(result.mesh_tolerance_met, mesh_iterations_met)

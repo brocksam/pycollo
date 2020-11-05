@@ -1602,7 +1602,13 @@ class Casadi(BackendABC):
             c_subs.update({self.W_iter[i]: W_val})
         c_iter = casadi_substitute(self.c_iter, c_subs)
         nlp = {"x": x_iter, "f": J_iter, "g": c_iter}
-        self.nlp_solver = ca.nlpsol("solver", "ipopt", nlp)
+        ipopt_settings = {"tol": 1e-10,
+                          "nlp_scaling_method": "gradient-based",
+                          "mu_strategy": "adaptive",
+                          "mu_min": 1e-11,
+                          }
+        settings = {"ipopt": ipopt_settings}
+        self.nlp_solver = ca.nlpsol("solver", "ipopt", nlp, settings)
 
     def evaluate_dy(self, x):
 

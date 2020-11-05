@@ -71,17 +71,27 @@ class SolutionABC(ABC):
             u_polys = np.empty((p.num_u_var, K), dtype=object)
             for i_y, (state, state_deriv) in enumerate(zip(p_data.y, p_data.dy)):
                 for i_k, (i_start, i_stop) in enumerate(zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])):
-                    scale_factor = p_data.T / self.it.mesh._PERIOD
+
                     t_k = p_data.tau[i_start:i_stop + 1]
-                    dy_k = state_deriv[i_start:i_stop + 1] * scale_factor
+                    dy_k = state_deriv[i_start:i_stop + 1]
                     dy_poly = np.polynomial.Legendre.fit(t_k,
                                                          dy_k,
                                                          deg=N_K[i_k] - 1,
                                                          window=[0, 1])
                     dy_polys[i_y, i_k] = dy_poly
+
+                    scale_factor = p_data.T / self.it.mesh._PERIOD
+                    y_k = state[i_start:i_stop + 1]
+                    dy_k = state_deriv[i_start:i_stop + 1] * scale_factor
+                    dy_poly = np.polynomial.Legendre.fit(t_k,
+                                                         dy_k,
+                                                         deg=N_K[i_k] - 1,
+                                                         window=[0, 1])
                     y_poly = dy_poly.integ(k=state[i_start])
                     y_polys[i_y, i_k] = y_poly
-                    dy_polys[i_y, i_k] = dy_poly
+
+                    t_data = np.linspace(t_k[0], t_k[-1])
+
             for i_u, control in enumerate(p_data.u):
                 for i_k, (i_start, i_stop) in enumerate(zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])):
                     t_k = p_data.tau[i_start:i_stop + 1]

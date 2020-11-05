@@ -2,12 +2,14 @@ from abc import ABC, abstractmethod
 import itertools
 
 import casadi as ca
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate as interpolate
 from pyproprop import Options
 
 from .mesh import Mesh, PhaseMesh
 from .utils import casadi_substitute, dict_merge, symbol_name
+from .vis.plot import plot_mesh
 
 
 PATTERSON_RAO = "patterson-rao"
@@ -48,10 +50,10 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         self.maximum_relative_mesh_errors = []
         self.ph_mesh = self.create_ph_mesh()
         self.dy_ph_callable = self.generate_dy_ph_callable()
-        x_tilde_full, y_tildes, u_tildes = self.construct_x_tilde_full()
-        zipped = zip(self.backend.p, self.sol.phase_data, y_tildes, u_tildes)
+        x_ph, y_ph, u_ph = self.construct_x_ph()
+        zipped = zip(self.backend.p, self.sol.phase_data, y_ph, u_ph)
         for args in zipped:
-            self.phase_mesh_error(*args, x_tilde_full)
+            self.phase_mesh_error(*args, x_ph)
 
     def create_ph_mesh(self):
         phase_ph_meshes = []
@@ -132,28 +134,25 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         dy_ph = casadi_substitute(dy, subs)
         return ca.Function("dy", [x_var_ph], [dy_ph])
 
-    def construct_x_tilde_full(self):
+    def construct_x_ph(self):
 
-        def get_y_u_tilde(p, p_data):
-            return get_y_tilde(), get_u_tilde()
-
-        def get_y_tilde():
-            y_tilde = np.zeros((p.num_y_var, self.ph_mesh.N[p.i]))
+        def get_y_ph(p, p_data):
+            y_ph = np.zeros((p.num_y_var, self.ph_mesh.N[p.i]))
             y_slice = self.it.mesh.mesh_index_boundaries[p.i]
             y_slice_ph = self.ph_mesh.mesh_index_boundaries[p.i]
-            y_tilde[:, y_slice_ph] = p_data.y[:, y_slice]
+            y_ph[:, y_slice_ph] = p_data.y[:, y_slice]
             y_polys = self.sol.phase_polys[p.i].y
-            return eval_polynomials(y_polys, self.ph_mesh, y_tilde)
+            return eval_polynomials(y_polys, self.ph_mesh, y_ph)
 
-        def get_u_tilde():
+        def get_u_ph(p, p_data):
             if not p.num_u_var:
                 return np.array([])
-            u_tilde = np.zeros((p.num_u_var, self.ph_mesh.N[p.i]))
+            u_ph = np.zeros((p.num_u_var, self.ph_mesh.N[p.i]))
             u_slice = self.it.mesh.mesh_index_boundaries[p.i]
             u_slice_ph = self.ph_mesh.mesh_index_boundaries[p.i]
-            u_tilde[:, u_slice_ph] = p_data.u[:, u_slice]
+            u_ph[:, u_slice_ph] = p_data.u[:, u_slice]
             u_polys = self.sol.phase_polys[p.i].u
-            return eval_polynomials(u_polys, self.ph_mesh, u_tilde)
+            return eval_polynomials(u_polys, self.ph_mesh, u_ph)
 
         def eval_polynomials(polys, mesh, vals):
             sec_bnd_inds = mesh.mesh_index_boundaries[p.i]
@@ -164,24 +163,26 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
                     vals[i_var, sec_slice] = poly(mesh.tau[p.i][sec_slice])
             return vals
 
-        y_tildes = []
-        u_tildes = []
-        x_tilde_full = []
+        y_ph_all = []
+        u_ph_all = []
+        x_ph_all = []
         for p, p_data in zip(self.backend.p, self.sol.phase_data):
-            y_tilde, u_tilde = get_y_u_tilde(p, p_data)
-            y_tildes.append(y_tilde)
-            u_tildes.append(u_tilde)
-            x_tilde_phase = chain_from_iter(((y for y in y_tilde),
-                                             (u for u in u_tilde),
-                                             (np.array([q]) for q in p_data.q),
-                                             (np.array([t]) for t in p_data.t)))
-            x_tilde_full.append(np.concatenate(tuple(x_tilde_phase)))
-        x_tilde_full.append([np.array(s) for s in self.sol._s])
-        x_tilde_full = np.concatenate(x_tilde_full)
-        return x_tilde_full, y_tildes, u_tildes
+            y_ph = get_y_ph(p, p_data)
+            u_ph = get_u_ph(p, p_data)
+            y_ph_all.append(y_ph)
+            u_ph_all.append(u_ph)
+            x_ph = chain_from_iter(((y for y in y_ph),
+                                    (u for u in u_ph),
+                                    (np.array([q]) for q in p_data.q),
+                                    (np.array([t]) for t in p_data.t)))
+            x_ph_all.append(np.concatenate(tuple(x_ph)))
+        x_ph_all.append([np.array(s) for s in self.sol._s])
+        x_ph_all = np.concatenate(x_ph_all)
+        return x_ph_all, y_ph_all, u_ph_all
 
-    def phase_mesh_error(self, p, p_data, y_tilde, u_tilde, x_tilde_full):
-        dy_ph = np.array(self.dy_ph_callable(x_tilde_full))
+    def phase_mesh_error(self, p, p_data, y_ph, u_ph, x_ph):
+        dy_ph = np.array(self.dy_ph_callable(x_ph))
+
         I_dy_ph = p_data.stretch * self.ph_mesh.sI_matrix[p.i].dot(dy_ph)
 
         dim_1 = self.it.mesh.K[p.i]
@@ -193,13 +194,11 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         zipped = zip(self.ph_mesh.mesh_index_boundaries[p.i][:-1],
                      self.ph_mesh.N_K[p.i] - 1)
         for i_k, (i_start, m_k) in enumerate(zipped):
-            y_k = y_tilde[:, i_start]
-            Y_tilde_k = (y_k + I_dy_ph[i_start:i_start + m_k]).T
-            Y_k = y_tilde[:, i_start + 1:i_start + 1 + m_k]
-            mesh_error_k = Y_tilde_k - Y_k
-            mesh_error[i_k, :, :m_k] = mesh_error_k
-            rel_error_scale_factor_k = np.max(np.abs(Y_k), axis=1) + 1
-            rel_error_scale_factor[i_k, :] = rel_error_scale_factor_k
+            y_k = y_ph[:, i_start]
+            Y_ph_k = (y_k + I_dy_ph[i_start:i_start + m_k]).T
+            Y_k = y_ph[:, i_start + 1:i_start + 1 + m_k]
+            mesh_error[i_k, :, :m_k] = Y_ph_k - Y_k
+            rel_error_scale_factor[i_k, :] = np.max(np.abs(Y_k), axis=1) + 1
 
         absolute_mesh_error = np.abs(mesh_error)
         self.absolute_mesh_errors.append(absolute_mesh_error)
@@ -267,20 +266,20 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
 
         def subdivide_sections(new_mesh_sec_sizes,
                                new_num_mesh_sec_nodes,
-                               subdivide_group,
-                               reduction_tolerance):
+                               subdivide_group):
             subdivide_group = np.array(subdivide_group)
             subdivide_required = subdivide_group[:, 0].astype(np.bool)
             subdivide_factor = subdivide_group[:, 1].astype(np.int)
-            P_q = subdivide_group[:, 2]
-            h_q = subdivide_group[:, 3]
-            p_q = subdivide_group[:, 4]
+            reduction_tol = subdivide_group[:, 2]
+            P_q = subdivide_group[:, 3]
+            h_q = subdivide_group[:, 4]
+            p_q = subdivide_group[:, 5]
 
             is_node_reduction = P_q <= 0
 
             predicted_nodes = P_q + p_q
             predicted_nodes[is_node_reduction] = np.ceil(
-                P_q[is_node_reduction] * reduction_tolerance) + p_q[is_node_reduction]
+                P_q[is_node_reduction] * reduction_tol[is_node_reduction]) + p_q[is_node_reduction]
 
             next_mesh_nodes = np.ones_like(
                 predicted_nodes, dtype=np.int) * col_points_min
@@ -302,20 +301,22 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
 
         if np.max(max_rel_mesh_errs) > mesh_tol:
 
-            P_q = np.ceil(np.divide(np.log(
-                max_rel_mesh_errs / mesh_tol), np.log(self.it.mesh.N_K[p.i])))
-            P_q_zero = P_q == 0
-            P_q[P_q_zero] = 1
+            error_to_tolerance_ratio = max_rel_mesh_errs / mesh_tol
+            log_error_to_tolerance_ratio = np.log(error_to_tolerance_ratio)
+            log_base = np.log(self.it.mesh.N_K[p.i])
+            P_q = np.ceil(np.divide(log_error_to_tolerance_ratio, log_base))
+            P_q_zero = P_q <= 0
+            P_q[P_q_zero] = P_q[P_q_zero] + 1
             predicted_nodes = P_q + self.it.mesh.N_K[p.i]
 
-            log_tolerance = np.log(
-                mesh_tol / np.max(max_rel_mesh_errs))
-            merge_tolerance = 50 / log_tolerance
+            MERGE_TOLERANCE_FACTOR = 0
+            log_tolerance = np.log(np.divide(mesh_tol, max_rel_mesh_errs))
+            merge_tolerance = MERGE_TOLERANCE_FACTOR / log_tolerance
             merge_required = predicted_nodes < merge_tolerance
 
-            reduction_tolerance = 1 - (-1 / log_tolerance)
-            if reduction_tolerance < 0:
-                reduction_tolerance = 0
+            reduction_tolerance = 1 + np.reciprocal(log_tolerance)
+            reduction_tolerance_lt_zero = reduction_tolerance < 0
+            reduction_tolerance[reduction_tolerance_lt_zero] = 0
 
             subdivide_required = predicted_nodes >= col_points_max
             subdivide_level = np.ones_like(predicted_nodes)
@@ -329,30 +330,37 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             zipped = zip(merge_required,
                          subdivide_required,
                          subdivide_level,
+                         reduction_tolerance,
                          P_q,
                          self.it.mesh.h_K[p.i],
                          self.it.mesh.N_K[p.i])
-            for need_merge, need_subdivide, subdivide_factor, P, h, N_k in zipped:
+            for need_merge, need_subdivide, subdivide_factor, tol, P, h, N_k in zipped:
                 if need_merge:
                     if subdivide_group != []:
                         new_mesh_sec_sizes, new_num_mesh_sec_nodes = subdivide_sections(
-                            new_mesh_sec_sizes, new_num_mesh_sec_nodes, subdivide_group, reduction_tolerance)
+                            new_mesh_sec_sizes, new_num_mesh_sec_nodes, subdivide_group)
                         subdivide_group = []
-                    merge_group.append([P, h, N_k])
+                    merge = [P, h, N_k]
+                    merge_group.append(merge)
                 else:
                     if merge_group != []:
                         new_mesh_sec_sizes, new_num_mesh_sec_nodes = merge_sections(
                             new_mesh_sec_sizes, new_num_mesh_sec_nodes, merge_group)
                         merge_group = []
-                    subdivide_group.append(
-                        [need_subdivide, subdivide_factor, P, h, N_k])
+                    subdivide = [need_subdivide,
+                                 subdivide_factor,
+                                 tol,
+                                 P,
+                                 h,
+                                 N_k]
+                    subdivide_group.append(subdivide)
             else:
                 if merge_group != []:
                     new_mesh_sec_sizes, new_num_mesh_sec_nodes = merge_sections(
                         new_mesh_sec_sizes, new_num_mesh_sec_nodes, merge_group)
                 elif subdivide_group != []:
                     new_mesh_sec_sizes, new_num_mesh_sec_nodes = subdivide_sections(
-                        new_mesh_sec_sizes, new_num_mesh_sec_nodes, subdivide_group, reduction_tolerance)
+                        new_mesh_sec_sizes, new_num_mesh_sec_nodes, subdivide_group)
             new_number_mesh_secs = len(new_mesh_sec_sizes)
             new_mesh = PhaseMesh(phase=p.ocp_phase,
                                  number_mesh_sections=new_number_mesh_secs,

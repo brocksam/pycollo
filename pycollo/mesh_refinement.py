@@ -306,7 +306,8 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             log_base = np.log(self.it.mesh.N_K[p.i])
             P_q = np.ceil(np.divide(log_error_to_tolerance_ratio, log_base))
             P_q_zero = P_q <= 0
-            P_q[P_q_zero] = P_q[P_q_zero] + 1
+            P_q_reduced = P_q[P_q_zero]
+            P_q[P_q_zero] = P_q_reduced + np.ceil((np.log(-P_q_reduced + 1)))
             predicted_nodes = P_q + self.it.mesh.N_K[p.i]
 
             MERGE_TOLERANCE_FACTOR = 0

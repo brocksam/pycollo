@@ -113,12 +113,12 @@ class TestHypersensitiveProblem:
 
     def test_set_ocp_settings(self, state):
         """Problem settings can be manipulated sucessfully."""
-        state.ocp.settings.display_mesh_result_graph = True
+        state.ocp.settings.display_mesh_result_graph = False
         state.ocp.settings.derivative_level = 2
         state.ocp.settings.quadrature_method = "lobatto"
         state.ocp.settings.max_mesh_iterations = 10
         state.ocp.settings.scaling_method = "bounds"
-        assert state.ocp.settings.display_mesh_result_graph is True
+        assert state.ocp.settings.display_mesh_result_graph is False
         assert state.ocp.settings.derivative_level == 2
         assert state.ocp.settings.quadrature_method == "lobatto"
         assert state.ocp.settings.max_mesh_iterations == 10
@@ -128,12 +128,11 @@ class TestHypersensitiveProblem:
         """OCP can be initialised sucessfully."""
         state.ocp.initialise()
 
-    # @pytest.mark.xfail(reason="Solving not working yet")
-    # def test_ocp_solve(self, state):
-    #     """OCP can be solved sucessfully."""
-    #     pass
+    def test_ocp_solve(self, state):
+        """OCP can be solved sucessfully."""
+        state.ocp.solve()
 
-    # @pytest.mark.xfail(reason="Solving not working yet")
-    # def test_ocp_solution(self, state):
-    #     """OCP solution is correct."""
-    #     pass
+    def test_ocp_solution(self, state):
+        """OCP solution is correct."""
+        assert 3.3620 < state.ocp.solution.objective < 3.3621
+        assert state.ocp.mesh_tolerance_met is True

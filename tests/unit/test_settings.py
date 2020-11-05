@@ -53,7 +53,7 @@ class TestSettings:
     def test_mesh_refinement_defaults(self):
         """Default mesh refinement settings."""
         assert self.settings.max_mesh_iterations == 10
-        assert self.settings.mesh_tolerance == 1e-8
+        assert self.settings.mesh_tolerance == 1e-7
 
     def test_display_defaults(self):
         """Defaults for console output and plotting during/after solve."""
@@ -64,7 +64,7 @@ class TestSettings:
     def test_scaling_defaults(self):
         """Defaults for problem scaling."""
         assert self.settings.scaling_method == "bounds"
-        assert self.settings.update_scaling is True
+        assert self.settings.update_scaling is False
         assert self.settings.number_scaling_samples == 0
         assert self.settings.scaling_weight == 0.8
 

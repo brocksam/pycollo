@@ -33,7 +33,30 @@ def double_pendulum_initialised_fixture(double_pendulum_fixture):
     return ocp, iteration
 
 
-def test_iterpolate_guess_to_new_mesh(double_pendulum_initialised_fixture):
+@pytest.fixture
+def brachistochrone_initialised_fixture(brachistochrone_fixture):
+    ocp, _ = brachistochrone_fixture
+    ocp._console_out_initialisation_message()
+    ocp._check_variables_and_equations()
+    ocp._initialise_backend()
+    ocp._check_problem_and_phase_bounds()
+    ocp._initialise_scaling()
+    ocp._initialise_quadrature()
+    ocp._postprocess_backend()
+    ocp._initialise_initial_mesh()
+    ocp._check_initial_guess()
+    ocp._backend.mesh_iterations = []
+    iteration = object.__new__(pycollo.iteration.Iteration)
+    iteration.backend = ocp._backend
+    iteration.ocp = ocp
+    iteration.index = 0
+    iteration.number = 1
+    iteration._mesh = ocp._backend.initial_mesh
+    iteration.prev_guess = ocp._backend.initial_guess
+    return ocp, iteration
+
+
+def test_iterpolate_guess_to_new_mesh_dp(double_pendulum_initialised_fixture):
     ocp, iteration = double_pendulum_initialised_fixture
     iteration.interpolate_guess_to_mesh(iteration.prev_guess)
 
@@ -97,6 +120,67 @@ def test_iterpolate_guess_to_new_mesh(double_pendulum_initialised_fixture):
 
     assert isinstance(iteration.guess_x, np.ndarray)
     assert iteration.guess_x.shape == (190, )
+
+
+def test_iterpolate_guess_to_new_mesh_br(brachistochrone_initialised_fixture):
+    ocp, iteration = brachistochrone_initialised_fixture
+    iteration.interpolate_guess_to_mesh(iteration.prev_guess)
+
+    assert isinstance(iteration.guess_tau, list)
+    assert len(iteration.guess_tau) == 1
+    assert isinstance(iteration.guess_tau[0], np.ndarray)
+    assert iteration.guess_tau[0].shape == (31, )
+
+    assert isinstance(iteration.guess_t0, list)
+    assert len(iteration.guess_t0) == 1
+    assert isinstance(iteration.guess_t0[0], np.float64)
+    assert iteration.guess_t0[0] == 0.0
+
+    assert isinstance(iteration.guess_tF, list)
+    assert len(iteration.guess_tF) == 1
+    assert isinstance(iteration.guess_tF[0], np.float64)
+    assert iteration.guess_tF[0] == 10.0
+
+    assert isinstance(iteration.guess_stretch, list)
+    assert len(iteration.guess_stretch) == 1
+    assert isinstance(iteration.guess_stretch[0], np.float64)
+    assert iteration.guess_stretch[0] == 5.0
+
+    assert isinstance(iteration.guess_shift, list)
+    assert len(iteration.guess_shift) == 1
+    assert isinstance(iteration.guess_shift[0], np.float64)
+    assert iteration.guess_shift[0] == 5.0
+
+    assert isinstance(iteration.guess_time, list)
+    assert len(iteration.guess_time) == 1
+    assert isinstance(iteration.guess_time[0], np.ndarray)
+    assert iteration.guess_time[0].shape == (31, )
+
+    assert isinstance(iteration.guess_y, list)
+    assert len(iteration.guess_y) == 1
+    assert isinstance(iteration.guess_y[0], np.ndarray)
+    assert iteration.guess_y[0].shape == (3, 31)
+
+    assert isinstance(iteration.guess_u, list)
+    assert len(iteration.guess_u) == 1
+    assert isinstance(iteration.guess_u[0], np.ndarray)
+    assert iteration.guess_u[0].shape == (1, 31)
+
+    assert isinstance(iteration.guess_q, list)
+    assert len(iteration.guess_q) == 1
+    assert isinstance(iteration.guess_q[0], np.ndarray)
+    assert iteration.guess_q[0].shape == (0, )
+
+    assert isinstance(iteration.guess_t, list)
+    assert len(iteration.guess_t) == 1
+    assert isinstance(iteration.guess_t[0], np.ndarray)
+    assert iteration.guess_t[0].shape == (1, )
+
+    assert isinstance(iteration.guess_s, np.ndarray)
+    assert iteration.guess_s.shape == (0, )
+
+    assert isinstance(iteration.guess_x, np.ndarray)
+    assert iteration.guess_x.shape == (125, )
 
 
 def test_create_var_con_counts_slices(double_pendulum_initialised_fixture):

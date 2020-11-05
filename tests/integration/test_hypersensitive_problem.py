@@ -13,14 +13,6 @@ import sympy as sym
 import pycollo
 
 
-@pytest.fixture(scope="module")
-def state():
-    """Fixture instance to hold the (incremental) test state."""
-    class State:
-        pass
-    return State()
-
-
 @pytest.mark.incremental
 @pytest.mark.usefixtures("state")
 class TestHypersensitiveProblem:

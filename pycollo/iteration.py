@@ -353,7 +353,6 @@ class Iteration:
 
         """
         self.scaling = self.backend.iteration_scaling(self)
-
         msg = "Scaling initialised."
         console_out(msg)
 
@@ -367,7 +366,6 @@ class Iteration:
         """
         if self.index == 0:
             self.guess_x = self.scaling.scale_x(self.guess_x)
-
             msg = "Initial guess scaled."
             console_out(msg)
 
@@ -376,6 +374,8 @@ class Iteration:
         self.backend.generate_nlp_function_callables(self)
         self.generate_scaling()
         self.backend.create_nlp_solver()
+        msg = "NLP generated."
+        console_out(msg)
 
     def generate_scaling(self):
         """Generate objective function and constraint scaling."""

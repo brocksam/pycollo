@@ -13,10 +13,9 @@ class CasadiSolution(SolutionABC):
 
     def extract_full_solution(self):
         self.objective = self.it.scaling.unscale_J(self.J)
-        self.phase_data = []
         x = self.it.scaling.unscale_x(self.x)
-        dy = self.backend.dy_iter_callable(self.x)
-        self.phase_data = tuple(self.extract_full_solution_one_phase(p, x, dy)
+        self.phase_data = []
+        self.phase_data = tuple(self.extract_full_solution_one_phase(p, x)
                                 for p in self.backend.p)
         self._y = tuple(p.y for p in self.phase_data)
         self._dy = tuple(p.dy for p in self.phase_data)
@@ -40,7 +39,7 @@ class CasadiSolution(SolutionABC):
         self.initial_time = self._t0
         self.final_time = self._tF
 
-    def extract_full_solution_one_phase(self, p, x, dy):
+    def extract_full_solution_one_phase(self, p, x):
 
         def extract_y(p, x):
             if p.num_y_var:
@@ -68,6 +67,7 @@ class CasadiSolution(SolutionABC):
                 return t[0]
             return self.it.guess_time[p.i][-1]
 
+        dy = self.backend.dy_iter_callable(self.x)
         tau = self.tau[p.i]
         y = extract_y(p, x)
         dy = extract_dy(p, dy)
@@ -80,5 +80,6 @@ class CasadiSolution(SolutionABC):
         stretch = T / 2
         shift = (t0 + tF) / 2
         time = tau * stretch + shift
+
         return PhaseSolutionData(tau, y, dy, u, q, t, t0, tF, T, stretch,
                                  shift, time)

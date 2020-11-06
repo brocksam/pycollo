@@ -181,10 +181,9 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         return x_ph_all, y_ph_all, u_ph_all
 
     def phase_mesh_error(self, p, p_data, y_ph, u_ph, x_ph):
-        dy_ph = np.array(self.dy_ph_callable(x_ph))
-
+        dy_ph = np.array(self.dy_ph_callable(x_ph)).reshape((-1, p.num_y_var),
+                                                            order="F")
         I_dy_ph = p_data.stretch * self.ph_mesh.sI_matrix[p.i].dot(dy_ph)
-
         dim_1 = self.it.mesh.K[p.i]
         dim_2 = p.num_y_var
         dim_3 = max(self.ph_mesh.N_K[p.i]) - 1

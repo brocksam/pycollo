@@ -1430,8 +1430,8 @@ def test_preprocess_phase_state_eqn_br_specific(brachistochrone_fixture,
     _r_u0, = phase_backend.r_u_var_full
 
     expect_y_eqn = (
-        _V_y2 * _y2 + _r_y2 * ca.sin(_V_u0 * _u0 + _r_u0),
-        _V_y2 * _y2 + _r_y2 * ca.cos(_V_u0 * _u0 + _r_u0),
+        (_V_y2 * _y2 + _r_y2) * ca.sin(_V_u0 * _u0 + _r_u0),
+        (_V_y2 * _y2 + _r_y2) * ca.cos(_V_u0 * _u0 + _r_u0),
         9.81 * ca.cos(_V_u0 * _u0 + _r_u0),
     )
 

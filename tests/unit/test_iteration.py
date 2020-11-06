@@ -7,7 +7,12 @@ import pytest
 
 import pycollo
 
-from .iteration_scaling_test_data import EXPECT_X, EXPECT_X_TILDE
+from .iteration_scaling_test_data_double_pendulum import (EXPECT_X_DP,
+                                                          EXPECT_X_TILDE_DP,
+                                                          )
+from .iteration_scaling_test_data_brachistochrone import (EXPECT_X_BR,
+                                                          EXPECT_X_TILDE_BR,
+                                                          )
 
 
 @pytest.fixture
@@ -244,10 +249,10 @@ def test_guess_scaling(double_pendulum_initialised_fixture):
     iteration.initialise_scaling()
 
     assert iteration.index == 0
-    np.testing.assert_allclose(iteration.guess_x, EXPECT_X)
+    np.testing.assert_allclose(iteration.guess_x, EXPECT_X_DP)
 
     iteration.scale_guess()
-    np.testing.assert_allclose(iteration.guess_x, EXPECT_X_TILDE)
+    np.testing.assert_allclose(iteration.guess_x, EXPECT_X_TILDE_DP)
 
 
 def test_backend_create_iter_var_symbols(double_pendulum_initialised_fixture):
@@ -281,7 +286,7 @@ def test_backend_generate_scaling_symbols(double_pendulum_initialised_fixture):
     assert backend.W_iter.size() == (backend.num_c, 1)
 
 
-def test_backend_generate_J_callable(double_pendulum_initialised_fixture):
+def test_backend_generate_J_callable_dp(double_pendulum_initialised_fixture):
     """Check iteration-specific objective function (`J`) callable compiled."""
     ocp, iteration = double_pendulum_initialised_fixture
     backend = ocp._backend
@@ -293,10 +298,26 @@ def test_backend_generate_J_callable(double_pendulum_initialised_fixture):
 
     assert hasattr(backend, "evaluate_J")
     assert callable(backend.evaluate_J)
-    assert backend.evaluate_J(EXPECT_X_TILDE) == 100
+    assert backend.evaluate_J(EXPECT_X_TILDE_DP) == 100
 
 
-def test_backend_generate_g_callable(double_pendulum_initialised_fixture):
+def test_backend_generate_J_callable_br(brachistochrone_initialised_fixture):
+    """Check iteration-specific objective function (`J`) callable compiled."""
+    ocp, iteration = brachistochrone_initialised_fixture
+    backend = ocp._backend
+    iteration.interpolate_guess_to_mesh(iteration.prev_guess)
+    iteration.create_variable_constraint_counts_slices()
+    iteration.initialise_scaling()
+    iteration.scale_guess()
+    iteration.generate_nlp()
+
+    assert hasattr(backend, "evaluate_J")
+    assert callable(backend.evaluate_J)
+    np.testing.assert_almost_equal(backend.evaluate_J(EXPECT_X_TILDE_BR),
+                                   0.8243386694458454)
+
+
+def test_backend_generate_g_callable_dp(double_pendulum_initialised_fixture):
     """Check iteration-specific objective gradient (`g`) callable compiled."""
     ocp, iteration = double_pendulum_initialised_fixture
     backend = ocp._backend
@@ -310,11 +331,29 @@ def test_backend_generate_g_callable(double_pendulum_initialised_fixture):
     assert callable(backend.evaluate_g)
     expect_g = np.zeros(190)
     expect_g[186] = 1000
-    g = backend.evaluate_g(EXPECT_X_TILDE)
+    g = backend.evaluate_g(EXPECT_X_TILDE_DP)
     np.testing.assert_allclose(np.array(g).squeeze(), expect_g)
 
 
-def test_backend_generate_c_callable(double_pendulum_initialised_fixture):
+def test_backend_generate_g_callable_br(brachistochrone_initialised_fixture):
+    """Check iteration-specific objective gradient (`g`) callable compiled."""
+    ocp, iteration = brachistochrone_initialised_fixture
+    backend = ocp._backend
+    iteration.interpolate_guess_to_mesh(iteration.prev_guess)
+    iteration.create_variable_constraint_counts_slices()
+    iteration.initialise_scaling()
+    iteration.scale_guess()
+    iteration.generate_nlp()
+
+    assert hasattr(backend, "evaluate_g")
+    assert callable(backend.evaluate_g)
+    expect_g = np.zeros(125)
+    expect_g[124] = 10
+    g = backend.evaluate_g(EXPECT_X_TILDE_BR)
+    np.testing.assert_allclose(np.array(g).squeeze(), expect_g)
+
+
+def test_backend_generate_c_callable_dp(double_pendulum_initialised_fixture):
     """Check iteration-specific constraint vector (`c`) callable compiled."""
     ocp, iteration = double_pendulum_initialised_fixture
     backend = ocp._backend
@@ -322,7 +361,24 @@ def test_backend_generate_c_callable(double_pendulum_initialised_fixture):
     iteration.create_variable_constraint_counts_slices()
     iteration.initialise_scaling()
     iteration.scale_guess()
-    iteration.backend.generate_nlp_function_callables(iteration)
+    iteration.generate_nlp()
 
     assert hasattr(backend, "evaluate_c")
     assert callable(backend.evaluate_c)
+
+
+def test_backend_generate_c_callable_br(brachistochrone_initialised_fixture):
+    """Check iteration-specific constraint vector (`c`) callable compiled."""
+    ocp, iteration = brachistochrone_initialised_fixture
+    backend = ocp._backend
+    iteration.interpolate_guess_to_mesh(iteration.prev_guess)
+    iteration.create_variable_constraint_counts_slices()
+    iteration.initialise_scaling()
+    iteration.scale_guess()
+    iteration.generate_nlp()
+
+    assert hasattr(backend, "evaluate_c")
+    assert callable(backend.evaluate_c)
+    expect_c = np.zeros(90)
+    c = backend.evaluate_c(EXPECT_X_TILDE_BR)
+    np.testing.assert_allclose(np.array(c).squeeze(), expect_c, atol=10e-2)

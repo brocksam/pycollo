@@ -1516,6 +1516,14 @@ class Casadi(BackendABC):
             for p, A_mat, I_mat in zip(self.p, mesh.sA_matrix, mesh.sI_matrix):
                 phase_mapping = all_phase_mapping[p]
                 W_d_phase = self.W_iter_mapping[p]["d"]
+                if p.ocp_phase.bounds._t_needed[0]:
+                    t0 = p.V_t_var[0] * p.t_var[0] + p.r_t_var[0]
+                else:
+                    t0 = p.t_var_full[0]
+                if p.ocp_phase.bounds._t_needed[1]:
+                    tF = p.V_t_var[-1] * p.t_var[-1] + p.r_t_var[-1]
+                else:
+                    tF = p.t_var_full[1]
                 zipped = zip(p.y_var, p.V_y_var, p.r_y_var, p.y_eqn, W_d_phase)
                 for y_var, V_y_var, r_y_var, y_eqn, W_d in zipped:
                     y_var = self.ocp_iter_sym_mapping[y_var]
@@ -1523,7 +1531,8 @@ class Casadi(BackendABC):
                     y_eqn = expand_eqn_to_vec(y_eqn, phase_mapping)
                     c.append(W_d * make_defect_constraint(y_var_unscaled,
                                                           y_eqn,
-                                                          *p.t_var_full,
+                                                          t0,
+                                                          tF,
                                                           A_mat,
                                                           I_mat))
             return c
@@ -1547,13 +1556,22 @@ class Casadi(BackendABC):
             for p, W_mat in zip(self.p, mesh.W_matrix):
                 phase_mapping = all_phase_mapping[p]
                 W_i_phase = self.W_iter_mapping[p]["i"]
+                if p.ocp_phase.bounds._t_needed[0]:
+                    t0 = p.V_t_var[0] * p.t_var[0] + p.r_t_var[0]
+                else:
+                    t0 = p.t_var_full[0]
+                if p.ocp_phase.bounds._t_needed[1]:
+                    tF = p.V_t_var[-1] * p.t_var[-1] + p.r_t_var[-1]
+                else:
+                    tF = p.t_var_full[1]
                 zipped = zip(p.q_var, p.V_q_var, p.r_q_var, p.q_fnc, W_i_phase)
                 for q_var, V_q_var, r_q_var, q_fnc, W_i in zipped:
                     q_var_unscaled = V_q_var * q_var + r_q_var
                     q_fnc = expand_eqn_to_vec(q_fnc, phase_mapping)
                     c.append(W_i * make_integral_constraint(q_var_unscaled,
                                                             q_fnc,
-                                                            *p.t_var_full,
+                                                            t0,
+                                                            tF,
                                                             W_mat))
             return c
 
@@ -1626,7 +1644,7 @@ class Casadi(BackendABC):
 
     def evaluate_J(self, x):
         """Evaluate `J` at a point `x` using CasADi compiled function."""
-        return self.nlp_solver.get_function("nlp_f")(x, False)
+        return float(self.nlp_solver.get_function("nlp_f")(x, False))
 
     def evaluate_g(self, x):
         """Evaluate `g` at a point `x` using CasADi compiled function."""

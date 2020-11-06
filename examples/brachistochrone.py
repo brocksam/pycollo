@@ -25,14 +25,10 @@ ymin = 0
 ymax = 10
 vmin = -50
 vmax = 50
-umin = -np.pi/2
-umax = np.pi/2
+umin = -np.pi / 2
+umax = np.pi / 2
 
-phase.state_equations = [
-	v*sym.sin(u), 
-	v*sym.cos(u), 
-	g*sym.cos(u),
-	]
+phase.state_equations = [v * sym.sin(u), v * sym.cos(u), g * sym.cos(u)]
 
 phase.auxiliary_data = {}
 

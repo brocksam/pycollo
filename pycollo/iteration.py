@@ -364,10 +364,9 @@ class Iteration:
         previous mesh which is already in the scaled basis (i.e. x-tilde).
 
         """
-        if self.index == 0:
-            self.guess_x = self.scaling.scale_x(self.guess_x)
-            msg = "Initial guess scaled."
-            console_out(msg)
+        self.guess_x = self.scaling.scale_x(self.guess_x)
+        msg = "Initial guess scaled."
+        console_out(msg)
 
     def generate_nlp(self):
         """Generate the NLP and all required components (backend-specific)."""

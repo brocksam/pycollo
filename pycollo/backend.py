@@ -532,7 +532,6 @@ class BackendABC(ABC):
 
     def preprocess_user_phase_independent_aux_data(self):
         """Add phase-independent user aux data to Pycollo aux data."""
-
         for user_sym, user_eqn in self.user_aux_data_phase_independent.items():
             if user_sym not in self.user_to_backend_mapping:
                 backend_sym = self.sym(symbol_name(user_sym))
@@ -736,10 +735,47 @@ class BackendABC(ABC):
         self.bounds.c_y_bnd = endpoint_state_constraints_bounds
         b_cons = []
         for b_con in self.ocp.endpoint_constraints:
+            b_con = self.replace_phase_dependent_point_constraint(b_con)
             b_con = self.substitute_pycollo_sym(b_con)
+            b_con = self.check_point_constraint_primitives(b_con)
             b_cons.append(b_con)
         self.b_con = tuple(b_cons)
         self.num_b_con = len(self.b_con)
+
+    def replace_phase_dependent_point_constraint(self, b_con):
+        """Replace ambiguous point symbols in point constraints."""
+        prims = symbol_primitives(b_con)
+        ambiguous_syms = prims.intersection(self.user_aux_data_phase_dependent)
+        if ambiguous_syms:
+            if len(self.p) != 1:
+                msg = (f"Ambiguous point constraint '{b_con}' supplied "
+                       f"which contains phase-dependent symbols and "
+                       f"cannot be rectified by Pycollo. Please rewrite "
+                       f"using phase-specific symbols.")
+                raise ValueError(msg)
+            all_user_to_backend_mapping = dict_merge(
+                self.user_to_backend_mapping,
+                self.p[0].phase_user_to_backend_mapping)
+            b_con, _ = sympy_to_casadi(b_con, all_user_to_backend_mapping,
+                                       phase=self.p[0].i)
+        return b_con
+
+    def check_point_constraint_primitives(self, b_con):
+        """Ensure point constraints aren't being used for state endpoints."""
+        if b_con in set(self.x_point_var):
+            msg = (f"Pycollo cannot automatically transform point constraints "
+                   f"to state endpoint constraints. Use state endpoint "
+                   f"constraints for '{b_con}'.")
+            raise ValueError(msg)
+        prims = set(symbol_primitives(b_con))
+        allowed_syms = itertools.chain(self.x_point_var,
+                                       self.V_x_var,
+                                       self.r_x_var)
+        if prims.difference(set(allowed_syms)):
+            msg = (f"Endpoint constraint {b_con} is invalid as it contains "
+                   f"symbols that aren't OCP point variables or constants.")
+            raise ValueError(msg)
+        return b_con
 
     def collect_constraints(self):
         """Collect phase and problem constraints and related data."""
@@ -1054,11 +1090,11 @@ class PycolloPhaseData:
 
     def preprocess_auxiliary_data(self):
         """Abstraction layer for preprocessing of user-supplied aux data."""
-        self.preprocess_user_phase_independent_aux_data()
+        self.preprocess_user_phase_dependent_aux_data()
         self.check_all_user_phase_aux_data_supplied()
         self.collect_variables_substitutions()
 
-    def preprocess_user_phase_independent_aux_data(self):
+    def preprocess_user_phase_dependent_aux_data(self):
         """Add phase-dependent user aux data to Pycollo aux data."""
         phase_aux_data = dict_merge(
             self.ocp_backend.user_aux_data_phase_dependent,

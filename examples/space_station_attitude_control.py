@@ -1,6 +1,8 @@
 """Space Station Attitude Control problem.
 
-Example 6.11 from Betts, p293 - 298.
+Example 6.11 from Betts, J. T. (2010). Practical methods for optimal control
+and estimation using nonlinear programming - 2nd Edition. Society for
+Industrial and Applied Mathematics, p293 - 298.
 
 """
 

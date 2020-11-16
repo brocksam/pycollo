@@ -14,7 +14,8 @@ from pyproprop import processed_property
 
 from .backend import BACKENDS
 from .bounds import DEFAULT_ASSUME_INF_BOUNDS
-from .bounds import DEFAULT_BOUND_CLASH_TOLERANCE
+from .bounds import DEFAULT_BOUND_CLASH_ABSOLUTE_TOLERANCE
+from .bounds import DEFAULT_BOUND_CLASH_RELATIVE_TOLERANCE
 from .bounds import DEFAULT_NUMERICAL_INF
 from .bounds import DEFAULT_OVERRIDE_ENDPOINTS
 from .bounds import DEFAULT_REMOVE_CONSTANT_VARIABLES
@@ -306,9 +307,19 @@ class Settings():
         type=bool,
         cast=True,
     )
-    bound_clash_tolerance = processed_property(
-        "bound_clash_tolerance",
-        description="tolerance to wish clashing bounds are assumed equal",
+    bound_clash_absolute_tolerance = processed_property(
+        "bound_clash_absolute_tolerance",
+        description=("absolute tolerance to wish clashing bounds are assumed "
+                     "equal"),
+        type=float,
+        cast=True,
+        min=0,
+        max=1,
+    )
+    bound_clash_relative_tolerance = processed_property(
+        "bound_clash_relative_tolerance",
+        description=("relative tolerance to wish clashing bounds are assumed "
+                     "equal"),
         type=float,
         cast=True,
         min=0,
@@ -372,7 +383,8 @@ class Settings():
                  number_scaling_samples=DEFAULT_NUMBER_SCALING_SAMPLES,
                  scaling_weight=DEFAULT_SCALING_WEIGHT,
                  assume_inf_bounds=DEFAULT_ASSUME_INF_BOUNDS,
-                 bound_clash_tolerance=DEFAULT_BOUND_CLASH_TOLERANCE,
+                 bound_clash_absolute_tolerance=DEFAULT_BOUND_CLASH_ABSOLUTE_TOLERANCE,
+                 bound_clash_relative_tolerance=DEFAULT_BOUND_CLASH_RELATIVE_TOLERANCE,
                  numerical_inf=DEFAULT_NUMERICAL_INF,
                  override_endpoint_bounds=DEFAULT_OVERRIDE_ENDPOINTS,
                  remove_constant_variables=DEFAULT_REMOVE_CONSTANT_VARIABLES,
@@ -419,7 +431,8 @@ class Settings():
 
         # Bounds
         self.assume_inf_bounds = assume_inf_bounds
-        self.bound_clash_tolerance = bound_clash_tolerance
+        self.bound_clash_absolute_tolerance = bound_clash_absolute_tolerance
+        self.bound_clash_relative_tolerance = bound_clash_relative_tolerance
         self.numerical_inf = numerical_inf
         self.override_endpoint_bounds = override_endpoint_bounds
         self.remove_constant_variables = remove_constant_variables

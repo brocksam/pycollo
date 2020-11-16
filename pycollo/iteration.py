@@ -20,7 +20,7 @@ from .guess import (PhaseGuess, EndpointGuess, Guess)
 from .mesh import Mesh
 from .nlp import initialise_nlp_backend
 from .scaling import IterationScaling
-from .utils import console_out
+from .utils import console_out, format_time
 
 
 class Iteration:
@@ -84,6 +84,7 @@ class Iteration:
         self.generate_nlp()
         self.generate_bounds()
         self.check_nlp_functions()
+        self.console_out_iteration_initialised()
 
     def console_out_initialising_iteration(self):
         """Console out message stating iteration initialisation started."""
@@ -143,6 +144,7 @@ class Iteration:
                 new_guess[index, :] = interp_func(tau)
             return new_guess
 
+        time_guess_start = timer()
         self.guess_tau = self.mesh.tau
         self.guess_t0 = prev_guess.t0
         self.guess_tF = prev_guess.tF
@@ -193,7 +195,10 @@ class Iteration:
         guess_x_chained = itertools.chain.from_iterable(self.guess_x)
         self.guess_x = np.array(list(guess_x_chained))
 
-        msg = ("Guess interpolated to iteration mesh.")
+        time_guess_stop = timer()
+        self._time_guess_interpolation = time_guess_stop - time_guess_start
+        msg = (f"Guess interpolated to iteration mesh in "
+               f"{format_time(self._time_guess_interpolation)}.")
         console_out(msg)
 
     def create_variable_constraint_counts_slices(self):
@@ -352,8 +357,12 @@ class Iteration:
         iteration.
 
         """
+        init_scaling_start = timer()
         self.scaling = self.backend.iteration_scaling(self)
-        msg = "Scaling initialised."
+        init_scaling_stop = timer()
+        self._time_initialise_scaling = init_scaling_stop - init_scaling_start
+        msg = (f"Scaling initialised in "
+               f"{format_time(self._time_initialise_scaling)}.")
         console_out(msg)
 
     def scale_guess(self):
@@ -364,31 +373,45 @@ class Iteration:
         previous mesh which is already in the scaled basis (i.e. x-tilde).
 
         """
+        scale_guess_start = timer()
         self.guess_x = self.scaling.scale_x(self.guess_x)
-        msg = "Initial guess scaled."
+        scale_guess_stop = timer()
+        self._time_scale_guess = scale_guess_stop - scale_guess_start
+        msg = f"Initial guess scaled in {format_time(self._time_scale_guess)}."
         console_out(msg)
 
     def generate_nlp(self):
         """Generate the NLP and all required components (backend-specific)."""
+        gen_nlp_start = timer()
         self.backend.generate_nlp_function_callables(self)
         self.generate_scaling()
         self.backend.create_nlp_solver()
-        msg = "NLP generated."
+        gen_nlp_stop = timer()
+        self._time_generate_nlp = gen_nlp_stop - gen_nlp_start
+        msg = f"NLP generated in {format_time(self._time_generate_nlp)}."
         console_out(msg)
 
     def generate_scaling(self):
         """Generate objective function and constraint scaling."""
+        gen_scaling_start = timer()
         self.scaling.generate_J_c_scaling()
-        msg = "Scaling generated."
+        gen_scaling_stop = timer()
+        self._time_generate_scaling = gen_scaling_stop - gen_scaling_start
+        msg = (f"Scaling generated in "
+               f"{format_time(self._time_generate_scaling)}.")
         console_out(msg)
 
     def generate_bounds(self):
         """Generate bounds for the mesh iteration NLP."""
+        gen_bounds_start = timer()
         self.generate_variable_bounds()
         self.generate_constraint_bounds()
         self.scale_bounds()
-        msg = "Mesh-specific bounds generated."
-        console_out(msg)
+        gen_bounds_stop = timer()
+        self._time_generate_bounds = gen_bounds_stop - gen_bounds_start
+        msg = (f"Mesh-specific bounds generated in "
+               f"{format_time(self._time_generate_bounds)}.")
+        console_out(msg, trailing_blank_line=True)
 
     def generate_variable_bounds(self):
         """Generate bounds for the NLP variables."""
@@ -437,8 +460,27 @@ class Iteration:
         self.c_bnd_l = self.scaling.scale_c(self.c_bnd_l)
         self.c_bnd_u = self.scaling.scale_c(self.c_bnd_u)
 
+    def check_nlp_functions(self):
+        """Dumps values of the NLP callables evaluated at the initial guess."""
+        if self.backend.ocp.settings.check_nlp_functions:
+            raise NotImplementedError
+
+    def console_out_iteration_initialised(self):
+        """Console out message stating iteration initialised."""
+        all_times = (self._time_guess_interpolation,
+                     self._time_generate_scaling,
+                     self._time_initialise_scaling,
+                     self._time_generate_nlp,
+                     self._time_scale_guess,
+                     self._time_generate_bounds,
+                     )
+        self._time_iteration_initialisation = sum(all_times)
+        msg = (f"Mesh iteration #{self.number} initialised in "
+               f"{format_time(self._time_iteration_initialisation)}.")
+        console_out(msg, trailing_blank_line=True)
+
     def solve(self):
-        """Solve the NLP.
+        """Abstraction layer for solving the NLP and processing its solution.
 
         Returns
         -------
@@ -450,7 +492,25 @@ class Iteration:
             Guess to be used for the next mesh iteration.
 
         """
+        self.console_out_solving_iteration()
+        nlp_result = self.solve_nlp()
+        mesh_iteration_result = self.process_nlp_solution(nlp_result)
+        return mesh_iteration_result
+
+    def console_out_solving_iteration(self):
+        """Console out message stating iteration solving started."""
+        msg = f"Solving mesh iteration #{self.number}."
+        console_out(msg, heading=True)
+
+    def solve_nlp(self):
+        """Solve the NLP."""
+        solve_time_start = timer()
         nlp_result = self.backend.solve_nlp()
+        solve_time_stop = timer()
+        self._time_solve = solve_time_stop - solve_time_start
+        return nlp_result
+
+    def process_nlp_solution(self, nlp_result):
         self.solution = self.backend.process_solution(self, nlp_result)
         next_iter_mesh = self.solution.refine_mesh()
         next_iter_guess = self.generate_guess_for_next_mesh_iteration()
@@ -460,11 +520,6 @@ class Iteration:
                                                     next_iter_mesh,
                                                     next_iter_guess)
         return mesh_iteration_result
-
-    def check_nlp_functions(self):
-        """Dumps values of the NLP callables evaluated at the initial guess."""
-        if self.backend.ocp.settings.check_nlp_functions:
-            raise NotImplementedError
 
     def generate_guess_for_next_mesh_iteration(self):
         """Abstraction collecting and combining phase and problem guesses.

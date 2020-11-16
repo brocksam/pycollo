@@ -4,66 +4,6 @@ This module contains all settings for the Pycollo package including settings
 for Pycollo :class:`OptimalControlProblem`s as well as settings for dependent
 NLP solvers etc.
 
-Attributes
-----------
-DEFAULT_DERIVATIVE_LEVEL : int
-    Default derivative level to be used by the Pycollo-backends and NLP solvers
-    with 1 and 2 corresponding to first- and second-order mode respectively.
-    By default second-order mode is chosen (via its constant identifier) as it
-    generally gives superior performance.
-DEFAULT_DISPLAY_MESH_REFINE_INFO : bool
-    Default value of whether mesh refinement information should be outputted
-    to the console at the end of each mesh iteration. Value is set to True as
-    this information is generally interesting/useful to users.
-DEFAULT_DISPLAY_MESH_RESULT_GRAPH : bool
-    Default value of whether graphs should be plotting displaying the state,
-    state derivatives and control variables at the end of each mesh iteration.
-    Value is set to False as displaying these causes the NLP solver to pause
-    between sucessive mesh iterations.
-DEFAULT_DISPLAY_MESH_RESULT_INFO : bool
-    Default value of whether information about the mesh result should be
-    outputted to the console at the end of each mesh iteration. Value is set to
-    False as mesh results tend to be large streams of data that are difficult
-    to interpret.
-DEFAULT_LINEAR_SOLVER : str
-    Description
-DEFAULT_MAX_MESH_ITERATIONS : int
-    Description
-DEFAULT_MAX_NLP_ITERATIONS : int
-    Description
-DEFAULT_MESH_TOLERANCE : float
-    Description
-DEFAULT_NLP_SOLVER : TYPE
-    Description
-DEFAULT_NLP_TOLERANCE : float
-    Description
-DEFAULT_NUMBER_SCALING_SAMPLES : int
-    Description
-DEFAULT_QUADRATURE_METHOD : TYPE
-    Description
-DERIVATIVE_LEVEL_FIRST : int
-    Description
-DERIVATIVE_LEVEL_SECOND : int
-    Description
-LINEAR_SOLVER_MA57_KEYWORD : str
-    Description
-LINEAR_SOLVER_MUMPS_KEYWORD : str
-    Description
-NLP_SOLVER_BONMIN_KEYWORD : str
-    Description
-NLP_SOLVER_IPOPT_KEYWORD : str
-    Description
-NLP_SOLVER_SNOPT_KEYWORD : str
-    Description
-NLP_SOLVER_WORHP_KEYWORD : str
-    Description
-UNSUPPORTED_LINEAR_SOLVER : tuple
-    Description
-UNSUPPORTED_NLP_SOLVER : TYPE
-    Description
-UNSUPPORTED_QUADRATURE_METHOD : TYPE
-    Description
-
 """
 
 
@@ -80,6 +20,8 @@ from .bounds import DEFAULT_OVERRIDE_ENDPOINTS
 from .bounds import DEFAULT_REMOVE_CONSTANT_VARIABLES
 from .compiled import COLLOCATION_MATRIX_FORMS
 from .mesh_refinement import MESH_REFINEMENT_ALGORITHMS
+from .mesh_refinement import DEFAULT_MESH_TOLERANCE
+from .mesh_refinement import DEFAULT_MAX_MESH_ITERATIONS
 from .quadrature import DEFAULT_COLLOCATION_POINTS_MIN
 from .quadrature import DEFAULT_COLLOCATION_POINTS_MAX
 from .quadrature import QUADRATURES
@@ -111,10 +53,6 @@ DEFAULT_WARM_START = False
 DERIVATIVE_LEVEL_FIRST = 1
 DERIVATIVE_LEVEL_SECOND = 2
 DEFAULT_DERIVATIVE_LEVEL = DERIVATIVE_LEVEL_SECOND
-
-# Mesh refinement constants
-DEFAULT_MESH_TOLERANCE = 1e-7
-DEFAULT_MAX_MESH_ITERATIONS = 10
 
 # Display constants
 DEFAULT_CONSOLE_OUT_PROGRESS = True
@@ -438,6 +376,7 @@ class Settings():
         self.derivative_level = derivative_level
 
         # Mesh refinement
+        self.mesh_refinement_algorithm = mesh_refinement_algorithm
         self.collocation_points_min = collocation_points_min
         self.collocation_points_max = collocation_points_max
         self.mesh_tolerance = mesh_tolerance
@@ -461,9 +400,6 @@ class Settings():
         self.numerical_inf = numerical_inf
         self.override_endpoint_bounds = override_endpoint_bounds
         self.remove_constant_variables = remove_constant_variables
-
-        # Mesh refinement
-        self.mesh_refinement_algorithm = mesh_refinement_algorithm
 
         # Debugging
         self.check_nlp_functions = check_nlp_functions

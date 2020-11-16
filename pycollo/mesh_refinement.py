@@ -1,3 +1,20 @@
+"""Module for mesh refinement including algorithms and mesh error calculation.
+
+Attributes
+----------
+DEFAULT_MESH_TOLERANCE : float
+    Default value for py:class:`Settings` for the default minimum acceptable
+    mesh error tolerance.
+DEFAULT_MAX_MESH_ITERATIONS : int
+    Default value for py:class:`Settings` for the default maximum number of
+    mesh iterations that Pycollo should conduct before terminating the OCP
+    solve if the mesh error has not been met.
+PATTERSON_RAO : str
+    String keyword identifier for the Patterson-Rao mesh refinement algorithm.
+
+"""
+
+
 from abc import ABC, abstractmethod
 import itertools
 
@@ -12,6 +29,8 @@ from .utils import casadi_substitute, dict_merge, symbol_name
 from .vis.plot import plot_mesh
 
 
+DEFAULT_MESH_TOLERANCE = 1e-7
+DEFAULT_MAX_MESH_ITERATIONS = 10
 PATTERSON_RAO = "patterson-rao"
 chain_from_iter = itertools.chain.from_iterable
 

@@ -1,4 +1,8 @@
-""""""
+"""Space Shuttle Reentry Trajectory problem - Maximise Crossrange.
+
+Example 6.1 from Betts, p247 - 251.
+
+"""
 
 import numpy as np
 import sympy as sym

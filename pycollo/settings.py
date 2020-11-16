@@ -70,10 +70,13 @@ class Settings():
 
     Attributes
     ----------
-    backend : TYPE
-        Description
-    collocation_matrix_form : TYPE
-        Description
+    backend : :py:class:`Backend <pycollo>`
+        The Pycollo backend used for OCP processing, particularly derivative
+        generation and NLP construction.
+    collocation_matrix_form : str
+        Whether the integral or derivative form of the collocation matrix
+        should be used. Specifically relates to the construction of the
+        dynamics defect constraints.
     collocation_points_max : int
         Minimum allowable number of mesh points per mesh section.
     collocation_points_min : int
@@ -83,36 +86,56 @@ class Settings():
         Pycollo does not produce an exact Hessian, if the value is 2 it
         does.
     display_mesh_refinement_info : bool
-        Description
+        Should information about the mesh refinement step (change in number of
+        mesh sections and mesh nodes per mesh section) be outputted to the
+        console at the end of the mesh iteration.
     display_mesh_result_graph : bool
-        Description
+        Should the state, state derivatives and contol be plotted at the end of
+        each mesh iteration.
     display_mesh_result_info : bool
-        Description
+        Should information about the result to the NLP be dispalyed on the
+        console at the end of each mesh iteration.
     linear_solver : str
-        Description
+        Which linear solver should be used by the chosen NLP solver. Note:
+        different NLP solvers will support different linear solvers.
     max_mesh_iterations : int
-        Description
+        How many mesh iterations should be conducted by Pycollo (provided that
+        the mesh tolerance hasn't been met) before the attempt to solve the OCP
+        is terminated.
     max_nlp_iterations : int
-        Description
+        How many NLP iterations should be conducted by the NLP solver (provided
+        the NLP tolerance hasn't been met) before the attempt to solve the NLP
+        is terminated. Note: this will likely behave slightly different for
+        different NLP solvers.
     mesh_tolerance : float
-        Description
+        The minimum acceptable maximum relative mesh error for the OCP to be
+        considered solved.
     nlp_solver : str
-        Description
+        Which NLP solver the Pycollo backend should use.
     nlp_tolerance : float
-        Description
+        The minimum acceptable maximum error in the NLP that the NLP solver
+        must meet before it can exit successfully.
     number_scaling_samples : int
-        Description
+        How many randomly generated samples should be used when the sampleing
+        scaling method is used.
     ocp : :obj:`pycollo.OptimalControlProblem`
         The optimal control problem object with which these settings should be
         associated.
     quadrature_method : str
-        Description
+        Which K-stage Runge-Kutta orthogonal collocation/quadrature method
+        should be used to transcribe the OCP to NLP.
     scaling_method : (str, None)
-        Description
+        Which scaling method should be used to scale the NLP.
     scaling_weight : float
-        Description
+        When updating scaling is used, what weighting factor should be used in
+        the moving average. The minimum value is 0, the maximum is 1. A larger
+        value means that more recent mesh iteration scalings are weighted more
+        heavily.
     update_scaling : bool
-        Description
+        Whether the scaling should be automatically updated between mesh
+        iterations. If True then the scaling is updated, if False then the
+        scaling at every mesh iteration is the scaling used to solve the OCP
+        on the first mesh iteration.
 
     """
 

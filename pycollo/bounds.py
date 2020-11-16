@@ -35,6 +35,8 @@ from .utils import (fast_sympify,
 
 DEFAULT_ASSUME_INF_BOUNDS = True
 DEFAULT_BOUND_CLASH_TOLERANCE = 1e-6
+DEFAULT_BOUND_CLASH_ABSOLUTE_TOLERANCE = 1e-6
+DEFAULT_BOUND_CLASH_RELATIVE_TOLERANCE = 1e-6
 DEFAULT_NUMERICAL_INF = 10e19
 DEFAULT_OVERRIDE_ENDPOINTS = True
 DEFAULT_REMOVE_CONSTANT_VARIABLES = True
@@ -86,22 +88,24 @@ class EndpointBounds(BoundsABC):
         self._process_endpoint_cons()
 
     def _process_parameter_vars(self):
-        user_bnd = self.parameter_variables
-        user_sym = self._backend.s_var_user
-        bnd_type = "parameter variable"
-        num_expect = self._backend.num_s_var_full
-        bnd_info = BoundInfo(user_bnd, user_sym, bnd_type, num_expect)
-        self._s_bnd, self._s_needed = self._process_single_type_value(bnd_info)
+        user_bnds = self.parameter_variables
+        user_syms = self._backend.s_vars_user
+        bnds_type = "parameter variable"
+        num_expected = self._backend.num_s_vars_full
+        bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expected)
+        self._s_bnd, self._s_needed = self._process_single_type_of_values(
+            bnds_info)
 
     def _process_endpoint_cons(self):
         num_b_con = self.optimal_control_problem.number_endpoint_constraints
-        user_bnd = self.endpoint_constraints
-        user_sym = [None] * num_b_con
-        bnd_type = "endpoint constraints"
+        user_bnds = self.endpoint_constraints
+        user_syms = [None] * num_b_con
+        bnds_type = "endpoint constraints"
         num_expect = num_b_con
-        bnd_info = BoundInfo(user_bnd, user_sym, bnd_type, num_expect, False)
-        self._b_con_bnd, _ = self._process_single_type_value(bnd_info)
-        if any(_):
+        bnds_info = BoundsInfo(user_bnds, user_syms, bnds_type, num_expect,
+                              False)
+        self._b_con_bnd, needed = self._process_single_type_value(bnds_info)
+        if any(needed):
             msg = (f"Pycollo cannot currently handle automatic conversion of "
                    f"endpoint constraints to state endpoint constraints. "
                    f"Please reformulate using "
@@ -109,28 +113,28 @@ class EndpointBounds(BoundsABC):
                    f"`bounds.final_state_constraints`.")
             raise NotImplementedError(msg)
 
-    def _process_single_type_value(self, bnd_info):
-        if isinstance(bnd_info.user_bnd, dict):
-            bnd = self._process_mapping_bounds_instance(bnd_info)
-        elif bnd_info.user_bnd is None:
-            bnd = self._process_none_bounds_instance(bnd_info)
-        elif isinstance(bnd_info.user_bnd, SUPPORTED_ITER_TYPES):
-            bnd = self._process_iterable_bounds_instance(bnd_info)
+    def _process_single_type_of_values(self, bnds_info):
+        if isinstance(bnds_info.user_bnds, dict):
+            bnds = self._process_mapping_bounds_instance(bnds_info)
+        elif bnds_info.user_bnds is None:
+            bnds = self._process_none_bounds_instance(bnds_info)
+        elif isinstance(bnds_info.user_bnds, supported_iter_types):
+            bnds = self._process_iterable_bounds_instance(bnds_info)
         else:
-            bnd = self._process_single_type_value(bnd_info)
-        bnd, needed = self._check_lower_against_upper(bnd, bnd_info)
-        return bnd, needed
+            bnds = self._process_single_type_of_values(bnds_info)
+        bnds, needed = self._check_lower_against_upper(bnds, bnds_info)
+        return bnds, needed
 
-    def _process_mapping_bounds_instance(self, bnd_info):
-        if any(user_sym is None for user_sym in bnd_info.user_syms):
-            msg = f"Can't use mapping for {bnd_info.bnds_type} bounds."
+    def _process_mapping_bounds_instance(self, bnds_info):
+        if any(user_sym is None for user_sym in bnds_info.user_syms):
+            msg = f"Can't use mapping for {bnds_info.bnds_type} bounds."
             raise TypeError(msg)
         bnds = []
-        for bnd_i, user_sym in enumerate(bnd_info.user_sym):
-            bnd = bnd_info.user_bnds.get(user_sym)
-            bnd_info_i = BoundInfo(bnd, user_sym, bnd_info.bnd_type, bnd_i)
-            self._check_user_bound_missing(bnd_info_i)
-            bnd = self._as_lower_upper_pair(bnd_info_i)
+        for bnd_i, user_sym in enumerate(bnds_info.user_syms):
+            bnd = bnds_info.user_bnds.get(user_sym)
+            bnd_info = BoundsInfo(bnd, user_sym, bnds_info.bnds_type, bnd_i)
+            self._check_user_bound_missing(bnd_info)
+            bnd = self._as_lower_upper_pair(bnd_info)
             bnds.append(bnd)
         return bnds
 
@@ -152,24 +156,24 @@ class EndpointBounds(BoundsABC):
             bnd_info = bnd_info._replace(user_bnd=[bnd_info.user_bnd])
         bnds = []
         for bnd_i, bnd in enumerate(bnd_info.user_bnd):
-            bnd_info_i = BoundInfo(bnd, None, bnd_info.bnd_type, bnd_i)
+            bnd_info = BoundsInfo(bnd, None, bnds_info.bnds_type, bnd_i)
             self._check_user_bound_missing(bnd_info_i)
             bnd = self._as_lower_upper_pair(bnd_info_i)
             bnds.append(bnd)
         return bnds
 
-    def _process_single_value_bounds_instance(self, bnd_info):
-        if not isinstance(bnd_info.user_bnd, (Number, sym.Expr)):
-            msg = ()
+    def _process_single_value_bounds_instance(self, bnds_info):
+        if not isinstance(bnds_info.user_bnds, (Number, sym.Expr)):
+            msg = ""
             raise TypeError(msg)
-        bnd_info = bnd_info._replace(user_bnd=[bnd_info.user_bnd] * 2)
-        return self._process_iterable_bounds_instance(bnd_info)
+        bnds_info = bnds_info._replace(user_bnds=[bnds_info.user_bnds] * 2)
+        return self._process_iterable_bounds_instance(bnds_info)
 
-    def _process_none_bounds_instance(self, bnd_info):
+    def _process_none_bounds_instance(self, bnds_info):
         bnds = []
-        for bnd_i, user_sym in enumerate(bnd_info.user_sym):
+        for bnd_i, user_sym in enumerate(bnds_info.user_sym):
             bnd = None
-            bnd_info = BoundInfo(bnd, user_sym, bnd_info.bnds_type, bnd_i)
+            bnd_info = BoundsInfo(bnd, user_sym, bnds_info.bnds_type, bnd_i)
             self._check_user_bound_missing(bnd_info)
             bnd = self._as_lower_upper_pair(bnd_info)
             bnds.append(bnd)
@@ -408,7 +412,7 @@ class PhaseBounds(BoundsABC):
         user_sym = p_info.backend.y_var_user
         bnd_type = "state variable"
         num_expect = p_info.backend.num_y_var_full
-        bnd_info = BoundInfo(user_bnd, user_sym, bnd_type, num_expect)
+        bnd_info = BoundsInfo(user_bnd, user_sym, bnd_type, num_expect)
         self._y_bnd, self._y_needed = self._process_single_type_value(bnd_info,
                                                                       p_info)
 
@@ -417,7 +421,7 @@ class PhaseBounds(BoundsABC):
         user_sym = p_info.backend.u_var_user
         bnd_type = "control variable"
         num_expect = p_info.backend.num_u_var_full
-        bnd_info = BoundInfo(user_bnd, user_sym, bnd_type, num_expect)
+        bnd_info = BoundsInfo(user_bnd, user_sym, bnd_type, num_expect)
         self._u_bnd, self._u_needed = self._process_single_type_value(bnd_info,
                                                                       p_info)
 
@@ -426,7 +430,7 @@ class PhaseBounds(BoundsABC):
         user_sym = p_info.backend.q_var_user
         bnd_type = "integral variable"
         num_expect = p_info.backend.num_q_var_full
-        bnd_info = BoundInfo(user_bnd, user_sym, bnd_type, num_expect)
+        bnd_info = BoundsInfo(user_bnd, user_sym, bnd_type, num_expect)
         self._q_bnd, self._q_needed = self._process_single_type_value(bnd_info,
                                                                       p_info)
 
@@ -435,7 +439,7 @@ class PhaseBounds(BoundsABC):
         user_sym = [None] * p_info.backend.num_p_con
         bnd_type = "path constraints"
         num_expect = p_info.backend.num_p_con
-        bnd_info = BoundInfo(user_bnd, user_sym, bnd_type, num_expect, False)
+        bnd_info = BoundsInfo(user_bnd, user_sym, bnd_type, num_expect, False)
         self._p_con_bnd, _ = self._process_single_type_value(bnd_info, p_info)
 
     def _process_time_vars(self, p_info):
@@ -443,7 +447,7 @@ class PhaseBounds(BoundsABC):
         user_sym = p_info.backend.t_var_user
         bnd_type = "time variable"
         num_expect = p_info.backend.num_t_var_full
-        bnd_info = BoundInfo(user_bnd, user_sym, bnd_type, num_expect)
+        bnd_info = BoundsInfo(user_bnd, user_sym, bnd_type, num_expect)
         self._t_bnd, self._t_needed = self._process_single_type_value(bnd_info,
                                                                       p_info)
         self._check_time_bounds_error((0, 0), (1, 0), p_info)
@@ -471,7 +475,7 @@ class PhaseBounds(BoundsABC):
         user_sym = p_info.backend.y_var_user
         bnd_type = "initial state constraint"
         num_expect = p_info.backend.num_y_var_full
-        bnd_info = BoundInfo(user_bnd, user_sym, bnd_type, num_expect, False)
+        bnd_info = BoundsInfo(user_bnd, user_sym, bnd_type, num_expect, False)
         y_t0_bnd, self._y_t0_needed = self._process_single_type_value(bnd_info,
                                                                       p_info)
         if self.optimal_control_problem.settings.override_endpoint_bounds:
@@ -483,7 +487,7 @@ class PhaseBounds(BoundsABC):
         user_sym = p_info.backend.y_var_user
         bnd_type = "final state constraint"
         num_expect = p_info.backend.num_y_var_full
-        bnd_info = BoundInfo(user_bnd, user_sym, bnd_type, num_expect, False)
+        bnd_info = BoundsInfo(user_bnd, user_sym, bnd_type, num_expect, False)
         y_tF_bnd, self._y_tF_needed = self._process_single_type_value(bnd_info,
                                                                       p_info)
         if self.optimal_control_problem.settings.override_endpoint_bounds:
@@ -505,7 +509,7 @@ class PhaseBounds(BoundsABC):
         y_con_bnd[upper_is_more, 1] = self._y_bnd[upper_is_more, 1]
         return y_con_bnd
 
-    def _process_single_type_value(self, bnd_info, p_info):
+    def _process_single_type_value(self, bnds_info, p_info):
         """
         A single bound can either be a single value or a pair of values. If a 
         single value is supplied then the lower and upper bound are set equal. 
@@ -523,16 +527,16 @@ class PhaseBounds(BoundsABC):
             2. The bounds are an iterable; and
             3. The bounds are a single value.
         """
-        if isinstance(bnd_info.user_bnd, dict):
-            bnd = self._process_mapping_bounds_instance(bnd_info, p_info)
-        elif bnd_info.user_bnd is None:
-            bnd = self._process_none_bounds_instance(bnd_info, p_info)
+        if isinstance(bnds_info.user_bnds, dict):
+            bnds = self._process_mapping_bounds_instance(bnds_info, p_info)
+        elif bnds_info.user_bnds is None:
+            bnds = self._process_none_bounds_instance(bnds_info, p_info)
         elif isinstance(bnd_info.user_bnd, SUPPORTED_ITER_TYPES):
-            bnd = self._process_iterable_bounds_instance(bnd_info, p_info)
+            bnds = self._process_iterable_bounds_instance(bnds_info, p_info)
         else:
-            bnd = self._process_single_type_bounds_instance(bnd_info, p_info)
-        bnd, needed = self._check_lower_against_upper(bnd, bnd_info, p_info)
-        return bnd, needed
+            bnds = self._process_single_type_bounds_instance(bnds_info, p_info)
+        bnds, needed = self._check_lower_against_upper(bnds, bnds_info, p_info)
+        return bnds, needed
 
     def _process_mapping_bounds_instance(self, bnds_info, p_info):
         if any(user_sym is None for user_sym in bnds_info.user_sym):
@@ -541,7 +545,7 @@ class PhaseBounds(BoundsABC):
         bnds = []
         for bnd_i, user_sym in enumerate(bnds_info.user_sym):
             bnd = bnds_info.user_bnd.get(user_sym)
-            bnd_info = BoundInfo(bnd, user_sym, bnds_info.bnd_type, bnd_i)
+            bnd_info = BoundsInfo(bnd, user_sym, bnds_info.bnd_type, bnd_i)
             self._check_user_bound_missing(bnd_info, p_info)
             bnd = self._as_lower_upper_pair(bnd_info, p_info)
             bnds.append(bnd)
@@ -566,7 +570,7 @@ class PhaseBounds(BoundsABC):
             bnd_info = bnd_info._replace(user_bnd=[bnd_info.user_bnd])
         bnds = []
         for bnd_i, bnd in enumerate(bnd_info.user_bnd):
-            bnd_info = BoundInfo(bnd, None, bnd_info.bnd_type, bnd_i)
+            bnd_info = BoundsInfo(bnd, None, bnd_info.bnd_type, bnd_i)
             self._check_user_bound_missing(bnd_info, p_info)
             bnd = self._as_lower_upper_pair(bnd_info, p_info)
             bnds.append(bnd)
@@ -599,7 +603,7 @@ class PhaseBounds(BoundsABC):
         bnds = []
         for bnd_i, user_sym in enumerate(bnds_info.user_sym):
             bnd = None
-            bnd_info = BoundInfo(bnd, user_sym, bnds_info.bnds_type, bnd_i)
+            bnd_info = BoundsInfo(bnd, user_sym, bnds_info.bnds_type, bnd_i)
             self._check_user_bound_missing(bnd_info, p_info)
             bnd = self._as_lower_upper_pair(bnd_info, p_info)
             bnds.append(bnd)
@@ -719,9 +723,9 @@ class PhaseBounds(BoundsABC):
 phase_info_fields = ("name", "index", "backend")
 PhaseInfo = namedtuple("PhaseInfo", phase_info_fields)
 
-bounds_info_fields = ("user_bnd", "user_sym", "bnd_type", "num",
+bounds_info_fields = ("user_bnds", "user_syms", "bnds_type", "num",
                       "is_variable", "none_default_allowed")
-BoundInfo = namedtuple("BoundInfo",
+BoundsInfo = namedtuple("BoundsInfo",
                        bounds_info_fields,
                        defaults=[True, True])
 

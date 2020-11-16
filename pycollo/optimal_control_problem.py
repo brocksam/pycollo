@@ -325,14 +325,14 @@ class OptimalControlProblem():
     def initialise(self):
         """Initialise the optimal control problem before solving.
 
-        The initialisation of the optimal control problem involves the 
+        The initialisation of the optimal control problem involves the
         following stages:
 
-                * 1. Check that for each phase there are the same number of state 
-                        variables as there are state equations.
-                * 2. Check that for each phase the user-supplied bounds are 
-                        permissible, and check point bounds on optimal control problem.
-                * 3. Process bounds that need processing.
+            * 1. Check that for each phase there are the same number of state
+                variables as there are state equations.
+            * 2. Check that for each phase the user-supplied bounds are
+                permissible, and check point bounds on optimal control problem.
+            * 3. Process bounds that need processing.
 
         """
         self._console_out_initialisation_message()

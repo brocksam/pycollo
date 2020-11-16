@@ -1,6 +1,8 @@
 """Space Shuttle Reentry Trajectory problem - Maximise Crossrange.
 
-Example 6.1 from Betts, p247 - 251.
+Example 6.1 from Betts, J. T. (2010). Practical methods for optimal control
+and estimation using nonlinear programming - 2nd Edition. Society for
+Industrial and Applied Mathematics, p247 - 251.
 
 """
 

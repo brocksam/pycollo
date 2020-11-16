@@ -1,3 +1,11 @@
+"""Hypersensitive problem.
+
+Example 4.4 from Betts, J. T. (2010). Practical methods for optimal control
+and estimation using nonlinear programming - 2nd Edition. Society for
+Industrial and Applied Mathematics, p170 - 171.
+
+"""
+
 import numpy as np
 import sympy as sym
 

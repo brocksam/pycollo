@@ -15,8 +15,8 @@ MESH_OPTIONS = {"align": "edge",
 X_TITLES = {"y": "States", "dy": "State Derivatives", "u": "Controls"}
 
 
-def plot_solution(solution, *, iterpolated=True, plot_y=True, plot_dy=False,
-                  plot_u=False, render=True):
+def plot_solution(solution, *, iterpolated=True, plot_y=True, plot_dy=True,
+                  plot_u=True, render=True):
     if plot_y:
         t_data_phases, y_datas_phases = interpolate_x_solution(solution, Y)
         render_x_solution(solution, Y, t_data_phases, y_datas_phases)

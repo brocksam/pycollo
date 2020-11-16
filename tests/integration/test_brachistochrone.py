@@ -155,5 +155,11 @@ class TestHypersensitiveProblem:
 
     def test_ocp_solution(self, state):
         """OCP solution is correct."""
-        assert 0.8243 < state.ocp.solution.objective < 0.8244
+        GPOPS_II_SOLUTION = 0.82434
+        rtol = 1e-4
+        atol = 0.0
+        assert np.isclose(state.ocp.solution.objective,
+                          GPOPS_II_SOLUTION,
+                          rtol=rtol,
+                          atol=atol)
         assert state.ocp.mesh_tolerance_met is True

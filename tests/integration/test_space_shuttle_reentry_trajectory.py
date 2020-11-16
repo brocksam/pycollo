@@ -237,7 +237,12 @@ class TestHypersensitiveProblem:
         state.ocp.solve()
 
     def test_ocp_solution(self, state):
-        """OCP solution is correct."""
+        """OCP solution is correct.
+
+        The relative tolerance `rtol` is chosen because the GPOPS-II and SOS
+        solutions differ at the third decimal place.
+
+        """
         GPOPS_II_SOLUTION = -0.59628
         SOS_SOLUTION = -0.59588
         rtol = 1e-3

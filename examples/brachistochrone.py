@@ -1,3 +1,11 @@
+"""Brachistochrone problem.
+
+Example 4.10 from Betts, J. T. (2010). Practical methods for optimal control
+and estimation using nonlinear programming - 2nd Edition. Society for
+Industrial and Applied Mathematics, p215 - 216.
+
+"""
+
 import numpy as np
 import sympy as sym
 

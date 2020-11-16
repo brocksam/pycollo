@@ -195,12 +195,12 @@ def format_as_named_tuple(
 def check_sym_name_clash(syms: TupleSymsType) -> None:
     """Ensures user symbols do not clash with internal Pycollo symbols.
 
-    Pycollo reserves certain naming conventions of sympy symbols for itself. 
-    This function enforces those rules to make sure that any symbols Pycollo 
-    creates and/or manipulates iternally do not conflict with ones that the 
+    Pycollo reserves certain naming conventions of sympy symbols for itself.
+    This function enforces those rules to make sure that any symbols Pycollo
+    creates and/or manipulates iternally do not conflict with ones that the
     user expects ownership of. These naming conventions include all internal 
-    Pycollo symbols being named with a leading underscore as well as the 
-    suffixes '(t0)' and '(tF)'. Finally all user symbols must be uniquely named 
+    Pycollo symbols being named with a leading underscore as well as the
+    suffixes '(t0)' and '(tF)'. Finally all user symbols must be uniquely named
     for obvious reasons.
 
     Raises:
@@ -209,18 +209,18 @@ def check_sym_name_clash(syms: TupleSymsType) -> None:
     for sym in syms:
         if str(sym)[0] == '_':
             msg = (f"The user defined symbol {sym} is invalid as its leading "
-                f"character '_' is reserved for use by `Pycollo`. Please "
-                f"rename this symbol.")
+                   f"character '_' is reserved for use by `Pycollo`. Please "
+                   f"rename this symbol.")
             raise ValueError(msg)
         elif str(sym)[-4:] == '(t0)':
             msg = (f"The user defined symbol {sym} is invalid as it is named "
-                f"with the suffix '(t0)' which is reserved for use by "
-                f"`Pycollo`. Please rename this symbol.")
+                   f"with the suffix '(t0)' which is reserved for use by "
+                   f"`Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
         elif str(sym)[-4:] == '(tF)':
             msg = (f"The user defined symbol {sym} is invalid as it is named "
-                f"with the suffix '(tF)' which is reserved for use by "
-                f"`Pycollo`. Please rename this symbol.")
+                   f"with the suffix '(tF)' which is reserved for use by "
+                   f"`Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
 
     if len(set(syms)) != len(syms):
@@ -236,7 +236,8 @@ def dict_merge(*dicts: Iterable[Mapping]) -> dict:
     return merged
 
 
-def console_out(msg, heading=False, subheading=False, prefix="", suffix=""):
+def console_out(msg, heading=False, subheading=False, prefix="", suffix="", *,
+                trailing_blank_line=False):
     msg = f"{prefix}{msg}{suffix}"
     msg_len = len(msg)
     if heading:
@@ -247,6 +248,8 @@ def console_out(msg, heading=False, subheading=False, prefix="", suffix=""):
         output_msg = (f"\n{msg}\n{seperator}")
     else:
         output_msg = msg
+    if trailing_blank_line:
+        output_msg += "\n"
     print(output_msg)
 
 
@@ -351,6 +354,7 @@ def format_multiple_items_for_output(items, wrapping_char="'", *,
     -------
     str
         Formatted string of multiple items for console output.
+
     """
     items = (items, ) if isinstance(items, str) else items
     items = [f"{prefix_char}{format_case(item, case)}" for item in items]
@@ -376,3 +380,36 @@ def format_multiple_items_for_output(items, wrapping_char="'", *,
         formatted_items = f"{formatted_items} {verb}"
 
     return formatted_items
+
+
+def format_time(time):
+    """Nicely format a time for console output with correct units.
+
+    Args
+    ----
+    time : float
+        Time (in seconds) for formatting.
+
+    Returns
+    -------
+    str
+        Time formatted with units.
+
+    """
+
+    if time >= 1.0:
+        if time < 60:
+            return f"{time:.2f}s"
+        elif time < 3600:
+            return f"{time//60}min {time%60:.2f}s"
+        else:
+            return f"{time//3600}h {time//60}min {time%60:.2f}s"
+    else:
+        prefixes = ("m", "u", "n", "p")
+        time_formatted = time
+        for prefix in prefixes:
+            time_formatted = time_formatted * 1000
+            if time_formatted > 1:
+                return f"{time_formatted:.2f}{prefix}s"
+        msg = f"Insufficient time prefixes for {time}s"
+        raise ValueError(msg)

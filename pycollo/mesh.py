@@ -8,7 +8,6 @@ class PhaseMesh:
 
     _DEFAULT_NUMBER_MESH_SECTIONS = 10
     _DEFAULT_MESH_SECTION_SIZES = None
-    _DEFAULT_NUMBER_MESH_SECTION_NODES = 4
 
     def __init__(self, phase: "Phase", *,
                  number_mesh_sections: Optional[int] = None,
@@ -39,11 +38,8 @@ class PhaseMesh:
             self.mesh_section_sizes = mesh_section_sizes
 
         if number_mesh_section_nodes is None:
-            try:
-                self.number_mesh_section_nodes = (
-                    self.phase.optimal_control_problem.settings.default_number_mesh_section_nodes)
-            except AttributeError:
-                self.number_mesh_section_nodes = self._DEFAULT_NUMBER_MESH_SECTION_NODES
+            settings = self.phase.optimal_control_problem.settings
+            self.number_mesh_section_nodes = settings.collocation_points_min
         else:
             self.number_mesh_section_nodes = number_mesh_section_nodes
 

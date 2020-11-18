@@ -187,32 +187,18 @@ class Guess:
                 return np.empty((0, num_t))
             else:
                 return np.empty((0, ))
+        shape = guess.shape
         if num_t is not None:
             if guess.shape != (num_var, num_t):
                 msg = "A guess must be supplied for every symbol and time."
                 raise ValueError(msg)
-            return guess.astype(np.float64)
-        else:
-            if guess.shape != (num_var, ):
-                msg = "A guess must be supplied for every symbol."
-                raise ValueError(msg)
-            return guess.astype(np.float64)
-
-
-        # # Set optimal control problem
-        # self._ocp = optimal_control_problem
-        # self._iteration = None
-        # self._mesh = None
-        # self.guess_type = guess_type
-        # self.state_endpoints_override = state_endpoints_override
-        # self.auto_bound = auto_bound
-
-        # # Guess
-        # self.time = time
-        # self.state = state
-        # self.control = control
-        # self.integral = integral
-        # self.parameter = parameter
+            pass
+        elif guess.shape != (num_var, ):
+            msg = "A guess must be supplied for every symbol."
+            raise ValueError(msg)
+        guess = self.backend.substitute_pycollo_sym(guess)
+        guess = self.backend.expr_as_numeric(guess).reshape(shape)
+        return guess
 
     # @property
     # def guess_type(self):

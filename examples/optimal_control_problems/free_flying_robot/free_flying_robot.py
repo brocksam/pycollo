@@ -18,7 +18,22 @@ v_y : `Symbol <sympy>`
     Second inertial velocity of the centre of gravity  (in m/s)
 omega : `Symbol <sympy>`
     Thurst angular velocity (in rad/s)
-
+u_x_pos : `Symbol <sympy>`
+    Positive component of the thrust in the x-direction (in N)
+u_x_neg : `Symbol <sympy>`
+    Negative component of the thrust in the x-direction (in N)
+u_y_pos : `Symbol <sympy>`
+    Positive component of the thrust in the y-direction (in N)
+u_y_neg : `Symbol <sympy>`
+    Negative component of the thrust in the y-direction (in N)
+T_x : `Symbol <sympy>`
+    Total thrust in the x-direction (in N)
+T_y : `Symbol <sympy>`
+    Total thrust in the y-direction (in N)
+I_xx : `Symbol <sympy>`
+    Moment of inertia about the x-axis (in kg/m^2)
+I_yy : `Symbol <sympy>`
+    Moment of inertia about the y-axis (in kg/m^2)
 
 """
 
@@ -34,26 +49,26 @@ v_x = sym.Symbol("v_x")
 v_y = sym.Symbol("v_y")
 omega = sym.Symbol("omega")
 
-u_a = sym.Symbol("u_a")
-u_b = sym.Symbol("u_b")
-u_c = sym.Symbol("u_c")
-u_d = sym.Symbol("u_d")
+u_x_pos = sym.Symbol("u_x_pos")
+u_x_neg = sym.Symbol("u_x_neg")
+u_y_pos = sym.Symbol("u_y_pos")
+u_y_neg = sym.Symbol("u_y_neg")
 
-F_a = sym.Symbol("F_a")
-F_b = sym.Symbol("F_b")
+T_x = sym.Symbol("T_x")
+T_y = sym.Symbol("T_y")
 
-alpha = sym.Symbol("alpha")
-beta = sym.Symbol("beta")
+I_xx = sym.Symbol("I_xx")
+I_yy = sym.Symbol("I_yy")
 
 # Auxiliary information
-u_a_min = 0
-u_a_max = 1000
-u_b_min = 0
-u_b_max = 1000
-u_c_min = 0
-u_c_max = 1000
-u_d_min = 0
-u_d_max = 1000
+u_x_pos_min = 0
+u_x_pos_max = 1000
+u_x_neg_min = 0
+u_x_neg_max = 1000
+u_y_pos_min = 0
+u_y_pos_max = 1000
+u_y_neg_min = 0
+u_y_neg_max = 1000
 
 t0 = 0.0
 tF = 12.0
@@ -84,35 +99,38 @@ v_y_max = 2
 omega_min = -1
 omega_max = 1
 
-u_a_min = 0
-u_a_max = 1000
-u_b_min = 0
-u_b_max = 1000
-u_c_min = 0
-u_c_max = 1000
-u_d_min = 0
-u_d_max = 1000
+u_x_pos_min = 0
+u_x_pos_max = 1000
+u_x_neg_min = 0
+u_x_neg_max = 1000
+u_y_pos_min = 0
+u_y_pos_max = 1000
+u_y_neg_min = 0
+u_y_neg_max = 1000
 
 # Optimal control problem definition
 problem = pycollo.OptimalControlProblem(name="Free-Flying Robot")
 phase = problem.new_phase(name="A",
                           state_variables=[r_x, r_y, theta, v_x, v_y, omega],
-                          control_variables=[u_a, u_b, u_c, u_d])
+                          control_variables=[u_x_pos,
+                                             u_x_neg,
+                                             u_y_pos,
+                                             u_y_neg])
 
 phase.state_equations = {r_x: v_x,
                          r_y: v_y,
                          theta: omega,
-                         v_x: (F_a + F_b) * sym.cos(theta),
-                         v_y: (F_a + F_b) * sym.sin(theta),
-                         omega: (alpha * F_a) - (beta * F_b)}
-phase.integrand_functions = [u_a + u_b + u_c + u_d]
-phase.path_constraints = [(u_a + u_b), (u_c + u_d)]
+                         v_x: (T_x + T_y) * sym.cos(theta),
+                         v_y: (T_x + T_y) * sym.sin(theta),
+                         omega: (I_xx * T_x) - (I_yy * T_y)}
+phase.integrand_functions = [u_x_pos + u_x_neg + u_y_pos + u_y_neg]
+phase.path_constraints = [(u_x_pos + u_x_neg), (u_y_pos + u_y_neg)]
 
 problem.objective_function = phase.integral_variables[0]
-problem.auxiliary_data = {alpha: 0.2,
-                          beta: 0.2,
-                          F_a: u_a - u_b,
-                          F_b: u_c - u_d,
+problem.auxiliary_data = {I_xx: 0.2,
+                          I_yy: 0.2,
+                          T_x: u_x_pos - u_x_neg,
+                          T_y: u_y_pos - u_y_neg,
                           }
 
 # Problem bounds
@@ -136,10 +154,10 @@ phase.bounds.final_state_constraints = {r_x: [r_x_tF, r_x_tF],
                                         v_x: [v_x_tF, v_x_tF],
                                         v_y: [v_y_tF, v_y_tF],
                                         omega: [omega_tF, omega_tF]}
-phase.bounds.control_variables = {u_a: [u_a_min, u_a_max],
-                                  u_b: [u_b_min, u_b_max],
-                                  u_c: [u_c_min, u_c_max],
-                                  u_d: [u_d_min, u_d_max]}
+phase.bounds.control_variables = {u_x_pos: [u_x_pos_min, u_x_pos_max],
+                                  u_x_neg: [u_x_neg_min, u_x_neg_max],
+                                  u_y_pos: [u_y_pos_min, u_y_pos_max],
+                                  u_y_neg: [u_y_neg_min, u_y_neg_max]}
 phase.bounds.integral_variables = [[0, 100]]
 phase.bounds.path_constraints = [[-1000, 1], [-1000, 1]]
 

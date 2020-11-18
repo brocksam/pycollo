@@ -71,8 +71,6 @@ phase = problem.new_phase(name="A",
 phase.state_equations = {p: -xi * p * sym.log(p / q),
                          q: q * (b - (mu + (d * p**(2 / 3)) + (G * u)))}
 phase.integrand_functions = [u]
-phase.initial_state_constraints = {p: p_t0,
-                                   q: q_t0}
 
 problem.objective_function = phase.final_state_variables.p
 problem.auxiliary_data = {xi: 0.084,

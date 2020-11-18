@@ -75,23 +75,21 @@ phase.initial_state_constraints = {p: p_t0,
                                    q: q_t0}
 
 problem.objective_function = phase.final_state_variables.p
-problem.auxiliary_data = {
-    xi: 0.084,
-    b: 5.85,
-    d: 0.00873,
-    G: 0.15,
-    mu: 0.02,
-    a: 75,
-    A: 15,
-    p_max: ((b - mu) / d)**(3 / 2),
-    p_min: 0.1,
-    q_max: p_max,
-    q_min: p_min,
-    u_max: a,
-    u_min: 0,
-    p_t0: p_max / 2,
-    q_t0: q_max / 4,
-}
+problem.auxiliary_data = {xi: 0.084,
+                          b: 5.85,
+                          d: 0.00873,
+                          G: 0.15,
+                          mu: 0.02,
+                          a: 75,
+                          A: 15,
+                          p_max: ((b - mu) / d)**(3 / 2),
+                          p_min: 0.1,
+                          q_max: p_max,
+                          q_min: p_min,
+                          u_max: a,
+                          u_min: 0,
+                          p_t0: p_max / 2,
+                          q_t0: q_max / 4}
 
 # Problem bounds
 phase.bounds.initial_time = t0
@@ -99,7 +97,7 @@ phase.bounds.final_time = [tF_min, tF_max]
 phase.bounds.state_variables = {p: [p_min, p_max],
                                 q: [q_min, q_max]}
 phase.bounds.control_variables = {u: [u_min, u_max]}
-phase.bounds.integral_variables = [[q_min, q_max]]
+phase.bounds.integral_variables = [[0, A]]
 phase.bounds.initial_state_constraints = {p: p_t0,
                                           q: q_t0}
 

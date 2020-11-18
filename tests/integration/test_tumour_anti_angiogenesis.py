@@ -1,7 +1,8 @@
 """Integration test based on the tumour anti-angiogenesis problem.
 
-See the example `examples/tumour_anti_angiogenesis.py` for a
-description of and reference for this optimal control problem.
+See the example `examples/optimal_control_problems/tumour_anti_angiogenesis
+tumour_anti_angiogenesis.py` for a description of and reference for this
+optimal control problem.
 
 """
 

@@ -45,6 +45,7 @@ from .utils import (casadi_substitute,
                     dict_merge,
                     fast_sympify,
                     format_multiple_items_for_output,
+                    SUPPORTED_ITER_TYPES,
                     symbol_name,
                     symbol_primitives,
                     sympy_to_casadi,
@@ -1363,11 +1364,29 @@ class Casadi(BackendABC):
             elif phase is None:
                 user_to_backend_mapping = self.user_to_backend_mapping
             expr, _ = sympy_to_casadi(expr, user_to_backend_mapping)
+        elif isinstance(expr, SUPPORTED_ITER_TYPES + (sym.Matrix, )):
+            return self.substitute_matrix_pycollo_sym(expr)
+        elif isinstance(expr, (int, float, np.int64, np.float64)):
+            expr = ca.SX(expr)
         if not isinstance(expr, ca.SX):
             msg = (f"Unsupported type of {type(expr)} for substitution.")
             raise NotImplementedError(msg)
         expr = casadi_substitute(expr, self.aux_data)
         return expr
+
+    def substitute_matrix_pycollo_sym(self, expr, phase=None):
+        """Convert and replace a non-scalar with Pycollo backend syms."""
+        expr_array = np.array(expr)
+        expr_array_shape = expr_array.shape
+        expr_array_flat = expr_array.flatten()
+        for i, single_expr in enumerate(expr_array_flat):
+            expr_array_flat[i] = self.substitute_pycollo_sym(single_expr)
+        expr_array = expr_array_flat.reshape(*expr_array_shape)
+        return ca.SX(expr_array)
+
+    def expr_as_numeric(self, expr):
+        """Convert an expression of backend syms to numerical values."""
+        return np.array(ca.DM(expr)).astype(np.float64)
 
     @staticmethod
     def iteration_scaling(*args, **kwargs):

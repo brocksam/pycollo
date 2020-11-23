@@ -602,14 +602,14 @@ class Iteration:
 
     def display_mesh_iteration_info(self, mesh_tol_met, next_iter_mesh):
         """Summary
-    
+
         Parameters
         ----------
         mesh_tol_met : TYPE
             Description
         next_iter_mesh : TYPE
             Description
-        
+
         Raises
         ------
         NotImplementedError

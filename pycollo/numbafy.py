@@ -3,9 +3,9 @@ from numbers import Number
 
 import numba as nb
 import numpy as np
-from numpy import sin, cos, tan, exp, log, sqrt, arccos, arcsin, arctan, tanh
 import scipy.interpolate as interpolate
 import sympy as sym
+from numpy import arccos, arcsin, arctan, cos, exp, log, sin, sqrt, tan, tanh
 
 acos = arccos
 asin = arcsin

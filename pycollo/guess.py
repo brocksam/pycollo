@@ -1,11 +1,10 @@
 """"""
 
 from numbers import Number
+from typing import Optional
 
 import numpy as np
 from pyproprop import processed_property
-from typing import Optional
-
 
 __all__ = ["EndpointGuess", "PhaseGuess"]
 

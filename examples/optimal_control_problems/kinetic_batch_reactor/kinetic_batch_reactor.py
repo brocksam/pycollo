@@ -9,8 +9,9 @@ Attributes
 
 """
 
-import pycollo
 import sympy as sym
+
+import pycollo
 
 # Define all symbols for building problem equations
 y0 = sym.Symbol("y0")

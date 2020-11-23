@@ -2,9 +2,9 @@
 
 import re
 
-from hypothesis import assume, given
 import hypothesis.strategies as st
 import pytest
+from hypothesis import assume, given
 
 import pycollo
 

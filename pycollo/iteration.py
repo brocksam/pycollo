@@ -16,7 +16,7 @@ import scipy.sparse as sparse
 import sympy as sym
 from pyproprop import processed_property
 
-from .guess import PhaseGuess, EndpointGuess, Guess
+from .guess import EndpointGuess, Guess, PhaseGuess
 from .mesh import Mesh
 from .nlp import initialise_nlp_backend
 from .scaling import IterationScaling

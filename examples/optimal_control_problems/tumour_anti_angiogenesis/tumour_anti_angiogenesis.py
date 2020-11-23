@@ -29,8 +29,9 @@ A : `Symbol <sympy>`
 
 """
 
-import pycollo
 import sympy as sym
+
+import pycollo
 
 # Symbol creation
 p = sym.Symbol("p")

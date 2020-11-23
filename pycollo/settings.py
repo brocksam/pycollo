@@ -13,24 +13,19 @@ __all__ = ["Settings"]
 from pyproprop import processed_property
 
 from .backend import BACKENDS
-from .bounds import DEFAULT_ASSUME_INF_BOUNDS
-from .bounds import DEFAULT_BOUND_CLASH_ABSOLUTE_TOLERANCE
-from .bounds import DEFAULT_BOUND_CLASH_RELATIVE_TOLERANCE
-from .bounds import DEFAULT_NUMERICAL_INF
-from .bounds import DEFAULT_OVERRIDE_ENDPOINTS
-from .bounds import DEFAULT_REMOVE_CONSTANT_VARIABLES
+from .bounds import (DEFAULT_ASSUME_INF_BOUNDS,
+                     DEFAULT_BOUND_CLASH_ABSOLUTE_TOLERANCE,
+                     DEFAULT_BOUND_CLASH_RELATIVE_TOLERANCE,
+                     DEFAULT_NUMERICAL_INF, DEFAULT_OVERRIDE_ENDPOINTS,
+                     DEFAULT_REMOVE_CONSTANT_VARIABLES)
 from .compiled import COLLOCATION_MATRIX_FORMS
-from .mesh_refinement import MESH_REFINEMENT_ALGORITHMS
-from .mesh_refinement import DEFAULT_MESH_TOLERANCE
-from .mesh_refinement import DEFAULT_MAX_MESH_ITERATIONS
-from .quadrature import DEFAULT_COLLOCATION_POINTS_MIN
-from .quadrature import DEFAULT_COLLOCATION_POINTS_MAX
-from .quadrature import QUADRATURES
-from .scaling import DEFAULT_NUMBER_SCALING_SAMPLES
-from .scaling import DEFAULT_SCALING_WEIGHT
-from .scaling import DEFAULT_UPDATE_SCALING
-from .scaling import SCALING_METHODS
-
+from .mesh_refinement import (DEFAULT_MAX_MESH_ITERATIONS,
+                              DEFAULT_MESH_TOLERANCE,
+                              MESH_REFINEMENT_ALGORITHMS)
+from .quadrature import (DEFAULT_COLLOCATION_POINTS_MAX,
+                         DEFAULT_COLLOCATION_POINTS_MIN, QUADRATURES)
+from .scaling import (DEFAULT_NUMBER_SCALING_SAMPLES, DEFAULT_SCALING_WEIGHT,
+                      DEFAULT_UPDATE_SCALING, SCALING_METHODS)
 
 # Solver constants
 NLP_SOLVER_IPOPT_KEYWORD = "ipopt"

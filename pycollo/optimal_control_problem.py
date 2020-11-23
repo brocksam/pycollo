@@ -35,12 +35,11 @@ Notes:
 
 
 import itertools
-from typing import AnyStr, Iterable, Optional, Tuple, TypeVar, Union
 from timeit import default_timer as timer
+from typing import AnyStr, Iterable, Optional, Tuple, TypeVar, Union
 
 import numba as nb
 import numpy as np
-
 # from ordered_set import OrderedSet
 import scipy.sparse as sparse
 import sympy as sym
@@ -55,11 +54,10 @@ from .mesh import Mesh
 from .numbafy import numbafy
 from .phase import Phase
 from .quadrature import Quadrature
-from .typing import OptionalSymsType, TupleSymsType
 from .scaling import EndpointScaling
 from .settings import Settings
+from .typing import OptionalSymsType, TupleSymsType
 from .utils import check_sym_name_clash, console_out, format_as_named_tuple
-
 
 __all__ = ["OptimalControlProblem"]
 

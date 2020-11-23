@@ -4,7 +4,6 @@ import numpy as np
 import scipy.sparse as sparse
 from pyproprop import Options, processed_property
 
-
 BOUNDS = "bounds"
 GUESS = "guess"
 NONE = "none"

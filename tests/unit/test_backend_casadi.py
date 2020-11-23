@@ -18,7 +18,6 @@ import sympy as sym
 
 import pycollo
 
-
 BR_FIXTURE_REF = pytest_cases.fixture_ref("brachistochrone_fixture")
 HS_FIXTURE_REF = pytest_cases.fixture_ref("hypersensitive_problem_fixture")
 DP_FIXTURE_REF = pytest_cases.fixture_ref("double_pendulum_fixture")

@@ -1,15 +1,9 @@
 """Govern imports for Pycollo package."""
 
 # Explicitly available classes
+# Modules accessible as submodules
+from . import backend, bounds, iteration, quadrature, scaling, utils
 from .bounds import *
 from .guess import *
-from .settings import *
 from .optimal_control_problem import *
-
-# Modules accessible as submodules
-from . import backend
-from . import bounds
-from . import iteration
-from . import quadrature
-from . import scaling
-from . import utils
+from .settings import *

@@ -29,7 +29,6 @@ import numpy as np
 import scipy.interpolate as interpolate
 from pyproprop import Options
 
-
 GAUSS = "gauss"
 LOBATTO = "lobatto"
 RADAU = "radau"

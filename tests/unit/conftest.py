@@ -8,7 +8,6 @@ import sympy as sym
 
 import pycollo
 
-
 FixtureData = namedtuple("FixtureData", ["ocp", "syms"])
 
 

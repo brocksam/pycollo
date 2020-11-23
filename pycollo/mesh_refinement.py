@@ -15,8 +15,8 @@ PATTERSON_RAO : str
 """
 
 
-from abc import ABC, abstractmethod
 import itertools
+from abc import ABC, abstractmethod
 
 import casadi as ca
 import matplotlib.pyplot as plt
@@ -27,7 +27,6 @@ from pyproprop import Options
 from .mesh import Mesh, PhaseMesh
 from .utils import casadi_substitute, dict_merge, symbol_name
 from .vis.plot import plot_mesh
-
 
 DEFAULT_MESH_TOLERANCE = 1e-7
 DEFAULT_MAX_MESH_ITERATIONS = 10

@@ -6,12 +6,11 @@ from typing import Iterable, Mapping, NamedTuple, Optional, Tuple
 import casadi as ca
 import numba
 import numpy as np
-from numpy import sin, cos, tan, exp, sqrt, arctan, tanh
 import scipy.interpolate as interpolate
 import sympy as sym
+from numpy import arctan, cos, exp, sin, sqrt, tan, tanh
 
 from .typing import OptionalSymsType, TupleSymsType
-
 
 dcdx_info_fields = [
     "zeta_y",

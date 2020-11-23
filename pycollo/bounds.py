@@ -26,13 +26,8 @@ import sympy as sym
 
 from .node import Node
 from .typing import OptionalBoundsType
-from .utils import (
-    fast_sympify,
-    format_for_output,
-    SUPPORTED_ITER_TYPES,
-    symbol_primitives,
-)
-
+from .utils import (SUPPORTED_ITER_TYPES, fast_sympify, format_for_output,
+                    symbol_primitives)
 
 # Default values for settings
 DEFAULT_ASSUME_INF_BOUNDS = True

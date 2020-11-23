@@ -1,8 +1,8 @@
 """The main way to define and interact with a Pycollo optimal control problem.
 
 This module contains the main class that the user will interact with to define
-and run their optimal control problem when working with Pycollo. Terminolgy is 
-loosely defined in accordance with "Betts, JT (2010). Practical Methods for 
+and run their optimal control problem when working with Pycollo. Terminolgy is
+loosely defined in accordance with "Betts, JT (2010). Practical Methods for
 Optimal Control and Estimiation Using Nonlinear Programming (Second Edition)".
 See the ``Notes`` section for a full list of symbols used.
 

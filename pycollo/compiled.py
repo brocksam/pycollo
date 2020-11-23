@@ -1,11 +1,19 @@
 import numpy as np
 import scipy.sparse as sparse
 import sympy as sym
+from pyproprop import Options
 
 from .numbafy import numbafy
 from .numbafy_hessian import (
     numbafy_endpoint_hessian, numbafy_continuous_hessian)
 from .utils import console_out
+
+
+DIFFERENTIAL = "differential"
+INTEGRAL = "integral"
+COLLOCATION_MATRIX_FORMS = Options((DIFFERENTIAL, INTEGRAL), default=INTEGRAL,
+                                   unsupported=DIFFERENTIAL)
+
 
 class CompiledFunctions:
 

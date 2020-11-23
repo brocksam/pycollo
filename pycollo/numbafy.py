@@ -4,7 +4,6 @@ from numbers import Number
 import numba as nb
 import numpy as np
 from numpy import sin, cos, tan, exp, log, sqrt, arccos, arcsin, arctan, tanh
-from ordered_set import OrderedSet
 import scipy.interpolate as interpolate
 import sympy as sym
 
@@ -167,11 +166,11 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 
 			qts_str = ', '.join(f'{e}' for e in expression[yu_qts_endpoint_split:])
 
-			qts_str = f'np.array([{qts_str}])' if qts_str is not '' else ''
+			qts_str = f'np.array([{qts_str}])' if qts_str != '' else ''
 
 			str_list = []
 			for s in (y_str, u_str, qts_str):
-				if s is not '':
+				if s != '':
 					str_list.append(s)
 
 			str_str = ', '.join(s for s in str_list)

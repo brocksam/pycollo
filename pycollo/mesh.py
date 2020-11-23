@@ -8,7 +8,6 @@ class PhaseMesh:
 
     _DEFAULT_NUMBER_MESH_SECTIONS = 10
     _DEFAULT_MESH_SECTION_SIZES = None
-    _DEFAULT_NUMBER_MESH_SECTION_NODES = 4
 
     def __init__(self, phase: "Phase", *,
                  number_mesh_sections: Optional[int] = None,
@@ -39,11 +38,8 @@ class PhaseMesh:
             self.mesh_section_sizes = mesh_section_sizes
 
         if number_mesh_section_nodes is None:
-            try:
-                self.number_mesh_section_nodes = (
-                    self.phase.optimal_control_problem.settings.default_number_mesh_section_nodes)
-            except AttributeError:
-                self.number_mesh_section_nodes = self._DEFAULT_NUMBER_MESH_SECTION_NODES
+            settings = self.phase.optimal_control_problem.settings
+            self.number_mesh_section_nodes = settings.collocation_points_min
         else:
             self.number_mesh_section_nodes = number_mesh_section_nodes
 
@@ -59,6 +55,11 @@ class PhaseMesh:
         if (self._mesh_sec_sizes is not None
                 and (len(self._mesh_sec_sizes) != self._num_mesh_secs)):
             self.mesh_section_sizes = None
+            if max(self.number_mesh_section_nodes) == min(self.number_mesh_section_nodes):
+                self.number_mesh_section_nodes = self.number_mesh_section_nodes[0]
+            else:
+                msg = "Mismatch between mesh section sizes and mesh section nodes."
+                raise ValueError(msg)
 
     @property
     def mesh_section_sizes(self):
@@ -208,8 +209,8 @@ class Mesh:
         self.N_K = []
         self.num_c_defect_per_y = []
         self.W_matrix = []
+        self.sI_matrix = []
         self.sA_matrix = []
-        self.sD_matrix = []
         self.A_index_array = []
         self.D_index_array = []
         for p in self.p:
@@ -224,8 +225,8 @@ class Mesh:
             self.N_K.append(data[7])
             self.num_c_defect_per_y.append(data[8])
             self.W_matrix.append(data[9])
-            self.sA_matrix.append(data[10])
-            self.sD_matrix.append(data[11])
+            self.sI_matrix.append(data[10])
+            self.sA_matrix.append(data[11])
             self.A_index_array.append(data[12])
             self.D_index_array.append(data[13])
 
@@ -335,6 +336,18 @@ class Mesh:
 
         h_K_expanded = np.array(h_K_expanded)
 
-        data = (tau, h, N, K, mesh_index_boundaries, h_K, h_K_expanded, N_K,
-                num_c_defect_per_y, W_matrix, sA_matrix, sD_matrix, A_index_array, D_index_array)
+        data = (tau,
+                h,
+                N,
+                K,
+                mesh_index_boundaries,
+                h_K,
+                h_K_expanded,
+                N_K,
+                num_c_defect_per_y,
+                W_matrix,
+                sA_matrix,
+                sD_matrix,
+                A_index_array,
+                D_index_array)
         return data

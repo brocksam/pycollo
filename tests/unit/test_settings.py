@@ -53,7 +53,7 @@ class TestSettings:
     def test_mesh_refinement_defaults(self):
         """Default mesh refinement settings."""
         assert self.settings.max_mesh_iterations == 10
-        assert self.settings.mesh_tolerance == 1e-8
+        assert self.settings.mesh_tolerance == 1e-7
 
     def test_display_defaults(self):
         """Defaults for console output and plotting during/after solve."""
@@ -64,128 +64,101 @@ class TestSettings:
     def test_scaling_defaults(self):
         """Defaults for problem scaling."""
         assert self.settings.scaling_method == "bounds"
-        assert self.settings.update_scaling is True
+        assert self.settings.update_scaling is False
         assert self.settings.number_scaling_samples == 0
         assert self.settings.scaling_weight == 0.8
 
-    def test_backend_property(self):
-        """ValueErrors should be raised for invalid and unsupported values."""
-        # Options
-        invalid_keyword_str = "sdkfj"
-        casadi_keyword_str = "casadi"
-        pycollo_keyword_str = "pycollo"
-        sympy_keyword_str = "sympy"
+    @given(st.just("casadi"))
+    def test_backend_property_valid(self, test_value):
+        """`'casadi'` is the only supported backend."""
+        self.settings.backend = test_value
+        assert self.settings.backend == test_value
 
-        # Check valid keyword
-        self.settings.backend = pycollo_keyword_str
-        assert self.settings.backend == pycollo_keyword_str
-
-        # Check invalid keyword
+    @given(st.text())
+    def test_backend_property_invalid(self, test_value):
+        """ValueErrors should be raised for invalid values of backend."""
         expected_error_msg = re.escape(
-            f"`{repr(invalid_keyword_str)}` is not a valid option of Pycollo "
-            f"backend (`backend`). Choose one of: "
-            f"`{repr(pycollo_keyword_str)}` or `{repr(casadi_keyword_str)}`."
+            f"`{repr(test_value)}` is not a valid option of Pycollo "
+            f"backend (`backend`). Choose one of: `'casadi'`."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
-            self.settings.backend = invalid_keyword_str
+            self.settings.backend = test_value
 
-        # Check unsupported keyword
+    @given(st.one_of(st.just("hsad"), st.just("pycollo"), st.just("sympy")))
+    def test_backend_property_invalid(self, test_value):
+        """ValueErrors should be raised for unsupported values of backend."""
         expected_error_msg = re.escape(
-            f"`{repr(sympy_keyword_str)}` is not currently supported as a "
-            f"Pycollo backend (`backend`). Choose one of: "
-            f"`{repr(pycollo_keyword_str)}` or `{repr(casadi_keyword_str)}`."
+            f"`{repr(test_value)}` is not currently supported as a "
+            f"Pycollo backend (`backend`). Choose one of: `'casadi'`."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
-            self.settings.backend = sympy_keyword_str
+            self.settings.backend = test_value
 
-    def test_nlp_solver_property(self):
-        """ValueError should be raised for invalid and unsupported values."""
-        # Options
-        invalid_keyword_str = "sdkfj"
-        ipopt_keyword_str = "ipopt"
-        snopt_keyword_str = "snopt"
-        worhp_keyword_str = "worhp"
-        bonmin_keyword_str = "bonmin"
+    @given(st.just("ipopt"))
+    def test_nlp_solver_property_valid(self, test_value):
+        """`'ipopt'` is the only supported NLP solver."""
+        self.settings.nlp_solver = test_value
+        assert self.settings.nlp_solver == test_value
 
-        # Check valid keyword
-        self.settings.nlp_solver = ipopt_keyword_str
-        assert self.settings.nlp_solver == ipopt_keyword_str
-
-        # Check invalid keyword
+    @given(st.text())
+    def test_nlp_solver_property_invalid(self, test_value):
+        """ValueErrors should be raised for invalid values of NLP solver."""
         expected_error_msg = re.escape(
-            f"`{repr(invalid_keyword_str)}` is not a valid option of NLP "
-            f"solver (`nlp_solver`). Choose one of: "
-            f"`{repr(ipopt_keyword_str)}`."
+            f"`{repr(test_value)}` is not a valid option of NLP "
+            f"solver (`nlp_solver`). Choose one of: `'ipopt'`."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
-            self.settings.nlp_solver = invalid_keyword_str
+            self.settings.nlp_solver = test_value
 
-        # Check unsupported keyword
+    @given(st.one_of(st.just("snopt"), st.just("worhp"), st.just("bonmin")))
+    def test_nlp_solver_property_unsupported(self, test_value):
+        """ValueErrors should be raised for unsupported NLP solvers."""
         expected_error_msg = re.escape(
-            f"`{repr(snopt_keyword_str)}` is not currently supported as a "
-            f"NLP solver (`nlp_solver`). Choose one of: "
-            f"`{repr(ipopt_keyword_str)}`."
+            f"`{repr(test_value)}` is not currently supported as a "
+            f"NLP solver (`nlp_solver`). Choose one of: `'ipopt'`."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
-            self.settings.nlp_solver = snopt_keyword_str
+            self.settings.nlp_solver = test_value
+
+    @given(st.just("mumps"))
+    def test_linear_solver_property_valid(self, test_value):
+        """`'mumps'` is the only supported linear solver."""
+        self.settings.linear_solver = test_value
+        assert self.settings.linear_solver == test_value
+
+    @given(st.text())
+    def test_linear_solver_property_invalid(self, test_value):
+        """ValueErrors should be raised for invalid linear solver."""
         expected_error_msg = re.escape(
-            f"`{repr(worhp_keyword_str)}` is not currently supported as a "
-            f"NLP solver (`nlp_solver`). Choose one of: "
-            f"`{repr(ipopt_keyword_str)}`."
+            f"`{repr(test_value)}` is not a valid option of linear "
+            f"solver (`linear_solver`). Choose one of: `'mumps'`."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
-            self.settings.nlp_solver = worhp_keyword_str
+            self.settings.linear_solver = test_value
+
+    @given(st.just("ma57"))
+    def test_linear_solver_property_unsupported(self, test_value):
+        """ValueErrors should be raised for unsupported linear solvers."""
         expected_error_msg = re.escape(
-            f"`{repr(bonmin_keyword_str)}` is not currently supported as a "
-            f"NLP solver (`nlp_solver`). Choose one of: "
-            f"`{repr(ipopt_keyword_str)}`."
+            f"`{repr(test_value)}` is not currently supported as a "
+            f"linear solver (`linear_solver`). Choose one of: `'mumps'`."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
-            self.settings.nlp_solver = bonmin_keyword_str
+            self.settings.linear_solver = test_value
 
-    def test_linear_solver_property(self):
-        """ValueError should be raised for invalid and unsupported values."""
-        # Options
-        invalid_keyword_str = "sdkfj"
-        mumps_keyword_str = "mumps"
-        ma57_keyword_str = "ma57"
-
-        # Check valid keyword
-        self.settings.linear_solver = mumps_keyword_str
-        assert self.settings.linear_solver == mumps_keyword_str
-
-        # Check invalid keyword
-        expected_error_msg = re.escape(
-            f"`{repr(invalid_keyword_str)}` is not a valid option of linear "
-            f"solver (`linear_solver`). Choose one of: "
-            f"`{repr(mumps_keyword_str)}`."
-        )
-        with pytest.raises(ValueError, match=expected_error_msg):
-            self.settings.linear_solver = invalid_keyword_str
-
-        # Check unsupported keyword
-        expected_error_msg = re.escape(
-            f"`{repr(ma57_keyword_str)}` is not currently supported as a "
-            f"linear solver (`linear_solver`). Choose one of: "
-            f"`{repr(mumps_keyword_str)}`."
-        )
-        with pytest.raises(ValueError, match=expected_error_msg):
-            self.settings.linear_solver = ma57_keyword_str
+    @given(st.just(1e-6))
+    def test_nlp_tolerance_property_valid(self, test_value):
+        """Valid if <1.0 or >=0.0."""
+        self.settings.nlp_tolerance = test_value
+        assert self.settings.nlp_tolerance == test_value
 
     def test_nlp_tolerance_property(self):
         """ValueError if >1.0 or <=0.0."""
-        valid_test_value = 1e-6
-        self.settings.nlp_tolerance = valid_test_value
-        assert self.settings.nlp_tolerance == valid_test_value
-
-        # Check tolerance greater than 1.0
         expected_error_msg = re.escape(
             "NLP tolerance (`nlp_tolerance`) must be less than `1.0`. `1.1` "
             "is invalid.")
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.nlp_tolerance = 1.1
-
-        # Check negative tolerance
         expected_error_msg = re.escape(
             "NLP tolerance (`nlp_tolerance`) must be greater than `0.0`. "
             "`0.0` is invalid.")
@@ -281,12 +254,12 @@ class TestSettings:
                      st.floats(min_value=2.0, max_value=20.0)))
     def test_valid_min_max_collocation_points(self, test_value):
         """Integers between 2 and 20 can be set provided min < max."""
+        self.settings.collocation_points_min = 2
+        self.settings.collocation_points_max = 20
         self.settings.collocation_points_min = test_value
         self.settings.collocation_points_max = test_value
         assert self.settings.collocation_points_min == int(test_value)
         assert self.settings.collocation_points_max == int(test_value)
-        self.settings.collocation_points_min = 2
-        self.settings.collocation_points_max = 20
 
     @given(st.integers(max_value=1))
     def test_too_small_min_max_collocation_points(self, test_value):
@@ -394,8 +367,8 @@ class TestSettings:
         """'user' and 'guess' not supported scaling methods."""
         expected_error_msg = re.escape(
             f"`{repr(test_value)}` is not currently supported as a scaling "
-            f"method (`scaling_method`). Choose one of: `None`, `'none'` or "
-            f"`'bounds'`.")
+            f"method (`scaling_method`). Choose one of: `'bounds'`, "
+            f"`'none'` or `None`.")
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.scaling_method = test_value
 

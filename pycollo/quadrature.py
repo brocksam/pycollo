@@ -1,11 +1,48 @@
+"""Computation of quadrature points and weights for different schemes.
+
+Attributes
+----------
+DEFAULT_COLLOCATION_POINTS_MAX : int
+    Constant default limitation on the maximum number of collocation points
+    per mesh section that a user can specify. The value of 20 has been chosen
+    as above this the algorithms that are used for evaluating the orthogonal
+    polynomials become numerically unstable and raise a warning.
+DEFAULT_COLLOCATION_POINTS_MIN : int
+    Constant default limitation on the minimum number of collocation points
+    per mesh section that a user can specify. The value of 2 has been chosen
+    as this is the smallest possible value that still makes logical sense (i.e.
+    a mesh section cannot have fewer than two nodes).
+GAUSS : str
+    Keyword identifier for Legendre-Gauss quadrature method.
+LOBATTO : str
+    Keyword identifier for Legendre-Gauss-Lobatto quadrature method.
+RADAU : str
+    Keyword identifier for Legendre-Gauss-Radau quadrature method.
+
+"""
+
+
+__all__ = []
+
+
 import numpy as np
 import scipy.interpolate as interpolate
+from pyproprop import Options
+
+
+GAUSS = "gauss"
+LOBATTO = "lobatto"
+RADAU = "radau"
+QUADRATURES = Options((GAUSS, LOBATTO, RADAU), default=LOBATTO,
+                      unsupported=GAUSS)
+DEFAULT_COLLOCATION_POINTS_MIN = 4
+DEFAULT_COLLOCATION_POINTS_MAX = 10
+
 
 class Quadrature:
+    """Class for quadrature schemes including weights and points."""
 
     def __init__(self, backend):
-
-        # Optimal Control Problem
         self.backend = backend
         self._polynomials = {}
         self._quadrature_points = {}
@@ -30,11 +67,11 @@ class Quadrature:
         self._backend = backend
         self.order_range = list(range(
             self.settings.collocation_points_min, self.settings.collocation_points_max))
-        if self.settings.quadrature_method == "lobatto":
+        if self.settings.quadrature_method == LOBATTO:
             self.quadrature_generator = self.lobatto_generator
-        elif self.settings.quadrature_method == "radau":
+        elif self.settings.quadrature_method == RADAU:
             self.quadrature_generator = self.radau_generator
-        elif self.settings.quadrature_method == "gauss":
+        elif self.settings.quadrature_method == GAUSS:
             self.quadrature_generator = self.gauss_generator
 
     def _retrive_or_generate_dict_value(self, quad_dict, order):

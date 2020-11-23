@@ -151,8 +151,6 @@ class IterationScaling:
             False: self._generate_from_base,
         }
         self._initialise_variable_scaling()
-        # self._w = 1
-        # self._sW = sparse.diags(np.ones(self.iteration.num_c))
 
     @property
     def optimal_control_problem(self):
@@ -168,9 +166,6 @@ class IterationScaling:
         """Expand basis shift/stretch scaling to initial mesh."""
         self.V_ocp = self.base_scaling.x_scales.copy()
         self.r_ocp = self.base_scaling.x_shifts.copy()
-        # print(self.V_ocp)
-        # print(self.r_ocp)
-        # raise ValueError
         self.V = self._expand_x_to_mesh(self.V_ocp)
         self.r = self._expand_x_to_mesh(self.r_ocp)
         self.V_inv = np.reciprocal(self.V)

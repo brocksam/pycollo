@@ -769,8 +769,10 @@ def get_bound_as_number(bnds_obj, bnds_info, lower_upper, p_info):
             return bnds_obj._INF
         elif bnds == "-inf":
             return -bnds_obj._INF
-        else:
-            msg = (f"A bound value of {bnd} is not supported.")
+        try:
+            bnds = float(bnds)
+        except TypeError:
+            msg = (f"A bound value of {bnds} is not supported.")
             raise NotImplementedError(msg)
     if isinstance(bnds, (np.float64, np.int64, float, int)):
         return float(bnds)

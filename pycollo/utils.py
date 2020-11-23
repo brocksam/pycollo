@@ -61,7 +61,7 @@ def symbol_name(symbol):
         return symbol.name()
     elif isinstance(symbol, sym.Symbol):
         return symbol.name
-    msg = f"Cannot get name for symbol of type {type(eqn)}."
+    msg = f"Cannot get name for symbol of type {type(symbol)}."
     raise NotImplementedError(msg)
 
 

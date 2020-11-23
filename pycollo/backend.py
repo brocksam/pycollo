@@ -1482,13 +1482,13 @@ class Casadi(BackendABC):
         self.W_iter_mapping = {}
         for p in self.p:
             phase_W_iter_mapping = {}
-            W_d = list(self.sym(f"W_d{i}") for i in range(p.num_y_eqn))
+            W_d = list(self.sym(f"W_d{i}_P{p.i}") for i in range(p.num_y_eqn))
             phase_W_iter_mapping["d"] = W_d
             W.extend(W_d)
-            W_p = list(self.sym(f"W_p{i}") for i in range(p.num_p_con))
+            W_p = list(self.sym(f"W_p{i}_P{p.i}") for i in range(p.num_p_con))
             phase_W_iter_mapping["p"] = W_p
             W.extend(W_p)
-            W_i = list(self.sym(f"W_i{i}") for i in range(p.num_q_fnc))
+            W_i = list(self.sym(f"W_i{i}_P{p.i}") for i in range(p.num_q_fnc))
             phase_W_iter_mapping["i"] = W_i
             W.extend(W_i)
             self.W_iter_mapping[p] = phase_W_iter_mapping
@@ -1552,11 +1552,16 @@ class Casadi(BackendABC):
 
         def make_constraints(all_phase_mapping, mesh):
             """Construct all constraints for the mesh iteration."""
+            c_d = make_defect_constraints(all_phase_mapping, mesh)
+            c_p = make_path_constraints(all_phase_mapping)
+            c_i = make_integral_constraints(all_phase_mapping, mesh)
+            c_e = make_endpoint_constraints()
             c = []
-            c = make_defect_constraints(c, all_phase_mapping, mesh)
-            c = make_path_constraints(c, all_phase_mapping)
-            c = make_integral_constraints(c, all_phase_mapping, mesh)
-            c = make_endpoint_constraints(c)
+            for c_d_phase, c_p_phase, c_i_phase in zip(c_d, c_p, c_i):
+                c.extend(c_d_phase)
+                c.extend(c_p_phase)
+                c.extend(c_i_phase)
+            c.extend(c_e)
             return ca.vertcat(*c)
 
         def expand_eqn_to_vec(eqn, phase_mapping):
@@ -1566,9 +1571,11 @@ class Casadi(BackendABC):
                 vec.append(casadi_substitute(eqn, mapping))
             return ca.vertcat(*vec)
 
-        def make_defect_constraints(c, all_phase_mapping, mesh):
+        def make_defect_constraints(all_phase_mapping, mesh):
             """Constraint all defect constraints for the mesh iteration."""
+            c_d = []
             for p, A_mat, I_mat in zip(self.p, mesh.sA_matrix, mesh.sI_matrix):
+                c = []
                 phase_mapping = all_phase_mapping[p]
                 W_d_phase = self.W_iter_mapping[p]["d"]
                 if p.ocp_phase.bounds._t_needed[0]:
@@ -1590,25 +1597,31 @@ class Casadi(BackendABC):
                                                           tF,
                                                           A_mat,
                                                           I_mat))
-            return c
+                c_d.append(c)
+            return c_d
 
         def make_defect_constraint(y, y_eqn, t0, tF, A, I):
             """Construct a defect constraint from components."""
             return ca.mtimes(A, y) + 0.5 * (tF - t0) * ca.mtimes(I, y_eqn)
 
-        def make_path_constraints(c, all_phase_mapping):
+        def make_path_constraints(all_phase_mapping):
             """Constraint all path constraints for the mesh iteration."""
+            c_p = []
             for p in self.p:
+                c = []
                 phase_mapping = all_phase_mapping[p]
                 W_p_phase = self.W_iter_mapping[p]["p"]
                 for p_con, W_p in zip(p.p_con, W_p_phase):
                     p_con = expand_eqn_to_vec(p_con, phase_mapping)
                     c.append(W_p * p_con)
-            return c
+                c_p.append(c)
+            return c_p
 
-        def make_integral_constraints(c, all_phase_mapping, mesh):
+        def make_integral_constraints(all_phase_mapping, mesh):
             """Constraint all integral constraints for the mesh iteration."""
+            c_i = []
             for p, W_mat in zip(self.p, mesh.W_matrix):
+                c = []
                 phase_mapping = all_phase_mapping[p]
                 W_i_phase = self.W_iter_mapping[p]["i"]
                 if p.ocp_phase.bounds._t_needed[0]:
@@ -1628,18 +1641,20 @@ class Casadi(BackendABC):
                                                             t0,
                                                             tF,
                                                             W_mat))
-            return c
+                c_i.append(c)
+            return c_i
 
         def make_integral_constraint(q, q_fnc, t0, tF, W):
             """Construct an integral constraint from components."""
             return q - 0.5 * (tF - t0) * ca.dot(W, q_fnc)
 
-        def make_endpoint_constraints(c):
+        def make_endpoint_constraints():
             """Constraint all endpoint constraints for the mesh iteration."""
+            c_e = []
             W_e_problem = self.W_iter_mapping["e"]
             for b_con, W_e in zip(self.b_con, W_e_problem):
-                c.append(W_e * b_con)
-            return c
+                c_e.append(W_e * b_con)
+            return c_e
 
         all_phase_mapping = make_all_phase_mapping(self.current_iteration.mesh)
         dy = make_state_derivatives(all_phase_mapping,

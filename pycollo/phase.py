@@ -175,38 +175,38 @@ class Phase:
                           optimal_control_problem=self.optimal_control_problem)
 
         if copy_state_variables:
-            new_phase.state_variables = self.state_variables
+            new_phase.state_variables = copy.deepcopy(self.state_variables)
             if copy_bounds:
-                new_phase.bounds.state_variables = self.bounds.state_variables
+                new_phase.bounds.state_variables = copy.deepcopy(self.bounds.state_variables)
             if copy_guess:
-                new_phase.guess.state_variables = self.guess.state_variables
+                new_phase.guess.state_variables = copy.deepcopy(self.guess.state_variables)
             if copy_scaling:
-                new_phase.scaling.state_variables = self.scaling.state_variables
+                new_phase.scaling.state_variables = copy.deepcopy(self.scaling.state_variables)
 
         if copy_control_variables:
-            new_phase.control_variables = self.control_variables
+            new_phase.control_variables = copy.deepcopy(self.control_variables)
             if copy_bounds:
-                new_phase.bounds.control_variables = self.bounds.control_variables
+                new_phase.bounds.control_variables = copy.deepcopy(self.bounds.control_variables)
             if copy_guess:
-                new_phase.guess.control_variables = self.guess.control_variables
+                new_phase.guess.control_variables = copy.deepcopy(self.guess.control_variables)
             if copy_scaling:
-                new_phase.scaling.control_variables = self.scaling.control_variables
+                new_phase.scaling.control_variables = copy.deepcopy(self.scaling.control_variables)
 
         if copy_state_equations:
-            new_phase.state_equations = self.state_equations
+            new_phase.state_equations = copy.deepcopy(self.state_equations)
 
         if copy_path_constraints:
-            new_phase.path_constraints = self.path_constraints
+            new_phase.path_constraints = copy.deepcopy(self.path_constraints)
             if copy_bounds:
-                new_phase.bounds.path_constraints = self.bounds.path_constraints
+                new_phase.bounds.path_constraints = copy.deepcopy(self.bounds.path_constraints)
 
         if copy_integrand_functions:
-            new_phase.integrand_functions = self.integrand_functions
+            new_phase.integrand_functions = copy.deepcopy(self.integrand_functions)
             if copy_bounds:
-                new_phase.bounds.integral_variables = self.bounds.integral_variables
+                new_phase.bounds.integral_variables = copy.deepcopy(self.bounds.integral_variables)
 
         if copy_state_endpoint_constraints and copy_bounds:
-            new_phase.bounds.state_endpoint_constraints = self.bounds.state_endpoint_constraints
+            new_phase.bounds.state_endpoint_constraints = copy.deepcopy(self.bounds.state_endpoint_constraints)
 
         if copy_mesh:
             new_phase.mesh = copy.deepcopy(self.mesh)

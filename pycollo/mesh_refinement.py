@@ -68,11 +68,12 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         self.relative_mesh_errors = []
         self.maximum_relative_mesh_errors = []
         self.ph_mesh = self.create_ph_mesh()
-        self.dy_ph_callable = self.generate_dy_ph_callable()
+        self.dy_ph_callables = self.generate_dy_ph_callables()
         x_ph, y_ph, u_ph = self.construct_x_ph()
         zipped = zip(self.backend.p, self.sol.phase_data, y_ph, u_ph)
         for args in zipped:
             self.phase_mesh_error(*args, x_ph)
+        self.next_iter_mesh = self.next_iteration_mesh()
 
     def create_ph_mesh(self):
         phase_ph_meshes = []
@@ -87,7 +88,7 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             phase_ph_meshes.append(phase_ph_mesh)
         return Mesh(self.backend, phase_ph_meshes)
 
-    def generate_dy_ph_callable(self):
+    def generate_dy_ph_callables(self):
 
         def make_all_phase_mapping(mesh):
             """Create mapping from OCP symbol to iteration symbols."""
@@ -101,14 +102,13 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
                 all_phase_mapping[p] = phase_mapping
             return all_phase_mapping
 
-        def make_state_derivatives(all_phase_mapping, mesh):
+        def make_state_derivatives(p, all_phase_mapping):
             """Construct all state derivatives for the mesh iteration."""
             dy = []
-            for p in self.backend.p:
-                phase_mapping = all_phase_mapping[p]
-                for y_eqn in p.y_eqn:
-                    y_eqn = expand_eqn_to_vec(y_eqn, phase_mapping)
-                    dy.append(y_eqn)
+            phase_mapping = all_phase_mapping[p]
+            for y_eqn in p.y_eqn:
+                y_eqn = expand_eqn_to_vec(y_eqn, phase_mapping)
+                dy.append(y_eqn)
             return ca.vertcat(*dy)
 
         def expand_eqn_to_vec(eqn, phase_mapping):
@@ -145,13 +145,17 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         x_var_ph = ca.vertcat(*var_ph)
 
         all_phase_mapping = make_all_phase_mapping(self.ph_mesh)
-        dy = make_state_derivatives(all_phase_mapping, self.ph_mesh)
         subs = dict_merge(ocp_ph_sym_point_mapping,
                           {V: 1 for V in self.backend.V_sym_val_mapping_iter},
                           {r: 0 for r in self.backend.r_sym_val_mapping_iter},
                           self.backend.bounds.aux_data)
-        dy_ph = casadi_substitute(dy, subs)
-        return ca.Function("dy", [x_var_ph], [dy_ph])
+        dy_ph_fncs = []
+        for p in self.backend.p:
+            dy_phase = make_state_derivatives(p, all_phase_mapping)
+            dy_ph_phase = casadi_substitute(dy_phase, subs)
+            dy_ph_fnc = ca.Function(f"dy_P{p.i}", [x_var_ph], [dy_ph_phase])
+            dy_ph_fncs.append(dy_ph_fnc)
+        return tuple(dy_ph_fncs)
 
     def construct_x_ph(self):
 
@@ -200,8 +204,8 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         return x_ph_all, y_ph_all, u_ph_all
 
     def phase_mesh_error(self, p, p_data, y_ph, u_ph, x_ph):
-        dy_ph = np.array(self.dy_ph_callable(x_ph)).reshape((-1, p.num_y_var),
-                                                            order="F")
+        dy_ph = np.array(self.dy_ph_callables[p.i](x_ph))
+        dy_ph = dy_ph.reshape((-1, p.num_y_var), order="F")
         I_dy_ph = p_data.stretch * self.ph_mesh.sI_matrix[p.i].dot(dy_ph)
         dim_1 = self.it.mesh.K[p.i]
         dim_2 = p.num_y_var
@@ -234,8 +238,6 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         for i_k in range(self.ph_mesh.K[p.i]):
             max_relative_error[i_k] = np.max(relative_mesh_error[i_k, :, :])
         self.maximum_relative_mesh_errors.append(max_relative_error)
-
-        self.next_iter_mesh = self.next_iteration_mesh()
 
     def next_iteration_mesh(self):
         phase_meshes = []

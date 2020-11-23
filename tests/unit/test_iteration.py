@@ -7,12 +7,14 @@ import pytest
 
 import pycollo
 
-from .iteration_scaling_test_data_double_pendulum import (EXPECT_X_DP,
-                                                          EXPECT_X_TILDE_DP,
-                                                          )
-from .iteration_scaling_test_data_brachistochrone import (EXPECT_X_BR,
-                                                          EXPECT_X_TILDE_BR,
-                                                          )
+from .iteration_scaling_test_data_double_pendulum import (
+    EXPECT_X_DP,
+    EXPECT_X_TILDE_DP,
+)
+from .iteration_scaling_test_data_brachistochrone import (
+    EXPECT_X_BR,
+    EXPECT_X_TILDE_BR,
+)
 
 
 @pytest.fixture
@@ -68,7 +70,7 @@ def test_iterpolate_guess_to_new_mesh_dp(double_pendulum_initialised_fixture):
     assert isinstance(iteration.guess_tau, list)
     assert len(iteration.guess_tau) == 1
     assert isinstance(iteration.guess_tau[0], np.ndarray)
-    assert iteration.guess_tau[0].shape == (31, )
+    assert iteration.guess_tau[0].shape == (31,)
 
     assert isinstance(iteration.guess_t0, list)
     assert len(iteration.guess_t0) == 1
@@ -93,7 +95,7 @@ def test_iterpolate_guess_to_new_mesh_dp(double_pendulum_initialised_fixture):
     assert isinstance(iteration.guess_time, list)
     assert len(iteration.guess_time) == 1
     assert isinstance(iteration.guess_time[0], np.ndarray)
-    assert iteration.guess_time[0].shape == (31, )
+    assert iteration.guess_time[0].shape == (31,)
 
     assert isinstance(iteration.guess_y, list)
     assert len(iteration.guess_y) == 1
@@ -108,23 +110,23 @@ def test_iterpolate_guess_to_new_mesh_dp(double_pendulum_initialised_fixture):
     assert isinstance(iteration.guess_q, list)
     assert len(iteration.guess_q) == 1
     assert isinstance(iteration.guess_q[0], np.ndarray)
-    assert iteration.guess_q[0].shape == (1, )
+    assert iteration.guess_q[0].shape == (1,)
 
     assert isinstance(iteration.guess_q, list)
     assert len(iteration.guess_q) == 1
     assert isinstance(iteration.guess_q[0], np.ndarray)
-    assert iteration.guess_q[0].shape == (1, )
+    assert iteration.guess_q[0].shape == (1,)
 
     assert isinstance(iteration.guess_t, list)
     assert len(iteration.guess_t) == 1
     assert isinstance(iteration.guess_t[0], np.ndarray)
-    assert iteration.guess_t[0].shape == (1, )
+    assert iteration.guess_t[0].shape == (1,)
 
     assert isinstance(iteration.guess_s, np.ndarray)
-    assert iteration.guess_s.shape == (2, )
+    assert iteration.guess_s.shape == (2,)
 
     assert isinstance(iteration.guess_x, np.ndarray)
-    assert iteration.guess_x.shape == (190, )
+    assert iteration.guess_x.shape == (190,)
 
 
 def test_iterpolate_guess_to_new_mesh_br(brachistochrone_initialised_fixture):
@@ -134,7 +136,7 @@ def test_iterpolate_guess_to_new_mesh_br(brachistochrone_initialised_fixture):
     assert isinstance(iteration.guess_tau, list)
     assert len(iteration.guess_tau) == 1
     assert isinstance(iteration.guess_tau[0], np.ndarray)
-    assert iteration.guess_tau[0].shape == (31, )
+    assert iteration.guess_tau[0].shape == (31,)
 
     assert isinstance(iteration.guess_t0, list)
     assert len(iteration.guess_t0) == 1
@@ -159,7 +161,7 @@ def test_iterpolate_guess_to_new_mesh_br(brachistochrone_initialised_fixture):
     assert isinstance(iteration.guess_time, list)
     assert len(iteration.guess_time) == 1
     assert isinstance(iteration.guess_time[0], np.ndarray)
-    assert iteration.guess_time[0].shape == (31, )
+    assert iteration.guess_time[0].shape == (31,)
 
     assert isinstance(iteration.guess_y, list)
     assert len(iteration.guess_y) == 1
@@ -174,18 +176,18 @@ def test_iterpolate_guess_to_new_mesh_br(brachistochrone_initialised_fixture):
     assert isinstance(iteration.guess_q, list)
     assert len(iteration.guess_q) == 1
     assert isinstance(iteration.guess_q[0], np.ndarray)
-    assert iteration.guess_q[0].shape == (0, )
+    assert iteration.guess_q[0].shape == (0,)
 
     assert isinstance(iteration.guess_t, list)
     assert len(iteration.guess_t) == 1
     assert isinstance(iteration.guess_t[0], np.ndarray)
-    assert iteration.guess_t[0].shape == (1, )
+    assert iteration.guess_t[0].shape == (1,)
 
     assert isinstance(iteration.guess_s, np.ndarray)
-    assert iteration.guess_s.shape == (0, )
+    assert iteration.guess_s.shape == (0,)
 
     assert isinstance(iteration.guess_x, np.ndarray)
-    assert iteration.guess_x.shape == (125, )
+    assert iteration.guess_x.shape == (125,)
 
 
 def test_create_var_con_counts_slices(double_pendulum_initialised_fixture):
@@ -313,8 +315,9 @@ def test_backend_generate_J_callable_br(brachistochrone_initialised_fixture):
 
     assert hasattr(backend, "evaluate_J")
     assert callable(backend.evaluate_J)
-    np.testing.assert_almost_equal(backend.evaluate_J(EXPECT_X_TILDE_BR),
-                                   0.8243386694458454)
+    np.testing.assert_almost_equal(
+        backend.evaluate_J(EXPECT_X_TILDE_BR), 0.8243386694458454
+    )
 
 
 def test_backend_generate_g_callable_dp(double_pendulum_initialised_fixture):

@@ -35,11 +35,12 @@ Notes:
 
 
 import itertools
-from typing import (AnyStr, Iterable, Optional, Tuple, TypeVar, Union)
+from typing import AnyStr, Iterable, Optional, Tuple, TypeVar, Union
 from timeit import default_timer as timer
 
 import numba as nb
 import numpy as np
+
 # from ordered_set import OrderedSet
 import scipy.sparse as sparse
 import sympy as sym
@@ -54,38 +55,39 @@ from .mesh import Mesh
 from .numbafy import numbafy
 from .phase import Phase
 from .quadrature import Quadrature
-from .typing import (OptionalSymsType, TupleSymsType)
+from .typing import OptionalSymsType, TupleSymsType
 from .scaling import EndpointScaling
 from .settings import Settings
-from .utils import (check_sym_name_clash, console_out, format_as_named_tuple)
+from .utils import check_sym_name_clash, console_out, format_as_named_tuple
 
 
 __all__ = ["OptimalControlProblem"]
 
 
-class OptimalControlProblem():
+class OptimalControlProblem:
     """The main class for Pycollo optimal control problems
 
     Attributes:
     """
 
-    def __init__(self,
-                 name,
-                 parameter_variables=None,
-                 *,
-                 bounds=None,
-                 guess=None,
-                 scaling=None,
-                 endpoint_constraints=None,
-                 objective_function=None,
-                 settings=None,
-                 auxiliary_data=None,
-                 ):
+    def __init__(
+        self,
+        name,
+        parameter_variables=None,
+        *,
+        bounds=None,
+        guess=None,
+        scaling=None,
+        endpoint_constraints=None,
+        objective_function=None,
+        settings=None,
+        auxiliary_data=None,
+    ):
         """Initialise the optimal control problem with user-passed objects.
 
         Args:
-                phases (:obj:`Iterable` of :obj:`Phase`, optional): Phases to be 
-                        associated with the optimal control problem at initialisation. 
+                phases (:obj:`Iterable` of :obj:`Phase`, optional): Phases to be
+                        associated with the optimal control problem at initialisation.
                         Defaults to None.
                 parameter_variables ()
         """
@@ -107,14 +109,14 @@ class OptimalControlProblem():
 
     @property
     def name(self) -> str:
-        """The name associated with the optimal control problem. For setter 
+        """The name associated with the optimal control problem. For setter
         behaviour, the supplied `name` is cast to a str.
 
-        The name is not strictly needed, however it improves the usefulness of 
-        Pycollo console output. This is particularly useful in cases where the 
-        user may wish to instantiate multiple :obj:`OptimalControlProblem` 
-        objects within a single script, or instantiates other Pycollo objects 
-        without providing a valid `optimal_control_problem` argument for them 
+        The name is not strictly needed, however it improves the usefulness of
+        Pycollo console output. This is particularly useful in cases where the
+        user may wish to instantiate multiple :obj:`OptimalControlProblem`
+        objects within a single script, or instantiates other Pycollo objects
+        without providing a valid `optimal_control_problem` argument for them
         to be linked to at initialisation.
         """
         return self._name
@@ -127,11 +129,11 @@ class OptimalControlProblem():
     def phases(self) -> Tuple[Phase, ...]:
         """A tuple of all phases associated with the optimal control problem.
 
-        Phase numbers (`Phase.number`) are integers beginning at 1 and are 
-        ordered corresponding to the order that they were added to the optimal 
-        control problem. As Python uses zero-based indexing the phase numbers 
-        do not directly map to the indexes of phases within `self.phases`. 
-        Phases are however ordered sequentially corresponding to the 
+        Phase numbers (`Phase.number`) are integers beginning at 1 and are
+        ordered corresponding to the order that they were added to the optimal
+        control problem. As Python uses zero-based indexing the phase numbers
+        do not directly map to the indexes of phases within `self.phases`.
+        Phases are however ordered sequentially corresponding to the
         cronological order they were added to the optimal control problem.
         """
         return self._phases
@@ -139,17 +141,17 @@ class OptimalControlProblem():
     def add_phase(self, phase: Iterable[Phase]) -> Phase:
         """Add an already instantiated `Phase` to this optimal control problem.
 
-        This method is needed as `self.phases` is read only ("private") and 
-        therefore users cannot manually add `Phase` objects to an optimal 
-        control problem. `self.phases` is required to be read only as it is an 
-        iterable of `Phase` objects and must be protected from accidental errors 
+        This method is needed as `self.phases` is read only ("private") and
+        therefore users cannot manually add `Phase` objects to an optimal
+        control problem. `self.phases` is required to be read only as it is an
+        iterable of `Phase` objects and must be protected from accidental errors
         introduced by user interacting with it incorrectly.
 
         Args:
                 phase (Phase): The phase to be added to the optimal control problem
 
         Returns:
-                Phase: the phase that has been added. It is the same 
+                Phase: the phase that has been added. It is the same
         """
         phase.optimal_control_problem = self
         return self.phases[-1]
@@ -157,50 +159,54 @@ class OptimalControlProblem():
     def add_phases(self, phases: Iterable[Phase]) -> Tuple[Phase, ...]:
         """Associate multiple already instantiated `Phase` objects.
 
-        This is a convinience method to allow the user to add multiple `Phase` 
+        This is a convinience method to allow the user to add multiple `Phase`
         objects to the optimal control problem in one go.
         """
         return tuple(self.add_phase(phase) for phase in phases)
 
-    def new_phase(self,
-                  name: str,
-                  state_variables: OptionalSymsType = None,
-                  control_variables: OptionalSymsType = None) -> Phase:
+    def new_phase(
+        self,
+        name: str,
+        state_variables: OptionalSymsType = None,
+        control_variables: OptionalSymsType = None,
+    ) -> Phase:
         """Create a new :obj:`Phase` and add to this optimal control problem.
 
-        Provides the same behaviour as manually creating a :obj:`Phase` called 
+        Provides the same behaviour as manually creating a :obj:`Phase` called
         `phase` and calling `self.add_phase(phase)`.
         """
-        new_phase = Phase(name, optimal_control_problem=self,
-                          state_variables=state_variables,
-                          control_variables=control_variables)
+        new_phase = Phase(
+            name,
+            optimal_control_problem=self,
+            state_variables=state_variables,
+            control_variables=control_variables,
+        )
         return new_phase
 
     def new_phase_like(self, phase_for_copying: Phase, name: str, **kwargs):
         return phase_for_copying.create_new_copy(name, **kwargs)
 
-    def new_phases_like(self,
-                        phase_for_copying: Phase,
-                        number: int,
-                        names: Iterable[str],
-                        **kwargs) -> Tuple[Phase, ...]:
+    def new_phases_like(
+        self, phase_for_copying: Phase, number: int, names: Iterable[str], **kwargs
+    ) -> Tuple[Phase, ...]:
         """Creates multiple new phases like an already instantiated phase.
 
-        For a list of key word arguments and default values see the docstring 
+        For a list of key word arguments and default values see the docstring
         for the `OptimalControlProblem.new_phase_like` method.
 
         Returns:
                 The newly instantiated and associated phases.
 
         Raises:
-                ValueError: If the same number of names are not supplied as the 
+                ValueError: If the same number of names are not supplied as the
                         number of specified new phases.
         """
         if len(names) != int(number):
-            msg = (f"Must supply a name for each new phase.")
+            msg = f"Must supply a name for each new phase."
             raise ValueError(msg)
-        new_phases = (self.new_phase_like(phase_for_copying, name, **kwargs)
-                      for name in names)
+        new_phases = (
+            self.new_phase_like(phase_for_copying, name, **kwargs) for name in names
+        )
         return new_phases
 
     @property
@@ -213,11 +219,13 @@ class OptimalControlProblem():
         """
 
         Raises:
-                NotImplementedError: Whenever called to inform the user that these 
+                NotImplementedError: Whenever called to inform the user that these
                         types of problem are not currently supported.
         """
-        msg = (f"Pycollo do not currently support dynamic, path or integral "
-               f"constraints that are explicit functions of continuous time.")
+        msg = (
+            f"Pycollo do not currently support dynamic, path or integral "
+            f"constraints that are explicit functions of continuous time."
+        )
         raise NotImplementedError(msg)
 
     @property
@@ -398,7 +406,7 @@ class OptimalControlProblem():
         """Solve the optimal control problem.
 
         If the initialisation flag is not set to True then the initialisation
-        method is called to initialise the optimal control problem. 
+        method is called to initialise the optimal control problem.
 
         Parameters:
         -----------
@@ -425,25 +433,30 @@ class OptimalControlProblem():
         """
 
         def tolerances_met(mesh_tolerance_met, mesh_iterations_met):
-            return (mesh_iterations_met or mesh_tolerance_met)
+            return mesh_iterations_met or mesh_tolerance_met
 
         if self._backend.mesh_iterations[-1].solved:
-            _ = self._backend.new_mesh_iteration(self._next_iteration_mesh,
-                                                 self._next_iteration_guess)
+            _ = self._backend.new_mesh_iteration(
+                self._next_iteration_mesh, self._next_iteration_guess
+            )
         result = self._backend.mesh_iterations[-1].solve()
         mesh_tolerance_met = result.mesh_tolerance_met
         self._next_iteration_mesh = result.next_iteration_mesh
         self._next_iteration_guess = result.next_iteration_guess
         if result.mesh_tolerance_met:
             self.mesh_tolerance_met = True
-            msg = (f"Mesh tolerance met in mesh iteration "
-                   f"{self.num_mesh_iterations}.\n")
+            msg = (
+                f"Mesh tolerance met in mesh iteration "
+                f"{self.num_mesh_iterations}.\n"
+            )
             print(msg)
         if self.num_mesh_iterations >= self.settings.max_mesh_iterations:
             mesh_iterations_met = True
             if not self.mesh_tolerance_met:
-                msg = ("Maximum number of mesh iterations reached. Pycollo "
-                       "exiting before mesh tolerance met.\n")
+                msg = (
+                    "Maximum number of mesh iterations reached. Pycollo "
+                    "exiting before mesh tolerance met.\n"
+                )
                 print(msg)
         else:
             mesh_iterations_met = False
@@ -515,51 +528,58 @@ class OptimalControlProblem():
             self.initialise()
 
     def _final_output(self):
-
         def solution_results():
-            J_msg = (
-                f'Final Objective Function Evaluation: {self._backend.mesh_iterations[-1].solution.objective:.4f}\n')
+            J_msg = f"Final Objective Function Evaluation: {self._backend.mesh_iterations[-1].solution.objective:.4f}\n"
             print(J_msg)
 
         def mesh_results():
-            section_msg = (
-                f'Final Number of Mesh Sections:       {self.mesh_iterations[-1]._mesh._K}')
-            node_msg = (
-                f'Final Number of Collocation Nodes:   {self.mesh_iterations[-1]._mesh._N}\n')
+            section_msg = f"Final Number of Mesh Sections:       {self.mesh_iterations[-1]._mesh._K}"
+            node_msg = f"Final Number of Collocation Nodes:   {self.mesh_iterations[-1]._mesh._N}\n"
             print(section_msg)
             print(node_msg)
 
         def time_results():
-            ocp_init_time_msg = (
-                f'Total OCP Initialisation Time:       {self._ocp_initialisation_time:.4f} s')
+            ocp_init_time_msg = f"Total OCP Initialisation Time:       {self._ocp_initialisation_time:.4f} s"
             print(ocp_init_time_msg)
 
-            self._iteration_initialisation_time = np.sum(np.array(
-                [iteration._initialisation_time for iteration in self._mesh_iterations]))
+            self._iteration_initialisation_time = np.sum(
+                np.array(
+                    [
+                        iteration._initialisation_time
+                        for iteration in self._mesh_iterations
+                    ]
+                )
+            )
 
-            iter_init_time_msg = (
-                f'Total Iteration Initialisation Time: {self._iteration_initialisation_time:.4f} s')
+            iter_init_time_msg = f"Total Iteration Initialisation Time: {self._iteration_initialisation_time:.4f} s"
             print(iter_init_time_msg)
 
             self._nlp_time = np.sum(
-                np.array([iteration._nlp_time for iteration in self._mesh_iterations]))
+                np.array([iteration._nlp_time for iteration in self._mesh_iterations])
+            )
 
-            nlp_time_msg = (f'Total NLP Solver Time:               {self._nlp_time:.4f} s')
+            nlp_time_msg = (
+                f"Total NLP Solver Time:               {self._nlp_time:.4f} s"
+            )
             print(nlp_time_msg)
 
-            self._process_results_time = np.sum(np.array(
-                [iteration._process_results_time for iteration in self._mesh_iterations]))
+            self._process_results_time = np.sum(
+                np.array(
+                    [
+                        iteration._process_results_time
+                        for iteration in self._mesh_iterations
+                    ]
+                )
+            )
 
-            process_results_time_msg = (
-                f'Total Mesh Refinement Time:          {self._process_results_time:.4f} s')
+            process_results_time_msg = f"Total Mesh Refinement Time:          {self._process_results_time:.4f} s"
             print(process_results_time_msg)
 
-            total_time_msg = (
-                f'\nTotal Time:                          {self._ocp_initialisation_time + self._iteration_initialisation_time + self._nlp_time + self._process_results_time:.4f} s')
+            total_time_msg = f"\nTotal Time:                          {self._ocp_initialisation_time + self._iteration_initialisation_time + self._nlp_time + self._process_results_time:.4f} s"
             print(total_time_msg)
-            print('\n\n')
+            print("\n\n")
 
-        solved_msg = ('Optimal control problem sucessfully solved.')
+        solved_msg = "Optimal control problem sucessfully solved."
         console_out(solved_msg, heading=True)
 
         solution_results()
@@ -575,11 +595,11 @@ class OptimalControlProblem():
 
 
 def kill():
-    print('\n\n')
+    print("\n\n")
     raise ValueError
 
 
 def cout(*args):
-    print('\n\n')
+    print("\n\n")
     for arg in args:
-        print(f'{arg}\n')
+        print(f"{arg}\n")

@@ -11,7 +11,7 @@ import sympy as sym
 
 import pycollo
 
-x, y, v, u = sym.symbols('x y v u')
+x, y, v, u = sym.symbols("x y v u")
 
 problem = pycollo.OptimalControlProblem(name="Brachistochrone")
 phase = problem.new_phase(name="A")

@@ -71,7 +71,7 @@ class TestHypersensitiveProblem:
         assert state.ocp.phases.A.state_variables.x is self.x
         assert state.ocp.phases.A.state_variables.y is self.y
         assert state.ocp.phases.A.state_variables.v is self.v
-        assert state.ocp.phases.A.control_variables == (self.u, )
+        assert state.ocp.phases.A.control_variables == (self.u,)
         assert state.ocp.phases.A.control_variables.u is self.u
         assert state.ocp.phases.A.state_equations == (x_eqn, y_eqn, v_eqn)
         assert state.ocp.phases.A.state_equations.x == x_eqn
@@ -82,49 +82,63 @@ class TestHypersensitiveProblem:
         """Phase bounds can be set and are reformatted correctly."""
         state.ocp.phases.A.bounds.initial_time = 0.0
         state.ocp.phases.A.bounds.final_time = [self.tfmin, self.tfmax]
-        state.ocp.phases.A.bounds.state_variables = [[self.xmin, self.xmax],
-                                                     [self.ymin, self.ymax],
-                                                     [self.vmin, self.vmax]]
+        state.ocp.phases.A.bounds.state_variables = [
+            [self.xmin, self.xmax],
+            [self.ymin, self.ymax],
+            [self.vmin, self.vmax],
+        ]
         state.ocp.phases.A.bounds.control_variables = [[self.umin, self.umax]]
-        state.ocp.phases.A.bounds.initial_state_constraints = {self.x: self.x0,
-                                                               self.y: self.y0,
-                                                               self.v: self.v0}
-        state.ocp.phases.A.bounds.final_state_constraints = {self.x: self.xf,
-                                                             self.y: self.yf}
+        state.ocp.phases.A.bounds.initial_state_constraints = {
+            self.x: self.x0,
+            self.y: self.y0,
+            self.v: self.v0,
+        }
+        state.ocp.phases.A.bounds.final_state_constraints = {
+            self.x: self.xf,
+            self.y: self.yf,
+        }
 
         assert state.ocp.phases.A.bounds.initial_time == 0.0
         assert state.ocp.phases.A.bounds.final_time == [self.tfmin, self.tfmax]
         np.testing.assert_array_equal(
             state.ocp.phases.A.bounds.state_variables,
-            np.array([[self.xmin, self.xmax],
-                      [self.ymin, self.ymax],
-                      [self.vmin, self.vmax]]))
+            np.array(
+                [[self.xmin, self.xmax], [self.ymin, self.ymax], [self.vmin, self.vmax]]
+            ),
+        )
         np.testing.assert_array_equal(
             state.ocp.phases.A.bounds.control_variables,
-            np.array([[self.umin, self.umax]]))
-        assert state.ocp.phases.A.bounds.initial_state_constraints == {self.x: self.x0,
-                                                                       self.y: self.y0,
-                                                                       self.v: self.v0}
-        assert state.ocp.phases.A.bounds.final_state_constraints == {self.x: self.xf,
-                                                                     self.y: self.yf}
+            np.array([[self.umin, self.umax]]),
+        )
+        assert state.ocp.phases.A.bounds.initial_state_constraints == {
+            self.x: self.x0,
+            self.y: self.y0,
+            self.v: self.v0,
+        }
+        assert state.ocp.phases.A.bounds.final_state_constraints == {
+            self.x: self.xf,
+            self.y: self.yf,
+        }
 
     def test_set_phase_guess(self, state):
         """Phase guesses can be set and are reformatted correctly."""
         state.ocp.phases.A.guess.time = [self.t0, self.tfmax]
-        state.ocp.phases.A.guess.state_variables = [[self.x0, self.xf],
-                                                    [self.y0, self.yf],
-                                                    [self.v0, self.v0]]
+        state.ocp.phases.A.guess.state_variables = [
+            [self.x0, self.xf],
+            [self.y0, self.yf],
+            [self.v0, self.v0],
+        ]
         state.ocp.phases.A.guess.control_variables = [[0, self.umax]]
         np.testing.assert_array_equal(
-            state.ocp.phases.A.guess.time, np.array([self.t0, self.tfmax]))
+            state.ocp.phases.A.guess.time, np.array([self.t0, self.tfmax])
+        )
         np.testing.assert_array_equal(
             state.ocp.phases.A.guess.state_variables,
-            np.array([[self.x0, self.xf],
-                      [self.y0, self.yf],
-                      [self.v0, self.v0]]))
+            np.array([[self.x0, self.xf], [self.y0, self.yf], [self.v0, self.v0]]),
+        )
         np.testing.assert_array_equal(
-            state.ocp.phases.A.guess.control_variables,
-            np.array([[0, self.umax]]))
+            state.ocp.phases.A.guess.control_variables, np.array([[0, self.umax]])
+        )
 
     def test_set_objective_function(self, state):
         """Objective function can be set."""
@@ -158,8 +172,7 @@ class TestHypersensitiveProblem:
         GPOPS_II_SOLUTION = 0.82434
         rtol = 1e-4
         atol = 0.0
-        assert np.isclose(state.ocp.solution.objective,
-                          GPOPS_II_SOLUTION,
-                          rtol=rtol,
-                          atol=atol)
+        assert np.isclose(
+            state.ocp.solution.objective, GPOPS_II_SOLUTION, rtol=rtol, atol=atol
+        )
         assert state.ocp.mesh_tolerance_met is True

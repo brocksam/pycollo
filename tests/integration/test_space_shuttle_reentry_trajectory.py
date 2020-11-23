@@ -127,18 +127,20 @@ class TestHypersensitiveProblem:
         state.phase = state.ocp.new_phase(name="A")
 
         # Phase information
-        state.phase.state_variables = [self.h,
-                                       self.phi,
-                                       self.theta,
-                                       self.nu,
-                                       self.gamma,
-                                       self.psi]
+        state.phase.state_variables = [
+            self.h,
+            self.phi,
+            self.theta,
+            self.nu,
+            self.gamma,
+            self.psi,
+        ]
         state.phase.control_variables = [self.alpha, self.beta]
 
         dh = self.nu * sym.sin(self.gamma)
 
         dphi_1 = self.nu * sym.cos(self.gamma) * sym.sin(self.psi)
-        dphi_2 = (self.r * sym.cos(self.theta))
+        dphi_2 = self.r * sym.cos(self.theta)
         dphi = dphi_1 / dphi_2
 
         dtheta = self.nu * sym.cos(self.gamma) * sym.cos(self.psi) / self.r
@@ -147,27 +149,29 @@ class TestHypersensitiveProblem:
 
         dgamma_1 = self.L * sym.cos(self.beta) / (self.m * self.nu)
         dgamma_2 = sym.cos(self.gamma)
-        dgamma_3 = ((self.nu / self.r) - (self.g / self.nu))
+        dgamma_3 = (self.nu / self.r) - (self.g / self.nu)
         dgamma = dgamma_1 + dgamma_2 * dgamma_3
 
         dpsi_1 = self.L * sym.sin(self.beta)
-        dpsi_2 = (self.m * self.nu * sym.cos(self.gamma))
+        dpsi_2 = self.m * self.nu * sym.cos(self.gamma)
         dpsi_3 = self.nu * sym.cos(self.gamma)
         dpsi_4 = sym.sin(self.psi) * sym.sin(self.theta)
         dpsi_5 = self.r * sym.cos(self.theta)
         dpsi = (dpsi_1 / dpsi_2) + (dpsi_3 * dpsi_4) / dpsi_5
 
-        state.phase.state_equations = {self.h: dh,
-                                       self.phi: dphi,
-                                       self.theta: dtheta,
-                                       self.nu: dnu,
-                                       self.gamma: dgamma,
-                                       self.psi: dpsi}
+        state.phase.state_equations = {
+            self.h: dh,
+            self.phi: dphi,
+            self.theta: dtheta,
+            self.nu: dnu,
+            self.gamma: dgamma,
+            self.psi: dpsi,
+        }
         state.phase.auxiliary_data = {}
 
         # Problem information
         c_D_1 = self.c_drag_0 + (self.c_drag_1 * self.alpha)
-        c_D_2 = (self.c_drag_2 * self.alpha**2)
+        c_D_2 = self.c_drag_2 * self.alpha ** 2
         c_D = c_D_1 + c_D_2
         state.ocp.objective_function = -state.phase.final_state_variables[2]
         state.ocp.auxiliary_data = {
@@ -181,9 +185,9 @@ class TestHypersensitiveProblem:
             self.c_drag_0: 0.07854,
             self.c_drag_1: -0.3529,
             self.c_drag_2: 2.0400,
-            self.D: 0.5 * self.c_D * self.S * self.rho * self.nu**2,
-            self.L: 0.5 * self.c_L * self.S * self.rho * self.nu**2,
-            self.g: self.mu / (self.r**2),
+            self.D: 0.5 * self.c_D * self.S * self.rho * self.nu ** 2,
+            self.L: 0.5 * self.c_L * self.S * self.rho * self.nu ** 2,
+            self.g: self.mu / (self.r ** 2),
             self.r: self.Re + self.h,
             self.rho: self.rho_0 * sym.exp(-self.h / self.h_r),
             self.c_L: self.c_lift_0 + (self.c_lift_1 * self.alpha),
@@ -194,37 +198,53 @@ class TestHypersensitiveProblem:
         # Bounds
         state.phase.bounds.initial_time = self.t_0
         state.phase.bounds.final_time = [self.t_f_min, self.t_f_max]
-        y_bnds = {self.h: [self.h_min, self.h_max],
-                  self.phi: [self.phi_min, self.phi_max],
-                  self.theta: [self.theta_min, self.theta_max],
-                  self.nu: [self.nu_min, self.nu_max],
-                  self.gamma: [self.gamma_min, self.gamma_max],
-                  self.psi: [self.psi_min, self.psi_max]}
-        u_bnds = {self.alpha: [self.alpha_min, self.alpha_max],
-                  self.beta: [self.beta_min, self.beta_max]}
-        y_t0_bnds = {self.h: self.h_0,
-                     self.phi: self.phi_0,
-                     self.theta: self.theta_0,
-                     self.nu: self.nu_0,
-                     self.gamma: self.gamma_0,
-                     self.psi: self.psi_0}
-        y_tF_bnds = {self.h: [self.h_f, self.h_f],
-                     self.nu: [self.nu_f, self.nu_f],
-                     self.gamma: [self.gamma_f, self.gamma_f]}
+        y_bnds = {
+            self.h: [self.h_min, self.h_max],
+            self.phi: [self.phi_min, self.phi_max],
+            self.theta: [self.theta_min, self.theta_max],
+            self.nu: [self.nu_min, self.nu_max],
+            self.gamma: [self.gamma_min, self.gamma_max],
+            self.psi: [self.psi_min, self.psi_max],
+        }
+        u_bnds = {
+            self.alpha: [self.alpha_min, self.alpha_max],
+            self.beta: [self.beta_min, self.beta_max],
+        }
+        y_t0_bnds = {
+            self.h: self.h_0,
+            self.phi: self.phi_0,
+            self.theta: self.theta_0,
+            self.nu: self.nu_0,
+            self.gamma: self.gamma_0,
+            self.psi: self.psi_0,
+        }
+        y_tF_bnds = {
+            self.h: [self.h_f, self.h_f],
+            self.nu: [self.nu_f, self.nu_f],
+            self.gamma: [self.gamma_f, self.gamma_f],
+        }
         state.phase.bounds.state_variables = y_bnds
         state.phase.bounds.control_variables = u_bnds
         state.phase.bounds.initial_state_constraints = y_t0_bnds
         state.phase.bounds.final_state_constraints = y_tF_bnds
 
         # Guess
-        y_guess = np.array([[self.h_0_guess, self.h_f_guess],
-                            [self.phi_0_guess, self.phi_f_guess],
-                            [self.theta_0_guess, self.theta_f_guess],
-                            [self.nu_0_guess, self.nu_f_guess],
-                            [self.gamma_0_guess, self.gamma_f_guess],
-                            [self.psi_0_guess, self.psi_f_guess]])
-        u_guess = np.array([[self.alpha_0_guess, self.alpha_f_guess],
-                            [self.beta_0_guess, self.beta_f_guess]])
+        y_guess = np.array(
+            [
+                [self.h_0_guess, self.h_f_guess],
+                [self.phi_0_guess, self.phi_f_guess],
+                [self.theta_0_guess, self.theta_f_guess],
+                [self.nu_0_guess, self.nu_f_guess],
+                [self.gamma_0_guess, self.gamma_f_guess],
+                [self.psi_0_guess, self.psi_f_guess],
+            ]
+        )
+        u_guess = np.array(
+            [
+                [self.alpha_0_guess, self.alpha_f_guess],
+                [self.beta_0_guess, self.beta_f_guess],
+            ]
+        )
         state.phase.guess.time = np.array([self.t_0, 1000])
         state.phase.guess.state_variables = y_guess
         state.phase.guess.control_variables = u_guess
@@ -247,11 +267,10 @@ class TestHypersensitiveProblem:
         SOS_SOLUTION = -0.59588
         rtol = 1e-3
         atol = 0.0
-        assert np.isclose(state.ocp.solution.objective,
-                          GPOPS_II_SOLUTION,
-                          rtol=rtol,
-                          atol=atol)
-        assert np.isclose(state.ocp.solution.objective, SOS_SOLUTION,
-                          rtol=rtol,
-                          atol=atol)
+        assert np.isclose(
+            state.ocp.solution.objective, GPOPS_II_SOLUTION, rtol=rtol, atol=atol
+        )
+        assert np.isclose(
+            state.ocp.solution.objective, SOS_SOLUTION, rtol=rtol, atol=atol
+        )
         assert state.ocp.mesh_tolerance_met is True

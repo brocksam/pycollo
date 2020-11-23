@@ -20,8 +20,10 @@ class Utils:
     def assert_ca_sym_identical(*syms):
         """Assert if a number of CasADi SX symbols appear identical."""
         if len(syms) > 2:
-            msg = ("Two or more symbols are required for asserting whether "
-                   "they're identical.")
+            msg = (
+                "Two or more symbols are required for asserting whether "
+                "they're identical."
+            )
             raise ValueError(msg)
         for sym in syms[1:]:
             assert syms[0].name() == sym.name()
@@ -50,8 +52,10 @@ class Utils:
 
         """
         if len(exprs) > 2:
-            msg = ("Two or more expressions are required for asserting "
-                   "whether they're identical.")
+            msg = (
+                "Two or more expressions are required for asserting "
+                "whether they're identical."
+            )
             raise ValueError(msg)
         base_prims, base_names = cls.get_primitives_and_names(exprs[0])
         num_args = len(base_prims)
@@ -85,8 +89,10 @@ class Utils:
             prims = []
             names = []
         else:
-            msg = (f"Unexpected expression type of {type(expr)}. Expecting "
-                   f"CasADi or Sympy.")
+            msg = (
+                f"Unexpected expression type of {type(expr)}. Expecting "
+                f"CasADi or Sympy."
+            )
             raise TypeError(msg)
         return (prims, names)
 
@@ -107,8 +113,10 @@ class Utils:
             return lambda: expr
         elif isinstance(expr, ca.DM):
             return lambda: expr[0]
-        msg = (f"Unexpected expression type of {type(expr)}. Expecting CasADi "
-               f"or Sympy.")
+        msg = (
+            f"Unexpected expression type of {type(expr)}. Expecting CasADi "
+            f"or Sympy."
+        )
         raise TypeError(msg)
 
 

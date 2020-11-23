@@ -59,21 +59,24 @@ phase_A.control_variables = [u0, u1, u2, u3, u4]
 k0y1y5 = k0 * y1 * y5
 k1y1u1 = k1 * y1 * u1
 k2y3y5 = k2 * y3 * y5
-phase_A.state_equations = {y0: -k1y1u1,
-                           y1: -(k0 * y1 * y5) + (km1 * u3) - k1y1u1,
-                           y2: k1y1u1 + k2y3y5 - (km3 * u2),
-                           y3: -k2y3y5 + (km3 * u2),
-                           y4: k0y1y5 - (km1 * u3),
-                           y5: -k0y1y5 + (km1 * u3) - k2y3y5 - (km3 * u2)}
-phase_A.path_constraints = [p - y5 + (10**(-u0)) - u1 - u2 - u3]
+phase_A.state_equations = {
+    y0: -k1y1u1,
+    y1: -(k0 * y1 * y5) + (km1 * u3) - k1y1u1,
+    y2: k1y1u1 + k2y3y5 - (km3 * u2),
+    y3: -k2y3y5 + (km3 * u2),
+    y4: k0y1y5 - (km1 * u3),
+    y5: -k0y1y5 + (km1 * u3) - k2y3y5 - (km3 * u2),
+}
+phase_A.path_constraints = [p - y5 + (10 ** (-u0)) - u1 - u2 - u3]
 
-problem.auxiliary_data = {k0hat: 1.3708e+12,
-                          k1hat: 5.2282e+12,
-                          km1hat: 1.6215e+20,
-                          beta0: 9.2984e+3,
-                          beta1: 9.5999e+3,
-                          betam1: 1.3108e+4,
-                          K0: 2.575e-16,
-                          K1: 4.876e-14,
-                          K2: 1.7884e-16,
-                          }
+problem.auxiliary_data = {
+    k0hat: 1.3708e12,
+    k1hat: 5.2282e12,
+    km1hat: 1.6215e20,
+    beta0: 9.2984e3,
+    beta1: 9.5999e3,
+    betam1: 1.3108e4,
+    K0: 2.575e-16,
+    K1: 4.876e-14,
+    K2: 1.7884e-16,
+}

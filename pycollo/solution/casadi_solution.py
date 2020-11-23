@@ -4,7 +4,6 @@ from .solution_abc import PhaseSolutionData, SolutionABC
 
 
 class CasadiSolution(SolutionABC):
-
     def __init__(self, iteration, nlp_result):
         super().__init__(iteration, nlp_result)
 
@@ -16,8 +15,9 @@ class CasadiSolution(SolutionABC):
         self.objective = self.it.scaling.unscale_J(self.J)
         x = self.it.scaling.unscale_x(self.x)
         self.phase_data = []
-        self.phase_data = tuple(self.extract_full_solution_one_phase(p, x)
-                                for p in self.backend.p)
+        self.phase_data = tuple(
+            self.extract_full_solution_one_phase(p, x) for p in self.backend.p
+        )
         self._y = tuple(p.y for p in self.phase_data)
         self._dy = tuple(p.dy for p in self.phase_data)
         self._u = tuple(p.u for p in self.phase_data)
@@ -41,7 +41,6 @@ class CasadiSolution(SolutionABC):
         self.final_time = self._tF
 
     def extract_full_solution_one_phase(self, p, x):
-
         def extract_y(p, x):
             if p.num_y_var:
                 return x[self.it.y_slices[p.i]].reshape(p.num_y_var, -1)
@@ -82,5 +81,4 @@ class CasadiSolution(SolutionABC):
         shift = (t0 + tF) / 2
         time = tau * stretch + shift
 
-        return PhaseSolutionData(tau, y, dy, u, q, t, t0, tF, T, stretch,
-                                 shift, time)
+        return PhaseSolutionData(tau, y, dy, u, q, t, t0, tF, T, stretch, shift, time)

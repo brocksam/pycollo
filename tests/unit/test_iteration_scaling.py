@@ -6,18 +6,20 @@ import pytest
 
 import pycollo
 
-from .iteration_scaling_test_data_double_pendulum import (EXPECT_V_DP,
-                                                          EXPECT_R_DP,
-                                                          EXPECT_V_INV_DP,
-                                                          EXPECT_X_DP,
-                                                          EXPECT_X_TILDE_DP,
-                                                          )
-from .iteration_scaling_test_data_brachistochrone import (EXPECT_V_BR,
-                                                          EXPECT_R_BR,
-                                                          EXPECT_V_INV_BR,
-                                                          EXPECT_X_BR,
-                                                          EXPECT_X_TILDE_BR,
-                                                          )
+from .iteration_scaling_test_data_double_pendulum import (
+    EXPECT_V_DP,
+    EXPECT_R_DP,
+    EXPECT_V_INV_DP,
+    EXPECT_X_DP,
+    EXPECT_X_TILDE_DP,
+)
+from .iteration_scaling_test_data_brachistochrone import (
+    EXPECT_V_BR,
+    EXPECT_R_BR,
+    EXPECT_V_INV_BR,
+    EXPECT_X_BR,
+    EXPECT_X_TILDE_BR,
+)
 
 
 @pytest.fixture
@@ -103,13 +105,13 @@ def test_initialise_scaling_dp(double_pendulum_initialised_fixture):
 
     assert hasattr(scaling, "V")
     assert isinstance(scaling.V, np.ndarray)
-    assert scaling.V.shape == (iteration.num_x, )
+    assert scaling.V.shape == (iteration.num_x,)
     assert hasattr(scaling, "r")
     assert isinstance(scaling.r, np.ndarray)
-    assert scaling.r.shape == (iteration.num_x, )
+    assert scaling.r.shape == (iteration.num_x,)
     assert hasattr(scaling, "V_inv")
     assert isinstance(scaling.V_inv, np.ndarray)
-    assert scaling.V_inv.shape == (iteration.num_x, )
+    assert scaling.V_inv.shape == (iteration.num_x,)
 
     np.testing.assert_allclose(scaling.V, EXPECT_V_DP)
     np.testing.assert_allclose(scaling.r, EXPECT_R_DP)
@@ -123,8 +125,7 @@ def test_initialise_scaling_dp(double_pendulum_initialised_fixture):
     scale_unscale = scaling.unscale_x(scaling.scale_x(EXPECT_X_DP))
     unscale_scale = scaling.scale_x(scaling.unscale_x(EXPECT_X_TILDE_DP))
     np.testing.assert_allclose(scaling.scale_x(EXPECT_X_DP), EXPECT_X_TILDE_DP)
-    np.testing.assert_allclose(scaling.unscale_x(EXPECT_X_TILDE_DP),
-                               EXPECT_X_DP)
+    np.testing.assert_allclose(scaling.unscale_x(EXPECT_X_TILDE_DP), EXPECT_X_DP)
     np.testing.assert_allclose(scale_unscale, EXPECT_X_DP)
     np.testing.assert_allclose(unscale_scale, EXPECT_X_TILDE_DP)
     assert scaling.scale_x(EXPECT_X_DP).all() >= -0.5
@@ -138,13 +139,13 @@ def test_initialise_scaling_br(brachistochrone_initialised_fixture):
 
     assert hasattr(scaling, "V")
     assert isinstance(scaling.V, np.ndarray)
-    assert scaling.V.shape == (iteration.num_x, )
+    assert scaling.V.shape == (iteration.num_x,)
     assert hasattr(scaling, "r")
     assert isinstance(scaling.r, np.ndarray)
-    assert scaling.r.shape == (iteration.num_x, )
+    assert scaling.r.shape == (iteration.num_x,)
     assert hasattr(scaling, "V_inv")
     assert isinstance(scaling.V_inv, np.ndarray)
-    assert scaling.V_inv.shape == (iteration.num_x, )
+    assert scaling.V_inv.shape == (iteration.num_x,)
 
     np.testing.assert_allclose(scaling.V, EXPECT_V_BR)
     np.testing.assert_allclose(scaling.r, EXPECT_R_BR)
@@ -158,8 +159,9 @@ def test_initialise_scaling_br(brachistochrone_initialised_fixture):
     scale_unscale = scaling.unscale_x(scaling.scale_x(EXPECT_X_BR))
     unscale_scale = scaling.scale_x(scaling.unscale_x(EXPECT_X_TILDE_BR))
     np.testing.assert_allclose(scaling.scale_x(EXPECT_X_BR), EXPECT_X_TILDE_BR)
-    np.testing.assert_allclose(scaling.unscale_x(EXPECT_X_TILDE_BR),
-                               EXPECT_X_BR, rtol=10e-5)
+    np.testing.assert_allclose(
+        scaling.unscale_x(EXPECT_X_TILDE_BR), EXPECT_X_BR, rtol=10e-5
+    )
     np.testing.assert_allclose(scale_unscale, EXPECT_X_BR)
     np.testing.assert_allclose(unscale_scale, EXPECT_X_TILDE_BR)
     assert scaling.scale_x(EXPECT_X_BR).all() >= -0.5

@@ -97,103 +97,129 @@ class TestHypersensitiveProblem:
 
         # Set up the Pycollo OCP
         name = "Space Station Attitude Control"
-        y_vars = [self.omega_x,
-                  self.omega_y,
-                  self.omega_z,
-                  self.r_x,
-                  self.r_y,
-                  self.r_z,
-                  self.h_x,
-                  self.h_y,
-                  self.h_z]
+        y_vars = [
+            self.omega_x,
+            self.omega_y,
+            self.omega_z,
+            self.r_x,
+            self.r_y,
+            self.r_z,
+            self.h_x,
+            self.h_y,
+            self.h_z,
+        ]
         u_vars = [self.u_x, self.u_y, self.u_z]
         state.ocp = pycollo.OptimalControlProblem(name=name)
-        state.phase = state.ocp.new_phase(name="A",
-                                          state_variables=y_vars,
-                                          control_variables=u_vars)
+        state.phase = state.ocp.new_phase(
+            name="A", state_variables=y_vars, control_variables=u_vars
+        )
 
         # Phase information
-        state.phase.state_equations = {self.omega_x: self.domega_x_dt,
-                                       self.omega_y: self.domega_y_dt,
-                                       self.omega_z: self.domega_z_dt,
-                                       self.r_x: self.dr_x_dt,
-                                       self.r_y: self.dr_y_dt,
-                                       self.r_z: self.dr_z_dt,
-                                       self.h_x: self.dh_x_dt,
-                                       self.h_y: self.dh_y_dt,
-                                       self.h_z: self.dh_z_dt}
+        state.phase.state_equations = {
+            self.omega_x: self.domega_x_dt,
+            self.omega_y: self.domega_y_dt,
+            self.omega_z: self.domega_z_dt,
+            self.r_x: self.dr_x_dt,
+            self.r_y: self.dr_y_dt,
+            self.r_z: self.dr_z_dt,
+            self.h_x: self.dh_x_dt,
+            self.h_y: self.dh_y_dt,
+            self.h_z: self.dh_z_dt,
+        }
         state.phase.path_constraints = [self.h_inner_prod_squared]
         state.phase.integrand_functions = [1e-6 * self.u_inner_prod_squared]
 
         # Problem information
         state.ocp.objective_function = state.phase.integral_variables[0]
-        state.ocp.endpoint_constraints = [self.domega_x_dt_tF,
-                                          self.domega_y_dt_tF,
-                                          self.domega_z_dt_tF,
-                                          self.dr_x_dt_tF,
-                                          self.dr_y_dt_tF,
-                                          self.dr_z_dt_tF]
+        state.ocp.endpoint_constraints = [
+            self.domega_x_dt_tF,
+            self.domega_y_dt_tF,
+            self.domega_z_dt_tF,
+            self.dr_x_dt_tF,
+            self.dr_y_dt_tF,
+            self.dr_z_dt_tF,
+        ]
 
         # Problem bounds
         state.phase.bounds.initial_time = self.t0
         state.phase.bounds.final_time = self.tF
-        state.phase.bounds.state_variables = {self.omega_x: [-2e-3, 2e-3],
-                                              self.omega_y: [-2e-3, 2e-3],
-                                              self.omega_z: [-2e-3, 2e-3],
-                                              self.r_x: [-1, 1],
-                                              self.r_y: [-1, 1],
-                                              self.r_z: [-1, 1],
-                                              self.h_x: [-15000, 15000],
-                                              self.h_y: [-15000, 15000],
-                                              self.h_z: [-15000, 15000]}
-        state.phase.bounds.initial_state_constraints = {self.omega_x: self.omega_x_t0,
-                                                        self.omega_y: self.omega_y_t0,
-                                                        self.omega_z: self.omega_z_t0,
-                                                        self.r_x: self.r_x_t0,
-                                                        self.r_y: self.r_y_t0,
-                                                        self.r_z: self.r_z_t0,
-                                                        self.h_x: self.h_x_t0,
-                                                        self.h_y: self.h_y_t0,
-                                                        self.h_z: self.h_z_t0}
-        state.phase.bounds.final_state_constraints = {self.h_x: self.h_x_tF,
-                                                      self.h_y: self.h_y_tF,
-                                                      self.h_z: self.h_z_tF}
-        state.phase.bounds.control_variables = {self.u_x: [-150, 150],
-                                                self.u_y: [-150, 150],
-                                                self.u_z: [-150, 150]}
+        state.phase.bounds.state_variables = {
+            self.omega_x: [-2e-3, 2e-3],
+            self.omega_y: [-2e-3, 2e-3],
+            self.omega_z: [-2e-3, 2e-3],
+            self.r_x: [-1, 1],
+            self.r_y: [-1, 1],
+            self.r_z: [-1, 1],
+            self.h_x: [-15000, 15000],
+            self.h_y: [-15000, 15000],
+            self.h_z: [-15000, 15000],
+        }
+        state.phase.bounds.initial_state_constraints = {
+            self.omega_x: self.omega_x_t0,
+            self.omega_y: self.omega_y_t0,
+            self.omega_z: self.omega_z_t0,
+            self.r_x: self.r_x_t0,
+            self.r_y: self.r_y_t0,
+            self.r_z: self.r_z_t0,
+            self.h_x: self.h_x_t0,
+            self.h_y: self.h_y_t0,
+            self.h_z: self.h_z_t0,
+        }
+        state.phase.bounds.final_state_constraints = {
+            self.h_x: self.h_x_tF,
+            self.h_y: self.h_y_tF,
+            self.h_z: self.h_z_tF,
+        }
+        state.phase.bounds.control_variables = {
+            self.u_x: [-150, 150],
+            self.u_y: [-150, 150],
+            self.u_z: [-150, 150],
+        }
         state.phase.bounds.integral_variables = [[0, 10]]
-        state.phase.bounds.path_constraints = [[0, self.h_max**2]]
+        state.phase.bounds.path_constraints = [[0, self.h_max ** 2]]
 
-        state.ocp.bounds.endpoint_constraints = [[0, 0],
-                                                 [0, 0],
-                                                 [0, 0],
-                                                 [0, 0],
-                                                 [0, 0],
-                                                 [0, 0]]
+        state.ocp.bounds.endpoint_constraints = [
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ]
 
         # Problem guesses
         state.phase.guess.time = np.array([self.t0, self.tF])
-        state.phase.guess.state_variables = np.array([[self.omega_x_t0, self.omega_x_t0],
-                                                      [self.omega_y_t0, self.omega_y_t0],
-                                                      [self.omega_z_t0, self.omega_z_t0],
-                                                      [self.r_x_t0, self.r_x_t0],
-                                                      [self.r_y_t0, self.r_y_t0],
-                                                      [self.r_z_t0, self.r_z_t0],
-                                                      [self.h_x_t0, self.h_x_t0],
-                                                      [self.h_y_t0, self.h_y_t0],
-                                                      [self.h_z_t0, self.h_z_t0]])
+        state.phase.guess.state_variables = np.array(
+            [
+                [self.omega_x_t0, self.omega_x_t0],
+                [self.omega_y_t0, self.omega_y_t0],
+                [self.omega_z_t0, self.omega_z_t0],
+                [self.r_x_t0, self.r_x_t0],
+                [self.r_y_t0, self.r_y_t0],
+                [self.r_z_t0, self.r_z_t0],
+                [self.h_x_t0, self.h_x_t0],
+                [self.h_y_t0, self.h_y_t0],
+                [self.h_z_t0, self.h_z_t0],
+            ]
+        )
         state.phase.guess.control_variables = np.array([[0, 0], [0, 0], [0, 0]])
         state.phase.guess.integral_variables = np.array([10])
 
         # J matrices
-        J = sym.Matrix([
-            [self.J_00, self.J_01, self.J_02],
-            [self.J_10, self.J_11, self.J_12],
-            [self.J_20, self.J_21, self.J_22]])
-        J_inv = sym.Matrix([
-            [self.J_inv_00, self.J_inv_01, self.J_inv_02],
-            [self.J_inv_10, self.J_inv_11, self.J_inv_12],
-            [self.J_inv_20, self.J_inv_21, self.J_inv_22]])
+        J = sym.Matrix(
+            [
+                [self.J_00, self.J_01, self.J_02],
+                [self.J_10, self.J_11, self.J_12],
+                [self.J_20, self.J_21, self.J_22],
+            ]
+        )
+        J_inv = sym.Matrix(
+            [
+                [self.J_inv_00, self.J_inv_01, self.J_inv_02],
+                [self.J_inv_10, self.J_inv_11, self.J_inv_12],
+                [self.J_inv_20, self.J_inv_21, self.J_inv_22],
+            ]
+        )
 
         # Continuous vectors
         omega = sym.Matrix([self.omega_x, self.omega_y, self.omega_z])
@@ -208,14 +234,14 @@ class TestHypersensitiveProblem:
         E = (r_skew_symmetric * r_skew_symmetric) - r_skew_symmetric
         C = I + (D * E)
         C_2_skew = skew_symmetric_cross_product_operator(C[:, 2])
-        tau_gg = 3 * self.omega_orb**2 * C_2_skew * (J * C[:, 2])
+        tau_gg = 3 * self.omega_orb ** 2 * C_2_skew * (J * C[:, 2])
         A = J * omega + h
         B = skew_symmetric_cross_product_operator(omega) * A
         K = tau_gg - B - u
         domega_dt = J_inv * K
 
         # Calculating dr/dt
-        omega_0 = - self.omega_orb * C[:, 1]
+        omega_0 = -self.omega_orb * C[:, 1]
         r_sqrd = row_vec_dot_col_vec(r, r.T)
         dr_dt = 0.5 * (r_sqrd + I + r_skew_symmetric) * (omega - omega_0)
 
@@ -230,7 +256,7 @@ class TestHypersensitiveProblem:
         E_tF = (r_tF_skew_symmetric * r_tF_skew_symmetric) - r_tF_skew_symmetric
         C_tF = I + (D_tF * E_tF)
         C_tF_2_skew = skew_symmetric_cross_product_operator(C_tF[:, 2])
-        tau_gg_tF = 3 * self.omega_orb**2 * C_tF_2_skew * J * C_tF[:, 2]
+        tau_gg_tF = 3 * self.omega_orb ** 2 * C_tF_2_skew * J * C_tF[:, 2]
         A_tF = J * omega_tF + h_tF
         B_tF = skew_symmetric_cross_product_operator(omega_tF) * A_tF
         K_tF = tau_gg_tF - B_tF
@@ -239,7 +265,7 @@ class TestHypersensitiveProblem:
         # Calculating dr(tF)/dt
         omega_0_tF = -self.omega_orb * C_tF[:, 1]
         r_tF_sqrd = row_vec_dot_col_vec(r_tF, r_tF.T)
-        omega_tF_diff = (omega_tF - omega_0_tF)
+        omega_tF_diff = omega_tF - omega_0_tF
         dr_dt_tF = 0.5 * (r_tF_sqrd + I + r_tF_skew_symmetric) * omega_tF_diff
 
         state.ocp.auxiliary_data = {
@@ -263,8 +289,8 @@ class TestHypersensitiveProblem:
             self.J_inv_22: J.inv()[2, 2],
             self.omega_orb: 0.06511 * np.pi / 180,
             self.h_max: 10000,
-            self.u_inner_prod_squared: self.u_x**2 + self.u_y**2 + self.u_z**2,
-            self.h_inner_prod_squared: self.h_x**2 + self.h_y**2 + self.h_z**2,
+            self.u_inner_prod_squared: self.u_x ** 2 + self.u_y ** 2 + self.u_z ** 2,
+            self.h_inner_prod_squared: self.h_x ** 2 + self.h_y ** 2 + self.h_z ** 2,
             self.domega_x_dt: domega_dt[0, 0],
             self.domega_y_dt: domega_dt[1, 0],
             self.domega_z_dt: domega_dt[2, 0],
@@ -279,7 +305,8 @@ class TestHypersensitiveProblem:
             self.domega_z_dt_tF: domega_dt_tF[2, 0],
             self.dr_x_dt_tF: dr_dt_tF[0, 0],
             self.dr_y_dt_tF: dr_dt_tF[1, 0],
-            self.dr_z_dt_tF: dr_dt_tF[2, 0]}
+            self.dr_z_dt_tF: dr_dt_tF[2, 0],
+        }
 
         state.ocp.initialise()
         state.ocp.solve()
@@ -295,52 +322,70 @@ class TestHypersensitiveProblem:
         SOS_SOLUTION = 3.58688
         rtol = 1e-4
         atol = 0.0
-        assert np.isclose(state.ocp.solution.objective,
-                          GPOPS_II_SOLUTION,
-                          rtol=rtol,
-                          atol=atol)
-        assert np.isclose(state.ocp.solution.objective, SOS_SOLUTION,
-                          rtol=rtol,
-                          atol=atol)
+        assert np.isclose(
+            state.ocp.solution.objective, GPOPS_II_SOLUTION, rtol=rtol, atol=atol
+        )
+        assert np.isclose(
+            state.ocp.solution.objective, SOS_SOLUTION, rtol=rtol, atol=atol
+        )
         assert state.ocp.mesh_tolerance_met is True
 
 
 # Utility functions
 def skew_symmetric_cross_product_operator(vec):
     if vec.shape != (3, 1):
-        raise ValueError(f"Vector must be a column vector and have shape "
-                         f"(3, 1) but is {vec.shape}")
-    skew_symmetric_cross_product_operator = sym.Matrix([
-        [0, -vec[2], vec[1]],
-        [vec[2], 0, -vec[0]],
-        [-vec[1], vec[0], 0]])
+        raise ValueError(
+            f"Vector must be a column vector and have shape "
+            f"(3, 1) but is {vec.shape}"
+        )
+    skew_symmetric_cross_product_operator = sym.Matrix(
+        [[0, -vec[2], vec[1]], [vec[2], 0, -vec[0]], [-vec[1], vec[0], 0]]
+    )
     return skew_symmetric_cross_product_operator
 
 
 def row_vec_dot_col_vec(vec_1, vec_2):
     if vec_1.shape != (3, 1):
-        raise ValueError(f"First vector must be a column vector and have "
-                         f"shape (3, 1) but is {vec_1.shape}")
+        raise ValueError(
+            f"First vector must be a column vector and have "
+            f"shape (3, 1) but is {vec_1.shape}"
+        )
     if vec_2.shape != (1, 3):
-        raise ValueError(f"Second vector must be a row vector and have shape "
-                         f"(1, 3) but is {vec_2.shape}")
-    matrix = sym.Matrix([[vec_1[0, 0] * vec_2[0, 0],
-                          vec_1[0, 0] * vec_2[0, 1],
-                          vec_1[0, 0] * vec_2[0, 2]],
-                         [vec_1[1, 0] * vec_2[0, 0],
-                          vec_1[1, 0] * vec_2[0, 1],
-                          vec_1[1, 0] * vec_2[0, 2]],
-                         [vec_1[2, 0] * vec_2[0, 0],
-                          vec_1[2, 0] * vec_2[0, 1],
-                          vec_1[2, 0] * vec_2[0, 2]]])
+        raise ValueError(
+            f"Second vector must be a row vector and have shape "
+            f"(1, 3) but is {vec_2.shape}"
+        )
+    matrix = sym.Matrix(
+        [
+            [
+                vec_1[0, 0] * vec_2[0, 0],
+                vec_1[0, 0] * vec_2[0, 1],
+                vec_1[0, 0] * vec_2[0, 2],
+            ],
+            [
+                vec_1[1, 0] * vec_2[0, 0],
+                vec_1[1, 0] * vec_2[0, 1],
+                vec_1[1, 0] * vec_2[0, 2],
+            ],
+            [
+                vec_1[2, 0] * vec_2[0, 0],
+                vec_1[2, 0] * vec_2[0, 1],
+                vec_1[2, 0] * vec_2[0, 2],
+            ],
+        ]
+    )
     return matrix
 
 
 def col_vec_dot_row_vec(vec_1, vec_2):
     if vec_1.shape != (1, 3):
-        raise ValueError(f"First vector must be a row vector and have shape "
-                         f"(1, 3) but is {vec_1.shape}")
+        raise ValueError(
+            f"First vector must be a row vector and have shape "
+            f"(1, 3) but is {vec_1.shape}"
+        )
     if vec_2.shape != (3, 1):
-        raise ValueError(f"Second vector must be a column vector and have "
-                         f"shape (3, 1) but is {vec_2.shape}")
+        raise ValueError(
+            f"Second vector must be a column vector and have "
+            f"shape (3, 1) but is {vec_2.shape}"
+        )
     return vec_1.dot(vec_2)

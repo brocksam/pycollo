@@ -33,8 +33,7 @@ from pyproprop import Options
 GAUSS = "gauss"
 LOBATTO = "lobatto"
 RADAU = "radau"
-QUADRATURES = Options((GAUSS, LOBATTO, RADAU), default=LOBATTO,
-                      unsupported=GAUSS)
+QUADRATURES = Options((GAUSS, LOBATTO, RADAU), default=LOBATTO, unsupported=GAUSS)
 DEFAULT_COLLOCATION_POINTS_MIN = 4
 DEFAULT_COLLOCATION_POINTS_MAX = 10
 
@@ -65,8 +64,12 @@ class Quadrature:
     @backend.setter
     def backend(self, backend):
         self._backend = backend
-        self.order_range = list(range(
-            self.settings.collocation_points_min, self.settings.collocation_points_max))
+        self.order_range = list(
+            range(
+                self.settings.collocation_points_min,
+                self.settings.collocation_points_max,
+            )
+        )
         if self.settings.quadrature_method == LOBATTO:
             self.quadrature_generator = self.lobatto_generator
         elif self.settings.quadrature_method == RADAU:
@@ -85,8 +88,7 @@ class Quadrature:
         return self._retrive_or_generate_dict_value(self._polynomials, order)
 
     def quadrature_point(self, order, *, domain=None):
-        points = self._retrive_or_generate_dict_value(
-            self._quadrature_points, order)
+        points = self._retrive_or_generate_dict_value(self._quadrature_points, order)
         if domain:
             stretch = 0.5 * (domain[1] - domain[0])
             scale = 0.5 * (domain[0] + domain[1])
@@ -128,10 +130,14 @@ class Quadrature:
         coefficients = [0] * (order - 2)
         coefficients.extend([1])
         legendre_polynomial = np.polynomial.legendre.Legendre(coefficients)
-        radau_weights = [2 / (order - 1)**2]
+        radau_weights = [2 / (order - 1) ** 2]
         radau_weights = np.array(
-            radau_weights + [(1 - x) / ((order - 1)**2 * (legendre_polynomial(x)**2))
-                             for x in radau_points[1:-1]])
+            radau_weights
+            + [
+                (1 - x) / ((order - 1) ** 2 * (legendre_polynomial(x) ** 2))
+                for x in radau_points[1:-1]
+            ]
+        )
         radau_weights = np.concatenate([radau_weights, np.array([0])])
         self._quadrature_weights.update({order: radau_weights})
 
@@ -148,10 +154,10 @@ class Quadrature:
                     row = j + k * order
                     for i in range(order - 2):
                         col = i + j * (order - 2)
-                        A[row, col] = radau_weights[i + 1] * \
-                            butcher_points[i + 1]**k
-                    b[row] = (radau_weights[j] / (k + 1)) * (1 - butcher_points[j]
-                                                             ** (k + 1)) - radau_weights[-1] * radau_weights[j]
+                        A[row, col] = radau_weights[i + 1] * butcher_points[i + 1] ** k
+                    b[row] = (radau_weights[j] / (k + 1)) * (
+                        1 - butcher_points[j] ** (k + 1)
+                    ) - radau_weights[-1] * radau_weights[j]
             del_row = []
             for i, row in enumerate(A):
                 if np.count_nonzero(row) == 0:
@@ -159,11 +165,11 @@ class Quadrature:
             A = np.delete(A, del_row, axis=0)
             b = np.delete(b, del_row, axis=0)
             a = np.linalg.solve(A, b)
-            butcher_array[1:-1, :] = a.reshape(order - 2, -1, order='F')
+            butcher_array[1:-1, :] = a.reshape(order - 2, -1, order="F")
         self._butcher_arrays.update({order: butcher_array})
 
         D_left = np.ones((order - 1, 1), dtype=int)
-        D_right = np.diag(-1 * np.ones((order - 1, ), dtype=int))
+        D_right = np.diag(-1 * np.ones((order - 1,), dtype=int))
         D_matrix = np.hstack([D_left, D_right])
         self._D_matrices.update({order: D_matrix})
 
@@ -201,7 +207,11 @@ class Quadrature:
         self._quadrature_points.update({order: lobatto_points})
 
         lobatto_weights = np.array(
-            [1 / (order * (order - 1) * (legendre_polynomial(x)**2)) for x in lobatto_points])
+            [
+                1 / (order * (order - 1) * (legendre_polynomial(x) ** 2))
+                for x in lobatto_points
+            ]
+        )
         self._quadrature_weights.update({order: lobatto_weights})
 
         butcher_points = self.quadrature_point(order, domain=[0, 1])
@@ -223,11 +233,13 @@ class Quadrature:
                         # print(f'i: {i}')
                         col = i + j * (order - 2)
                         # print(f'col: {col}')
-                        A[row, col] = lobatto_weights[i + 1] * \
-                            butcher_points[i + 1]**k
+                        A[row, col] = (
+                            lobatto_weights[i + 1] * butcher_points[i + 1] ** k
+                        )
                         # print(f'A: {lobatto_weights[i+1] * butcher_points[i+1]**k}')
-                    b[row] = (lobatto_weights[j] / (k + 1)) * (1 - butcher_points[j]
-                                                               ** (k + 1)) - lobatto_weights[-1] * lobatto_weights[j]
+                    b[row] = (lobatto_weights[j] / (k + 1)) * (
+                        1 - butcher_points[j] ** (k + 1)
+                    ) - lobatto_weights[-1] * lobatto_weights[j]
 
                     # print(f'b: {(lobatto_weights[j]/(k+1))*(1 - butcher_points[j]**(k+1)) - lobatto_weights[-1]*lobatto_weights[j]}\n')
             del_row = []
@@ -240,11 +252,11 @@ class Quadrature:
             # print(f'A: {A}')
             # print(f'b: {b}')
             # print(f'a: {a}')
-            butcher_array[1:-1, :] = a.reshape(order - 2, -1, order='F')
+            butcher_array[1:-1, :] = a.reshape(order - 2, -1, order="F")
         self._butcher_arrays.update({order: butcher_array})
 
         D_left = np.ones((num_interior_points, 1), dtype=int)
-        D_right = np.diag(-1 * np.ones((num_interior_points, ), dtype=int))
+        D_right = np.diag(-1 * np.ones((num_interior_points,), dtype=int))
         D_matrix = np.hstack([D_left, D_right])
         self._D_matrices.update({order: D_matrix})
 

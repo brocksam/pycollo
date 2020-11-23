@@ -12,7 +12,6 @@ import pycollo
 
 
 class BackendMock:
-
     def __init__(self, ocp):
         self.ocp = ocp
 
@@ -48,8 +47,8 @@ def test_radau_backend_name(radau_quadrature_fixture):
 def test_lobatto_weights(lobatto_quadrature_fixture):
     quadrature = lobatto_quadrature_fixture
     weights_2 = np.array([0.5, 0.5])
-    weights_3 = np.array([0.16666666666666666,
-                          0.66666666666666666,
-                          0.16666666666666666])
+    weights_3 = np.array(
+        [0.16666666666666666, 0.66666666666666666, 0.16666666666666666]
+    )
     np.testing.assert_array_equal(quadrature.quadrature_weight(2), weights_2)
     np.testing.assert_array_equal(quadrature.quadrature_weight(3), weights_3)

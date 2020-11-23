@@ -47,10 +47,11 @@ def brachistochrone_fixture():
     phase = problem.new_phase(name="A")
     phase.state_variables = [x, y, v]
     phase.control_variables = u
-    phase.state_equations = [v * sym.sin(u),
-                             v * sym.cos(u),
-                             g * sym.cos(u),
-                             ]
+    phase.state_equations = [
+        v * sym.sin(u),
+        v * sym.cos(u),
+        g * sym.cos(u),
+    ]
     phase.auxiliary_data = {}
     problem.objective_function = phase.final_time_variable
 
@@ -94,13 +95,71 @@ def double_pendulum_fixture():
     M00, M01, M10, M11, K0, K1 = sym.symbols("M00 M01 M10 M11 K0 K1")
     detM = sym.symbols("detM")
 
-    syms = ["a0", "a1", "v0", "v1", "T0", "T1", "g", "m0", "p0", "d0", "l0",
-            "k0", "I0", "m1", "p1", "d1", "l1", "k1", "I1", "c0", "s0", "c1",
-            "s1", "M00", "M01", "M10", "M11", "K0", "K1", "detM"]
+    syms = [
+        "a0",
+        "a1",
+        "v0",
+        "v1",
+        "T0",
+        "T1",
+        "g",
+        "m0",
+        "p0",
+        "d0",
+        "l0",
+        "k0",
+        "I0",
+        "m1",
+        "p1",
+        "d1",
+        "l1",
+        "k1",
+        "I1",
+        "c0",
+        "s0",
+        "c1",
+        "s1",
+        "M00",
+        "M01",
+        "M10",
+        "M11",
+        "K0",
+        "K1",
+        "detM",
+    ]
     Symbols = namedtuple("Symbols", syms)
-    fixture_syms = Symbols(a0, a1, v0, v1, T0, T1, g, m0, p0, d0, l0, k0, I0,
-                           m1, p1, d1, l1, k1, I1, c0, s0, c1, s1, M00, M01,
-                           M10, M11, K0, K1, detM)
+    fixture_syms = Symbols(
+        a0,
+        a1,
+        v0,
+        v1,
+        T0,
+        T1,
+        g,
+        m0,
+        p0,
+        d0,
+        l0,
+        k0,
+        I0,
+        m1,
+        p1,
+        d1,
+        l1,
+        k1,
+        I1,
+        c0,
+        s0,
+        c1,
+        s1,
+        M00,
+        M01,
+        M10,
+        M11,
+        K0,
+        K1,
+        detM,
+    )
 
     K0_sub_expr_0 = T0 + g * (m0 * p0 + m1 * l0) * c0
     K0_sub_expr_1 = m1 * p1 * l0 * (s1 * c0 - s0 * c1) * v1 ** 2
@@ -113,67 +172,79 @@ def double_pendulum_fixture():
     phase = problem.new_phase(name="A")
     phase.state_variables = [a0, a1, v0, v1]
     phase.control_variables = [T0, T1]
-    phase.state_equations = [v0,
-                             v1,
-                             (M11 * K0 - M01 * K1) / detM,
-                             (M00 * K1 - M10 * K0) / detM]
-    phase.integrand_functions = [(T0**2 + T1**2)]
-    phase.auxiliary_data = {g: -9.81,
-                            k1: 1 / 12,
-                            I0: m0 * (k0 ** 2 + p0 ** 2),
-                            I1: m1 * (k1 ** 2 + p1 ** 2),
-                            s0: sym.sin(a0),
-                            c1: sym.cos(a1),
-                            }
+    phase.state_equations = [
+        v0,
+        v1,
+        (M11 * K0 - M01 * K1) / detM,
+        (M00 * K1 - M10 * K0) / detM,
+    ]
+    phase.integrand_functions = [(T0 ** 2 + T1 ** 2)]
+    phase.auxiliary_data = {
+        g: -9.81,
+        k1: 1 / 12,
+        I0: m0 * (k0 ** 2 + p0 ** 2),
+        I1: m1 * (k1 ** 2 + p1 ** 2),
+        s0: sym.sin(a0),
+        c1: sym.cos(a1),
+    }
     problem.parameter_variables = [m0, p0]
     problem.objective_function = phase.integral_variables[0]
-    problem.auxiliary_data = {g: 0,
-                              d0: 0.5,
-                              k0: 1 / 12,
-                              m1: 1.0,
-                              p1: 0.5,
-                              d1: 0.5,
-                              l0: p0 + d0,
-                              l1: p1 + d1,
-                              I0: m0 * (k0 ** 2 + p0 ** 2),
-                              I1: m1 * (k1 ** 2 + p1 ** 2),
-                              c0: sym.cos(a0),
-                              s0: sym.sin(a0),
-                              c1: sym.cos(a1),
-                              s1: sym.sin(a1),
-                              M00: I0 + m1 * l0 ** 2,
-                              M01: m1 * p1 * l0 * (s0 * s1 + c0 * c1),
-                              M10: M01,
-                              M11: I1,
-                              K0: K0_eqn,
-                              K1: K1_eqn,
-                              detM: M00 * M11 - M01 * M10,
-                              }
+    problem.auxiliary_data = {
+        g: 0,
+        d0: 0.5,
+        k0: 1 / 12,
+        m1: 1.0,
+        p1: 0.5,
+        d1: 0.5,
+        l0: p0 + d0,
+        l1: p1 + d1,
+        I0: m0 * (k0 ** 2 + p0 ** 2),
+        I1: m1 * (k1 ** 2 + p1 ** 2),
+        c0: sym.cos(a0),
+        s0: sym.sin(a0),
+        c1: sym.cos(a1),
+        s1: sym.sin(a1),
+        M00: I0 + m1 * l0 ** 2,
+        M01: m1 * p1 * l0 * (s0 * s1 + c0 * c1),
+        M10: M01,
+        M11: I1,
+        K0: K0_eqn,
+        K1: K1_eqn,
+        detM: M00 * M11 - M01 * M10,
+    }
 
     phase.bounds.initial_time = 0
     phase.bounds.final_time = [1, 3]
-    phase.bounds.state_variables = [[-np.pi, np.pi],
-                                    [-np.pi, np.pi],
-                                    [-10, 10],
-                                    [-10, 10]]
+    phase.bounds.state_variables = [
+        [-np.pi, np.pi],
+        [-np.pi, np.pi],
+        [-10, 10],
+        [-10, 10],
+    ]
     phase.bounds.control_variables = [[-15, 15], [-15, 15]]
     phase.bounds.integral_variables = [0, 1000]
-    phase.bounds.initial_state_constraints = [[-0.5 * np.pi, -0.5 * np.pi],
-                                              [-0.5 * np.pi, -0.5 * np.pi],
-                                              [0, 0],
-                                              [0, 0]]
-    phase.bounds.final_state_constraints = [[0.5 * np.pi, 0.5 * np.pi],
-                                            [0.5 * np.pi, 0.5 * np.pi],
-                                            [0, 0],
-                                            [0, 0]]
+    phase.bounds.initial_state_constraints = [
+        [-0.5 * np.pi, -0.5 * np.pi],
+        [-0.5 * np.pi, -0.5 * np.pi],
+        [0, 0],
+        [0, 0],
+    ]
+    phase.bounds.final_state_constraints = [
+        [0.5 * np.pi, 0.5 * np.pi],
+        [0.5 * np.pi, 0.5 * np.pi],
+        [0, 0],
+        [0, 0],
+    ]
 
     problem.bounds.parameter_variables = [[0.5, 1.5], [0.5, 1.5]]
 
     phase.guess.time = [0, 2]
-    phase.guess.state_variables = [[-0.5 * np.pi, 0.5 * np.pi],
-                                   [-0.5 * np.pi, 0.5 * np.pi],
-                                   [0, 0],
-                                   [0, 0]]
+    phase.guess.state_variables = [
+        [-0.5 * np.pi, 0.5 * np.pi],
+        [-0.5 * np.pi, 0.5 * np.pi],
+        [0, 0],
+        [0, 0],
+    ]
     phase.guess.control_variables = [[0, 0], [0, 0]]
     phase.guess.integral_variables = [[100]]
 
@@ -193,7 +264,7 @@ def hypersensitive_problem_fixture():
 
     """
 
-    y, u = sym.symbols('y u')
+    y, u = sym.symbols("y u")
     Symbols = namedtuple("Symbols", ["y", "u"])
     fixture_syms = Symbols(y, u)
 
@@ -201,8 +272,8 @@ def hypersensitive_problem_fixture():
     phase = problem.new_phase(name="A")
     phase.state_variables = y
     phase.control_variables = u
-    phase.state_equations = [-y**3 + u]
-    phase.integrand_functions = [0.5 * (y**2 + u**2)]
+    phase.state_equations = [-(y ** 3) + u]
+    phase.integrand_functions = [0.5 * (y ** 2 + u ** 2)]
     phase.auxiliary_data = {}
 
     problem.objective_function = phase.integral_variables[0]

@@ -11,8 +11,9 @@ NONE = "none"
 USER = "user"
 
 
-SCALING_METHODS = Options((BOUNDS, GUESS, USER, NONE, None),
-                          default=BOUNDS, unsupported=(GUESS, USER))
+SCALING_METHODS = Options(
+    (BOUNDS, GUESS, USER, NONE, None), default=BOUNDS, unsupported=(GUESS, USER)
+)
 DEFAULT_NUMBER_SCALING_SAMPLES = 0
 DEFAULT_SCALING_WEIGHT = 0.8
 DEFAULT_UPDATE_SCALING = False
@@ -24,12 +25,12 @@ class ScalingABC(abc.ABC):
     _SCALE_DEFAULT = 1
     _SHIFT_DEFAULT = 0
 
-    optimal_control_problem = processed_property("optimal_control_problem",
-                                                 read_only=True)
+    optimal_control_problem = processed_property(
+        "optimal_control_problem", read_only=True
+    )
 
 
 class EndpointScaling(ScalingABC):
-
     def __init__(self, optimal_control_problem):
 
         self.optimal_control_problem = optimal_control_problem
@@ -58,12 +59,11 @@ class PhaseScaling(ScalingABC):
 
     def __repr__(self):
         cls_name = self.__class__.__name__
-        string = (f"{cls_name}(phase={self.phase}, )")
+        string = f"{cls_name}(phase={self.phase}, )"
         return string
 
 
 class Scaling(ScalingABC):
-
     def __init__(self, backend):
         self.backend = backend
         self.ocp = backend.ocp
@@ -88,7 +88,7 @@ class Scaling(ScalingABC):
     def _generate_bounds(self):
         x_l = self.backend.bounds.x_bnd_lower
         x_u = self.backend.bounds.x_bnd_upper
-        scales = (x_u - x_l)
+        scales = x_u - x_l
         shifts = x_u - (x_u - x_l) / 2
         return scales, shifts
 
@@ -106,10 +106,12 @@ class Scaling(ScalingABC):
 
     def _generate_constraint_base(self):
         scales = np.ones(self.backend.num_c)
-        slices = zip(self.backend.phase_y_var_slices,
-                     self.backend.phase_q_var_slices,
-                     self.backend.phase_y_eqn_slices,
-                     self.backend.phase_q_fnc_slices)
+        slices = zip(
+            self.backend.phase_y_var_slices,
+            self.backend.phase_q_var_slices,
+            self.backend.phase_y_eqn_slices,
+            self.backend.phase_q_fnc_slices,
+        )
         for y_slice, q_slice, y_eqn_slice, q_fnc_slice in slices:
             scales[y_eqn_slice] = self.x_scales[y_slice]
             scales[q_fnc_slice] = self.x_scales[q_slice]
@@ -213,15 +215,17 @@ class IterationScaling:
     def _expand_x_to_mesh(self, base_scaling):
         """Expand basis scaling (OCP variables) to iteration variables."""
         scaling = np.empty(self.iteration.num_x)
-        zip_args = zip(self.backend.phase_y_var_slices,
-                       self.backend.phase_u_var_slices,
-                       self.backend.phase_q_var_slices,
-                       self.backend.phase_t_var_slices,
-                       self.iteration.y_slices,
-                       self.iteration.u_slices,
-                       self.iteration.q_slices,
-                       self.iteration.t_slices,
-                       self.iteration.mesh.N)
+        zip_args = zip(
+            self.backend.phase_y_var_slices,
+            self.backend.phase_u_var_slices,
+            self.backend.phase_q_var_slices,
+            self.backend.phase_t_var_slices,
+            self.iteration.y_slices,
+            self.iteration.u_slices,
+            self.iteration.q_slices,
+            self.iteration.t_slices,
+            self.iteration.mesh.N,
+        )
         for values in zip_args:
             ocp_y_slice = values[0]
             ocp_u_slice = values[1]
@@ -244,14 +248,16 @@ class IterationScaling:
     def _expand_c_to_mesh(self, base_scaling):
         """Expand basis scaling (OCP constraints) to iteration constraints."""
         scaling = np.empty(self.iteration.num_c)
-        zip_args = zip(self.backend.phase_y_eqn_slices,
-                       self.backend.phase_p_con_slices,
-                       self.backend.phase_q_fnc_slices,
-                       self.iteration.c_defect_slices,
-                       self.iteration.c_path_slices,
-                       self.iteration.c_integral_slices,
-                       self.iteration.mesh.num_c_defect_per_y,
-                       self.iteration.mesh.N)
+        zip_args = zip(
+            self.backend.phase_y_eqn_slices,
+            self.backend.phase_p_con_slices,
+            self.backend.phase_q_fnc_slices,
+            self.iteration.c_defect_slices,
+            self.iteration.c_path_slices,
+            self.iteration.c_integral_slices,
+            self.iteration.mesh.num_c_defect_per_y,
+            self.iteration.mesh.N,
+        )
         for values in zip_args:
             ocp_d_slice = values[0]
             ocp_p_slice = values[1]
@@ -284,12 +290,10 @@ class IterationScaling:
     def _generate_from_previous(self):
         """Generate objective/constraint scaling from previous iteration."""
         w = self._calculate_objective_scaling(self.iteration.guess_x)
-        prev_w = [mesh_iter.scaling.w
-                  for mesh_iter in self.backend.mesh_iterations]
+        prev_w = [mesh_iter.scaling.w for mesh_iter in self.backend.mesh_iterations]
         w_all = np.concatenate([prev_w, np.array([w])])
         alpha = self.optimal_control_problem.settings.scaling_weight
-        weights = np.array([alpha * (1 - alpha)**i
-                            for i, _ in enumerate(w_all)])
+        weights = np.array([alpha * (1 - alpha) ** i for i, _ in enumerate(w_all)])
         weights = np.flip(weights)
         weights[0] /= alpha
         self.w = np.average(w_all, weights=weights)
@@ -313,22 +317,26 @@ class IterationScaling:
                 self.V_ocp[ocp_var_slice] = V_next
                 self.r_ocp[ocp_var_slice] = r_next
 
-        zipped = zip(self.backend.p,
-                     self.iteration.mesh.N,
-                     self.iteration.y_slices,
-                     self.iteration.u_slices,
-                     self.iteration.q_slices,
-                     self.iteration.t_slices)
+        zipped = zip(
+            self.backend.p,
+            self.iteration.mesh.N,
+            self.iteration.y_slices,
+            self.iteration.u_slices,
+            self.iteration.q_slices,
+            self.iteration.t_slices,
+        )
         for p, N, y_slice, u_slice, q_slice, t_slice in zipped:
             set_scales_shifts(self.backend.phase_y_var_slices[p.i], y_slice, N)
             set_scales_shifts(self.backend.phase_u_var_slices[p.i], u_slice, N)
             set_scales_shifts(self.backend.phase_q_var_slices[p.i], q_slice)
             set_scales_shifts(self.backend.phase_t_var_slices[p.i], t_slice)
         set_scales_shifts(self.backend.s_var_slice, self.iteration.s_slice)
-        prev_V = np.array([mesh_iter.scaling.V_ocp
-                           for mesh_iter in self.backend.mesh_iterations])
-        prev_r = np.array([mesh_iter.scaling.r_ocp
-                           for mesh_iter in self.backend.mesh_iterations])
+        prev_V = np.array(
+            [mesh_iter.scaling.V_ocp for mesh_iter in self.backend.mesh_iterations]
+        )
+        prev_r = np.array(
+            [mesh_iter.scaling.r_ocp for mesh_iter in self.backend.mesh_iterations]
+        )
         V_all = np.vstack([prev_V, self.V_ocp.reshape(1, -1)])
         r_all = np.vstack([prev_r, self.r_ocp.reshape(1, -1)])
         self.V_ocp = np.average(V_all, axis=0, weights=weights)
@@ -338,8 +346,9 @@ class IterationScaling:
         self.V_inv = np.reciprocal(self.V)
 
         W = self._calculate_constraint_scaling(self.iteration.guess_x)
-        prev_W = np.array([mesh_iter.scaling.W_ocp
-                           for mesh_iter in self.backend.mesh_iterations])
+        prev_W = np.array(
+            [mesh_iter.scaling.W_ocp for mesh_iter in self.backend.mesh_iterations]
+        )
         W_all = np.vstack([prev_W, W])
         self.W_ocp = np.average(W_all, axis=0, weights=weights)
         self.W = self._expand_c_to_mesh(self.W_ocp)
@@ -359,7 +368,7 @@ class IterationScaling:
         """
         args = np.concatenate([x_guess, np.ones(1)])
         g = self.backend.g_iter_scale_callable(args)
-        g_norm = np.sqrt(np.sum(g**2))
+        g_norm = np.sqrt(np.sum(g ** 2))
         obj_scaling = 1 / g_norm
         return obj_scaling
 
@@ -399,7 +408,8 @@ class IterationScaling:
             self.iteration.c_integral_slices,
             self.backend.p,
             self.iteration.mesh.num_c_defect_per_y,
-            self.iteration.mesh.N)
+            self.iteration.mesh.N,
+        )
         for args in zip_args:
             ocp_y_slice = args[0]
             ocp_q_slice = args[1]
@@ -412,14 +422,14 @@ class IterationScaling:
             p = args[8]
             n_defect = args[9]
             N = args[10]
-            ocp_c_scales[ocp_defect_slice] = np.reciprocal(
-                self.V_ocp[ocp_y_slice])
+            ocp_c_scales[ocp_defect_slice] = np.reciprocal(self.V_ocp[ocp_y_slice])
             ocp_c_scales[ocp_path_slice] = np.reciprocal(
-                np.mean(G_norm[path_slice].reshape(p.num_p_con, N), axis=1))
-            ocp_c_scales[ocp_integral_slice] = np.reciprocal(
-                self.V_ocp[ocp_q_slice])
+                np.mean(G_norm[path_slice].reshape(p.num_p_con, N), axis=1)
+            )
+            ocp_c_scales[ocp_integral_slice] = np.reciprocal(self.V_ocp[ocp_q_slice])
         ocp_c_scales[self.backend.c_endpoint_slice] = np.reciprocal(
-            G_norm[self.iteration.c_endpoint_slice])
+            G_norm[self.iteration.c_endpoint_slice]
+        )
         c_scales = ocp_c_scales
         return c_scales
 
@@ -430,19 +440,23 @@ class IterationScaling:
 
 class CasadiIterationScaling(IterationScaling):
     """Subclass with CasADi backend-specific scaling overrides."""
+
     pass
 
 
 class HsadIterationScaling(IterationScaling):
     """Subclass with hSAD backend-specific scaling overrides."""
+
     pass
 
 
 class SympyIterationScaling(IterationScaling):
     """Subclass with Sympy backend-specific scaling overrides."""
+
     pass
 
 
 class PycolloIterationScaling(IterationScaling):
     """Subclass with Pycollo backend-specific scaling overrides."""
+
     pass

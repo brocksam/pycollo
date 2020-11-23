@@ -35,12 +35,14 @@ class TestUserGuess:
         """Time guess initialised to None."""
         assert self.ocp.phases.A.guess.time is None
 
-    @pytest.mark.parametrize("test_input, expected",
-                             [([t0, tF], np.array([t0, tF])),
-                              ([t0, tF], np.array([t0, tF])),
-                              ([t0, 5.0, tF], np.array([t0, 5.0, tF])),
-                              ]
-                             )
+    @pytest.mark.parametrize(
+        "test_input, expected",
+        [
+            ([t0, tF], np.array([t0, tF])),
+            ([t0, tF], np.array([t0, tF])),
+            ([t0, 5.0, tF], np.array([t0, 5.0, tF])),
+        ],
+    )
     def test_time_guess(self, test_input, expected):
         """Time guesses are always cast to 1d np.ndarray."""
         self.ocp.phases.A.guess.time = test_input
@@ -72,18 +74,22 @@ def test_user_guess_dp_specific(double_pendulum_fixture):
 
     pi_by_2 = 0.5 * np.pi
     np.testing.assert_allclose(phase.guess.time, np.array([0, 2]))
-    np.testing.assert_allclose(phase.guess.state_variables,
-                               np.array([[-pi_by_2, pi_by_2],
-                                         [-pi_by_2, pi_by_2],
-                                         [0, 0],
-                                         [0, 0],
-                                         ]))
-    np.testing.assert_allclose(phase.guess.control_variables,
-                               np.array([[0, 0], [0, 0]]))
-    np.testing.assert_allclose(phase.guess.integral_variables,
-                               np.array([100]))
-    np.testing.assert_allclose(ocp.guess.parameter_variables,
-                               np.array([1.0, 1.0]))
+    np.testing.assert_allclose(
+        phase.guess.state_variables,
+        np.array(
+            [
+                [-pi_by_2, pi_by_2],
+                [-pi_by_2, pi_by_2],
+                [0, 0],
+                [0, 0],
+            ]
+        ),
+    )
+    np.testing.assert_allclose(
+        phase.guess.control_variables, np.array([[0, 0], [0, 0]])
+    )
+    np.testing.assert_allclose(phase.guess.integral_variables, np.array([100]))
+    np.testing.assert_allclose(ocp.guess.parameter_variables, np.array([1.0, 1.0]))
 
     ocp._console_out_initialisation_message()
     ocp._check_variables_and_equations()
@@ -105,11 +111,17 @@ def test_user_guess_dp_specific(double_pendulum_fixture):
     assert guess.tF[0] == 2.0
     assert isinstance(guess.y, list)
     assert len(guess.y) == 1
-    np.testing.assert_allclose(guess.y[0], np.array([[-pi_by_2, pi_by_2],
-                                                     [-pi_by_2, pi_by_2],
-                                                     [0, 0],
-                                                     [0, 0],
-                                                     ]))
+    np.testing.assert_allclose(
+        guess.y[0],
+        np.array(
+            [
+                [-pi_by_2, pi_by_2],
+                [-pi_by_2, pi_by_2],
+                [0, 0],
+                [0, 0],
+            ]
+        ),
+    )
     assert isinstance(guess.u, list)
     assert len(guess.u) == 1
     np.testing.assert_allclose(guess.u[0], np.array([[0, 0], [0, 0]]))

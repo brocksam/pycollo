@@ -27,13 +27,13 @@ v_mag = sym.Symbol("v_mag")
 v_norm_x = sym.Symbol("v_norm_x")
 v_norm_y = sym.Symbol("v_norm_y")
 
-x, y, z = sym.symbols('x y z')
+x, y, z = sym.symbols("x y z")
 
 circle_radius = 1.0
 
 problem = pycollo.OptimalControlProblem(
-    name="Multiphase example problem",
-    parameter_variables=[s0, s1])
+    name="Multiphase example problem", parameter_variables=[s0, s1]
+)
 
 phase_A = problem.new_phase(name="A")
 phase_A.state_variables = [y0, y1, y2, y3]
@@ -45,10 +45,10 @@ phase_A.state_equations = {
     y3: a1,
 }
 phase_A.path_constraints = [
-    sym.sqrt(y0**2 + y1**2) - circle_radius,
-    sym.sqrt((y0 - 1)**2 + y1**2) - circle_radius,
+    sym.sqrt(y0 ** 2 + y1 ** 2) - circle_radius,
+    sym.sqrt((y0 - 1) ** 2 + y1 ** 2) - circle_radius,
 ]
-phase_A.integrand_functions = [u0**2, u1**2]
+phase_A.integrand_functions = [u0 ** 2, u1 ** 2]
 phase_A.auxiliary_data = {
     a0: (u0 / s0),
     a1: (u1 / s0),
@@ -82,16 +82,20 @@ phase_A.bounds.final_state_constraints = {
 }
 
 phase_A.guess.time = np.array([0, 1])
-phase_A.guess.state_variables = np.array([
-    [1, 0],
-    [-2, 2],
-    [0, 0],
-    [0, 0],
-])
-phase_A.guess.control_variables = np.array([
-    [0, 0],
-    [0, 0],
-])
+phase_A.guess.state_variables = np.array(
+    [
+        [1, 0],
+        [-2, 2],
+        [0, 0],
+        [0, 0],
+    ]
+)
+phase_A.guess.control_variables = np.array(
+    [
+        [0, 0],
+        [0, 0],
+    ]
+)
 phase_A.guess.integral_variables = np.array([0, 0])
 
 phase_B = problem.new_phase_like(
@@ -119,22 +123,26 @@ phase_B.bounds.final_state_constraints = {
 }
 
 phase_B.guess.time = np.array([1, 2])
-phase_B.guess.state_variables = np.array([
-    [0, -1],
-    [2, -2],
-    [0, 0],
-    [0, 0],
-])
+phase_B.guess.state_variables = np.array(
+    [
+        [0, -1],
+        [2, -2],
+        [0, 0],
+        [0, 0],
+    ]
+)
 phase_B.guess.integral_variables = np.array([0, 0])
 
-problem.objective_function = (phase_A.integral_variables[0]
-                              + phase_A.integral_variables[1]
-                              + phase_B.integral_variables[0]
-                              + phase_B.integral_variables[1])
+problem.objective_function = (
+    phase_A.integral_variables[0]
+    + phase_A.integral_variables[1]
+    + phase_B.integral_variables[0]
+    + phase_B.integral_variables[1]
+)
 
 problem.auxiliary_data = {
     g: 9.81,
-    v_abs: y2**2 + y3**2,
+    v_abs: y2 ** 2 + y3 ** 2,
     v_mag: sym.sqrt(v_abs),
     v_norm_x: y2 / v_mag,
     v_norm_y: y3 / v_mag,
@@ -195,5 +203,5 @@ y_P1 = problem.solution.state[1][1]
 plt.plot(x_P0, y_P0)
 plt.plot(x_P1, y_P1)
 plt.plot(x_circle, y_circle, color="#000000")
-plt.gca().set_aspect('equal', adjustable='box')
+plt.gca().set_aspect("equal", adjustable="box")
 plt.show()

@@ -11,7 +11,7 @@ import sympy as sym
 
 from .node import Node
 from .sparse import SparseCOOMatrix
-from .utils import (console_out, dict_merge)
+from .utils import console_out, dict_merge
 
 """
 
@@ -35,9 +35,14 @@ Notes:
 
 
 class ExpressionGraph:
-
-    def __init__(self, ocp_backend, problem_variables, objective, constraints,
-                 auxiliary_information):
+    def __init__(
+        self,
+        ocp_backend,
+        problem_variables,
+        objective,
+        constraints,
+        auxiliary_information,
+    ):
 
         self.ocp_backend = ocp_backend
         self.phases = ocp_backend.p
@@ -54,7 +59,7 @@ class ExpressionGraph:
 
     def console_out_begin_expression_graph_creation(self):
         if self.ocp_backend.ocp.settings.console_out_progress:
-            msg = (f"Beginning expression graph creation.")
+            msg = f"Beginning expression graph creation."
             console_out(msg)
 
     def initialise_node_symbol_number_counters(self):
@@ -121,8 +126,7 @@ class ExpressionGraph:
                 node = Node(key, self, value=value)
 
     def initialise_time_normalisation_nodes(self):
-        self._t_norm_nodes = tuple(Node(p.t_norm, self)
-                                   for p in self.phases)
+        self._t_norm_nodes = tuple(Node(p.t_norm, self) for p in self.phases)
 
     def initialise_auxiliary_intermediate_nodes(self):
         iterable = self.user_symbol_to_expression_auxiliary_mapping.items()
@@ -160,24 +164,35 @@ class ExpressionGraph:
         )
 
     def _form_constraints_and_derivatives(self):
-
         def form_continuous(continuous_constraints):
-            form_function_and_derivative(func=continuous_constraints,
-                                         wrt=self._continuous_variable_nodes, func_abrv="c",
-                                         completion_msg="Jacobian of the continuous constraints")
+            form_function_and_derivative(
+                func=continuous_constraints,
+                wrt=self._continuous_variable_nodes,
+                func_abrv="c",
+                completion_msg="Jacobian of the continuous constraints",
+            )
 
         def form_endpoint(endpoint_constraints):
-            form_function_and_derivative(func=endpoint_constraints,
-                                         wrt=self._endpoint_variable_nodes, func_abrv="b",
-                                         completion_msg="Jacobian of the endpoint constraints")
+            form_function_and_derivative(
+                func=endpoint_constraints,
+                wrt=self._endpoint_variable_nodes,
+                func_abrv="b",
+                completion_msg="Jacobian of the endpoint constraints",
+            )
 
         form_function_and_derivative = functools.partial(
-            self._form_function_and_derivative, derivative=True, hessian=False, init_func=True)
+            self._form_function_and_derivative,
+            derivative=True,
+            hessian=False,
+            init_func=True,
+        )
 
         continuous_constraints = sym.Matrix(
-            self.constraints[self.ocp_backend.c_continuous_slice])
+            self.constraints[self.ocp_backend.c_continuous_slice]
+        )
         endpoint_constraints = sym.Matrix(
-            self.constraints[self.ocp_backend.c_endpoint_slice])
+            self.constraints[self.ocp_backend.c_endpoint_slice]
+        )
 
         form_continuous(continuous_constraints)
         form_endpoint(endpoint_constraints)
@@ -185,15 +200,21 @@ class ExpressionGraph:
     def _form_lagrangian_and_derivatives(self):
 
         form_function_and_derivative = functools.partial(
-            self._form_function_and_derivative, derivative=True, hessian=True, init_func=False)
+            self._form_function_and_derivative,
+            derivative=True,
+            hessian=True,
+            init_func=False,
+        )
 
         sigma = sym.symbols("_sigma")
         self.ocp_backend.sigma_sym = sigma
 
-        L_syms = tuple(sym.symbols(f"_lambda_{n}") for n in range(self.ocp_backend.num_c))
+        L_syms = tuple(
+            sym.symbols(f"_lambda_{n}") for n in range(self.ocp_backend.num_c)
+        )
         self.ocp_backend.lagrange_syms = L_syms
 
-        self.lagrange_syms = tuple((sigma, ) + L_syms)
+        self.lagrange_syms = tuple((sigma,) + L_syms)
         for L_sym in self.lagrange_syms:
             _ = Node(L_sym, self)
 
@@ -202,9 +223,12 @@ class ExpressionGraph:
         dL_dxb_endpoint = self.db_dxb.vector_premultiply(L_syms_endpoint)
         dL_dxb = dL_dxb_objective + dL_dxb_endpoint
         dL_dxb_terms = dL_dxb.to_dense_sympy_matrix()
-        form_function_and_derivative(func=dL_dxb_terms,
-                                     wrt=self._endpoint_variable_nodes, func_abrv="L",
-                                     completion_msg=f"Hessian of the endpoint Lagrangian")
+        form_function_and_derivative(
+            func=dL_dxb_terms,
+            wrt=self._endpoint_variable_nodes,
+            func_abrv="L",
+            completion_msg=f"Hessian of the endpoint Lagrangian",
+        )
         self.ddL_dxbdxb = self.ddL_dxbdxb.make_lower_triangular()
 
         L_syms_continuous_time_stretched = []
@@ -214,46 +238,68 @@ class ExpressionGraph:
             self.ocp_backend.phase_integral_constraint_slices,
             self._t_norm_nodes,
         ):
-            terms = [Node(sym.Mul(t_norm_node.symbol, L_sym), self).symbol
-                     for L_sym in L_syms[p_c_defect_slice]]
+            terms = [
+                Node(sym.Mul(t_norm_node.symbol, L_sym), self).symbol
+                for L_sym in L_syms[p_c_defect_slice]
+            ]
             L_syms_continuous_time_stretched.extend(terms)
             terms = [L_sym for L_sym in L_syms[p_c_path_slice]]
             L_syms_continuous_time_stretched.extend(terms)
-            terms = [Node(sym.Mul(t_norm_node.symbol, L_sym), self).symbol
-                     for L_sym in L_syms[p_c_integral_slice]]
+            terms = [
+                Node(sym.Mul(t_norm_node.symbol, L_sym), self).symbol
+                for L_sym in L_syms[p_c_integral_slice]
+            ]
             L_syms_continuous_time_stretched.extend(terms)
 
         dL_dx_continuous = self.dc_dx.vector_premultiply(
-            L_syms_continuous_time_stretched)
+            L_syms_continuous_time_stretched
+        )
         dL_dx_terms = dL_dx_continuous.to_dense_sympy_matrix()
-        form_function_and_derivative(func=dL_dx_terms,
-                                     wrt=self._continuous_variable_nodes, func_abrv="L",
-                                     completion_msg=f"Hessian of the continuous Lagrangian")
+        form_function_and_derivative(
+            func=dL_dx_terms,
+            wrt=self._continuous_variable_nodes,
+            func_abrv="L",
+            completion_msg=f"Hessian of the continuous Lagrangian",
+        )
         self.ddL_dxdx = self.ddL_dxdx.make_lower_triangular()
         self.ddL_dxdx_nodes = self.ddL_dxdx_nodes.make_lower_triangular()
 
         portions_requiring_summing = {}
-        for p, p_var_slice in zip(self.ocp_backend.p, self.ocp_backend.phase_variable_slices):
+        for p, p_var_slice in zip(
+            self.ocp_backend.p, self.ocp_backend.phase_variable_slices
+        ):
             offset = p_var_slice.start
-            p_qt_slice = slice(p.qt_slice.start + offset,
-                               p.qt_slice.stop + offset)
+            p_qt_slice = slice(p.qt_slice.start + offset, p.qt_slice.stop + offset)
             portions_requiring_summing.update(
-                {**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, p_qt_slice).entries})
+                {
+                    **self.ddL_dxdx.get_subset(
+                        self.ocp_backend.variable_slice, p_qt_slice
+                    ).entries
+                }
+            )
         portions_requiring_summing.update(
-            {**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, self.ocp_backend.variable_slice).entries})
-        final_nodes = set(Node(symbol, self)
-                          for symbol in portions_requiring_summing.values())
+            {
+                **self.ddL_dxdx.get_subset(
+                    self.ocp_backend.variable_slice, self.ocp_backend.variable_slice
+                ).entries
+            }
+        )
+        final_nodes = set(
+            Node(symbol, self) for symbol in portions_requiring_summing.values()
+        )
 
         ddL_dxdx_dependent_nodes = set(
-            node for tier in self.ddL_dxdx_dependent_tiers.values() for node in tier)
+            node for tier in self.ddL_dxdx_dependent_tiers.values() for node in tier
+        )
         nodes_requiring_summing = set()
 
         def requires_summing(node):
             if node in final_nodes:
                 summing_required = True
             else:
-                summing_required = any(requires_summing(child)
-                                       for child in node.child_nodes)
+                summing_required = any(
+                    requires_summing(child) for child in node.child_nodes
+                )
             if summing_required:
                 nodes_requiring_summing.add(node)
             return summing_required
@@ -262,7 +308,8 @@ class ExpressionGraph:
             _ = requires_summing(Node(L, self))
 
         self.ddL_dxdx_sum_nodes = nodes_requiring_summing.difference(
-            set(Node(symbol, self) for symbol in L_syms))
+            set(Node(symbol, self) for symbol in L_syms)
+        )
 
         L_nodes = set(Node(L, self) for L in L_syms)
         nodes_requiring_summing = set()
@@ -284,8 +331,9 @@ class ExpressionGraph:
 
         self.ddL_dxdx_sum_nodes = nodes_requiring_summing
 
-    def _form_function_and_derivative(self, func, wrt, derivative, hessian, func_abrv, init_func, completion_msg=None):
-
+    def _form_function_and_derivative(
+        self, func, wrt, derivative, hessian, func_abrv, init_func, completion_msg=None
+    ):
         def create_derivative_abbreviation(wrt, func_abrv):
             if wrt is self._continuous_variable_nodes:
                 wrt_abrv = "x"
@@ -311,8 +359,7 @@ class ExpressionGraph:
             self = add_to_namespace(self, init_args, func_abrv)
 
         if derivative:
-            deriv = self.hybrid_symbolic_algorithmic_differentiation(
-                *init_args, wrt)
+            deriv = self.hybrid_symbolic_algorithmic_differentiation(*init_args, wrt)
             init_args = self._initialise_function(deriv)
             deriv_abrv = create_derivative_abbreviation(wrt, func_abrv)
             self = add_to_namespace(self, init_args, deriv_abrv)
@@ -324,9 +371,7 @@ class ExpressionGraph:
         return init_args
 
     def _initialise_function(self, expr):
-
         def substitute_function_for_root_symbols(expr):
-
             def traverse_root_branch(expr, max_tier):
                 root_node = self.get_node_from_expr(expr)
                 max_tier = max(max_tier, root_node.tier)
@@ -358,8 +403,7 @@ class ExpressionGraph:
                     root_symbol, root_node, max_tier = return_vals
                     expr_subbed.append(root_symbol)
                     expr_nodes.append(root_node)
-                return_matrix = sym.Matrix(np.array(expr_subbed).reshape(
-                    expr.shape))
+                return_matrix = sym.Matrix(np.array(expr_subbed).reshape(expr.shape))
                 return (return_matrix, expr_nodes, max_tier)
 
         def separate_precomputable_and_dependent_nodes(expr, nodes):
@@ -387,17 +431,16 @@ class ExpressionGraph:
                 dependent_tiers[node.tier].add(node)
             return dependent_tiers
 
-        def check_root_tier_is_exlusively_continuous_or_endpoint(
-                dependent_tiers):
+        def check_root_tier_is_exlusively_continuous_or_endpoint(dependent_tiers):
             pass
 
         return_vals = substitute_function_for_root_symbols(expr)
         expr_subbed, expr_nodes, max_tier = return_vals
         return_vals = separate_precomputable_and_dependent_nodes(
-            expr_subbed, expr_nodes)
+            expr_subbed, expr_nodes
+        )
         precomputable_nodes, dependent_nodes = return_vals
-        dependent_tiers = sort_dependent_nodes_by_tier(dependent_nodes,
-                                                       max_tier)
+        dependent_tiers = sort_dependent_nodes_by_tier(dependent_nodes, max_tier)
         check_root_tier_is_exlusively_continuous_or_endpoint(dependent_tiers)
         return expr_subbed, expr_nodes, precomputable_nodes, dependent_tiers
 
@@ -453,9 +496,14 @@ class ExpressionGraph:
             **self._intermediate_nodes,
         }
 
-    def hybrid_symbolic_algorithmic_differentiation(self, target_function,
-                                                    function_nodes, precomputable_nodes, dependent_nodes_by_tier, wrt):
-
+    def hybrid_symbolic_algorithmic_differentiation(
+        self,
+        target_function,
+        function_nodes,
+        precomputable_nodes,
+        dependent_nodes_by_tier,
+        wrt,
+    ):
         def differentiate(function_nodes, wrt_nodes):
             n_rows = len(function_nodes)
             n_cols = len(wrt_nodes)
@@ -466,31 +514,35 @@ class ExpressionGraph:
                 for wrt in diff_nodes:
                     i_col = wrt_mapping.get(wrt)
                     if i_col is not None:
-                        nonzeros[(i_row, i_col)
-                                 ] = node.derivative_as_symbol(wrt)
+                        nonzeros[(i_row, i_col)] = node.derivative_as_symbol(wrt)
             return SparseCOOMatrix(nonzeros, n_rows, n_cols, self)
             # return sym.SparseMatrix(n_rows, n_cols, nonzeros)
 
         def compute_target_function_derivatives_for_each_tier(
-                dependent_nodes_by_tier_collapsed):
+            dependent_nodes_by_tier_collapsed,
+        ):
             df_de = []
             for node_tier in dependent_nodes_by_tier_collapsed:
                 derivative = differentiate(function_nodes, node_tier)
                 df_de.append(derivative)
             return df_de
 
-        def compute_delta_matrices_for_each_tier(num_e0,
-                                                 dependent_nodes_by_tier_collapsed):
+        def compute_delta_matrices_for_each_tier(
+            num_e0, dependent_nodes_by_tier_collapsed
+        ):
             delta_matrices = [1]
             for tier_num, dependent_nodes_tier in enumerate(
-                    dependent_nodes_by_tier_collapsed[1:], 1):
+                dependent_nodes_by_tier_collapsed[1:], 1
+            ):
                 num_ei = len(dependent_nodes_tier)
                 delta_matrix_i = SparseCOOMatrix({}, num_ei, num_e0, self)
                 # delta_matrix_i = sym.SparseMatrix(num_ei, num_e0, {})
                 for by_tier_num in range(tier_num):
                     delta_matrix_j = delta_matrices[by_tier_num]
-                    deriv_matrix = differentiate(dependent_nodes_tier,
-                                                 dependent_nodes_by_tier_collapsed[by_tier_num])
+                    deriv_matrix = differentiate(
+                        dependent_nodes_tier,
+                        dependent_nodes_by_tier_collapsed[by_tier_num],
+                    )
                     delta_matrix_i += deriv_matrix * delta_matrix_j
                 delta_matrices.append(delta_matrix_i)
             return delta_matrices
@@ -511,11 +563,13 @@ class ExpressionGraph:
                 dependent_nodes_by_tier_collapsed.append(tuple(nodes))
 
         df_de = compute_target_function_derivatives_for_each_tier(
-            dependent_nodes_by_tier_collapsed)
+            dependent_nodes_by_tier_collapsed
+        )
 
         num_e0 = len(dependent_nodes_by_tier_collapsed[0])
-        delta_matrices = compute_delta_matrices_for_each_tier(num_e0,
-                                                              dependent_nodes_by_tier_collapsed)
+        delta_matrices = compute_delta_matrices_for_each_tier(
+            num_e0, dependent_nodes_by_tier_collapsed
+        )
 
         derivative = compute_derivative_recursive_hSAD_algorithm()
 
@@ -523,14 +577,18 @@ class ExpressionGraph:
 
     def __str__(self):
         cls_name = self.__class__.__name__
-        return (f"{cls_name}(({self.problem_variables_continuous}, "
-                f"{self.problem_variables_endpoint}))")
+        return (
+            f"{cls_name}(({self.problem_variables_continuous}, "
+            f"{self.problem_variables_endpoint}))"
+        )
 
     def __repr__(self):
         cls_name = self.__class__.__name__
-        return (f"{cls_name}(problem_variables="
-                f"({self.problem_variables_continuous}, "
-                f"{self.problem_variables_endpoint}))")
+        return (
+            f"{cls_name}(problem_variables="
+            f"({self.problem_variables_continuous}, "
+            f"{self.problem_variables_endpoint}))"
+        )
 
 
 def kill():

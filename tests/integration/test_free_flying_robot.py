@@ -95,80 +95,90 @@ class TestFreeFlyingRobot:
         # Set up the Pycollo OCP
         ocp_name = "Free-Flying Robot"
         state.ocp = pycollo.OptimalControlProblem(name=ocp_name)
-        y_vars = [self.r_x,
-                  self.r_y,
-                  self.theta,
-                  self.v_x,
-                  self.v_y,
-                  self.omega]
+        y_vars = [self.r_x, self.r_y, self.theta, self.v_x, self.v_y, self.omega]
         u_vars = [self.u_x_pos, self.u_x_neg, self.u_y_pos, self.u_y_neg]
-        state.phase = state.ocp.new_phase(name="A",
-                                          state_variables=y_vars,
-                                          control_variables=u_vars)
+        state.phase = state.ocp.new_phase(
+            name="A", state_variables=y_vars, control_variables=u_vars
+        )
 
         # Phase information
         v_x_dot = (self.T_x + self.T_y) * sym.cos(self.theta)
         v_y_dot = (self.T_x + self.T_y) * sym.sin(self.theta)
         omega_dot = (self.I_xx * self.T_x) - (self.I_yy * self.T_y)
-        state.phase.state_equations = {self.r_x: self.v_x,
-                                       self.r_y: self.v_y,
-                                       self.theta: self.omega,
-                                       self.v_x: v_x_dot,
-                                       self.v_y: v_y_dot,
-                                       self.omega: omega_dot}
+        state.phase.state_equations = {
+            self.r_x: self.v_x,
+            self.r_y: self.v_y,
+            self.theta: self.omega,
+            self.v_x: v_x_dot,
+            self.v_y: v_y_dot,
+            self.omega: omega_dot,
+        }
         q = self.u_x_pos + self.u_x_neg + self.u_y_pos + self.u_y_neg
         state.phase.integrand_functions = [q]
-        state.phase.path_constraints = [(self.u_x_pos + self.u_x_neg),
-                                        (self.u_y_pos + self.u_y_neg)]
+        state.phase.path_constraints = [
+            (self.u_x_pos + self.u_x_neg),
+            (self.u_y_pos + self.u_y_neg),
+        ]
 
         # Problem information
         state.ocp.objective_function = state.phase.integral_variables[0]
-        state.ocp.auxiliary_data = {self.I_xx: 0.2,
-                                    self.I_yy: 0.2,
-                                    self.T_x: self.u_x_pos - self.u_x_neg,
-                                    self.T_y: self.u_y_pos - self.u_y_neg,
-                                    }
+        state.ocp.auxiliary_data = {
+            self.I_xx: 0.2,
+            self.I_yy: 0.2,
+            self.T_x: self.u_x_pos - self.u_x_neg,
+            self.T_y: self.u_y_pos - self.u_y_neg,
+        }
 
         # Bounds
         state.phase.bounds.initial_time = self.t0
         state.phase.bounds.final_time = self.tF
-        y_bnds = {self.r_x: [self.r_x_min, self.r_x_max],
-                  self.r_y: [self.r_y_min, self.r_y_max],
-                  self.theta: [self.theta_min, self.theta_max],
-                  self.v_x: [self.v_x_min, self.v_x_max],
-                  self.v_y: [self.v_y_min, self.v_y_max],
-                  self.omega: [self.omega_min, self.omega_max]}
+        y_bnds = {
+            self.r_x: [self.r_x_min, self.r_x_max],
+            self.r_y: [self.r_y_min, self.r_y_max],
+            self.theta: [self.theta_min, self.theta_max],
+            self.v_x: [self.v_x_min, self.v_x_max],
+            self.v_y: [self.v_y_min, self.v_y_max],
+            self.omega: [self.omega_min, self.omega_max],
+        }
         state.phase.bounds.state_variables = y_bnds
-        y_t0_bnds = {self.r_x: [self.r_x_t0, self.r_x_t0],
-                     self.r_y: [self.r_y_t0, self.r_y_t0],
-                     self.theta: [self.theta_t0, self.theta_t0],
-                     self.v_x: [self.v_x_t0, self.v_x_t0],
-                     self.v_y: [self.v_y_t0, self.v_y_t0],
-                     self.omega: [self.omega_t0, self.omega_t0]}
+        y_t0_bnds = {
+            self.r_x: [self.r_x_t0, self.r_x_t0],
+            self.r_y: [self.r_y_t0, self.r_y_t0],
+            self.theta: [self.theta_t0, self.theta_t0],
+            self.v_x: [self.v_x_t0, self.v_x_t0],
+            self.v_y: [self.v_y_t0, self.v_y_t0],
+            self.omega: [self.omega_t0, self.omega_t0],
+        }
         state.phase.bounds.initial_state_constraints = y_t0_bnds
-        y_tF_bnds = {self.r_x: [self.r_x_tF, self.r_x_tF],
-                     self.r_y: [self.r_y_tF, self.r_y_tF],
-                     self.theta: [self.theta_tF, self.theta_tF],
-                     self.v_x: [self.v_x_tF, self.v_x_tF],
-                     self.v_y: [self.v_y_tF, self.v_y_tF],
-                     self.omega: [self.omega_tF, self.omega_tF]}
+        y_tF_bnds = {
+            self.r_x: [self.r_x_tF, self.r_x_tF],
+            self.r_y: [self.r_y_tF, self.r_y_tF],
+            self.theta: [self.theta_tF, self.theta_tF],
+            self.v_x: [self.v_x_tF, self.v_x_tF],
+            self.v_y: [self.v_y_tF, self.v_y_tF],
+            self.omega: [self.omega_tF, self.omega_tF],
+        }
         state.phase.bounds.final_state_constraints = y_tF_bnds
-        u_bnds = {self.u_x_pos: [self.u_x_pos_min, self.u_x_pos_max],
-                  self.u_x_neg: [self.u_x_neg_min, self.u_x_neg_max],
-                  self.u_y_pos: [self.u_y_pos_min, self.u_y_pos_max],
-                  self.u_y_neg: [self.u_y_neg_min, self.u_y_neg_max]}
+        u_bnds = {
+            self.u_x_pos: [self.u_x_pos_min, self.u_x_pos_max],
+            self.u_x_neg: [self.u_x_neg_min, self.u_x_neg_max],
+            self.u_y_pos: [self.u_y_pos_min, self.u_y_pos_max],
+            self.u_y_neg: [self.u_y_neg_min, self.u_y_neg_max],
+        }
         state.phase.bounds.control_variables = u_bnds
         state.phase.bounds.integral_variables = [[0, 100]]
         state.phase.bounds.path_constraints = [[-1000, 1], [-1000, 1]]
 
         # Guess
         state.phase.guess.time = [self.t0, self.tF]
-        state.phase.guess.state_variables = [[self.r_x_t0, self.r_x_tF],
-                                             [self.r_y_t0, self.r_y_tF],
-                                             [self.theta_t0, self.theta_tF],
-                                             [self.v_x_t0, self.v_x_tF],
-                                             [self.v_y_t0, self.v_y_tF],
-                                             [self.omega_t0, self.omega_tF]]
+        state.phase.guess.state_variables = [
+            [self.r_x_t0, self.r_x_tF],
+            [self.r_y_t0, self.r_y_tF],
+            [self.theta_t0, self.theta_tF],
+            [self.v_x_t0, self.v_x_tF],
+            [self.v_y_t0, self.v_y_tF],
+            [self.omega_t0, self.omega_tF],
+        ]
         state.phase.guess.control_variables = [[0, 0], [0, 0], [0, 0], [0, 0]]
         state.phase.guess.integral_variables = [0]
 
@@ -195,11 +205,10 @@ class TestFreeFlyingRobot:
         SOS_SOLUTION = 7.910154646
         rtol = 1e-4
         atol = 0.0
-        assert np.isclose(state.ocp.solution.objective,
-                          GPOPS_II_SOLUTION,
-                          rtol=rtol,
-                          atol=atol)
-        assert np.isclose(state.ocp.solution.objective, SOS_SOLUTION,
-                          rtol=rtol,
-                          atol=atol)
+        assert np.isclose(
+            state.ocp.solution.objective, GPOPS_II_SOLUTION, rtol=rtol, atol=atol
+        )
+        assert np.isclose(
+            state.ocp.solution.objective, SOS_SOLUTION, rtol=rtol, atol=atol
+        )
         assert state.ocp.mesh_tolerance_met is True

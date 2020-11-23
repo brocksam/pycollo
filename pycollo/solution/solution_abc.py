@@ -10,10 +10,23 @@ from ..vis.plot import plot_solution
 
 nlp_result_fields = ("solution", "info", "solve_time")
 NlpResult = collections.namedtuple("NlpResult", nlp_result_fields)
-phase_solution_data_fields = ("tau", "y", "dy", "u", "q", "t", "t0", "tF",
-                              "T", "stretch", "shift", "time")
-PhaseSolutionData = collections.namedtuple("PhaseSolutionData",
-                                           phase_solution_data_fields)
+phase_solution_data_fields = (
+    "tau",
+    "y",
+    "dy",
+    "u",
+    "q",
+    "t",
+    "t0",
+    "tF",
+    "T",
+    "stretch",
+    "shift",
+    "time",
+)
+PhaseSolutionData = collections.namedtuple(
+    "PhaseSolutionData", phase_solution_data_fields
+)
 Polys = collections.namedtuple("Polys", ("y", "dy", "u"))
 
 
@@ -60,79 +73,93 @@ class SolutionABC(ABC):
 
     def interpolate_solution_lobatto(self):
         self.phase_polys = []
-        zipped = zip(self.backend.p,
-                     self.phase_data,
-                     self.it.mesh.K,
-                     self.it.mesh.N_K,
-                     self.it.mesh.mesh_index_boundaries)
+        zipped = zip(
+            self.backend.p,
+            self.phase_data,
+            self.it.mesh.K,
+            self.it.mesh.N_K,
+            self.it.mesh.mesh_index_boundaries,
+        )
         for p, p_data, K, N_K, mesh_index_boundaries in zipped:
             y_polys = np.empty((p.num_y_var, K), dtype=object)
             dy_polys = np.empty((p.num_y_var, K), dtype=object)
             u_polys = np.empty((p.num_u_var, K), dtype=object)
             for i_y, (state, state_deriv) in enumerate(zip(p_data.y, p_data.dy)):
-                for i_k, (i_start, i_stop) in enumerate(zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])):
+                for i_k, (i_start, i_stop) in enumerate(
+                    zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])
+                ):
 
-                    t_k = p_data.tau[i_start:i_stop + 1]
-                    dy_k = state_deriv[i_start:i_stop + 1]
-                    dy_poly = np.polynomial.Legendre.fit(t_k,
-                                                         dy_k,
-                                                         deg=N_K[i_k] - 1,
-                                                         window=[0, 1])
+                    t_k = p_data.tau[i_start : i_stop + 1]
+                    dy_k = state_deriv[i_start : i_stop + 1]
+                    dy_poly = np.polynomial.Legendre.fit(
+                        t_k, dy_k, deg=N_K[i_k] - 1, window=[0, 1]
+                    )
                     dy_polys[i_y, i_k] = dy_poly
 
                     scale_factor = p_data.T / self.it.mesh._PERIOD
-                    y_k = state[i_start:i_stop + 1]
-                    dy_k = state_deriv[i_start:i_stop + 1] * scale_factor
-                    dy_poly = np.polynomial.Legendre.fit(t_k,
-                                                         dy_k,
-                                                         deg=N_K[i_k] - 1,
-                                                         window=[0, 1])
+                    y_k = state[i_start : i_stop + 1]
+                    dy_k = state_deriv[i_start : i_stop + 1] * scale_factor
+                    dy_poly = np.polynomial.Legendre.fit(
+                        t_k, dy_k, deg=N_K[i_k] - 1, window=[0, 1]
+                    )
                     y_poly = dy_poly.integ(k=state[i_start])
                     y_polys[i_y, i_k] = y_poly
 
                     t_data = np.linspace(t_k[0], t_k[-1])
 
             for i_u, control in enumerate(p_data.u):
-                for i_k, (i_start, i_stop) in enumerate(zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])):
-                    t_k = p_data.tau[i_start:i_stop + 1]
-                    u_k = control[i_start:i_stop + 1]
+                for i_k, (i_start, i_stop) in enumerate(
+                    zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])
+                ):
+                    t_k = p_data.tau[i_start : i_stop + 1]
+                    u_k = control[i_start : i_stop + 1]
                     u_poly = np.polynomial.Polynomial.fit(
-                        t_k, u_k, deg=N_K[i_k] - 1, window=[0, 1])
+                        t_k, u_k, deg=N_K[i_k] - 1, window=[0, 1]
+                    )
                     u_polys[i_u, i_k] = u_poly
             phase_polys = Polys(y_polys, dy_polys, u_polys)
             self.phase_polys.append(phase_polys)
 
     def interpolate_solution_radau(self):
         self.phase_polys = []
-        zipped = zip(self.backend.p,
-                     self.phase_data,
-                     self.it.mesh.K,
-                     self.it.mesh.N_K,
-                     self.it.mesh.mesh_index_boundaries)
+        zipped = zip(
+            self.backend.p,
+            self.phase_data,
+            self.it.mesh.K,
+            self.it.mesh.N_K,
+            self.it.mesh.mesh_index_boundaries,
+        )
         for p, p_data, K, N_K, mesh_index_boundaries in zipped:
             y_polys = np.empty((p.num_y_var, K), dtype=object)
             dy_polys = np.empty((p.num_y_var, K), dtype=object)
             u_polys = np.empty((p.num_u_var, K), dtype=object)
             for i_y, (state, state_deriv) in enumerate(zip(p_data.y, p_data.dy)):
-                for i_k, (i_start, i_stop) in enumerate(zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])):
+                for i_k, (i_start, i_stop) in enumerate(
+                    zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])
+                ):
                     scale_factor = p_data.T / self.it.mesh._PERIOD
-                    t_k = p_data.tau[i_start:i_stop + 1]
-                    dy_k = state_deriv[i_start:i_stop + 1] * scale_factor
-                    dy_poly = np.polynomial.Legendre.fit(t_k[:-1],
-                                                         dy_k[:-1],
-                                                         deg=N_K[i_k] - 2,
-                                                         domain=[t_k[0], t_k[-1]],
-                                                         window=[0, 1])
+                    t_k = p_data.tau[i_start : i_stop + 1]
+                    dy_k = state_deriv[i_start : i_stop + 1] * scale_factor
+                    dy_poly = np.polynomial.Legendre.fit(
+                        t_k[:-1],
+                        dy_k[:-1],
+                        deg=N_K[i_k] - 2,
+                        domain=[t_k[0], t_k[-1]],
+                        window=[0, 1],
+                    )
                     dy_polys[i_y, i_k] = dy_poly
                     y_poly = dy_poly.integ(k=state[i_start])
                     y_polys[i_y, i_k] = y_poly
                     dy_polys[i_y, i_k] = dy_poly
             for i_u, control in enumerate(p_data.u):
-                for i_k, (i_start, i_stop) in enumerate(zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])):
-                    t_k = p_data.tau[i_start:i_stop + 1]
-                    u_k = control[i_start:i_stop + 1]
+                for i_k, (i_start, i_stop) in enumerate(
+                    zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])
+                ):
+                    t_k = p_data.tau[i_start : i_stop + 1]
+                    u_k = control[i_start : i_stop + 1]
                     u_poly = np.polynomial.Polynomial.fit(
-                        t_k, u_k, deg=N_K[i_k] - 1, window=[0, 1])
+                        t_k, u_k, deg=N_K[i_k] - 1, window=[0, 1]
+                    )
                     u_polys[i_u, i_k] = u_poly
             phase_polys = Polys(y_polys, dy_polys, u_polys)
             self.phase_polys.append(phase_polys)

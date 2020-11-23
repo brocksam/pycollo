@@ -110,65 +110,77 @@ u_y_neg_max = 1000
 
 # Optimal control problem definition
 problem = pycollo.OptimalControlProblem(name="Free-Flying Robot")
-phase = problem.new_phase(name="A",
-                          state_variables=[r_x, r_y, theta, v_x, v_y, omega],
-                          control_variables=[u_x_pos,
-                                             u_x_neg,
-                                             u_y_pos,
-                                             u_y_neg])
+phase = problem.new_phase(
+    name="A",
+    state_variables=[r_x, r_y, theta, v_x, v_y, omega],
+    control_variables=[u_x_pos, u_x_neg, u_y_pos, u_y_neg],
+)
 
-phase.state_equations = {r_x: v_x,
-                         r_y: v_y,
-                         theta: omega,
-                         v_x: (T_x + T_y) * sym.cos(theta),
-                         v_y: (T_x + T_y) * sym.sin(theta),
-                         omega: (I_xx * T_x) - (I_yy * T_y)}
+phase.state_equations = {
+    r_x: v_x,
+    r_y: v_y,
+    theta: omega,
+    v_x: (T_x + T_y) * sym.cos(theta),
+    v_y: (T_x + T_y) * sym.sin(theta),
+    omega: (I_xx * T_x) - (I_yy * T_y),
+}
 phase.integrand_functions = [u_x_pos + u_x_neg + u_y_pos + u_y_neg]
 phase.path_constraints = [(u_x_pos + u_x_neg), (u_y_pos + u_y_neg)]
 
 problem.objective_function = phase.integral_variables[0]
-problem.auxiliary_data = {I_xx: 0.2,
-                          I_yy: 0.2,
-                          T_x: u_x_pos - u_x_neg,
-                          T_y: u_y_pos - u_y_neg,
-                          }
+problem.auxiliary_data = {
+    I_xx: 0.2,
+    I_yy: 0.2,
+    T_x: u_x_pos - u_x_neg,
+    T_y: u_y_pos - u_y_neg,
+}
 
 # Problem bounds
 phase.bounds.initial_time = t0
 phase.bounds.final_time = tF
-phase.bounds.state_variables = {r_x: [r_x_min, r_x_max],
-                                r_y: [r_y_min, r_y_max],
-                                theta: [theta_min, theta_max],
-                                v_x: [v_x_min, v_x_max],
-                                v_y: [v_y_min, v_y_max],
-                                omega: [omega_min, omega_max]}
-phase.bounds.initial_state_constraints = {r_x: [r_x_t0, r_x_t0],
-                                          r_y: [r_y_t0, r_y_t0],
-                                          theta: [theta_t0, theta_t0],
-                                          v_x: [v_x_t0, v_x_t0],
-                                          v_y: [v_y_t0, v_y_t0],
-                                          omega: [omega_t0, omega_t0]}
-phase.bounds.final_state_constraints = {r_x: [r_x_tF, r_x_tF],
-                                        r_y: [r_y_tF, r_y_tF],
-                                        theta: [theta_tF, theta_tF],
-                                        v_x: [v_x_tF, v_x_tF],
-                                        v_y: [v_y_tF, v_y_tF],
-                                        omega: [omega_tF, omega_tF]}
-phase.bounds.control_variables = {u_x_pos: [u_x_pos_min, u_x_pos_max],
-                                  u_x_neg: [u_x_neg_min, u_x_neg_max],
-                                  u_y_pos: [u_y_pos_min, u_y_pos_max],
-                                  u_y_neg: [u_y_neg_min, u_y_neg_max]}
+phase.bounds.state_variables = {
+    r_x: [r_x_min, r_x_max],
+    r_y: [r_y_min, r_y_max],
+    theta: [theta_min, theta_max],
+    v_x: [v_x_min, v_x_max],
+    v_y: [v_y_min, v_y_max],
+    omega: [omega_min, omega_max],
+}
+phase.bounds.initial_state_constraints = {
+    r_x: [r_x_t0, r_x_t0],
+    r_y: [r_y_t0, r_y_t0],
+    theta: [theta_t0, theta_t0],
+    v_x: [v_x_t0, v_x_t0],
+    v_y: [v_y_t0, v_y_t0],
+    omega: [omega_t0, omega_t0],
+}
+phase.bounds.final_state_constraints = {
+    r_x: [r_x_tF, r_x_tF],
+    r_y: [r_y_tF, r_y_tF],
+    theta: [theta_tF, theta_tF],
+    v_x: [v_x_tF, v_x_tF],
+    v_y: [v_y_tF, v_y_tF],
+    omega: [omega_tF, omega_tF],
+}
+phase.bounds.control_variables = {
+    u_x_pos: [u_x_pos_min, u_x_pos_max],
+    u_x_neg: [u_x_neg_min, u_x_neg_max],
+    u_y_pos: [u_y_pos_min, u_y_pos_max],
+    u_y_neg: [u_y_neg_min, u_y_neg_max],
+}
 phase.bounds.integral_variables = [[0, 100]]
 phase.bounds.path_constraints = [[-1000, 1], [-1000, 1]]
 
 # Problem guesses
 phase.guess.time = [t0, tF]
-phase.guess.state_variables = [[r_x_t0, r_x_tF],
-                               [r_y_t0, r_y_tF],
-                               [theta_t0, theta_tF],
-                               [v_x_t0, v_x_tF],
-                               [v_y_t0, v_y_tF],
-                               [omega_t0, omega_tF]]
+phase.guess.state_variables = [
+    [r_x_t0, r_x_tF],
+    [r_y_t0, r_y_tF],
+    [theta_t0, theta_tF],
+    [v_x_t0, v_x_tF],
+    [v_y_t0, v_y_tF],
+    [omega_t0, omega_tF],
+]
 phase.guess.control_variables = [[0, 0], [0, 0], [0, 0], [0, 0]]
 phase.guess.integral_variables = [0]
 

@@ -29,7 +29,7 @@ install:
   - source activate test-environment
   - conda install -q -y --file=requirements.txt
   # - conda install -q -y --file=tests/requirements.txt
-  - while read requirement; do conda install --yes $requirement || pip install $requirement; done < requirements.txt
+  - while read requirement; do conda install -q -y $requirement || pip install $requirement; done < tests/requirements.txt
   - conda install -q -y --file=docs/requirements.txt
   - conda list
   - python setup.py install

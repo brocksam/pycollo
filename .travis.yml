@@ -24,6 +24,7 @@ install:
   - conda config --add channels conda-forge
   - conda update -q conda
   - conda info -a
+  - pip uninstall pytest
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - source activate test-environment
   - conda install -q -y --file=requirements.txt
@@ -35,7 +36,7 @@ install:
 
 script:
   # Tests
-  - python -m pytest --cov-report term --cov=pycollo tests/
+  - pytest --cov-report term --cov=pycollo tests/
   # Docs
   - cd docs; make clean; cd ..
   - sphinx-build -nWT -b dummy docs/source docs/build

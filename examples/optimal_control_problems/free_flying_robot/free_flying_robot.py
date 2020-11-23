@@ -172,7 +172,7 @@ phase.guess.state_variables = [[r_x_t0, r_x_tF],
 phase.guess.control_variables = [[0, 0], [0, 0], [0, 0], [0, 0]]
 phase.guess.integral_variables = [0]
 
-problem.settings.display_mesh_result_graph = False
+problem.settings.display_mesh_result_graph = True
 problem.settings.mesh_tolerance = 1e-6
 problem.settings.max_mesh_iterations = 15
 

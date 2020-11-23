@@ -202,8 +202,7 @@ phase.guess.control_variables = np.array([[alpha_0_guess, alpha_f_guess],
                                           ])
 
 # Settings
-# problem.settings.display_mesh_result_graph = True
-problem.settings.max_mesh_iterations = 10
+problem.settings.display_mesh_result_graph = True
 
 # Initialise and solve
 problem.initialise()

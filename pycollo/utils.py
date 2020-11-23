@@ -275,10 +275,12 @@ def parse_parameter_var(var, var_name_str, var_type):
     else:
         var = list(var)
         if len(var) != 2:
-            msg = (f"If an iterable of values in being passed for `{var_name_str}` then this must be of length 2. {var} of length {len(var)} is not a valid argument.")
+            msg = (
+                f"If an iterable of values in being passed for `{var_name_str}` then this must be of length 2. {var} of length {len(var)} is not a valid argument.")
             raise TypeError(msg)
         if not isinstance(var[0], var_type) or not isinstance(var[1], var_type):
-            msg = (f"Both items in `{var_name_str}` must be {var_type} objects. {var[0]} at index 0 is of type {type(var[0])} and {var[1]} at index 1 is of type {type(var[1])}.")
+            msg = (
+                f"Both items in `{var_name_str}` must be {var_type} objects. {var[0]} at index 0 is of type {type(var[0])} and {var[1]} at index 1 is of type {type(var[1])}.")
             raise TypeError(msg)
         return tuple(var)
 

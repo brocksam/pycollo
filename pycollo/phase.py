@@ -206,7 +206,8 @@ class Phase:
                 new_phase.bounds.integral_variables = copy.deepcopy(self.bounds.integral_variables)
 
         if copy_state_endpoint_constraints and copy_bounds:
-            new_phase.bounds.state_endpoint_constraints = copy.deepcopy(self.bounds.state_endpoint_constraints)
+            new_phase.bounds.state_endpoint_constraints = copy.deepcopy(
+                self.bounds.state_endpoint_constraints)
 
         if copy_mesh:
             new_phase.mesh = copy.deepcopy(self.mesh)
@@ -457,7 +458,7 @@ class Phase:
         except AttributeError:
             named_keys = ()
         self._y_eqn_user = format_as_named_tuple(y_eqns, use_named=True,
-                                                  named_keys=named_keys)
+                                                 named_keys=named_keys)
 
     @property
     def number_state_equations(self) -> int:
@@ -488,7 +489,7 @@ class Phase:
     def integrand_functions(self, integrands):
         self._q_fnc_user = format_as_named_tuple(integrands, use_named=False)
         self._q_var_user = tuple(sym.Symbol(f'q{i_q}_P{self._phase_suffix}')
-                                  for i_q, _ in enumerate(self._q_fnc_user))
+                                 for i_q, _ in enumerate(self._q_fnc_user))
 
     @property
     def number_integrand_functions(self):

@@ -42,9 +42,9 @@ def test_sympy_to_casadi(in_mapping, utils):
     y_casadi = ca.SX.sym("y")
     sympy_vars = [x_sympy, y_sympy]
     casadi_vars = [x_casadi, y_casadi]
-    sym_mapping = {var_sym: var_ca 
-                       for var_sym, var_ca, use in zip(sympy_vars, casadi_vars, in_mapping)
-                       if use}
+    sym_mapping = {var_sym: var_ca
+                   for var_sym, var_ca, use in zip(sympy_vars, casadi_vars, in_mapping)
+                   if use}
 
     expr_sym = sym.Matrix([x_sympy * sym.sqrt(y_sympy),
                            sym.sin(x_sympy + y_sympy),

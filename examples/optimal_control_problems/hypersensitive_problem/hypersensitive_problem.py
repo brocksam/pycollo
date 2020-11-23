@@ -18,7 +18,7 @@ phase = problem.new_phase(name="A")
 phase.state_variables = y
 phase.control_variables = u
 phase.state_equations = [-y**3 + u]
-phase.integrand_functions = [0.5*(y**2 + u**2)]
+phase.integrand_functions = [0.5 * (y**2 + u**2)]
 phase.auxiliary_data = {}
 
 phase.mesh.number_mesh_sections = 10

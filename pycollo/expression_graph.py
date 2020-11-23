@@ -33,6 +33,7 @@ Notes:
 	
 """
 
+
 class ExpressionGraph:
 
     def __init__(self, ocp_backend, problem_variables, objective, constraints,
@@ -236,8 +237,10 @@ class ExpressionGraph:
             offset = p_var_slice.start
             p_qt_slice = slice(p.qt_slice.start + offset,
                                p.qt_slice.stop + offset)
-            portions_requiring_summing.update({**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, p_qt_slice).entries})
-        portions_requiring_summing.update({**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, self.ocp_backend.variable_slice).entries})
+            portions_requiring_summing.update(
+                {**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, p_qt_slice).entries})
+        portions_requiring_summing.update(
+            {**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, self.ocp_backend.variable_slice).entries})
         final_nodes = set(Node(symbol, self)
                           for symbol in portions_requiring_summing.values())
 

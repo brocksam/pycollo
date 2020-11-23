@@ -76,4 +76,4 @@ problem.auxiliary_data = {k0hat: 1.3708e+12,
                           K0: 2.575e-16,
                           K1: 4.876e-14,
                           K2: 1.7884e-16,
-}
+                          }

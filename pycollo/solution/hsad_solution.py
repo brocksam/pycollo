@@ -7,7 +7,8 @@ class HsadSolution(SolutionABC):
         for tau, time_guess, phase, c_continuous_lambda, y_slice, u_slice, q_slice, t_slice, dy_slice, N in zip(self._tau, self._it.guess_time, self._backend.p, self._backend.compiled_functions.c_continuous_lambdas, self._it.y_slices, self._it.u_slices, self._it.q_slices, self._it.t_slices, self._it.c_lambda_dy_slices, self._it.mesh.N):
             y = x[y_slice].reshape(
                 phase.num_y_vars, -1) if phase.num_y_vars else np.array([], dtype=float)
-            dy = c_continuous_lambda(*self._it._reshape_x(self._x), N)[dy_slice].reshape((-1, N)) if phase.num_y_vars else np.array([], dtype=float)
+            dy = c_continuous_lambda(*self._it._reshape_x(self._x), N)[dy_slice].reshape(
+                (-1, N)) if phase.num_y_vars else np.array([], dtype=float)
             u = x[u_slice].reshape(
                 phase.num_u_vars, -1) if phase.num_u_vars else np.array([], dtype=float)
             q = x[q_slice]
@@ -144,7 +145,8 @@ class HsadSolution(SolutionABC):
 
     def _patterson_rao_discretisation_mesh_error_single_phase(self, p, p_data, y_tilde, u_tilde, x_tilde_full):
 
-        dy_tilde = self._backend.compiled_functions.c_continuous_lambdas[p.i](*x_tilde_full, self._ph_mesh.N[p.i])[:p.num_y_vars * self._ph_mesh.N[p.i]].reshape(-1, self._ph_mesh.N[p.i])
+        dy_tilde = self._backend.compiled_functions.c_continuous_lambdas[p.i](
+            *x_tilde_full, self._ph_mesh.N[p.i])[:p.num_y_vars * self._ph_mesh.N[p.i]].reshape(-1, self._ph_mesh.N[p.i])
 
         A_dy_tilde = p_data.stretch * \
             self._ph_mesh.sA_matrix[p.i].dot(dy_tilde.T)
@@ -312,4 +314,3 @@ class HsadSolution(SolutionABC):
             return new_mesh
         else:
             return p.ocp_phase.mesh
-

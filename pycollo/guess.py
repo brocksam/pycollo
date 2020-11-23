@@ -68,17 +68,17 @@ class PhaseGuess:
     """
 
     phase = processed_property("phase", read_only=True)
-    time = processed_property("time", description="phase time guess", 
-        type=np.ndarray, cast=True, optional=True, method=assert_increasing)
+    time = processed_property("time", description="phase time guess",
+                              type=np.ndarray, cast=True, optional=True, method=assert_increasing)
     state_variables = processed_property("state_variables",
-        description="phase state variables guess", type=np.ndarray, cast=True,
-        optional=True)
+                                         description="phase state variables guess", type=np.ndarray, cast=True,
+                                         optional=True)
     control_variables = processed_property("control_variables",
-        description="phase control variables guess", type=np.ndarray,
-        cast=True, optional=True)
+                                           description="phase control variables guess", type=np.ndarray,
+                                           cast=True, optional=True)
     integral_variables = processed_property("integral_variables",
-        description="phase integral variables guess", type=np.ndarray,
-        cast=True, optional=True, method=np.ndarray.flatten)
+                                            description="phase integral variables guess", type=np.ndarray,
+                                            cast=True, optional=True, method=np.ndarray.flatten)
 
     def __init__(self,
                  phase: "Phase",

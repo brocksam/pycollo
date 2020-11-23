@@ -284,16 +284,16 @@ phase_D.auxiliary_data = {
 problem.objective_function = problem.phases[2].final_state_variables.m
 
 problem.endpoint_constraints = [
-    (phase_A.final_state_variables.m - phase_A.initial_state_variables.m 
-        + 6*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1),
-    (phase_B.initial_state_variables.m - phase_A.final_state_variables.m 
-        + 6*m_struct_S),
-    (phase_B.final_state_variables.m - phase_B.initial_state_variables.m 
-        + 3*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1),
-    (phase_C.initial_state_variables.m - phase_B.final_state_variables.m 
-        + 3*m_struct_S),
+    (phase_A.final_state_variables.m - phase_A.initial_state_variables.m
+        + 6 * m_prop_S + (tau_burn_S / tau_burn_1) * m_prop_1),
+    (phase_B.initial_state_variables.m - phase_A.final_state_variables.m
+        + 6 * m_struct_S),
+    (phase_B.final_state_variables.m - phase_B.initial_state_variables.m
+        + 3 * m_prop_S + (tau_burn_S / tau_burn_1) * m_prop_1),
+    (phase_C.initial_state_variables.m - phase_B.final_state_variables.m
+        + 3 * m_struct_S),
     (phase_C.final_state_variables.m - phase_C.initial_state_variables.m
-        + (1 - 2*(tau_burn_S/tau_burn_1))*m_prop_1),
+        + (1 - 2 * (tau_burn_S / tau_burn_1)) * m_prop_1),
     (phase_D.initial_state_variables.m - phase_C.final_state_variables.m
         + m_struct_1),
     phase_A.final_state_variables.r_x - phase_B.initial_state_variables.r_x,
@@ -386,5 +386,3 @@ problem.auxiliary_data = {
 problem.settings.display_mesh_result_graph = True
 
 problem.initialise()
-
-

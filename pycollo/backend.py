@@ -380,8 +380,8 @@ class BackendABC(ABC):
             formatted_syms = format_multiple_items_for_output(
                 self.aux_data_supplied_in_ocp_and_phase)
             msg = (f"Auxiliary data for {formatted_syms} has been supplied at "
-                    f"a per-phase level and therefore cannot be supplied at a "
-                    f"problem level.")
+                   f"a per-phase level and therefore cannot be supplied at a "
+                   f"problem level.")
             raise ValueError(msg)
 
     def partition_user_problem_aux_data(self):

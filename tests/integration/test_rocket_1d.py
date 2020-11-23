@@ -95,7 +95,8 @@ class TestRocket1D:
 
     def test_set_objective_function(self, state):
         """Objective function can be set."""
-        state.ocp.objective_function = state.ocp.phases.A.initial_state_variables.m - state.ocp.phases.A.final_state_variables.m
+        state.ocp.objective_function = state.ocp.phases.A.initial_state_variables.m - \
+            state.ocp.phases.A.final_state_variables.m
 
     def test_set_ocp_settings(self, state):
         """Problem settings can be manipulated sucessfully."""

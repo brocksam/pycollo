@@ -305,32 +305,3 @@ def test_t0_upper_less_than_tF_upper(double_pendulum_init_fixture,
                                    "phase A (index #0).")
     with pytest.raises(ValueError, match=expected_error_msg):
         ocp._check_problem_and_phase_bounds()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

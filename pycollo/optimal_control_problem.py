@@ -217,7 +217,7 @@ class OptimalControlProblem():
                         types of problem are not currently supported.
         """
         msg = (f"Pycollo do not currently support dynamic, path or integral "
-                f"constraints that are explicit functions of continuous time.")
+               f"constraints that are explicit functions of continuous time.")
         raise NotImplementedError(msg)
 
     @property
@@ -517,23 +517,28 @@ class OptimalControlProblem():
     def _final_output(self):
 
         def solution_results():
-            J_msg = (f'Final Objective Function Evaluation: {self._backend.mesh_iterations[-1].solution.objective:.4f}\n')
+            J_msg = (
+                f'Final Objective Function Evaluation: {self._backend.mesh_iterations[-1].solution.objective:.4f}\n')
             print(J_msg)
 
         def mesh_results():
-            section_msg = (f'Final Number of Mesh Sections:       {self.mesh_iterations[-1]._mesh._K}')
-            node_msg = (f'Final Number of Collocation Nodes:   {self.mesh_iterations[-1]._mesh._N}\n')
+            section_msg = (
+                f'Final Number of Mesh Sections:       {self.mesh_iterations[-1]._mesh._K}')
+            node_msg = (
+                f'Final Number of Collocation Nodes:   {self.mesh_iterations[-1]._mesh._N}\n')
             print(section_msg)
             print(node_msg)
 
         def time_results():
-            ocp_init_time_msg = (f'Total OCP Initialisation Time:       {self._ocp_initialisation_time:.4f} s')
+            ocp_init_time_msg = (
+                f'Total OCP Initialisation Time:       {self._ocp_initialisation_time:.4f} s')
             print(ocp_init_time_msg)
 
             self._iteration_initialisation_time = np.sum(np.array(
                 [iteration._initialisation_time for iteration in self._mesh_iterations]))
 
-            iter_init_time_msg = (f'Total Iteration Initialisation Time: {self._iteration_initialisation_time:.4f} s')
+            iter_init_time_msg = (
+                f'Total Iteration Initialisation Time: {self._iteration_initialisation_time:.4f} s')
             print(iter_init_time_msg)
 
             self._nlp_time = np.sum(
@@ -545,10 +550,12 @@ class OptimalControlProblem():
             self._process_results_time = np.sum(np.array(
                 [iteration._process_results_time for iteration in self._mesh_iterations]))
 
-            process_results_time_msg = (f'Total Mesh Refinement Time:          {self._process_results_time:.4f} s')
+            process_results_time_msg = (
+                f'Total Mesh Refinement Time:          {self._process_results_time:.4f} s')
             print(process_results_time_msg)
 
-            total_time_msg = (f'\nTotal Time:                          {self._ocp_initialisation_time + self._iteration_initialisation_time + self._nlp_time + self._process_results_time:.4f} s')
+            total_time_msg = (
+                f'\nTotal Time:                          {self._ocp_initialisation_time + self._iteration_initialisation_time + self._nlp_time + self._process_results_time:.4f} s')
             print(total_time_msg)
             print('\n\n')
 

@@ -461,7 +461,8 @@ class CompiledFunctions:
             db_dxb_phase_lambdas.append(db_dxb_phase_lambda)
 
         db_dxb = expr_graph.db_dxb
-        db_ds = sym.Matrix(sym.SparseMatrix(*db_dxb.shape, db_dxb.entries))[:, self.ocp_backend.endpoint_variable_slice]
+        db_ds = sym.Matrix(sym.SparseMatrix(*db_dxb.shape, db_dxb.entries)
+                           )[:, self.ocp_backend.endpoint_variable_slice]
         db_ds_lambda = numbafy(
             expression_graph=expr_graph,
             expression=db_ds,

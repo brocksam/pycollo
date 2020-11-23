@@ -71,8 +71,8 @@ class PhaseMesh:
             sizes = np.ones(self._num_mesh_secs) / self._num_mesh_secs
         if len(sizes) != self._num_mesh_secs:
             msg = (f"Mesh section sizes must be an iterable of length "
-                    f"{self._num_mesh_secs} (i.e. matching the number of mesh "
-                    f"sections).")
+                   f"{self._num_mesh_secs} (i.e. matching the number of mesh "
+                   f"sections).")
             raise ValueError(msg)
         sizes = np.array(sizes)
         sizes = sizes / sizes.sum()
@@ -235,10 +235,12 @@ class Mesh:
         # Check that the number of collocation points in each mesh sections is bounded by the minimum and maximum values set in settings.
         for i_sec, col_points in enumerate(p.number_mesh_section_nodes):
             if col_points < self.settings.collocation_points_min:
-                msg = (f"The number of collocation points, {col_points}, in mesh section {i_sec} must be greater than or equal to {self.ocp.settings._col_points_min}.")
+                msg = (
+                    f"The number of collocation points, {col_points}, in mesh section {i_sec} must be greater than or equal to {self.ocp.settings._col_points_min}.")
                 raise ValueError(msg)
             if col_points > self.settings.collocation_points_max:
-                msg = (f"The number of collocation points, {col_points}, in mesh section {i_sec} must be less than or equal to {self.ocp._settings._col_points_max}.")
+                msg = (
+                    f"The number of collocation points, {col_points}, in mesh section {i_sec} must be less than or equal to {self.ocp._settings._col_points_max}.")
                 raise ValueError(msg)
 
         # Generate the mesh based on using the quadrature method defined by the problem's `Settings` class.

@@ -24,9 +24,8 @@ phase_solution_data_fields = (
     "shift",
     "time",
 )
-PhaseSolutionData = collections.namedtuple(
-    "PhaseSolutionData", phase_solution_data_fields
-)
+PhaseSolutionData = collections.namedtuple("PhaseSolutionData",
+                                           phase_solution_data_fields)
 Polys = collections.namedtuple("Polys", ("y", "dy", "u"))
 
 
@@ -84,24 +83,27 @@ class SolutionABC(ABC):
             y_polys = np.empty((p.num_y_var, K), dtype=object)
             dy_polys = np.empty((p.num_y_var, K), dtype=object)
             u_polys = np.empty((p.num_u_var, K), dtype=object)
-            for i_y, (state, state_deriv) in enumerate(zip(p_data.y, p_data.dy)):
+            for i_y, (state,
+                      state_deriv) in enumerate(zip(p_data.y, p_data.dy)):
                 for i_k, (i_start, i_stop) in enumerate(
-                    zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])
-                ):
+                        zip(mesh_index_boundaries[:-1],
+                            mesh_index_boundaries[1:])):
 
-                    t_k = p_data.tau[i_start : i_stop + 1]
-                    dy_k = state_deriv[i_start : i_stop + 1]
-                    dy_poly = np.polynomial.Legendre.fit(
-                        t_k, dy_k, deg=N_K[i_k] - 1, window=[0, 1]
-                    )
+                    t_k = p_data.tau[i_start:i_stop + 1]
+                    dy_k = state_deriv[i_start:i_stop + 1]
+                    dy_poly = np.polynomial.Legendre.fit(t_k,
+                                                         dy_k,
+                                                         deg=N_K[i_k] - 1,
+                                                         window=[0, 1])
                     dy_polys[i_y, i_k] = dy_poly
 
                     scale_factor = p_data.T / self.it.mesh._PERIOD
-                    y_k = state[i_start : i_stop + 1]
-                    dy_k = state_deriv[i_start : i_stop + 1] * scale_factor
-                    dy_poly = np.polynomial.Legendre.fit(
-                        t_k, dy_k, deg=N_K[i_k] - 1, window=[0, 1]
-                    )
+                    y_k = state[i_start:i_stop + 1]
+                    dy_k = state_deriv[i_start:i_stop + 1] * scale_factor
+                    dy_poly = np.polynomial.Legendre.fit(t_k,
+                                                         dy_k,
+                                                         deg=N_K[i_k] - 1,
+                                                         window=[0, 1])
                     y_poly = dy_poly.integ(k=state[i_start])
                     y_polys[i_y, i_k] = y_poly
 
@@ -109,13 +111,14 @@ class SolutionABC(ABC):
 
             for i_u, control in enumerate(p_data.u):
                 for i_k, (i_start, i_stop) in enumerate(
-                    zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])
-                ):
-                    t_k = p_data.tau[i_start : i_stop + 1]
-                    u_k = control[i_start : i_stop + 1]
-                    u_poly = np.polynomial.Polynomial.fit(
-                        t_k, u_k, deg=N_K[i_k] - 1, window=[0, 1]
-                    )
+                        zip(mesh_index_boundaries[:-1],
+                            mesh_index_boundaries[1:])):
+                    t_k = p_data.tau[i_start:i_stop + 1]
+                    u_k = control[i_start:i_stop + 1]
+                    u_poly = np.polynomial.Polynomial.fit(t_k,
+                                                          u_k,
+                                                          deg=N_K[i_k] - 1,
+                                                          window=[0, 1])
                     u_polys[i_u, i_k] = u_poly
             phase_polys = Polys(y_polys, dy_polys, u_polys)
             self.phase_polys.append(phase_polys)
@@ -133,13 +136,14 @@ class SolutionABC(ABC):
             y_polys = np.empty((p.num_y_var, K), dtype=object)
             dy_polys = np.empty((p.num_y_var, K), dtype=object)
             u_polys = np.empty((p.num_u_var, K), dtype=object)
-            for i_y, (state, state_deriv) in enumerate(zip(p_data.y, p_data.dy)):
+            for i_y, (state,
+                      state_deriv) in enumerate(zip(p_data.y, p_data.dy)):
                 for i_k, (i_start, i_stop) in enumerate(
-                    zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])
-                ):
+                        zip(mesh_index_boundaries[:-1],
+                            mesh_index_boundaries[1:])):
                     scale_factor = p_data.T / self.it.mesh._PERIOD
-                    t_k = p_data.tau[i_start : i_stop + 1]
-                    dy_k = state_deriv[i_start : i_stop + 1] * scale_factor
+                    t_k = p_data.tau[i_start:i_stop + 1]
+                    dy_k = state_deriv[i_start:i_stop + 1] * scale_factor
                     dy_poly = np.polynomial.Legendre.fit(
                         t_k[:-1],
                         dy_k[:-1],
@@ -153,13 +157,14 @@ class SolutionABC(ABC):
                     dy_polys[i_y, i_k] = dy_poly
             for i_u, control in enumerate(p_data.u):
                 for i_k, (i_start, i_stop) in enumerate(
-                    zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])
-                ):
-                    t_k = p_data.tau[i_start : i_stop + 1]
-                    u_k = control[i_start : i_stop + 1]
-                    u_poly = np.polynomial.Polynomial.fit(
-                        t_k, u_k, deg=N_K[i_k] - 1, window=[0, 1]
-                    )
+                        zip(mesh_index_boundaries[:-1],
+                            mesh_index_boundaries[1:])):
+                    t_k = p_data.tau[i_start:i_stop + 1]
+                    u_k = control[i_start:i_stop + 1]
+                    u_poly = np.polynomial.Polynomial.fit(t_k,
+                                                          u_k,
+                                                          deg=N_K[i_k] - 1,
+                                                          window=[0, 1])
                     u_polys[i_u, i_k] = u_poly
             phase_polys = Polys(y_polys, dy_polys, u_polys)
             self.phase_polys.append(phase_polys)

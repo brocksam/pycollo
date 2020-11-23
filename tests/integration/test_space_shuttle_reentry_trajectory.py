@@ -170,7 +170,7 @@ class TestHypersensitiveProblem:
 
         # Problem information
         c_D_1 = self.c_drag_0 + (self.c_drag_1 * self.alpha)
-        c_D_2 = self.c_drag_2 * self.alpha ** 2
+        c_D_2 = self.c_drag_2 * self.alpha**2
         c_D = c_D_1 + c_D_2
         state.ocp.objective_function = -state.phase.final_state_variables[2]
         state.ocp.auxiliary_data = {
@@ -184,9 +184,9 @@ class TestHypersensitiveProblem:
             self.c_drag_0: 0.07854,
             self.c_drag_1: -0.3529,
             self.c_drag_2: 2.0400,
-            self.D: 0.5 * self.c_D * self.S * self.rho * self.nu ** 2,
-            self.L: 0.5 * self.c_L * self.S * self.rho * self.nu ** 2,
-            self.g: self.mu / (self.r ** 2),
+            self.D: 0.5 * self.c_D * self.S * self.rho * self.nu**2,
+            self.L: 0.5 * self.c_L * self.S * self.rho * self.nu**2,
+            self.g: self.mu / (self.r**2),
             self.r: self.Re + self.h,
             self.rho: self.rho_0 * sym.exp(-self.h / self.h_r),
             self.c_L: self.c_lift_0 + (self.c_lift_1 * self.alpha),
@@ -228,22 +228,18 @@ class TestHypersensitiveProblem:
         state.phase.bounds.final_state_constraints = y_tF_bnds
 
         # Guess
-        y_guess = np.array(
-            [
-                [self.h_0_guess, self.h_f_guess],
-                [self.phi_0_guess, self.phi_f_guess],
-                [self.theta_0_guess, self.theta_f_guess],
-                [self.nu_0_guess, self.nu_f_guess],
-                [self.gamma_0_guess, self.gamma_f_guess],
-                [self.psi_0_guess, self.psi_f_guess],
-            ]
-        )
-        u_guess = np.array(
-            [
-                [self.alpha_0_guess, self.alpha_f_guess],
-                [self.beta_0_guess, self.beta_f_guess],
-            ]
-        )
+        y_guess = np.array([
+            [self.h_0_guess, self.h_f_guess],
+            [self.phi_0_guess, self.phi_f_guess],
+            [self.theta_0_guess, self.theta_f_guess],
+            [self.nu_0_guess, self.nu_f_guess],
+            [self.gamma_0_guess, self.gamma_f_guess],
+            [self.psi_0_guess, self.psi_f_guess],
+        ])
+        u_guess = np.array([
+            [self.alpha_0_guess, self.alpha_f_guess],
+            [self.beta_0_guess, self.beta_f_guess],
+        ])
         state.phase.guess.time = np.array([self.t_0, 1000])
         state.phase.guess.state_variables = y_guess
         state.phase.guess.control_variables = u_guess
@@ -266,10 +262,12 @@ class TestHypersensitiveProblem:
         SOS_SOLUTION = -0.59588
         rtol = 1e-3
         atol = 0.0
-        assert np.isclose(
-            state.ocp.solution.objective, GPOPS_II_SOLUTION, rtol=rtol, atol=atol
-        )
-        assert np.isclose(
-            state.ocp.solution.objective, SOS_SOLUTION, rtol=rtol, atol=atol
-        )
+        assert np.isclose(state.ocp.solution.objective,
+                          GPOPS_II_SOLUTION,
+                          rtol=rtol,
+                          atol=atol)
+        assert np.isclose(state.ocp.solution.objective,
+                          SOS_SOLUTION,
+                          rtol=rtol,
+                          atol=atol)
         assert state.ocp.mesh_tolerance_met is True

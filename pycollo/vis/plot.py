@@ -4,15 +4,24 @@ import numpy as np
 Y = "y"
 DY = "dy"
 U = "u"
-POINT_OPTIONS = {"marker": "x", "markersize": 5, "linestyle": "", "color": "black"}
+POINT_OPTIONS = {
+    "marker": "x",
+    "markersize": 5,
+    "linestyle": "",
+    "color": "black"
+}
 LINE_OPTIONS = {"linewidth": 2}
 MESH_OPTIONS = {"align": "edge", "alpha": 0.5}
 X_TITLES = {"y": "States", "dy": "State Derivatives", "u": "Controls"}
 
 
-def plot_solution(
-    solution, *, iterpolated=True, plot_y=True, plot_dy=True, plot_u=True, render=True
-):
+def plot_solution(solution,
+                  *,
+                  iterpolated=True,
+                  plot_y=True,
+                  plot_dy=True,
+                  plot_u=True,
+                  render=True):
     if plot_y:
         t_data_phases, y_datas_phases = interpolate_x_solution(solution, Y)
         render_x_solution(solution, Y, t_data_phases, y_datas_phases)
@@ -60,7 +69,8 @@ def interpolate_x_solution(solution, x):
 
 def render_x_solution(solution, x, t_data_phases, x_datas_phases):
     plt.figure()
-    zipped = zip(solution.backend.p, solution.phase_data, t_data_phases, x_datas_phases)
+    zipped = zip(solution.backend.p, solution.phase_data, t_data_phases,
+                 x_datas_phases)
     for p, p_data, t_data, x_datas in zipped:
         for i_x, x_data in enumerate(x_datas):
             plt.plot(p_data.time, getattr(p_data, x)[i_x], **POINT_OPTIONS)

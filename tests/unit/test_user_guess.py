@@ -75,20 +75,18 @@ def test_user_guess_dp_specific(double_pendulum_fixture):
     np.testing.assert_allclose(phase.guess.time, np.array([0, 2]))
     np.testing.assert_allclose(
         phase.guess.state_variables,
-        np.array(
-            [
-                [-pi_by_2, pi_by_2],
-                [-pi_by_2, pi_by_2],
-                [0, 0],
-                [0, 0],
-            ]
-        ),
+        np.array([
+            [-pi_by_2, pi_by_2],
+            [-pi_by_2, pi_by_2],
+            [0, 0],
+            [0, 0],
+        ]),
     )
-    np.testing.assert_allclose(
-        phase.guess.control_variables, np.array([[0, 0], [0, 0]])
-    )
+    np.testing.assert_allclose(phase.guess.control_variables,
+                               np.array([[0, 0], [0, 0]]))
     np.testing.assert_allclose(phase.guess.integral_variables, np.array([100]))
-    np.testing.assert_allclose(ocp.guess.parameter_variables, np.array([1.0, 1.0]))
+    np.testing.assert_allclose(ocp.guess.parameter_variables,
+                               np.array([1.0, 1.0]))
 
     ocp._console_out_initialisation_message()
     ocp._check_variables_and_equations()
@@ -112,14 +110,12 @@ def test_user_guess_dp_specific(double_pendulum_fixture):
     assert len(guess.y) == 1
     np.testing.assert_allclose(
         guess.y[0],
-        np.array(
-            [
-                [-pi_by_2, pi_by_2],
-                [-pi_by_2, pi_by_2],
-                [0, 0],
-                [0, 0],
-            ]
-        ),
+        np.array([
+            [-pi_by_2, pi_by_2],
+            [-pi_by_2, pi_by_2],
+            [0, 0],
+            [0, 0],
+        ]),
     )
     assert isinstance(guess.u, list)
     assert len(guess.u) == 1

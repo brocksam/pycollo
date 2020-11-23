@@ -160,10 +160,10 @@ def double_pendulum_fixture():
     )
 
     K0_sub_expr_0 = T0 + g * (m0 * p0 + m1 * l0) * c0
-    K0_sub_expr_1 = m1 * p1 * l0 * (s1 * c0 - s0 * c1) * v1 ** 2
+    K0_sub_expr_1 = m1 * p1 * l0 * (s1 * c0 - s0 * c1) * v1**2
     K0_eqn = K0_sub_expr_0 + K0_sub_expr_1
     K1_sub_expr_0 = T1 + g * m1 * p1 * c1
-    K1_sub_expr_1 = m1 * p1 * l0 * (s0 * c1 - s1 * c0) * v0 ** 2
+    K1_sub_expr_1 = m1 * p1 * l0 * (s0 * c1 - s1 * c0) * v0**2
     K1_eqn = K1_sub_expr_0 + K1_sub_expr_1
 
     problem = pycollo.OptimalControlProblem(name="Double Pendulum Swing-Up")
@@ -176,12 +176,12 @@ def double_pendulum_fixture():
         (M11 * K0 - M01 * K1) / detM,
         (M00 * K1 - M10 * K0) / detM,
     ]
-    phase.integrand_functions = [(T0 ** 2 + T1 ** 2)]
+    phase.integrand_functions = [(T0**2 + T1**2)]
     phase.auxiliary_data = {
         g: -9.81,
         k1: 1 / 12,
-        I0: m0 * (k0 ** 2 + p0 ** 2),
-        I1: m1 * (k1 ** 2 + p1 ** 2),
+        I0: m0 * (k0**2 + p0**2),
+        I1: m1 * (k1**2 + p1**2),
         s0: sym.sin(a0),
         c1: sym.cos(a1),
     }
@@ -196,13 +196,13 @@ def double_pendulum_fixture():
         d1: 0.5,
         l0: p0 + d0,
         l1: p1 + d1,
-        I0: m0 * (k0 ** 2 + p0 ** 2),
-        I1: m1 * (k1 ** 2 + p1 ** 2),
+        I0: m0 * (k0**2 + p0**2),
+        I1: m1 * (k1**2 + p1**2),
         c0: sym.cos(a0),
         s0: sym.sin(a0),
         c1: sym.cos(a1),
         s1: sym.sin(a1),
-        M00: I0 + m1 * l0 ** 2,
+        M00: I0 + m1 * l0**2,
         M01: m1 * p1 * l0 * (s0 * s1 + c0 * c1),
         M10: M01,
         M11: I1,
@@ -270,8 +270,8 @@ def hypersensitive_problem_fixture():
     phase = problem.new_phase(name="A")
     phase.state_variables = y
     phase.control_variables = u
-    phase.state_equations = [-(y ** 3) + u]
-    phase.integrand_functions = [0.5 * (y ** 2 + u ** 2)]
+    phase.state_equations = [-(y**3) + u]
+    phase.integrand_functions = [0.5 * (y**2 + u**2)]
     phase.auxiliary_data = {}
 
     problem.objective_function = phase.integral_variables[0]

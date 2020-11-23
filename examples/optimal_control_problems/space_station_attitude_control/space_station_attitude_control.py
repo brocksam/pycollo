@@ -136,7 +136,7 @@ phase.bounds.control_variables = {
     u_z: [-150, 150],
 }
 phase.bounds.integral_variables = [[0, 10]]
-phase.bounds.path_constraints = [[0, h_max ** 2]]
+phase.bounds.path_constraints = [[0, h_max**2]]
 
 problem.bounds.endpoint_constraints = [
     [0, 0],
@@ -149,19 +149,17 @@ problem.bounds.endpoint_constraints = [
 
 # Problem guesses
 phase.guess.time = np.array([t0, tF])
-phase.guess.state_variables = np.array(
-    [
-        [omega_x_t0, omega_x_t0],
-        [omega_y_t0, omega_y_t0],
-        [omega_z_t0, omega_z_t0],
-        [r_x_t0, r_x_t0],
-        [r_y_t0, r_y_t0],
-        [r_z_t0, r_z_t0],
-        [h_x_t0, h_x_t0],
-        [h_y_t0, h_y_t0],
-        [h_z_t0, h_z_t0],
-    ]
-)
+phase.guess.state_variables = np.array([
+    [omega_x_t0, omega_x_t0],
+    [omega_y_t0, omega_y_t0],
+    [omega_z_t0, omega_z_t0],
+    [r_x_t0, r_x_t0],
+    [r_y_t0, r_y_t0],
+    [r_z_t0, r_z_t0],
+    [h_x_t0, h_x_t0],
+    [h_y_t0, h_y_t0],
+    [h_z_t0, h_z_t0],
+])
 phase.guess.control_variables = np.array([[0, 0], [0, 0], [0, 0]])
 phase.guess.integral_variables = np.array([10])
 
@@ -169,71 +167,57 @@ phase.guess.integral_variables = np.array([10])
 # Utility functions
 def skew_symmetric_cross_product_operator(vec):
     if vec.shape != (3, 1):
-        raise ValueError(
-            f"Vector must be a column vector and have shape "
-            f"(3, 1) but is {vec.shape}"
-        )
-    skew_symmetric_cross_product_operator = sym.Matrix(
-        [[0, -vec[2], vec[1]], [vec[2], 0, -vec[0]], [-vec[1], vec[0], 0]]
-    )
+        raise ValueError(f"Vector must be a column vector and have shape "
+                         f"(3, 1) but is {vec.shape}")
+    skew_symmetric_cross_product_operator = sym.Matrix([[0, -vec[2], vec[1]],
+                                                        [vec[2], 0, -vec[0]],
+                                                        [-vec[1], vec[0], 0]])
     return skew_symmetric_cross_product_operator
 
 
 def row_vec_dot_col_vec(vec_1, vec_2):
     if vec_1.shape != (3, 1):
-        raise ValueError(
-            f"First vector must be a column vector and have "
-            f"shape (3, 1) but is {vec_1.shape}"
-        )
+        raise ValueError(f"First vector must be a column vector and have "
+                         f"shape (3, 1) but is {vec_1.shape}")
     if vec_2.shape != (1, 3):
-        raise ValueError(
-            f"Second vector must be a row vector and have shape "
-            f"(1, 3) but is {vec_2.shape}"
-        )
-    matrix = sym.Matrix(
+        raise ValueError(f"Second vector must be a row vector and have shape "
+                         f"(1, 3) but is {vec_2.shape}")
+    matrix = sym.Matrix([
         [
-            [
-                vec_1[0, 0] * vec_2[0, 0],
-                vec_1[0, 0] * vec_2[0, 1],
-                vec_1[0, 0] * vec_2[0, 2],
-            ],
-            [
-                vec_1[1, 0] * vec_2[0, 0],
-                vec_1[1, 0] * vec_2[0, 1],
-                vec_1[1, 0] * vec_2[0, 2],
-            ],
-            [
-                vec_1[2, 0] * vec_2[0, 0],
-                vec_1[2, 0] * vec_2[0, 1],
-                vec_1[2, 0] * vec_2[0, 2],
-            ],
-        ]
-    )
+            vec_1[0, 0] * vec_2[0, 0],
+            vec_1[0, 0] * vec_2[0, 1],
+            vec_1[0, 0] * vec_2[0, 2],
+        ],
+        [
+            vec_1[1, 0] * vec_2[0, 0],
+            vec_1[1, 0] * vec_2[0, 1],
+            vec_1[1, 0] * vec_2[0, 2],
+        ],
+        [
+            vec_1[2, 0] * vec_2[0, 0],
+            vec_1[2, 0] * vec_2[0, 1],
+            vec_1[2, 0] * vec_2[0, 2],
+        ],
+    ])
     return matrix
 
 
 def col_vec_dot_row_vec(vec_1, vec_2):
     if vec_1.shape != (1, 3):
-        raise ValueError(
-            f"First vector must be a row vector and have shape "
-            f"(1, 3) but is {vec_1.shape}"
-        )
+        raise ValueError(f"First vector must be a row vector and have shape "
+                         f"(1, 3) but is {vec_1.shape}")
     if vec_2.shape != (3, 1):
-        raise ValueError(
-            f"Second vector must be a column vector and have "
-            f"shape (3, 1) but is {vec_2.shape}"
-        )
+        raise ValueError(f"Second vector must be a column vector and have "
+                         f"shape (3, 1) but is {vec_2.shape}")
     return vec_1.dot(vec_2)
 
 
 J = sym.Matrix([[J_00, J_01, J_02], [J_10, J_11, J_12], [J_20, J_21, J_22]])
-J_inv = sym.Matrix(
-    [
-        [J_inv_00, J_inv_01, J_inv_02],
-        [J_inv_10, J_inv_11, J_inv_12],
-        [J_inv_20, J_inv_21, J_inv_22],
-    ]
-)
+J_inv = sym.Matrix([
+    [J_inv_00, J_inv_01, J_inv_02],
+    [J_inv_10, J_inv_11, J_inv_12],
+    [J_inv_20, J_inv_21, J_inv_22],
+])
 
 # Continuous vectors
 omega = sym.Matrix([omega_x, omega_y, omega_z])
@@ -248,7 +232,7 @@ D = 2 / (1 + col_vec_dot_row_vec(r.T, r))
 E = (r_skew_symmetric * r_skew_symmetric) - r_skew_symmetric
 C = I + (D * E)
 C_2_skew = skew_symmetric_cross_product_operator(C[:, 2])
-tau_gg = 3 * omega_orb ** 2 * C_2_skew * (J * C[:, 2])
+tau_gg = 3 * omega_orb**2 * C_2_skew * (J * C[:, 2])
 A = J * omega + h
 B = skew_symmetric_cross_product_operator(omega) * A
 K = tau_gg - B - u
@@ -270,7 +254,7 @@ D_tF = 2 / (1 + col_vec_dot_row_vec(r_tF.T, r_tF))
 E_tF = (r_tF_skew_symmetric * r_tF_skew_symmetric) - r_tF_skew_symmetric
 C_tF = I + (D_tF * E_tF)
 C_tF_2_skew = skew_symmetric_cross_product_operator(C_tF[:, 2])
-tau_gg_tF = 3 * omega_orb ** 2 * C_tF_2_skew * J * C_tF[:, 2]
+tau_gg_tF = 3 * omega_orb**2 * C_tF_2_skew * J * C_tF[:, 2]
 A_tF = J * omega_tF + h_tF
 B_tF = skew_symmetric_cross_product_operator(omega_tF) * A_tF
 K_tF = tau_gg_tF - B_tF
@@ -303,8 +287,8 @@ problem.auxiliary_data = {
     J_inv_22: J.inv()[2, 2],
     omega_orb: 0.06511 * np.pi / 180,
     h_max: 10000,
-    u_inner_prod_squared: u_x ** 2 + u_y ** 2 + u_z ** 2,
-    h_inner_prod_squared: h_x ** 2 + h_y ** 2 + h_z ** 2,
+    u_inner_prod_squared: u_x**2 + u_y**2 + u_z**2,
+    h_inner_prod_squared: h_x**2 + h_y**2 + h_z**2,
     domega_x_dt: domega_dt[0, 0],
     domega_y_dt: domega_dt[1, 0],
     domega_z_dt: domega_dt[2, 0],

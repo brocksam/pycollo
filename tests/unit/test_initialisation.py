@@ -29,7 +29,8 @@ def test_check_variables_and_equations(hypersensitive_problem_fixture):
 
 
 @pytest.mark.parametrize("backend", ["hSAD", "Sympy"])
-def test_unsupported_backends_not_implemented(hypersensitive_problem_fixture, backend):
+def test_unsupported_backends_not_implemented(hypersensitive_problem_fixture,
+                                              backend):
     """Attempted instantiation of unsupported backends raises error.
 
     This should not be possible using the Pycollo API as intended and is only
@@ -41,7 +42,6 @@ def test_unsupported_backends_not_implemented(hypersensitive_problem_fixture, ba
     ocp.settings._backend = backend.lower()
     expected_error_msg = re.escape(
         f"The {backend} backend for Pycollo is not currently supported or "
-        f"implemented."
-    )
+        f"implemented.")
     with pytest.raises(NotImplementedError, match=expected_error_msg):
         ocp.initialise()

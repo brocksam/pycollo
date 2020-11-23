@@ -149,13 +149,13 @@ problem.auxiliary_data = {
     # c_3: -0.10117249e-5,
     # w: 203000,
     # g_0: 32.174,
-    D: 0.5 * c_D * S * rho * nu ** 2,
-    L: 0.5 * c_L * S * rho * nu ** 2,
-    g: mu / (r ** 2),
+    D: 0.5 * c_D * S * rho * nu**2,
+    L: 0.5 * c_L * S * rho * nu**2,
+    g: mu / (r**2),
     r: Re + h,
     rho: rho_0 * sym.exp(-h / h_r),
     c_L: c_lift_0 + (c_lift_1 * alpha),
-    c_D: c_drag_0 + (c_drag_1 * alpha) + (c_drag_2 * alpha ** 2),
+    c_D: c_drag_0 + (c_drag_1 * alpha) + (c_drag_2 * alpha**2),
     # alpha_hat: 180*alpha/np.pi,
     # q_r: 17700*sym.sqrt(rho)*(0.0001*nu)**3.07,
     # q_a: c_0 + c_1*alpha_hat + c_2*alpha_hat**2 + c_3*alpha_hat**3,
@@ -193,22 +193,18 @@ phase.bounds.final_state_constraints = {
 
 # Guess
 phase.guess.time = np.array([t_0, 1000])
-phase.guess.state_variables = np.array(
-    [
-        [h_0_guess, h_f_guess],
-        [phi_0_guess, phi_f_guess],
-        [theta_0_guess, theta_f_guess],
-        [nu_0_guess, nu_f_guess],
-        [gamma_0_guess, gamma_f_guess],
-        [psi_0_guess, psi_f_guess],
-    ]
-)
-phase.guess.control_variables = np.array(
-    [
-        [alpha_0_guess, alpha_f_guess],
-        [beta_0_guess, beta_f_guess],
-    ]
-)
+phase.guess.state_variables = np.array([
+    [h_0_guess, h_f_guess],
+    [phi_0_guess, phi_f_guess],
+    [theta_0_guess, theta_f_guess],
+    [nu_0_guess, nu_f_guess],
+    [gamma_0_guess, gamma_f_guess],
+    [psi_0_guess, psi_f_guess],
+])
+phase.guess.control_variables = np.array([
+    [alpha_0_guess, alpha_f_guess],
+    [beta_0_guess, beta_f_guess],
+])
 
 # Settings
 problem.settings.display_mesh_result_graph = True

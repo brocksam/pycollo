@@ -94,11 +94,13 @@ class TestFreeFlyingRobot:
         # Set up the Pycollo OCP
         ocp_name = "Free-Flying Robot"
         state.ocp = pycollo.OptimalControlProblem(name=ocp_name)
-        y_vars = [self.r_x, self.r_y, self.theta, self.v_x, self.v_y, self.omega]
+        y_vars = [
+            self.r_x, self.r_y, self.theta, self.v_x, self.v_y, self.omega
+        ]
         u_vars = [self.u_x_pos, self.u_x_neg, self.u_y_pos, self.u_y_neg]
-        state.phase = state.ocp.new_phase(
-            name="A", state_variables=y_vars, control_variables=u_vars
-        )
+        state.phase = state.ocp.new_phase(name="A",
+                                          state_variables=y_vars,
+                                          control_variables=u_vars)
 
         # Phase information
         v_x_dot = (self.T_x + self.T_y) * sym.cos(self.theta)
@@ -204,10 +206,12 @@ class TestFreeFlyingRobot:
         SOS_SOLUTION = 7.910154646
         rtol = 1e-4
         atol = 0.0
-        assert np.isclose(
-            state.ocp.solution.objective, GPOPS_II_SOLUTION, rtol=rtol, atol=atol
-        )
-        assert np.isclose(
-            state.ocp.solution.objective, SOS_SOLUTION, rtol=rtol, atol=atol
-        )
+        assert np.isclose(state.ocp.solution.objective,
+                          GPOPS_II_SOLUTION,
+                          rtol=rtol,
+                          atol=atol)
+        assert np.isclose(state.ocp.solution.objective,
+                          SOS_SOLUTION,
+                          rtol=rtol,
+                          atol=atol)
         assert state.ocp.mesh_tolerance_met is True

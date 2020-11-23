@@ -22,20 +22,20 @@ atan = arctan
 
 
 def numbafy(
-    expression_graph=None,
-    expression=None,
-    expression_nodes=None,
-    precomputable_nodes=None,
-    dependent_tiers=None,
-    parameters=None,
-    lagrange_parameters=None,
-    return_dims=None,
-    return_flat=False,
-    N_arg=False,
-    endpoint=False,
-    hessian=None,
-    hessian_sym_set=None,
-    ocp_num_vars=None,
+        expression_graph=None,
+        expression=None,
+        expression_nodes=None,
+        precomputable_nodes=None,
+        dependent_tiers=None,
+        parameters=None,
+        lagrange_parameters=None,
+        return_dims=None,
+        return_flat=False,
+        N_arg=False,
+        endpoint=False,
+        hessian=None,
+        hessian_sym_set=None,
+        ocp_num_vars=None,
 ):
     def grouper(iterable, n):
         args = [iter(iterable)] * n
@@ -59,8 +59,8 @@ def numbafy(
             expression_list = []
             row = expression.row(row_num)
             for (
-                col_num,
-                e,
+                    col_num,
+                    e,
             ) in enumerate(row):
                 index = row_num * expression.cols + col_num
                 e_entry = f"{e}"
@@ -80,7 +80,8 @@ def numbafy(
                 matrix += L_sym * mat
         else:
             raise NotImplementedError
-        return_value = build_objective_lagrange_matrix(matrix, expression_nodes)
+        return_value = build_objective_lagrange_matrix(matrix,
+                                                       expression_nodes)
 
         return return_value
 
@@ -107,35 +108,31 @@ def numbafy(
                 function_arguments += f", {lagrange_parameters}"
             else:
                 function_arguments += ", "
-                function_arguments += ", ".join(f"{L}" for L in lagrange_parameters)
+                function_arguments += ", ".join(f"{L}"
+                                                for L in lagrange_parameters)
         if N_arg:
             function_arguments += ", _N"
-            numpy_default_arrays = (
-                "_np_zeros_array_N = np.zeros(_N)\n"
-                "    _np_ones_array_N = np.ones(_N)"
-            )
+            numpy_default_arrays = ("_np_zeros_array_N = np.zeros(_N)\n"
+                                    "    _np_ones_array_N = np.ones(_N)")
         else:
             numpy_default_arrays = ""
     else:
         raise NotImplementedError
 
     if precomputable_nodes:
-        precomputed_constants = "\n    ".join(
-            f"{node.numbafy_expression}" for node in precomputable_nodes
-        )
+        precomputed_constants = "\n    ".join(f"{node.numbafy_expression}"
+                                              for node in precomputable_nodes)
     else:
         precomputed_constants = "    "
 
     substitution_tiers = []
     for tier in list(dependent_tiers.values())[1:]:
-        tier_substitutions = "\n    ".join(
-            f"{node.numbafy_expression}" for node in tier
-        )
+        tier_substitutions = "\n    ".join(f"{node.numbafy_expression}"
+                                           for node in tier)
         substitution_tiers.append(tier_substitutions)
 
     intermediate_substitutions = "\n    ".join(
-        f"{sub_tier}" for sub_tier in substitution_tiers
-    )
+        f"{sub_tier}" for sub_tier in substitution_tiers)
 
     if ocp_num_vars:
         yu_qts_continuous_split = sum(ocp_num_vars[0:2])
@@ -147,20 +144,25 @@ def numbafy(
     if lagrange_parameters is not None:
 
         if not isinstance(expression, list):
-            return_value = build_objective_lagrange_matrix(expression, expression_nodes)
+            return_value = build_objective_lagrange_matrix(
+                expression, expression_nodes)
         elif endpoint:
             L_syms = lagrange_parameters
             return_value = build_endpoint_lagrange_matrix(
-                expression, expression_nodes, L_syms
-            )
+                expression, expression_nodes, L_syms)
         else:
             array_arguments = []
             L_syms = lagrange_parameters
             for i, _ in enumerate(expression[0]):
-                terms = [expr_mat[i] for expr_mat in expression if expr_mat[i] != 0]
-                term_nodes = [expr_mat_nodes[i] for expr_mat_nodes in expression_nodes]
+                terms = [
+                    expr_mat[i] for expr_mat in expression if expr_mat[i] != 0
+                ]
+                term_nodes = [
+                    expr_mat_nodes[i] for expr_mat_nodes in expression_nodes
+                ]
                 if terms:
-                    mat_entry = build_lagrange_matrix_entry(terms, term_nodes, L_syms)
+                    mat_entry = build_lagrange_matrix_entry(
+                        terms, term_nodes, L_syms)
                     if mat_entry:
                         array_arguments.append(mat_entry)
             if array_arguments:
@@ -194,9 +196,11 @@ def numbafy(
 
             y_str = ", ".join(f"{e}" for e in y_tuple)
 
-            u_str = ", ".join(f"_np_zeros_array_N" for i in range(ocp_num_vars[1]))
+            u_str = ", ".join(f"_np_zeros_array_N"
+                              for i in range(ocp_num_vars[1]))
 
-            qts_str = ", ".join(f"{e}" for e in expression[yu_qts_endpoint_split:])
+            qts_str = ", ".join(f"{e}"
+                                for e in expression[yu_qts_endpoint_split:])
 
             qts_str = f"np.array([{qts_str}])" if qts_str != "" else ""
 
@@ -272,8 +276,7 @@ def numbafy(
         f"    {precomputed_constants}\n"
         f"    {intermediate_substitutions}\n"
         # f"    print({return_value})\n"
-        f"    return {return_value}"
-    )
+        f"    return {return_value}")
 
     # cout(function_string)
     # input()

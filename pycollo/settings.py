@@ -6,9 +6,7 @@ NLP solvers etc.
 
 """
 
-
 __all__ = ["Settings"]
-
 
 from pyproprop import processed_property
 
@@ -41,7 +39,7 @@ UNSUPPORTED_NLP_SOLVER = (
     NLP_SOLVER_WORHP_KEYWORD,
 )
 DEFAULT_LINEAR_SOLVER = LINEAR_SOLVER_MUMPS_KEYWORD
-UNSUPPORTED_LINEAR_SOLVER = ("ma57",)
+UNSUPPORTED_LINEAR_SOLVER = ("ma57", )
 DEFAULT_NLP_TOLERANCE = 1e-10
 DEFAULT_MAX_NLP_ITERATIONS = 2000
 DEFAULT_WARM_START = False
@@ -62,7 +60,6 @@ DEFAULT_CHECK_NLP_FUNCTIONS = False
 
 
 class Settings:
-
     """Settings class for all Pycollo OCP and NLP settings.
 
     Attributes
@@ -305,7 +302,8 @@ class Settings:
     )
     bound_clash_absolute_tolerance = processed_property(
         "bound_clash_absolute_tolerance",
-        description=("absolute tolerance to wish clashing bounds are assumed " "equal"),
+        description=("absolute tolerance to wish clashing bounds are assumed "
+                     "equal"),
         type=float,
         cast=True,
         min=0,
@@ -313,7 +311,8 @@ class Settings:
     )
     bound_clash_relative_tolerance = processed_property(
         "bound_clash_relative_tolerance",
-        description=("relative tolerance to wish clashing bounds are assumed " "equal"),
+        description=("relative tolerance to wish clashing bounds are assumed "
+                     "equal"),
         type=float,
         cast=True,
         min=0,
@@ -353,38 +352,38 @@ class Settings:
     )
 
     def __init__(
-        self,
-        *,
-        optimal_control_problem=None,
-        backend=BACKENDS.default,
-        collocation_matrix_form=COLLOCATION_MATRIX_FORMS.default,
-        nlp_solver=DEFAULT_NLP_SOLVER,
-        linear_solver=DEFAULT_LINEAR_SOLVER,
-        nlp_tolerance=DEFAULT_NLP_TOLERANCE,
-        max_nlp_iterations=DEFAULT_MAX_NLP_ITERATIONS,
-        warm_start=DEFAULT_WARM_START,
-        quadrature_method=QUADRATURES.default,
-        derivative_level=DEFAULT_DERIVATIVE_LEVEL,
-        max_mesh_iterations=DEFAULT_MAX_MESH_ITERATIONS,
-        mesh_tolerance=DEFAULT_MESH_TOLERANCE,
-        collocation_points_min=DEFAULT_COLLOCATION_POINTS_MIN,
-        collocation_points_max=DEFAULT_COLLOCATION_POINTS_MAX,
-        console_out_progress=DEFAULT_CONSOLE_OUT_PROGRESS,
-        display_mesh_refinement_info=DEFAULT_DISPLAY_MESH_REFINE_INFO,
-        display_mesh_result_info=DEFAULT_DISPLAY_MESH_RESULT_INFO,
-        display_mesh_result_graph=DEFAULT_DISPLAY_MESH_RESULT_GRAPH,
-        scaling_method=SCALING_METHODS.default,
-        update_scaling=DEFAULT_UPDATE_SCALING,
-        number_scaling_samples=DEFAULT_NUMBER_SCALING_SAMPLES,
-        scaling_weight=DEFAULT_SCALING_WEIGHT,
-        assume_inf_bounds=DEFAULT_ASSUME_INF_BOUNDS,
-        bound_clash_absolute_tolerance=DEFAULT_BOUND_CLASH_ABSOLUTE_TOLERANCE,
-        bound_clash_relative_tolerance=DEFAULT_BOUND_CLASH_RELATIVE_TOLERANCE,
-        numerical_inf=DEFAULT_NUMERICAL_INF,
-        override_endpoint_bounds=DEFAULT_OVERRIDE_ENDPOINTS,
-        remove_constant_variables=DEFAULT_REMOVE_CONSTANT_VARIABLES,
-        mesh_refinement_algorithm=MESH_REFINEMENT_ALGORITHMS.default,
-        check_nlp_functions=DEFAULT_CHECK_NLP_FUNCTIONS,
+            self,
+            *,
+            optimal_control_problem=None,
+            backend=BACKENDS.default,
+            collocation_matrix_form=COLLOCATION_MATRIX_FORMS.default,
+            nlp_solver=DEFAULT_NLP_SOLVER,
+            linear_solver=DEFAULT_LINEAR_SOLVER,
+            nlp_tolerance=DEFAULT_NLP_TOLERANCE,
+            max_nlp_iterations=DEFAULT_MAX_NLP_ITERATIONS,
+            warm_start=DEFAULT_WARM_START,
+            quadrature_method=QUADRATURES.default,
+            derivative_level=DEFAULT_DERIVATIVE_LEVEL,
+            max_mesh_iterations=DEFAULT_MAX_MESH_ITERATIONS,
+            mesh_tolerance=DEFAULT_MESH_TOLERANCE,
+            collocation_points_min=DEFAULT_COLLOCATION_POINTS_MIN,
+            collocation_points_max=DEFAULT_COLLOCATION_POINTS_MAX,
+            console_out_progress=DEFAULT_CONSOLE_OUT_PROGRESS,
+            display_mesh_refinement_info=DEFAULT_DISPLAY_MESH_REFINE_INFO,
+            display_mesh_result_info=DEFAULT_DISPLAY_MESH_RESULT_INFO,
+            display_mesh_result_graph=DEFAULT_DISPLAY_MESH_RESULT_GRAPH,
+            scaling_method=SCALING_METHODS.default,
+            update_scaling=DEFAULT_UPDATE_SCALING,
+            number_scaling_samples=DEFAULT_NUMBER_SCALING_SAMPLES,
+            scaling_weight=DEFAULT_SCALING_WEIGHT,
+            assume_inf_bounds=DEFAULT_ASSUME_INF_BOUNDS,
+            bound_clash_absolute_tolerance=DEFAULT_BOUND_CLASH_ABSOLUTE_TOLERANCE,
+            bound_clash_relative_tolerance=DEFAULT_BOUND_CLASH_RELATIVE_TOLERANCE,
+            numerical_inf=DEFAULT_NUMERICAL_INF,
+            override_endpoint_bounds=DEFAULT_OVERRIDE_ENDPOINTS,
+            remove_constant_variables=DEFAULT_REMOVE_CONSTANT_VARIABLES,
+            mesh_refinement_algorithm=MESH_REFINEMENT_ALGORITHMS.default,
+            check_nlp_functions=DEFAULT_CHECK_NLP_FUNCTIONS,
     ):
 
         # Optimal Control Problem

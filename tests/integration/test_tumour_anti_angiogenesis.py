@@ -57,21 +57,24 @@ class TestTumourAntiAngiogenesis:
         # Set up the Pycollo OCP
         ocp_name = "Tumour Anti-Angiogenesis"
         state.ocp = pycollo.OptimalControlProblem(name=ocp_name)
-        state.phase = state.ocp.new_phase(
-            name="A", state_variables=[self.p, self.q], control_variables=self.u
-        )
+        state.phase = state.ocp.new_phase(name="A",
+                                          state_variables=[self.p, self.q],
+                                          control_variables=self.u)
 
         # Phase information
         p_eqn = -self.xi * self.p * sym.log(self.p / self.q)
-        q_eqn_1 = self.mu + (self.d * self.p ** (2 / 3)) + (self.G * self.u)
+        q_eqn_1 = self.mu + (self.d * self.p**(2 / 3)) + (self.G * self.u)
         q_eqn = self.q * (self.b - q_eqn_1)
         state.phase.state_equations = {self.p: p_eqn, self.q: q_eqn}
         state.phase.integrand_functions = [self.u]
-        state.phase.initial_state_constraints = {self.p: self.p_t0, self.q: self.q_t0}
+        state.phase.initial_state_constraints = {
+            self.p: self.p_t0,
+            self.q: self.q_t0
+        }
 
         # Problem information
         state.ocp.objective_function = state.phase.final_state_variables.p
-        p_max_eqn = ((self.b - self.mu) / self.d) ** (3 / 2)
+        p_max_eqn = ((self.b - self.mu) / self.d)**(3 / 2)
         state.ocp.auxiliary_data = {
             self.xi: 0.084,
             self.b: 5.85,
@@ -132,10 +135,12 @@ class TestTumourAntiAngiogenesis:
         SOS_SOLUTION = 7.5716831e03
         rtol = 1e-5
         atol = 0.0
-        assert np.isclose(
-            state.ocp.solution.objective, GPOPS_II_SOLUTION, rtol=rtol, atol=atol
-        )
-        assert np.isclose(
-            state.ocp.solution.objective, SOS_SOLUTION, rtol=rtol, atol=atol
-        )
+        assert np.isclose(state.ocp.solution.objective,
+                          GPOPS_II_SOLUTION,
+                          rtol=rtol,
+                          atol=atol)
+        assert np.isclose(state.ocp.solution.objective,
+                          SOS_SOLUTION,
+                          rtol=rtol,
+                          atol=atol)
         assert state.ocp.mesh_tolerance_met is True

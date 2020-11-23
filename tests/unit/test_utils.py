@@ -47,13 +47,11 @@ def test_sympy_to_casadi(in_mapping, utils):
         if use
     }
 
-    expr_sym = sym.Matrix(
-        [
-            x_sympy * sym.sqrt(y_sympy),
-            sym.sin(x_sympy + y_sympy),
-            abs(x_sympy - y_sympy),
-        ]
-    )
+    expr_sym = sym.Matrix([
+        x_sympy * sym.sqrt(y_sympy),
+        sym.sin(x_sympy + y_sympy),
+        abs(x_sympy - y_sympy),
+    ])
     expr_ca, sym_mapping = sympy_to_casadi(expr_sym, sym_mapping)
 
     assert str(expr_sym) == "Matrix([[x*sqrt(y)], [sin(x + y)], [Abs(x - y)]])"

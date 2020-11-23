@@ -70,19 +70,19 @@ class Phase:
     """
 
     def __init__(
-        self,
-        name: str,
-        *,
-        optimal_control_problem: Optional["OptimalControlProblem"] = None,
-        state_variables: OptionalSymsType = None,
-        control_variables: OptionalSymsType = None,
-        state_equations: OptionalExprsType = None,
-        integrand_functions: OptionalExprsType = None,
-        path_constraints: OptionalExprsType = None,
-        bounds: Optional[PhaseBounds] = None,
-        scaling: Optional[PhaseScaling] = None,
-        guess: Optional[PhaseGuess] = None,
-        mesh: Optional[PhaseMesh] = None,
+            self,
+            name: str,
+            *,
+            optimal_control_problem: Optional["OptimalControlProblem"] = None,
+            state_variables: OptionalSymsType = None,
+            control_variables: OptionalSymsType = None,
+            state_equations: OptionalExprsType = None,
+            integrand_functions: OptionalExprsType = None,
+            path_constraints: OptionalExprsType = None,
+            bounds: Optional[PhaseBounds] = None,
+            scaling: Optional[PhaseScaling] = None,
+            guess: Optional[PhaseGuess] = None,
+            mesh: Optional[PhaseMesh] = None,
     ):
         """Initialise the Phase object with minimum a name.
 
@@ -158,53 +158,48 @@ class Phase:
         self.auxiliary_data = {}
 
     def create_new_copy(
-        self,
-        name: str,
-        *,
-        copy_state_variables: bool = True,
-        copy_control_variables: bool = True,
-        copy_state_equations: bool = True,
-        copy_path_constraints: bool = True,
-        copy_integrand_functions: bool = True,
-        copy_state_endpoint_constraints: bool = False,
-        copy_bounds: bool = True,
-        copy_mesh: bool = True,
-        copy_scaling: bool = True,
-        copy_guess: bool = True,
+            self,
+            name: str,
+            *,
+            copy_state_variables: bool = True,
+            copy_control_variables: bool = True,
+            copy_state_equations: bool = True,
+            copy_path_constraints: bool = True,
+            copy_integrand_functions: bool = True,
+            copy_state_endpoint_constraints: bool = False,
+            copy_bounds: bool = True,
+            copy_mesh: bool = True,
+            copy_scaling: bool = True,
+            copy_guess: bool = True,
     ):
 
         self._check_variables_and_equations()
-        new_phase = Phase(name, optimal_control_problem=self.optimal_control_problem)
+        new_phase = Phase(name,
+                          optimal_control_problem=self.optimal_control_problem)
 
         if copy_state_variables:
             new_phase.state_variables = copy.deepcopy(self.state_variables)
             if copy_bounds:
                 new_phase.bounds.state_variables = copy.deepcopy(
-                    self.bounds.state_variables
-                )
+                    self.bounds.state_variables)
             if copy_guess:
                 new_phase.guess.state_variables = copy.deepcopy(
-                    self.guess.state_variables
-                )
+                    self.guess.state_variables)
             if copy_scaling:
                 new_phase.scaling.state_variables = copy.deepcopy(
-                    self.scaling.state_variables
-                )
+                    self.scaling.state_variables)
 
         if copy_control_variables:
             new_phase.control_variables = copy.deepcopy(self.control_variables)
             if copy_bounds:
                 new_phase.bounds.control_variables = copy.deepcopy(
-                    self.bounds.control_variables
-                )
+                    self.bounds.control_variables)
             if copy_guess:
                 new_phase.guess.control_variables = copy.deepcopy(
-                    self.guess.control_variables
-                )
+                    self.guess.control_variables)
             if copy_scaling:
                 new_phase.scaling.control_variables = copy.deepcopy(
-                    self.scaling.control_variables
-                )
+                    self.scaling.control_variables)
 
         if copy_state_equations:
             new_phase.state_equations = copy.deepcopy(self.state_equations)
@@ -213,20 +208,18 @@ class Phase:
             new_phase.path_constraints = copy.deepcopy(self.path_constraints)
             if copy_bounds:
                 new_phase.bounds.path_constraints = copy.deepcopy(
-                    self.bounds.path_constraints
-                )
+                    self.bounds.path_constraints)
 
         if copy_integrand_functions:
-            new_phase.integrand_functions = copy.deepcopy(self.integrand_functions)
+            new_phase.integrand_functions = copy.deepcopy(
+                self.integrand_functions)
             if copy_bounds:
                 new_phase.bounds.integral_variables = copy.deepcopy(
-                    self.bounds.integral_variables
-                )
+                    self.bounds.integral_variables)
 
         if copy_state_endpoint_constraints and copy_bounds:
             new_phase.bounds.state_endpoint_constraints = copy.deepcopy(
-                self.bounds.state_endpoint_constraints
-            )
+                self.bounds.state_endpoint_constraints)
 
         if copy_mesh:
             new_phase.mesh = copy.deepcopy(self.mesh)
@@ -285,10 +278,8 @@ class Phase:
     @optimal_control_problem.setter
     def optimal_control_problem(self, ocp):
         if self._ocp is not None:
-            msg = (
-                "Optimal control problem is already set for this phase and "
-                "cannot be reset."
-            )
+            msg = ("Optimal control problem is already set for this phase and "
+                   "cannot be reset.")
             raise AttributeError(msg)
 
         try:
@@ -296,9 +287,9 @@ class Phase:
         except AttributeError:
             previous_phase_names = ()
         phase_names = (*previous_phase_names, self.name)
-        ocp._phases = format_as_named_tuple(
-            [*ocp._phases, self], named_keys=phase_names, sympify=False
-        )
+        ocp._phases = format_as_named_tuple([*ocp._phases, self],
+                                            named_keys=phase_names,
+                                            sympify=False)
 
         self._ocp = ocp
         self._phase_number = self._ocp.number_phases - 1
@@ -327,8 +318,7 @@ class Phase:
         except AttributeError:
             msg = (
                 "Can't access initial time until associated with an optimal "
-                "control problem."
-            )
+                "control problem.")
             raise AttributeError(msg)
 
     @property
@@ -337,10 +327,8 @@ class Phase:
         try:
             return self._tF_USER
         except AttributeError:
-            msg = (
-                "Can't access final time until associated with an optimal "
-                "control problem."
-            )
+            msg = ("Can't access final time until associated with an optimal "
+                   "control problem.")
             raise AttributeError(msg)
 
     @property
@@ -357,8 +345,7 @@ class Phase:
         except AttributeError:
             msg = (
                 "Can't access initial state until associated with an optimal "
-                "control problem."
-            )
+                "control problem.")
             raise AttributeError(msg)
 
     @property
@@ -375,8 +362,7 @@ class Phase:
         except AttributeError:
             msg = (
                 "Can't access initial state until associated with an optimal "
-                "control problem."
-            )
+                "control problem.")
             raise AttributeError(msg)
 
     @property
@@ -417,17 +403,13 @@ class Phase:
                 named_keys = ()
 
             self._y_t0_user = format_as_named_tuple(
-                (
-                    sym.Symbol(f"{y}_P{self._phase_suffix}(t0)")
-                    for y in self._y_var_user
-                ),
+                (sym.Symbol(f"{y}_P{self._phase_suffix}(t0)")
+                 for y in self._y_var_user),
                 named_keys=named_keys,
             )
             self._y_tF_user = format_as_named_tuple(
-                (
-                    sym.Symbol(f"{y}_P{self._phase_suffix}(tF)")
-                    for y in self._y_var_user
-                ),
+                (sym.Symbol(f"{y}_P{self._phase_suffix}(tF)")
+                 for y in self._y_var_user),
                 named_keys=named_keys,
             )
 
@@ -493,9 +475,9 @@ class Phase:
             named_keys = self._y_var_user._fields
         except AttributeError:
             named_keys = ()
-        self._y_eqn_user = format_as_named_tuple(
-            y_eqns, use_named=True, named_keys=named_keys
-        )
+        self._y_eqn_user = format_as_named_tuple(y_eqns,
+                                                 use_named=True,
+                                                 named_keys=named_keys)
 
     @property
     def number_state_equations(self) -> int:
@@ -527,8 +509,7 @@ class Phase:
         self._q_fnc_user = format_as_named_tuple(integrands, use_named=False)
         self._q_var_user = tuple(
             sym.Symbol(f"q{i_q}_P{self._phase_suffix}")
-            for i_q, _ in enumerate(self._q_fnc_user)
-        )
+            for i_q, _ in enumerate(self._q_fnc_user))
 
     @property
     def number_integrand_functions(self):
@@ -610,77 +591,67 @@ class Phase:
         if set_state_variables_keys != set_state_equations_keys:
 
             intersection = set_state_variables_keys.intersection(
-                set_state_equations_keys
-            )
+                set_state_equations_keys)
             spacer = "', '"
             msg_other = []
 
             if len(set_state_variables_keys) != len(set_state_equations_keys):
                 if len(set_state_variables_keys) == 1:
-                    msg_vars_len = (
-                        f"{len(set_state_variables_keys)} state " f"variable is"
-                    )
+                    msg_vars_len = (f"{len(set_state_variables_keys)} state "
+                                    f"variable is")
                 else:
-                    msg_vars_len = (
-                        f"{len(set_state_variables_keys)} state " f"variables are"
-                    )
+                    msg_vars_len = (f"{len(set_state_variables_keys)} state "
+                                    f"variables are")
                 if len(set_state_equations_keys) == 1:
-                    msg_eqns_len = (
-                        f"{len(set_state_equations_keys)} state " f"equation is"
-                    )
+                    msg_eqns_len = (f"{len(set_state_equations_keys)} state "
+                                    f"equation is")
                 else:
-                    msg_eqns_len = (
-                        f"{len(set_state_equations_keys)} state " f"equations are"
-                    )
+                    msg_eqns_len = (f"{len(set_state_equations_keys)} state "
+                                    f"equations are")
                 msg_len = f"{msg_vars_len} defined while {msg_eqns_len} " f"supplied"
                 msg_other.append(msg_len)
 
-            only_in_variables = set_state_variables_keys.difference(intersection)
+            only_in_variables = set_state_variables_keys.difference(
+                intersection)
             if only_in_variables:
                 immutable_only_in_variables = list(only_in_variables)
                 if len(only_in_variables) == 1:
                     msg_vars = (
                         f"the state variable "
                         f"'{immutable_only_in_variables[0]}' is defined "
-                        f"without a state equation"
-                    )
+                        f"without a state equation")
                 else:
                     msg_vars = (
                         f"the state variables "
                         f"'{spacer.join(immutable_only_in_variables[:-1])}' "
                         f"and '{immutable_only_in_variables[-1]}' are defined "
-                        f"without state equations"
-                    )
+                        f"without state equations")
                 msg_other.append(msg_vars)
 
-            only_in_equations = set_state_equations_keys.difference(intersection)
+            only_in_equations = set_state_equations_keys.difference(
+                intersection)
             if only_in_equations:
                 if len(only_in_equations) == 1:
                     immutable_only_in_equations = list(only_in_equations)
                     msg_eqns = (
                         f"a state derivative is supplied for "
                         f"'{immutable_only_in_equations[0]}' which is not a "
-                        f"state variable"
-                    )
+                        f"state variable")
                 else:
                     msg_eqns = (
                         f"state derivatives are supplied for "
                         f"'{spacer.join(immutable_only_in_equations[:-1])}' "
                         f"and '{immutable_only_in_equations[-1]}' which are "
-                        f"not defined as state variables"
-                    )
+                        f"not defined as state variables")
                 msg_other.append(msg_eqns)
 
-            msg = (
-                "A state equation must be supplied for each state variable "
-                f"in each phase. Currently in phase '{self.name}'"
-            )
+            msg = ("A state equation must be supplied for each state variable "
+                   f"in each phase. Currently in phase '{self.name}'")
             if len(msg_other) == 1:
                 full_msg = f"{msg}, {msg_other[0]}."
             else:
-                full_msg = (
-                    f"{msg}: {'; '.join(msg_other[:-1])}; and " f"{msg_other[-1]}."
-                )
+                full_msg = (f"{msg}: {'; '.join(msg_other[:-1])}; and "
+                            f"{msg_other[-1]}.")
             raise ValueError(full_msg)
 
     def __str__(self):
@@ -688,8 +659,6 @@ class Phase:
         return string
 
     def __repr__(self):
-        string = (
-            f"Phase({repr(self.optimal_control_problem)}, "
-            f"phase_number={self.phase_number})"
-        )
+        string = (f"Phase({repr(self.optimal_control_problem)}, "
+                  f"phase_number={self.phase_number})")
         return string

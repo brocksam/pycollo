@@ -75,17 +75,17 @@ class OptimalControlProblem:
     """
 
     def __init__(
-        self,
-        name,
-        parameter_variables=None,
-        *,
-        bounds=None,
-        guess=None,
-        scaling=None,
-        endpoint_constraints=None,
-        objective_function=None,
-        settings=None,
-        auxiliary_data=None,
+            self,
+            name,
+            parameter_variables=None,
+            *,
+            bounds=None,
+            guess=None,
+            scaling=None,
+            endpoint_constraints=None,
+            objective_function=None,
+            settings=None,
+            auxiliary_data=None,
     ):
         """Initialise the optimal control problem with user-passed objects.
 
@@ -169,10 +169,10 @@ class OptimalControlProblem:
         return tuple(self.add_phase(phase) for phase in phases)
 
     def new_phase(
-        self,
-        name: str,
-        state_variables: OptionalSymsType = None,
-        control_variables: OptionalSymsType = None,
+            self,
+            name: str,
+            state_variables: OptionalSymsType = None,
+            control_variables: OptionalSymsType = None,
     ) -> Phase:
         """Create a new :obj:`Phase` and add to this optimal control problem.
 
@@ -190,9 +190,8 @@ class OptimalControlProblem:
     def new_phase_like(self, phase_for_copying: Phase, name: str, **kwargs):
         return phase_for_copying.create_new_copy(name, **kwargs)
 
-    def new_phases_like(
-        self, phase_for_copying: Phase, number: int, names: Iterable[str], **kwargs
-    ) -> Tuple[Phase, ...]:
+    def new_phases_like(self, phase_for_copying: Phase, number: int,
+                        names: Iterable[str], **kwargs) -> Tuple[Phase, ...]:
         """Creates multiple new phases like an already instantiated phase.
 
         For a list of key word arguments and default values see the docstring
@@ -208,9 +207,8 @@ class OptimalControlProblem:
         if len(names) != int(number):
             msg = f"Must supply a name for each new phase."
             raise ValueError(msg)
-        new_phases = (
-            self.new_phase_like(phase_for_copying, name, **kwargs) for name in names
-        )
+        new_phases = (self.new_phase_like(phase_for_copying, name, **kwargs)
+                      for name in names)
         return new_phases
 
     @property
@@ -226,10 +224,8 @@ class OptimalControlProblem:
                 NotImplementedError: Whenever called to inform the user that these
                         types of problem are not currently supported.
         """
-        msg = (
-            f"Pycollo do not currently support dynamic, path or integral "
-            f"constraints that are explicit functions of continuous time."
-        )
+        msg = (f"Pycollo do not currently support dynamic, path or integral "
+               f"constraints that are explicit functions of continuous time.")
         raise NotImplementedError(msg)
 
     @property
@@ -440,27 +436,22 @@ class OptimalControlProblem:
             return mesh_iterations_met or mesh_tolerance_met
 
         if self._backend.mesh_iterations[-1].solved:
-            _ = self._backend.new_mesh_iteration(
-                self._next_iteration_mesh, self._next_iteration_guess
-            )
+            _ = self._backend.new_mesh_iteration(self._next_iteration_mesh,
+                                                 self._next_iteration_guess)
         result = self._backend.mesh_iterations[-1].solve()
         mesh_tolerance_met = result.mesh_tolerance_met
         self._next_iteration_mesh = result.next_iteration_mesh
         self._next_iteration_guess = result.next_iteration_guess
         if result.mesh_tolerance_met:
             self.mesh_tolerance_met = True
-            msg = (
-                f"Mesh tolerance met in mesh iteration "
-                f"{self.num_mesh_iterations}.\n"
-            )
+            msg = (f"Mesh tolerance met in mesh iteration "
+                   f"{self.num_mesh_iterations}.\n")
             print(msg)
         if self.num_mesh_iterations >= self.settings.max_mesh_iterations:
             mesh_iterations_met = True
             if not self.mesh_tolerance_met:
-                msg = (
-                    "Maximum number of mesh iterations reached. Pycollo "
-                    "exiting before mesh tolerance met.\n"
-                )
+                msg = ("Maximum number of mesh iterations reached. Pycollo "
+                       "exiting before mesh tolerance met.\n")
                 print(msg)
         else:
             mesh_iterations_met = False
@@ -547,34 +538,28 @@ class OptimalControlProblem:
             print(ocp_init_time_msg)
 
             self._iteration_initialisation_time = np.sum(
-                np.array(
-                    [
-                        iteration._initialisation_time
-                        for iteration in self._mesh_iterations
-                    ]
-                )
-            )
+                np.array([
+                    iteration._initialisation_time
+                    for iteration in self._mesh_iterations
+                ]))
 
             iter_init_time_msg = f"Total Iteration Initialisation Time: {self._iteration_initialisation_time:.4f} s"
             print(iter_init_time_msg)
 
             self._nlp_time = np.sum(
-                np.array([iteration._nlp_time for iteration in self._mesh_iterations])
-            )
+                np.array([
+                    iteration._nlp_time for iteration in self._mesh_iterations
+                ]))
 
             nlp_time_msg = (
-                f"Total NLP Solver Time:               {self._nlp_time:.4f} s"
-            )
+                f"Total NLP Solver Time:               {self._nlp_time:.4f} s")
             print(nlp_time_msg)
 
             self._process_results_time = np.sum(
-                np.array(
-                    [
-                        iteration._process_results_time
-                        for iteration in self._mesh_iterations
-                    ]
-                )
-            )
+                np.array([
+                    iteration._process_results_time
+                    for iteration in self._mesh_iterations
+                ]))
 
             process_results_time_msg = f"Total Mesh Refinement Time:          {self._process_results_time:.4f} s"
             print(process_results_time_msg)

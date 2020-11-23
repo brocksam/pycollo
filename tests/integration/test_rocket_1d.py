@@ -64,12 +64,15 @@ class TestRocket1D:
         assert state.ocp.phases.A.state_variables.h is self.h
         assert state.ocp.phases.A.state_variables.v is self.v
         assert state.ocp.phases.A.state_variables.m is self.m
-        assert state.ocp.phases.A.control_variables == (self.T,)
+        assert state.ocp.phases.A.control_variables == (self.T, )
         assert state.ocp.phases.A.control_variables.T is self.T
 
     def test_set_auxiliary_data(self, state):
         """Auxiliary data can be set."""
-        state.ocp.auxiliary_data = {self.g: 9.81, self.alpha: 1 / (300 * self.g)}
+        state.ocp.auxiliary_data = {
+            self.g: 9.81,
+            self.alpha: 1 / (300 * self.g)
+        }
 
     def test_set_phase_bounds(self, state):
         """Phase bounds can be set and are reformatted correctly."""
@@ -103,9 +106,8 @@ class TestRocket1D:
     def test_set_objective_function(self, state):
         """Objective function can be set."""
         state.ocp.objective_function = (
-            state.ocp.phases.A.initial_state_variables.m
-            - state.ocp.phases.A.final_state_variables.m
-        )
+            state.ocp.phases.A.initial_state_variables.m -
+            state.ocp.phases.A.final_state_variables.m)
 
     def test_set_ocp_settings(self, state):
         """Problem settings can be manipulated sucessfully."""

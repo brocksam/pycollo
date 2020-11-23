@@ -98,12 +98,12 @@ class PhaseGuess:
     )
 
     def __init__(
-        self,
-        phase: "Phase",
-        time=None,
-        state_variables=None,
-        control_variables=None,
-        integral_variables=None,
+            self,
+            phase: "Phase",
+            time=None,
+            state_variables=None,
+            control_variables=None,
+            integral_variables=None,
     ):
         self.phase = phase
         self.time = time
@@ -116,9 +116,8 @@ class PhaseGuess:
 
 class EndpointGuess:
 
-    optimal_control_problem = processed_property(
-        "optimal_control_problem", read_only=True
-    )
+    optimal_control_problem = processed_property("optimal_control_problem",
+                                                 read_only=True)
     parameter_variables = processed_property(
         "parameter_variables",
         description="static parameter variables guess",
@@ -128,9 +127,9 @@ class EndpointGuess:
         method=np.ndarray.flatten,
     )
 
-    def __init__(
-        self, optimal_control_problem: "OptimalControlProblem", parameter_variables=None
-    ):
+    def __init__(self,
+                 optimal_control_problem: "OptimalControlProblem",
+                 parameter_variables=None):
         self.optimal_control_problem = optimal_control_problem
         self.parameter_variables = parameter_variables
 
@@ -164,7 +163,8 @@ class Guess:
             self.u.append(u[p.ocp_phase.bounds._u_needed])
             self.q.append(q[p.ocp_phase.bounds._q_needed])
             self.t.append(t[p.ocp_phase.bounds._t_needed])
-        s = self.check_guess(self.endpoint.parameter_variables, self.backend.num_s_var)
+        s = self.check_guess(self.endpoint.parameter_variables,
+                             self.backend.num_s_var)
         self.s = s[self.backend.ocp.bounds._s_needed]
 
         # print(self.tau)
@@ -204,14 +204,14 @@ class Guess:
             if num_t is not None:
                 return np.empty((0, num_t))
             else:
-                return np.empty((0,))
+                return np.empty((0, ))
         shape = guess.shape
         if num_t is not None:
             if guess.shape != (num_var, num_t):
                 msg = "A guess must be supplied for every symbol and time."
                 raise ValueError(msg)
             pass
-        elif guess.shape != (num_var,):
+        elif guess.shape != (num_var, ):
             msg = "A guess must be supplied for every symbol."
             raise ValueError(msg)
         guess = self.backend.substitute_pycollo_sym(guess)

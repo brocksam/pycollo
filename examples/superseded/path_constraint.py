@@ -6,9 +6,9 @@ import pycollo
 pos_x, pos_y, vel_x, vel_y = sym.symbols("pos_x pos_y vel_x vel_y")
 F_x, F_y = sym.symbols("F_x F_y")
 
-mesh = pycollo.Mesh(
-    mesh_sections=2, mesh_section_fractions=None, mesh_collocation_points=4
-)
+mesh = pycollo.Mesh(mesh_sections=2,
+                    mesh_section_fractions=None,
+                    mesh_collocation_points=4)
 problem = pycollo.OptimalControlProblem(
     state_variables=[pos_x, pos_y, vel_x, vel_y],
     control_variables=[F_x, F_y],
@@ -19,7 +19,7 @@ problem.state_equations = [vel_x, vel_y, F_x, F_y]
 
 problem.objective_function = problem.final_time
 
-problem.path_constraints = [pos_x ** 2 + pos_y ** 2 - 1]
+problem.path_constraints = [pos_x**2 + pos_y**2 - 1]
 
 problem.state_endpoint_constraints = [
     problem.initial_state[0],

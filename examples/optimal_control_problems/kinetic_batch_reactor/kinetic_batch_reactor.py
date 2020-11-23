@@ -67,7 +67,7 @@ phase_A.state_equations = {
     y4: k0y1y5 - (km1 * u3),
     y5: -k0y1y5 + (km1 * u3) - k2y3y5 - (km3 * u2),
 }
-phase_A.path_constraints = [p - y5 + (10 ** (-u0)) - u1 - u2 - u3]
+phase_A.path_constraints = [p - y5 + (10**(-u0)) - u1 - u2 - u3]
 
 problem.auxiliary_data = {
     k0hat: 1.3708e12,

@@ -64,11 +64,13 @@ tF_min = 0.1
 
 # Optimal control problem definition
 problem = pycollo.OptimalControlProblem(name="Tumour Anti-Angiogenesis")
-phase = problem.new_phase(name="A", state_variables=[p, q], control_variables=u)
+phase = problem.new_phase(name="A",
+                          state_variables=[p, q],
+                          control_variables=u)
 
 phase.state_equations = {
     p: -xi * p * sym.log(p / q),
-    q: q * (b - (mu + (d * p ** (2 / 3)) + (G * u))),
+    q: q * (b - (mu + (d * p**(2 / 3)) + (G * u))),
 }
 phase.integrand_functions = [u]
 
@@ -81,7 +83,7 @@ problem.auxiliary_data = {
     mu: 0.02,
     a: 75,
     A: 15,
-    p_max: ((b - mu) / d) ** (3 / 2),
+    p_max: ((b - mu) / d)**(3 / 2),
     p_min: 0.1,
     q_max: p_max,
     q_min: p_min,

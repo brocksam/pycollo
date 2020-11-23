@@ -52,7 +52,6 @@ from .utils import sympy_to_casadi
 
 __all__ = []
 
-
 CASADI = "casadi"
 HSAD = "hsad"
 PYCOLLO = "pycollo"
@@ -190,12 +189,12 @@ class BackendABC(ABC):
         self.add_user_to_backend_mapping(self.s_var_user, s)
         s_tilde = (self.sym(f"_s{i_s}") for i_s in range(self.num_s_var_full))
         self.s_var_full = tuple(s_tilde)
-        V_s, r_s = self.create_variable_scaling_symbols("s", self.num_s_var_full)
+        V_s, r_s = self.create_variable_scaling_symbols(
+            "s", self.num_s_var_full)
         self.V_s_var_full = V_s
         self.r_s_var_full = r_s
         s_exprs = self.create_variable_scaling_expression(
-            self.s_var_full, self.V_s_var_full, self.r_s_var_full
-        )
+            self.s_var_full, self.V_s_var_full, self.r_s_var_full)
         self.add_aux_data_mapping(s, s_exprs)
 
     def add_user_to_backend_mapping(self, user_sym, backend_sym):
@@ -224,7 +223,10 @@ class BackendABC(ABC):
         """
         self.aux_data.update(dict(zip(backend_sym, backend_expr)))
 
-    def create_variable_scaling_symbols(self, identifier, var_ids, phase_num=None):
+    def create_variable_scaling_symbols(self,
+                                        identifier,
+                                        var_ids,
+                                        phase_num=None):
         """Instantiate stretch and shift variables as backend symbols.
 
         Args
@@ -268,7 +270,8 @@ class BackendABC(ABC):
             The backend shifting parameters.
 
         """
-        return tuple(V * x_tilde + r for x_tilde, V, r in zip(x_tildes, Vs, rs))
+        return tuple(V * x_tilde + r
+                     for x_tilde, V, r in zip(x_tildes, Vs, rs))
 
     def create_phase_backends(self):
         """Create and initialise a phase backend for each OCP phase.
@@ -281,12 +284,14 @@ class BackendABC(ABC):
         p = (PycolloPhaseData(self, phase) for phase in self.ocp.phases)
         self.p = tuple(p)
         self.num_phases = len(self.p)
-        self.all_phase_user_var = {var for p in self.p for var in p.all_user_var}
+        self.all_phase_user_var = {
+            var
+            for p in self.p for var in p.all_user_var
+        }
         self.all_user_var = self.all_phase_user_var.union(set(self.s_var_user))
         self.all_phase_var = {var for p in self.p for var in p.all_var}
-        all_endpoint_var = itertools.chain(
-            self.s_var_full, self.V_s_var_full, self.r_s_var_full
-        )
+        all_endpoint_var = itertools.chain(self.s_var_full, self.V_s_var_full,
+                                           self.r_s_var_full)
         self.all_var = self.all_phase_var.union(all_endpoint_var)
 
     def preprocess_user_problem_aux_data(self):
@@ -299,7 +304,8 @@ class BackendABC(ABC):
     def partition_all_user_problem_phase_aux_data(self):
         """Determine category of all user-supplied aux data"""
         self.user_phase_aux_data_syms = {
-            symbol for p in self.ocp.phases for symbol in p.auxiliary_data
+            symbol
+            for p in self.ocp.phases for symbol in p.auxiliary_data
         }
         for symbol, equation in self.ocp.auxiliary_data.items():
             self.partition_user_problem_phase_aux_data(symbol, equation)
@@ -367,13 +373,10 @@ class BackendABC(ABC):
         condition_2 = self.user_aux_data_supplied_in_ocp_and_phase
         if condition_1 and condition_2:
             formatted_syms = format_multiple_items_for_output(
-                self.aux_data_supplied_in_ocp_and_phase
-            )
-            msg = (
-                f"Auxiliary data for {formatted_syms} has been supplied at "
-                f"a per-phase level and therefore cannot be supplied at a "
-                f"problem level."
-            )
+                self.aux_data_supplied_in_ocp_and_phase)
+            msg = (f"Auxiliary data for {formatted_syms} has been supplied at "
+                   f"a per-phase level and therefore cannot be supplied at a "
+                   f"problem level.")
             raise ValueError(msg)
 
     def partition_user_problem_aux_data(self):
@@ -403,10 +406,8 @@ class BackendABC(ABC):
             elif symbol in self.s_var_user:
                 return False
             else:
-                msg = (
-                    f"The non-root symbol '{symbol}' has been mapped to "
-                    f"itself and auxiliary data cannot be rectified."
-                )
+                msg = (f"The non-root symbol '{symbol}' has been mapped to "
+                       f"itself and auxiliary data cannot be rectified.")
                 raise ValueError(msg)
         elif symbol in self.user_aux_data_phase_dependent:
             return True
@@ -477,9 +478,12 @@ class BackendABC(ABC):
 
         """
         child_syms = list(symbol_primitives(equation))
-        child_eqns = [self.get_child_equation(child_sym) for child_sym in child_syms]
+        child_eqns = [
+            self.get_child_equation(child_sym) for child_sym in child_syms
+        ]
         child_is_phase_dependent = [
-            self.process_aux_data_pair_is_phase_dependent(child_sym, child_eqn)
+            self.process_aux_data_pair_is_phase_dependent(
+                child_sym, child_eqn)
             for child_sym, child_eqn in zip(child_syms, child_eqns)
         ]
         if any(child_is_phase_dependent):
@@ -532,18 +536,15 @@ class BackendABC(ABC):
         for user_sym, user_eqn in self.user_aux_data_phase_independent.items():
             if user_sym not in self.user_to_backend_mapping:
                 backend_sym = self.sym(symbol_name(user_sym))
-                self.add_user_to_backend_mapping((user_sym,), (backend_sym,))
+                self.add_user_to_backend_mapping((user_sym, ), (backend_sym, ))
             if isinstance(user_eqn, sym.Expr):
                 backend_eqn, self.user_to_backend_mapping = sympy_to_casadi(
-                    user_eqn, self.user_to_backend_mapping
-                )
+                    user_eqn, self.user_to_backend_mapping)
             else:
-                msg = (
-                    f"Cannot process independent auxiliary data equation "
-                    f"of type '{type(user_eqn)}'"
-                )
+                msg = (f"Cannot process independent auxiliary data equation "
+                       f"of type '{type(user_eqn)}'")
                 raise TypeError(msg)
-            self.add_aux_data_mapping((backend_sym,), (backend_eqn,))
+            self.add_aux_data_mapping((backend_sym, ), (backend_eqn, ))
 
     def preprocess_phase_backends(self):
         """Abstraction layer for preprocessing phase backends."""
@@ -573,18 +574,14 @@ class BackendABC(ABC):
         V_point_sym = set(self.V_s_var_full)
         r_point_sym = set(self.r_s_var_full)
         phase_sym = set.union(*[set(p.x_var_full) for p in self.p])
-        phase_V_sym = set.union(
-            *[
-                set(itertools.chain(p.V_y_var_full, p.V_u_var_full, p.V_q_var_full))
-                for p in self.p
-            ]
-        )
-        phase_r_sym = set.union(
-            *[
-                set(itertools.chain(p.r_y_var_full, p.r_u_var_full, p.r_q_var_full))
-                for p in self.p
-            ]
-        )
+        phase_V_sym = set.union(*[
+            set(itertools.chain(p.V_y_var_full, p.V_u_var_full,
+                                p.V_q_var_full)) for p in self.p
+        ])
+        phase_r_sym = set.union(*[
+            set(itertools.chain(p.r_y_var_full, p.r_u_var_full,
+                                p.r_q_var_full)) for p in self.p
+        ])
         phase_point_sym = set.union(*[set(p.x_point_var_full) for p in self.p])
         all_backend_sym = set.union(
             point_sym,
@@ -604,12 +601,10 @@ class BackendABC(ABC):
                 if before_prims == after_prims:
                     diff = after_prims.difference(self.all_var)
                     if diff:
-                        msg = (
-                            f"Cannot rectify aux data for symbol "
-                            f"{backend_sym} with equation "
-                            f"{self.aux_data[backend_sym]} as it contains "
-                            f"the non-root symbols: {diff}."
-                        )
+                        msg = (f"Cannot rectify aux data for symbol "
+                               f"{backend_sym} with equation "
+                               f"{self.aux_data[backend_sym]} as it contains "
+                               f"the non-root symbols: {diff}.")
                         raise ValueError(msg)
                     break
                 self.aux_data[backend_sym] = backend_eqn
@@ -645,23 +640,18 @@ class BackendABC(ABC):
             p.create_variable_indexes_slices()
 
         self.s_var = tuple(
-            np.array(self.s_var_full)[self.ocp.bounds._s_needed].tolist()
-        )
+            np.array(self.s_var_full)[self.ocp.bounds._s_needed].tolist())
         self.num_s_var = len(self.s_var)
 
         self.V_s_var = tuple(
-            np.array(self.V_s_var_full)[self.ocp.bounds._s_needed].tolist()
-        )
+            np.array(self.V_s_var_full)[self.ocp.bounds._s_needed].tolist())
         self.r_s_var = tuple(
-            np.array(self.r_s_var_full)[self.ocp.bounds._s_needed].tolist()
-        )
+            np.array(self.r_s_var_full)[self.ocp.bounds._s_needed].tolist())
 
         self.V_x_var = tuple(
-            itertools.chain(*list(p.V_x_var for p in self.p), self.V_s_var)
-        )
+            itertools.chain(*list(p.V_x_var for p in self.p), self.V_s_var))
         self.r_x_var = tuple(
-            itertools.chain(*list(p.r_x_var for p in self.p), self.r_s_var)
-        )
+            itertools.chain(*list(p.r_x_var for p in self.p), self.r_s_var))
 
         all_phase_var = chain_from_iterable(p.x_var for p in self.p)
         continuous_var = tuple(all_phase_var) + self.s_var
@@ -712,8 +702,7 @@ class BackendABC(ABC):
             start = stop
             self.phase_endpoint_variable_slices.append(p_slice)
         self.endpoint_variable_slice = slice(
-            self.num_point_var - self.num_s_var, self.num_point_var
-        )
+            self.num_point_var - self.num_s_var, self.num_point_var)
 
     def process_point_constraints(self):
         """Process user-supplied point constraints."""
@@ -763,37 +752,32 @@ class BackendABC(ABC):
         ambiguous_syms = prims.intersection(self.user_aux_data_phase_dependent)
         if ambiguous_syms:
             if len(self.p) != 1:
-                msg = (
-                    f"Ambiguous point constraint '{b_con}' supplied "
-                    f"which contains phase-dependent symbols and "
-                    f"cannot be rectified by Pycollo. Please rewrite "
-                    f"using phase-specific symbols."
-                )
+                msg = (f"Ambiguous point constraint '{b_con}' supplied "
+                       f"which contains phase-dependent symbols and "
+                       f"cannot be rectified by Pycollo. Please rewrite "
+                       f"using phase-specific symbols.")
                 raise ValueError(msg)
             all_user_to_backend_mapping = dict_merge(
-                self.user_to_backend_mapping, self.p[0].phase_user_to_backend_mapping
-            )
-            b_con, _ = sympy_to_casadi(
-                b_con, all_user_to_backend_mapping, phase=self.p[0].i
-            )
+                self.user_to_backend_mapping,
+                self.p[0].phase_user_to_backend_mapping)
+            b_con, _ = sympy_to_casadi(b_con,
+                                       all_user_to_backend_mapping,
+                                       phase=self.p[0].i)
         return b_con
 
     def check_point_constraint_primitives(self, b_con):
         """Ensure point constraints aren't being used for state endpoints."""
         if b_con in set(self.x_point_var):
-            msg = (
-                f"Pycollo cannot automatically transform point constraints "
-                f"to state endpoint constraints. Use state endpoint "
-                f"constraints for '{b_con}'."
-            )
+            msg = (f"Pycollo cannot automatically transform point constraints "
+                   f"to state endpoint constraints. Use state endpoint "
+                   f"constraints for '{b_con}'.")
             raise ValueError(msg)
         prims = set(symbol_primitives(b_con))
-        allowed_syms = itertools.chain(self.x_point_var, self.V_x_var, self.r_x_var)
+        allowed_syms = itertools.chain(self.x_point_var, self.V_x_var,
+                                       self.r_x_var)
         if prims.difference(set(allowed_syms)):
-            msg = (
-                f"Endpoint constraint {b_con} is invalid as it contains "
-                f"symbols that aren't OCP point variables or constants."
-            )
+            msg = (f"Endpoint constraint {b_con} is invalid as it contains "
+                   f"symbols that aren't OCP point variables or constants.")
             raise ValueError(msg)
         return b_con
 
@@ -918,25 +902,25 @@ class PycolloPhaseData:
 
         """
         self.phase_user_to_backend_mapping.update(
-            dict(zip(user_sym, phase_backend_sym))
-        )
+            dict(zip(user_sym, phase_backend_sym)))
 
     def create_state_variable_symbols(self):
         """Instantiate phase state variables (including enpoint symbols)."""
         self.y_var_user = tuple(self.ocp_phase.state_variables)
         self.num_y_var_full = len(self.y_var_user)
-        y = tuple(self.sym(f"{symbol_name(var)}_P{self.i}") for var in self.y_var_user)
+        y = tuple(
+            self.sym(f"{symbol_name(var)}_P{self.i}")
+            for var in self.y_var_user)
         self.add_phase_user_to_backend_mapping(self.y_var_user, y)
-        y_tilde = (self.sym(f"_y{i_y}_P{self.i}") for i_y in range(self.num_y_var_full))
+        y_tilde = (self.sym(f"_y{i_y}_P{self.i}")
+                   for i_y in range(self.num_y_var_full))
         self.y_var_full = tuple(y_tilde)
         V_y, r_y = self.ocp_backend.create_variable_scaling_symbols(
-            "y", self.num_y_var_full, self.i
-        )
+            "y", self.num_y_var_full, self.i)
         self.V_y_var_full = V_y
         self.r_y_var_full = r_y
         y_exprs = self.ocp_backend.create_variable_scaling_expression(
-            self.y_var_full, self.V_y_var_full, self.r_y_var_full
-        )
+            self.y_var_full, self.V_y_var_full, self.r_y_var_full)
         self.ocp_backend.add_aux_data_mapping(y, y_exprs)
 
         self.y_t0_var_user = tuple(self.ocp_phase.initial_state_variables)
@@ -948,25 +932,19 @@ class PycolloPhaseData:
         self.ocp_backend.add_user_to_backend_mapping(self.y_t0_var_user, y_t0)
         self.add_phase_user_to_backend_mapping(self.y_tF_var_user, y_tF)
         self.ocp_backend.add_user_to_backend_mapping(self.y_tF_var_user, y_tF)
-        y_t0_tilde = (
-            self.sym(f"_y{i_y}_t0_P{self.i}") for i_y in range(self.num_y_var_full)
-        )
-        y_tF_tilde = (
-            self.sym(f"_y{i_y}_tF_P{self.i}") for i_y in range(self.num_y_var_full)
-        )
+        y_t0_tilde = (self.sym(f"_y{i_y}_t0_P{self.i}")
+                      for i_y in range(self.num_y_var_full))
+        y_tF_tilde = (self.sym(f"_y{i_y}_tF_P{self.i}")
+                      for i_y in range(self.num_y_var_full))
         self.y_t0_var_full = tuple(y_t0_tilde)
         self.y_tF_var_full = tuple(y_tF_tilde)
         self.y_point_var_full = tuple(
             itertools.chain.from_iterable(
-                y for y in zip(self.y_t0_var_full, self.y_tF_var_full)
-            )
-        )
+                y for y in zip(self.y_t0_var_full, self.y_tF_var_full)))
         y_t0_exprs = self.ocp_backend.create_variable_scaling_expression(
-            self.y_t0_var_full, self.V_y_var_full, self.r_y_var_full
-        )
+            self.y_t0_var_full, self.V_y_var_full, self.r_y_var_full)
         y_tF_exprs = self.ocp_backend.create_variable_scaling_expression(
-            self.y_tF_var_full, self.V_y_var_full, self.r_y_var_full
-        )
+            self.y_tF_var_full, self.V_y_var_full, self.r_y_var_full)
         self.ocp_backend.add_aux_data_mapping(y_t0, y_t0_exprs)
         self.ocp_backend.add_aux_data_mapping(y_tF, y_tF_exprs)
 
@@ -974,18 +952,19 @@ class PycolloPhaseData:
         """Instantiate phase control variable symbols."""
         self.u_var_user = tuple(self.ocp_phase.control_variables)
         self.num_u_var_full = len(self.u_var_user)
-        u = tuple(self.sym(f"{symbol_name(var)}_P{self.i}") for var in self.u_var_user)
+        u = tuple(
+            self.sym(f"{symbol_name(var)}_P{self.i}")
+            for var in self.u_var_user)
         self.add_phase_user_to_backend_mapping(self.u_var_user, u)
-        u_tilde = (self.sym(f"_u{i_u}_P{self.i}") for i_u in range(self.num_u_var_full))
+        u_tilde = (self.sym(f"_u{i_u}_P{self.i}")
+                   for i_u in range(self.num_u_var_full))
         self.u_var_full = tuple(u_tilde)
         V_u, r_u = self.ocp_backend.create_variable_scaling_symbols(
-            "u", self.num_u_var_full, self.i
-        )
+            "u", self.num_u_var_full, self.i)
         self.V_u_var_full = V_u
         self.r_u_var_full = r_u
         u_exprs = self.ocp_backend.create_variable_scaling_expression(
-            self.u_var_full, self.V_u_var_full, self.r_u_var_full
-        )
+            self.u_var_full, self.V_u_var_full, self.r_u_var_full)
         self.ocp_backend.add_aux_data_mapping(u, u_exprs)
 
     def create_integral_variable_symbols(self):
@@ -995,16 +974,15 @@ class PycolloPhaseData:
         q = tuple(self.sym(symbol_name(var)) for var in self.q_var_user)
         self.add_phase_user_to_backend_mapping(self.q_var_user, q)
         self.ocp_backend.add_user_to_backend_mapping(self.q_var_user, q)
-        q_tilde = (self.sym(f"_q{i_q}_P{self.i}") for i_q in range(self.num_q_var_full))
+        q_tilde = (self.sym(f"_q{i_q}_P{self.i}")
+                   for i_q in range(self.num_q_var_full))
         self.q_var_full = tuple(q_tilde)
         V_q, r_q = self.ocp_backend.create_variable_scaling_symbols(
-            "q", self.num_q_var_full, self.i
-        )
+            "q", self.num_q_var_full, self.i)
         self.V_q_var_full = V_q
         self.r_q_var_full = r_q
         q_exprs = self.ocp_backend.create_variable_scaling_expression(
-            self.q_var_full, self.V_q_var_full, self.r_q_var_full
-        )
+            self.q_var_full, self.V_q_var_full, self.r_q_var_full)
         self.ocp_backend.add_aux_data_mapping(q, q_exprs)
 
     def create_time_variable_symbols(self):
@@ -1017,13 +995,11 @@ class PycolloPhaseData:
         t_tilde = (self.sym(f"_t0_P{self.i}"), self.sym(f"_tF_P{self.i}"))
         self.t_var_full = tuple(t_tilde)
         V_t, r_t = self.ocp_backend.create_variable_scaling_symbols(
-            "t", ("0", "F"), self.i
-        )
+            "t", ("0", "F"), self.i)
         self.V_t_var_full = V_t
         self.r_t_var_full = r_t
         t_exprs = self.ocp_backend.create_variable_scaling_expression(
-            self.t_var_full, self.V_t_var_full, self.r_t_var_full
-        )
+            self.t_var_full, self.V_t_var_full, self.r_t_var_full)
         self.ocp_backend.add_aux_data_mapping(t, t_exprs)
         self.t_norm = 0.5 * (self.t_var_full[1] - self.t_var_full[0])
 
@@ -1034,17 +1010,14 @@ class PycolloPhaseData:
 
     def collect_pycollo_variables_full(self):
         """Collect Pycollo variables and associated data."""
-        x_var_full = itertools.chain(
-            self.y_var_full, self.u_var_full, self.q_var_full, self.t_var_full
-        )
+        x_var_full = itertools.chain(self.y_var_full, self.u_var_full,
+                                     self.q_var_full, self.t_var_full)
         self.x_var_full = tuple(x_var_full)
-        V_x_var_full = itertools.chain(
-            self.V_y_var_full, self.V_u_var_full, self.V_q_var_full, self.V_t_var_full
-        )
+        V_x_var_full = itertools.chain(self.V_y_var_full, self.V_u_var_full,
+                                       self.V_q_var_full, self.V_t_var_full)
         self.V_x_var_full = tuple(V_x_var_full)
-        r_x_var_full = itertools.chain(
-            self.r_y_var_full, self.r_u_var_full, self.r_q_var_full, self.r_t_var_full
-        )
+        r_x_var_full = itertools.chain(self.r_y_var_full, self.r_u_var_full,
+                                       self.r_q_var_full, self.r_t_var_full)
         self.r_x_var_full = tuple(r_x_var_full)
         self.num_var_full = len(self.x_var_full)
         self.num_each_var_full = (
@@ -1053,9 +1026,8 @@ class PycolloPhaseData:
             self.num_q_var_full,
             self.num_t_var_full,
         )
-        x_point_var_full = itertools.chain(
-            self.y_point_var_full, self.q_var_full, self.t_var_full
-        )
+        x_point_var_full = itertools.chain(self.y_point_var_full,
+                                           self.q_var_full, self.t_var_full)
         self.x_point_var_full = tuple(x_point_var_full)
         self.num_point_var_full = len(self.x_point_var_full)
         self.all_var = set(
@@ -1064,8 +1036,7 @@ class PycolloPhaseData:
                 self.V_x_var_full,
                 self.r_x_var_full,
                 self.x_point_var_full,
-            )
-        )
+            ))
 
     def collect_user_variables(self):
         """Collect user variables and associated data."""
@@ -1078,13 +1049,11 @@ class PycolloPhaseData:
         self.u_var_user = self.ocp_phase._u_var_user
         self.q_var_user = self.ocp_phase._q_var_user
         self.t_var_user = self.ocp_phase._t_var_user
-        x_var_user = itertools.chain(
-            self.y_var_user, self.u_var_user, self.q_var_user, self.t_var_user
-        )
+        x_var_user = itertools.chain(self.y_var_user, self.u_var_user,
+                                     self.q_var_user, self.t_var_user)
         self.x_var_user = tuple(x_var_user)
-        x_point_var_user = itertools.chain(
-            self.y_point_var_user, self.q_var_user, self.t_var_user
-        )
+        x_point_var_user = itertools.chain(self.y_point_var_user,
+                                           self.q_var_user, self.t_var_user)
         self.x_point_var_user = tuple(x_point_var_user)
         self.all_user_var = set(self.x_var_user + self.x_point_var_user)
 
@@ -1140,35 +1109,32 @@ class PycolloPhaseData:
             else:
                 backend_sym = self.phase_user_to_backend_mapping[user_sym]
             if not isinstance(user_eqn, sym.Expr):
-                msg = (
-                    f"Cannot process independent auxiliary data equation "
-                    f"of type '{type(user_eqn)}'"
-                )
+                msg = (f"Cannot process independent auxiliary data equation "
+                       f"of type '{type(user_eqn)}'")
                 raise TypeError(msg)
             all_user_to_backend_mapping = dict_merge(
                 self.ocp_backend.user_to_backend_mapping,
                 self.phase_user_to_backend_mapping,
             )
             backend_eqn, all_user_to_backend_mapping = sympy_to_casadi(
-                user_eqn, all_user_to_backend_mapping, phase=self.i
-            )
+                user_eqn, all_user_to_backend_mapping, phase=self.i)
             for k, v in all_user_to_backend_mapping.items():
                 if k not in self.ocp_backend.user_to_backend_mapping:
                     self.phase_user_to_backend_mapping[k] = v
-            self.ocp_backend.add_aux_data_mapping((backend_sym,), (backend_eqn,))
+            self.ocp_backend.add_aux_data_mapping((backend_sym, ),
+                                                  (backend_eqn, ))
 
     def check_all_user_phase_aux_data_supplied(self):
         """Determine any phase-dependent aux data not built for this phase."""
         missing_syms = self.ocp_backend.user_phase_aux_data_syms.difference(
-            set(self.phase_user_to_backend_mapping.keys())
-        )
+            set(self.phase_user_to_backend_mapping.keys()))
         self.missing_phase_user_aux_data_syms = missing_syms
 
     def collect_variables_substitutions(self):
         """All user symbols mapped to their phase-specific backend symbol."""
         self.all_user_to_backend_mapping = dict_merge(
-            self.ocp_backend.user_to_backend_mapping, self.phase_user_to_backend_mapping
-        )
+            self.ocp_backend.user_to_backend_mapping,
+            self.phase_user_to_backend_mapping)
 
     def preprocess_constraints(self):
         """Abstraction layer for preprocessing of phase constraints."""
@@ -1214,7 +1180,8 @@ class PycolloPhaseData:
     def check_all_needed_user_phase_aux_data_supplied(self):
         """Check if any phase-specific symbols are missing."""
         needed_syms = {s for c in self.c for s in symbol_primitives(c)}
-        missing_syms = needed_syms.intersection(self.missing_phase_user_aux_data_syms)
+        missing_syms = needed_syms.intersection(
+            self.missing_phase_user_aux_data_syms)
         if missing_syms:
             self.raise_needed_user_phases_aux_data_missing_error(missing_syms)
 
@@ -1228,12 +1195,10 @@ class PycolloPhaseData:
 
         """
         formatted_syms = format_multiple_items_for_output(missing_syms)
-        msg = (
-            f"Phase-dependent auxiliary data must be supplied for "
-            f"all phase-dependent symbols in each phase. Please supply "
-            f"auxiliary data for {formatted_syms} in {self.ocp_phase.name} "
-            f"(phase index: {self.i})."
-        )
+        msg = (f"Phase-dependent auxiliary data must be supplied for "
+               f"all phase-dependent symbols in each phase. Please supply "
+               f"auxiliary data for {formatted_syms} in {self.ocp_phase.name} "
+               f"(phase index: {self.i}).")
         raise ValueError(msg)
 
     def create_constraint_indexes_slices(self):
@@ -1252,13 +1217,16 @@ class PycolloPhaseData:
         def needed_to_tuple(var_full, needed):
             return tuple(np.array(var_full)[needed].tolist())
 
-        self.y_var = needed_to_tuple(self.y_var_full, self.ocp_phase.bounds._y_needed)
-        self.u_var = needed_to_tuple(self.u_var_full, self.ocp_phase.bounds._u_needed)
-        self.q_var = needed_to_tuple(self.q_var_full, self.ocp_phase.bounds._q_needed)
-        self.t_var = needed_to_tuple(self.t_var_full, self.ocp_phase.bounds._t_needed)
+        self.y_var = needed_to_tuple(self.y_var_full,
+                                     self.ocp_phase.bounds._y_needed)
+        self.u_var = needed_to_tuple(self.u_var_full,
+                                     self.ocp_phase.bounds._u_needed)
+        self.q_var = needed_to_tuple(self.q_var_full,
+                                     self.ocp_phase.bounds._q_needed)
+        self.t_var = needed_to_tuple(self.t_var_full,
+                                     self.ocp_phase.bounds._t_needed)
         self.x_var = tuple(
-            itertools.chain(self.y_var, self.u_var, self.q_var, self.t_var)
-        )
+            itertools.chain(self.y_var, self.u_var, self.q_var, self.t_var))
 
         self.num_y_var = len(self.y_var)
         self.num_u_var = len(self.u_var)
@@ -1266,43 +1234,33 @@ class PycolloPhaseData:
         self.num_t_var = len(self.t_var)
         self.num_var = len(self.x_var)
 
-        self.V_y_var = needed_to_tuple(
-            self.V_y_var_full, self.ocp_phase.bounds._y_needed
-        )
-        self.V_u_var = needed_to_tuple(
-            self.V_u_var_full, self.ocp_phase.bounds._u_needed
-        )
-        self.V_q_var = needed_to_tuple(
-            self.V_q_var_full, self.ocp_phase.bounds._q_needed
-        )
-        self.V_t_var = needed_to_tuple(
-            self.V_t_var_full, self.ocp_phase.bounds._t_needed
-        )
+        self.V_y_var = needed_to_tuple(self.V_y_var_full,
+                                       self.ocp_phase.bounds._y_needed)
+        self.V_u_var = needed_to_tuple(self.V_u_var_full,
+                                       self.ocp_phase.bounds._u_needed)
+        self.V_q_var = needed_to_tuple(self.V_q_var_full,
+                                       self.ocp_phase.bounds._q_needed)
+        self.V_t_var = needed_to_tuple(self.V_t_var_full,
+                                       self.ocp_phase.bounds._t_needed)
         self.V_x_var = tuple(
-            itertools.chain(self.V_y_var, self.V_u_var, self.V_q_var, self.V_t_var)
-        )
-        self.r_y_var = needed_to_tuple(
-            self.r_y_var_full, self.ocp_phase.bounds._y_needed
-        )
-        self.r_u_var = needed_to_tuple(
-            self.r_u_var_full, self.ocp_phase.bounds._u_needed
-        )
-        self.r_q_var = needed_to_tuple(
-            self.r_q_var_full, self.ocp_phase.bounds._q_needed
-        )
-        self.r_t_var = needed_to_tuple(
-            self.r_t_var_full, self.ocp_phase.bounds._t_needed
-        )
+            itertools.chain(self.V_y_var, self.V_u_var, self.V_q_var,
+                            self.V_t_var))
+        self.r_y_var = needed_to_tuple(self.r_y_var_full,
+                                       self.ocp_phase.bounds._y_needed)
+        self.r_u_var = needed_to_tuple(self.r_u_var_full,
+                                       self.ocp_phase.bounds._u_needed)
+        self.r_q_var = needed_to_tuple(self.r_q_var_full,
+                                       self.ocp_phase.bounds._q_needed)
+        self.r_t_var = needed_to_tuple(self.r_t_var_full,
+                                       self.ocp_phase.bounds._t_needed)
         self.r_x_var = tuple(
-            itertools.chain(self.r_y_var, self.r_u_var, self.r_q_var, self.r_t_var)
-        )
+            itertools.chain(self.r_y_var, self.r_u_var, self.r_q_var,
+                            self.r_t_var))
 
-        self.y_t0_var = needed_to_tuple(
-            self.y_t0_var_full, self.ocp_phase.bounds._y_needed
-        )
-        self.y_tF_var = needed_to_tuple(
-            self.y_tF_var_full, self.ocp_phase.bounds._y_needed
-        )
+        self.y_t0_var = needed_to_tuple(self.y_t0_var_full,
+                                        self.ocp_phase.bounds._y_needed)
+        self.y_tF_var = needed_to_tuple(self.y_tF_var_full,
+                                        self.ocp_phase.bounds._y_needed)
         y_point_var = (y for y in zip(self.y_t0_var, self.y_tF_var))
         self.y_point_var = tuple(itertools.chain.from_iterable(y_point_var))
         self.num_y_point_var = len(self.y_point_var)
@@ -1314,8 +1272,7 @@ class PycolloPhaseData:
             self.num_t_var,
         )
         self.x_point_var = tuple(
-            itertools.chain(self.y_point_var, self.q_var, self.t_var)
-        )
+            itertools.chain(self.y_point_var, self.q_var, self.t_var))
         self.num_point_var = len(self.x_point_var)
 
     def create_variable_indexes_slices(self):
@@ -1404,7 +1361,7 @@ class Casadi(BackendABC):
             elif phase is None:
                 user_to_backend_mapping = self.user_to_backend_mapping
             expr, _ = sympy_to_casadi(expr, user_to_backend_mapping)
-        elif isinstance(expr, SUPPORTED_ITER_TYPES + (sym.Matrix,)):
+        elif isinstance(expr, SUPPORTED_ITER_TYPES + (sym.Matrix, )):
             return self.substitute_matrix_pycollo_sym(expr)
         elif isinstance(expr, (int, float, np.int64, np.float64)):
             expr = ca.SX(expr)
@@ -1481,11 +1438,11 @@ class Casadi(BackendABC):
         for p, N in zip(self.p, self.current_iteration.mesh.N):
             mapping.update({y: self.sym(symbol_name(y), N) for y in p.y_var})
             mapping_point.update(
-                {y_t0: mapping[y][0] for y, y_t0 in zip(p.y_var, p.y_t0_var)}
-            )
+                {y_t0: mapping[y][0]
+                 for y, y_t0 in zip(p.y_var, p.y_t0_var)})
             mapping_point.update(
-                {y_tF: mapping[y][-1] for y, y_tF in zip(p.y_var, p.y_tF_var)}
-            )
+                {y_tF: mapping[y][-1]
+                 for y, y_tF in zip(p.y_var, p.y_tF_var)})
             mapping.update({u: self.sym(symbol_name(u), N) for u in p.u_var})
             mapping_point.update({q: q for q in p.q_var})
             mapping_point.update({t: t for t in p.t_var})
@@ -1575,7 +1532,10 @@ class Casadi(BackendABC):
             for p, N in zip(self.p, mesh.N):
                 phase_mapping = {}
                 for i in range(N):
-                    mapping = {k: v[i] for k, v in self.ocp_iter_sym_mapping.items()}
+                    mapping = {
+                        k: v[i]
+                        for k, v in self.ocp_iter_sym_mapping.items()
+                    }
                     phase_mapping[i] = mapping
                 all_phase_mapping[p] = phase_mapping
             return all_phase_mapping
@@ -1631,12 +1591,8 @@ class Casadi(BackendABC):
                     y_var = self.ocp_iter_sym_mapping[y_var]
                     y_var_unscaled = V_y_var * y_var + r_y_var
                     y_eqn = expand_eqn_to_vec(y_eqn, phase_mapping)
-                    c.append(
-                        W_d
-                        * make_defect_constraint(
-                            y_var_unscaled, y_eqn, t0, tF, A_mat, I_mat
-                        )
-                    )
+                    c.append(W_d * make_defect_constraint(
+                        y_var_unscaled, y_eqn, t0, tF, A_mat, I_mat))
                 c_d.append(c)
             return c_d
 
@@ -1676,10 +1632,8 @@ class Casadi(BackendABC):
                 for q_var, V_q_var, r_q_var, q_fnc, W_i in zipped:
                     q_var_unscaled = V_q_var * q_var + r_q_var
                     q_fnc = expand_eqn_to_vec(q_fnc, phase_mapping)
-                    c.append(
-                        W_i
-                        * make_integral_constraint(q_var_unscaled, q_fnc, t0, tF, W_mat)
-                    )
+                    c.append(W_i * make_integral_constraint(
+                        q_var_unscaled, q_fnc, t0, tF, W_mat))
                 c_i.append(c)
             return c_i
 
@@ -1696,7 +1650,8 @@ class Casadi(BackendABC):
             return c_e
 
         all_phase_mapping = make_all_phase_mapping(self.current_iteration.mesh)
-        dy = make_state_derivatives(all_phase_mapping, self.current_iteration.mesh)
+        dy = make_state_derivatives(all_phase_mapping,
+                                    self.current_iteration.mesh)
         c = make_constraints(all_phase_mapping, self.current_iteration.mesh)
         subs = dict_merge(
             self.ocp_iter_sym_point_mapping,
@@ -1705,7 +1660,8 @@ class Casadi(BackendABC):
             self.bounds.aux_data,
         )
         self.dy_iter = casadi_substitute(dy, subs)
-        self.dy_iter_callable = ca.Function("dy", [self.x_var_iter], [self.dy_iter])
+        self.dy_iter_callable = ca.Function("dy", [self.x_var_iter],
+                                            [self.dy_iter])
         self.c_iter = casadi_substitute(c, subs)
         args = ca.vertcat(self.x_var_iter, self.W_iter)
         self.c_iter_scale_callable = ca.Function("c", [args], [self.c_iter])
@@ -1755,7 +1711,8 @@ class Casadi(BackendABC):
 
     def evaluate_g(self, x):
         """Evaluate `g` at a point `x` using CasADi compiled function."""
-        g = np.array(self.nlp_solver.get_function("nlp_grad_f")(x, False)[1]).squeeze()
+        g = np.array(self.nlp_solver.get_function("nlp_grad_f")(
+            x, False)[1]).squeeze()
         return g
 
     def evaluate_c(self, x):
@@ -1862,9 +1819,9 @@ class Casadi(BackendABC):
         )
         nlp_stop_time = timer()
         nlp_solve_time = nlp_stop_time - nlp_start_time
-        nlp_result = NlpResult(
-            solution=nlp_solver_output, info=None, solve_time=nlp_solve_time
-        )
+        nlp_result = NlpResult(solution=nlp_solver_output,
+                               info=None,
+                               solve_time=nlp_solve_time)
         return nlp_result
 
     @staticmethod
@@ -1883,9 +1840,8 @@ class Casadi(BackendABC):
 
 class Hsad(BackendABC):
 
-    not_implemented_error_msg = (
-        "The hSAD backend for Pycollo is not " "currently supported or implemented."
-    )
+    not_implemented_error_msg = ("The hSAD backend for Pycollo is not "
+                                 "currently supported or implemented.")
 
     def __init__(self, ocp):
         raise NotImplementedError(self.not_implemented_error_msg)
@@ -1924,9 +1880,8 @@ class Hsad(BackendABC):
 
 class Sympy(BackendABC):
 
-    not_implemented_error_msg = (
-        "The Sympy backend for Pycollo is not " "currently supported or implemented."
-    )
+    not_implemented_error_msg = ("The Sympy backend for Pycollo is not "
+                                 "currently supported or implemented.")
 
     def __init__(self, ocp):
         raise NotImplementedError(self.not_implemented_error_msg)

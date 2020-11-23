@@ -11,12 +11,12 @@ class PhaseMesh:
     _DEFAULT_MESH_SECTION_SIZES = None
 
     def __init__(
-        self,
-        phase: "Phase",
-        *,
-        number_mesh_sections: Optional[int] = None,
-        mesh_section_sizes: Optional[Iterable[float]] = None,
-        number_mesh_section_nodes: Optional[int] = None,
+            self,
+            phase: "Phase",
+            *,
+            number_mesh_sections: Optional[int] = None,
+            mesh_section_sizes: Optional[Iterable[float]] = None,
+            number_mesh_section_nodes: Optional[int] = None,
     ):
 
         self.phase = phase
@@ -26,8 +26,8 @@ class PhaseMesh:
         if number_mesh_sections is None:
             try:
                 self.number_mesh_sections = (
-                    self.phase.optimal_control_problem.settings.default_number_mesh_sections
-                )
+                    self.phase.optimal_control_problem.settings.
+                    default_number_mesh_sections)
             except AttributeError:
                 self.number_mesh_sections = self._DEFAULT_NUMBER_MESH_SECTIONS
         else:
@@ -35,9 +35,8 @@ class PhaseMesh:
 
         if mesh_section_sizes is None:
             try:
-                self.mesh_section_sizes = (
-                    self.phase.optimal_control_problem.settings.default_mesh_section_sizes
-                )
+                self.mesh_section_sizes = (self.phase.optimal_control_problem.
+                                           settings.default_mesh_section_sizes)
             except AttributeError:
                 self.mesh_section_sizes = self._DEFAULT_MESH_SECTION_SIZES
         else:
@@ -58,14 +57,13 @@ class PhaseMesh:
         self._num_mesh_secs = int(num_mesh_secs)
         self._num_mesh_endpoints = self._num_mesh_secs + 1
 
-        if self._mesh_sec_sizes is not None and (
-            len(self._mesh_sec_sizes) != self._num_mesh_secs
-        ):
+        if self._mesh_sec_sizes is not None and (len(self._mesh_sec_sizes) !=
+                                                 self._num_mesh_secs):
             self.mesh_section_sizes = None
             if max(self.number_mesh_section_nodes) == min(
-                self.number_mesh_section_nodes
-            ):
-                self.number_mesh_section_nodes = self.number_mesh_section_nodes[0]
+                    self.number_mesh_section_nodes):
+                self.number_mesh_section_nodes = self.number_mesh_section_nodes[
+                    0]
             else:
                 msg = "Mismatch between mesh section sizes and mesh section nodes."
                 raise ValueError(msg)
@@ -79,11 +77,9 @@ class PhaseMesh:
         if sizes is None:
             sizes = np.ones(self._num_mesh_secs) / self._num_mesh_secs
         if len(sizes) != self._num_mesh_secs:
-            msg = (
-                f"Mesh section sizes must be an iterable of length "
-                f"{self._num_mesh_secs} (i.e. matching the number of mesh "
-                f"sections)."
-            )
+            msg = (f"Mesh section sizes must be an iterable of length "
+                   f"{self._num_mesh_secs} (i.e. matching the number of mesh "
+                   f"sections).")
             raise ValueError(msg)
         sizes = np.array(sizes)
         sizes = sizes / sizes.sum()
@@ -105,17 +101,14 @@ class PhaseMesh:
             msg = (
                 f"Number of mesh section nodes must be an interable of "
                 f"length {self._num_mesh_secs} (i.e. matching the number of "
-                f"mesh sections)."
-            )
+                f"mesh sections).")
             raise ValueError(msg)
         self._num_mesh_sec_nodes = num_nodes
 
     def __repr__(self):
-        string = (
-            f"PhaseMesh(number_mesh_sections={self._num_mesh_secs}, "
-            f"mesh_section_sizes={self._mesh_sec_sizes}, "
-            f"number_mesh_section_nodes={self._num_mesh_sec_nodes})"
-        )
+        string = (f"PhaseMesh(number_mesh_sections={self._num_mesh_secs}, "
+                  f"mesh_section_sizes={self._mesh_sec_sizes}, "
+                  f"number_mesh_section_nodes={self._num_mesh_sec_nodes})")
         return string
 
 
@@ -266,15 +259,13 @@ class Mesh:
 
         mesh = []
         for section_num, (sec_start, sec_end, sec_num_points) in enumerate(
-            zip(
-                section_boundaries[:-1],
-                section_boundaries[1:],
-                p.number_mesh_section_nodes,
-            )
-        ):
+                zip(
+                    section_boundaries[:-1],
+                    section_boundaries[1:],
+                    p.number_mesh_section_nodes,
+                )):
             points = self.quadrature.quadrature_point(
-                sec_num_points, domain=[sec_start, sec_end]
-            )
+                sec_num_points, domain=[sec_start, sec_end])
             # if self.settings.quadrature_method == "lobatto":
             # 	points = points[:-1]
             # mesh.extend(list(points))
@@ -287,8 +278,7 @@ class Mesh:
         K = p.number_mesh_sections
 
         mesh_index_boundaries = np.insert(
-            np.cumsum(p.number_mesh_section_nodes - 1), 0, 0
-        )
+            np.cumsum(p.number_mesh_section_nodes - 1), 0, 0)
         h_K = np.diff(tau[mesh_index_boundaries])
         N_K = p.number_mesh_section_nodes
 
@@ -314,19 +304,18 @@ class Mesh:
 
         h_K_expanded = []
 
-        for block_size, h_k, block_start in zip(
-            p.number_mesh_section_nodes, h_K, block_starts
-        ):
+        for block_size, h_k, block_start in zip(p.number_mesh_section_nodes,
+                                                h_K, block_starts):
             row_slice = slice(block_start, block_start + block_size - 1)
             col_slice = slice(block_start, block_start + block_size)
             A_block = self.quadrature.A_matrix(block_size) * h_k
             A_vals_entry = A_block.flatten().tolist()
             A_row_inds_entry = np.repeat(
-                np.array(range(block_start, block_start + block_size - 1)), block_size
-            )
+                np.array(range(block_start, block_start + block_size - 1)),
+                block_size)
             A_col_inds_entry = np.tile(
-                np.array(range(block_start, block_start + block_size)), block_size - 1
-            )
+                np.array(range(block_start, block_start + block_size)),
+                block_size - 1)
             A_vals.extend(A_vals_entry)
             A_row_inds.extend(A_row_inds_entry)
             A_col_inds.extend(A_col_inds_entry)
@@ -337,30 +326,28 @@ class Mesh:
             nonzero = np.flatnonzero(D_block)
             D_vals_entry = D_block.flatten()[nonzero].tolist()
             D_row_inds_entry = np.repeat(
-                np.array(range(block_start, block_start + block_size - 1)), block_size
-            )[nonzero]
+                np.array(range(block_start, block_start + block_size - 1)),
+                block_size)[nonzero]
             D_col_inds_entry = np.tile(
-                np.array(range(block_start, block_start + block_size)), block_size - 1
-            )[nonzero]
+                np.array(range(block_start, block_start + block_size)),
+                block_size - 1)[nonzero]
             D_vals.extend(D_vals_entry)
             D_row_inds.extend(D_row_inds_entry)
             D_col_inds.extend(D_col_inds_entry)
             D_index_array.extend(
-                self.quadrature.D_index_array(block_size) + num_A_nonzero
-            )
+                self.quadrature.D_index_array(block_size) + num_A_nonzero)
 
-            W_matrix[col_slice] += self.quadrature.quadrature_weight(block_size) * h_k
+            W_matrix[col_slice] += self.quadrature.quadrature_weight(
+                block_size) * h_k
 
             num_A_nonzero = len(A_index_array)
 
             h_K_expanded.extend([h_k] * (block_size - 1))
 
-        sA_matrix = sparse.coo_matrix(
-            (A_vals, (A_row_inds, A_col_inds)), shape=matrix_dims
-        ).tocsr()
-        sD_matrix = sparse.coo_matrix(
-            (D_vals, (D_row_inds, D_col_inds)), shape=matrix_dims
-        ).tocsr()
+        sA_matrix = sparse.coo_matrix((A_vals, (A_row_inds, A_col_inds)),
+                                      shape=matrix_dims).tocsr()
+        sD_matrix = sparse.coo_matrix((D_vals, (D_row_inds, D_col_inds)),
+                                      shape=matrix_dims).tocsr()
 
         A_index_array = np.array(A_index_array)
         D_index_array = np.array(D_index_array)

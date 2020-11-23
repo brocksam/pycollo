@@ -38,9 +38,9 @@ def phase_backend_fixture():
 
 
 @pytest.fixture
-def double_pendulum_phase_backend_fixture(
-    double_pendulum_fixture, casadi_backend_fixture, phase_backend_fixture
-):
+def double_pendulum_phase_backend_fixture(double_pendulum_fixture,
+                                          casadi_backend_fixture,
+                                          phase_backend_fixture):
     """Uninitialised phased backend for the double pendulum OCP."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -82,9 +82,9 @@ def test_create_point_variable_symbols(ocp_fixture, casadi_backend_fixture):
     assert hasattr(backend, "r_s_var_full")
 
 
-def test_create_point_variable_symbols_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, utils
-):
+def test_create_point_variable_symbols_dp_specific(double_pendulum_fixture,
+                                                   casadi_backend_fixture,
+                                                   utils):
     """Check correct insantiation of parameter variables.
 
     Use the double pendulum fixture to check that static parameter variables
@@ -133,9 +133,10 @@ def test_create_point_variable_symbols_dp_specific(
         utils.assert_ca_expr_identical(backend_expr, expect_backend_expr)
 
 
-def test_create_state_variable_symbols_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_create_state_variable_symbols_dp_specific(double_pendulum_fixture,
+                                                   casadi_backend_fixture,
+                                                   phase_backend_fixture,
+                                                   utils):
     """Check correct instantiation of state variables by the phase backend.
 
     Use the double pendulum fixture to ensure the phase backend correctly
@@ -256,19 +257,16 @@ def test_create_state_variable_symbols_dp_specific(
     assert phase_backend.num_y_var_full == 4
     assert phase_backend.num_y_point_var_full == 8
 
-    utils.assert_ca_syms_identical(phase_backend.y_var_full, (_y0, _y1, _y2, _y3))
-    utils.assert_ca_syms_identical(
-        phase_backend.V_y_var_full, (_V_y0, _V_y1, _V_y2, _V_y3)
-    )
-    utils.assert_ca_syms_identical(
-        phase_backend.r_y_var_full, (_r_y0, _r_y1, _r_y2, _r_y3)
-    )
-    utils.assert_ca_syms_identical(
-        phase_backend.y_t0_var_full, (_y0_t0, _y1_t0, _y2_t0, _y3_t0)
-    )
-    utils.assert_ca_syms_identical(
-        phase_backend.y_tF_var_full, (_y0_tF, _y1_tF, _y2_tF, _y3_tF)
-    )
+    utils.assert_ca_syms_identical(phase_backend.y_var_full,
+                                   (_y0, _y1, _y2, _y3))
+    utils.assert_ca_syms_identical(phase_backend.V_y_var_full,
+                                   (_V_y0, _V_y1, _V_y2, _V_y3))
+    utils.assert_ca_syms_identical(phase_backend.r_y_var_full,
+                                   (_r_y0, _r_y1, _r_y2, _r_y3))
+    utils.assert_ca_syms_identical(phase_backend.y_t0_var_full,
+                                   (_y0_t0, _y1_t0, _y2_t0, _y3_t0))
+    utils.assert_ca_syms_identical(phase_backend.y_tF_var_full,
+                                   (_y0_tF, _y1_tF, _y2_tF, _y3_tF))
     utils.assert_ca_syms_identical(
         phase_backend.y_point_var_full,
         (_y0_t0, _y0_tF, _y1_t0, _y1_tF, _y2_t0, _y2_tF, _y3_t0, _y3_tF),
@@ -277,7 +275,8 @@ def test_create_state_variable_symbols_dp_specific(
     for expect_user_sym, expect_backend_sym in expect_sub_mapping.items():
         expect_backend_expr = expect_aux_data[expect_backend_sym]
         assert expect_user_sym in phase_backend.phase_user_to_backend_mapping
-        backend_sym = phase_backend.phase_user_to_backend_mapping[expect_user_sym]
+        backend_sym = phase_backend.phase_user_to_backend_mapping[
+            expect_user_sym]
         assert backend_sym in backend.aux_data
         backend_expr = backend.aux_data[backend_sym]
         utils.assert_ca_sym_identical(backend_sym, expect_backend_sym)
@@ -294,9 +293,10 @@ def test_create_state_variable_symbols_dp_specific(
         utils.assert_ca_expr_identical(backend_expr, expect_backend_expr)
 
 
-def test_create_state_variable_symbols_br_specific(
-    brachistochrone_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_create_state_variable_symbols_br_specific(brachistochrone_fixture,
+                                                   casadi_backend_fixture,
+                                                   phase_backend_fixture,
+                                                   utils):
     """Check correct instantiation of state variables by the phase backend.
 
     Use the brachistochrone fixture to ensure the phase backend correctly
@@ -387,22 +387,23 @@ def test_create_state_variable_symbols_br_specific(
     assert phase_backend.num_y_point_var_full == 6
 
     utils.assert_ca_syms_identical(phase_backend.y_var_full, (_y0, _y1, _y2))
-    utils.assert_ca_syms_identical(phase_backend.V_y_var_full, (_V_y0, _V_y1, _V_y2))
-    utils.assert_ca_syms_identical(phase_backend.r_y_var_full, (_r_y0, _r_y1, _r_y2))
+    utils.assert_ca_syms_identical(phase_backend.V_y_var_full,
+                                   (_V_y0, _V_y1, _V_y2))
+    utils.assert_ca_syms_identical(phase_backend.r_y_var_full,
+                                   (_r_y0, _r_y1, _r_y2))
+    utils.assert_ca_syms_identical(phase_backend.y_t0_var_full,
+                                   (_y0_t0, _y1_t0, _y2_t0))
+    utils.assert_ca_syms_identical(phase_backend.y_tF_var_full,
+                                   (_y0_tF, _y1_tF, _y2_tF))
     utils.assert_ca_syms_identical(
-        phase_backend.y_t0_var_full, (_y0_t0, _y1_t0, _y2_t0)
-    )
-    utils.assert_ca_syms_identical(
-        phase_backend.y_tF_var_full, (_y0_tF, _y1_tF, _y2_tF)
-    )
-    utils.assert_ca_syms_identical(
-        phase_backend.y_point_var_full, (_y0_t0, _y0_tF, _y1_t0, _y1_tF, _y2_t0, _y2_tF)
-    )
+        phase_backend.y_point_var_full,
+        (_y0_t0, _y0_tF, _y1_t0, _y1_tF, _y2_t0, _y2_tF))
 
     for expect_user_sym, expect_backend_sym in expect_sub_mapping.items():
         expect_backend_expr = expect_aux_data[expect_backend_sym]
         assert expect_user_sym in phase_backend.phase_user_to_backend_mapping
-        backend_sym = phase_backend.phase_user_to_backend_mapping[expect_user_sym]
+        backend_sym = phase_backend.phase_user_to_backend_mapping[
+            expect_user_sym]
         assert backend_sym in backend.aux_data
         backend_expr = backend.aux_data[backend_sym]
         utils.assert_ca_sym_identical(backend_sym, expect_backend_sym)
@@ -419,9 +420,10 @@ def test_create_state_variable_symbols_br_specific(
         utils.assert_ca_expr_identical(backend_expr, expect_backend_expr)
 
 
-def test_create_control_variable_symbols_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_create_control_variable_symbols_dp_specific(double_pendulum_fixture,
+                                                     casadi_backend_fixture,
+                                                     phase_backend_fixture,
+                                                     utils):
     """Check correct instantiation of control variables by the phase backend.
 
     Use the double pendulum fixture to ensure the phase backend correctly
@@ -476,7 +478,8 @@ def test_create_control_variable_symbols_dp_specific(
     for expect_user_sym, expect_backend_sym in expect_sub_mapping.items():
         expect_backend_expr = expect_aux_data[expect_backend_sym]
         assert expect_user_sym in phase_backend.phase_user_to_backend_mapping
-        backend_sym = phase_backend.phase_user_to_backend_mapping[expect_user_sym]
+        backend_sym = phase_backend.phase_user_to_backend_mapping[
+            expect_user_sym]
         assert backend_sym in backend.aux_data
         backend_expr = backend.aux_data[backend_sym]
         utils.assert_ca_sym_identical(backend_sym, expect_backend_sym)
@@ -493,9 +496,10 @@ def test_create_control_variable_symbols_dp_specific(
         utils.assert_ca_expr_identical(backend_expr, expect_backend_expr)
 
 
-def test_create_control_variable_symbols_br_specific(
-    brachistochrone_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_create_control_variable_symbols_br_specific(brachistochrone_fixture,
+                                                     casadi_backend_fixture,
+                                                     phase_backend_fixture,
+                                                     utils):
     """Check correct instantiation of control variables by the phase backend.
 
     Use the brachistochrone fixture to ensure the phase backend correctly
@@ -527,17 +531,18 @@ def test_create_control_variable_symbols_br_specific(
     expect_aux_data = {u: _V_u0 * _u0 + _r_u0}
 
     assert phase_backend.u_var_user == phase.control_variables
-    assert phase_backend.u_var_user == (user_syms.u,)
+    assert phase_backend.u_var_user == (user_syms.u, )
     assert phase_backend.num_u_var_full == 1
 
-    utils.assert_ca_syms_identical(phase_backend.u_var_full, (_u0,))
-    utils.assert_ca_syms_identical(phase_backend.V_u_var_full, (_V_u0,))
-    utils.assert_ca_syms_identical(phase_backend.r_u_var_full, (_r_u0,))
+    utils.assert_ca_syms_identical(phase_backend.u_var_full, (_u0, ))
+    utils.assert_ca_syms_identical(phase_backend.V_u_var_full, (_V_u0, ))
+    utils.assert_ca_syms_identical(phase_backend.r_u_var_full, (_r_u0, ))
 
     for expect_user_sym, expect_backend_sym in expect_sub_mapping.items():
         expect_backend_expr = expect_aux_data[expect_backend_sym]
         assert expect_user_sym in phase_backend.phase_user_to_backend_mapping
-        backend_sym = phase_backend.phase_user_to_backend_mapping[expect_user_sym]
+        backend_sym = phase_backend.phase_user_to_backend_mapping[
+            expect_user_sym]
         assert backend_sym in backend.aux_data
         backend_expr = backend.aux_data[backend_sym]
         utils.assert_ca_sym_identical(backend_sym, expect_backend_sym)
@@ -554,9 +559,10 @@ def test_create_control_variable_symbols_br_specific(
         utils.assert_ca_expr_identical(backend_expr, expect_backend_expr)
 
 
-def test_create_integral_variable_symbols_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_create_integral_variable_symbols_dp_specific(double_pendulum_fixture,
+                                                      casadi_backend_fixture,
+                                                      phase_backend_fixture,
+                                                      utils):
     """Check correct instantiation of integral variables by the phase backend.
 
     Use the double pendulum fixture to ensure the phase backend correctly
@@ -593,17 +599,18 @@ def test_create_integral_variable_symbols_dp_specific(
     }
 
     assert phase_backend.q_var_user == phase.integral_variables
-    assert phase_backend.q_var_user == (user_q0,)
+    assert phase_backend.q_var_user == (user_q0, )
     assert phase_backend.num_q_var_full == 1
 
-    utils.assert_ca_syms_identical(phase_backend.q_var_full, (_q0,))
-    utils.assert_ca_syms_identical(phase_backend.V_q_var_full, (_V_q0,))
-    utils.assert_ca_syms_identical(phase_backend.r_q_var_full, (_r_q0,))
+    utils.assert_ca_syms_identical(phase_backend.q_var_full, (_q0, ))
+    utils.assert_ca_syms_identical(phase_backend.V_q_var_full, (_V_q0, ))
+    utils.assert_ca_syms_identical(phase_backend.r_q_var_full, (_r_q0, ))
 
     for expect_user_sym, expect_backend_sym in expect_sub_mapping.items():
         expect_backend_expr = expect_aux_data[expect_backend_sym]
         assert expect_user_sym in phase_backend.phase_user_to_backend_mapping
-        backend_sym = phase_backend.phase_user_to_backend_mapping[expect_user_sym]
+        backend_sym = phase_backend.phase_user_to_backend_mapping[
+            expect_user_sym]
         assert backend_sym in backend.aux_data
         backend_expr = backend.aux_data[backend_sym]
         utils.assert_ca_sym_identical(backend_sym, expect_backend_sym)
@@ -621,9 +628,8 @@ def test_create_integral_variable_symbols_dp_specific(
 
 
 @pytest_cases.parametrize("ocp_fixture", ALL_FIXTURE_REF)
-def test_create_time_variable_symbols(
-    ocp_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_create_time_variable_symbols(ocp_fixture, casadi_backend_fixture,
+                                      phase_backend_fixture, utils):
     """Check correct instantiation of time variables by the phase backend.
 
     Use the double pendulum fixture to ensure the phase backend correctly
@@ -685,7 +691,8 @@ def test_create_time_variable_symbols(
     for expect_user_sym, expect_backend_sym in expect_sub_mapping.items():
         expect_backend_expr = expect_aux_data[expect_backend_sym]
         assert expect_user_sym in phase_backend.phase_user_to_backend_mapping
-        backend_sym = phase_backend.phase_user_to_backend_mapping[expect_user_sym]
+        backend_sym = phase_backend.phase_user_to_backend_mapping[
+            expect_user_sym]
         assert backend_sym in backend.aux_data
         backend_expr = backend.aux_data[backend_sym]
         utils.assert_ca_sym_identical(backend_sym, expect_backend_sym)
@@ -707,9 +714,10 @@ def test_create_time_variable_symbols(
     utils.assert_ca_expr_identical(phase_backend.t_norm, expected_t_norm_expr)
 
 
-def test_collect_pycollo_variables_full_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_collect_pycollo_variables_full_dp_specific(double_pendulum_fixture,
+                                                    casadi_backend_fixture,
+                                                    phase_backend_fixture,
+                                                    utils):
     """Test collection of Pycollo vars/data in to groups by phase backend."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -736,7 +744,8 @@ def test_collect_pycollo_variables_full_dp_specific(
     assert phase_backend.num_var_full == 9
     assert phase_backend.num_each_var_full == (4, 2, 1, 2)
     expected_x_var_full = (_y0, _y1, _y2, _y3, _u0, _u1, _q0, _t0, _tF)
-    utils.assert_ca_syms_identical(phase_backend.x_var_full, expected_x_var_full)
+    utils.assert_ca_syms_identical(phase_backend.x_var_full,
+                                   expected_x_var_full)
 
     _y0_t0 = ca.SX.sym("_y0_t0_P0")
     _y0_tF = ca.SX.sym("_y0_tF_P0")
@@ -761,14 +770,14 @@ def test_collect_pycollo_variables_full_dp_specific(
         _t0,
         _tF,
     )
-    utils.assert_ca_syms_identical(
-        phase_backend.x_point_var_full, expected_x_point_var_full
-    )
+    utils.assert_ca_syms_identical(phase_backend.x_point_var_full,
+                                   expected_x_point_var_full)
 
 
-def test_collect_pycollo_variables_full_br_specific(
-    brachistochrone_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_collect_pycollo_variables_full_br_specific(brachistochrone_fixture,
+                                                    casadi_backend_fixture,
+                                                    phase_backend_fixture,
+                                                    utils):
     """Test collection of Pycollo vars/data in to groups by phase backend."""
     ocp, user_syms = brachistochrone_fixture
     backend = casadi_backend_fixture
@@ -792,7 +801,8 @@ def test_collect_pycollo_variables_full_br_specific(
     assert phase_backend.num_var_full == 6
     assert phase_backend.num_each_var_full == (3, 1, 0, 2)
     expected_x_var_full = (_y0, _y1, _y2, _u0, _t0, _tF)
-    utils.assert_ca_syms_identical(phase_backend.x_var_full, expected_x_var_full)
+    utils.assert_ca_syms_identical(phase_backend.x_var_full,
+                                   expected_x_var_full)
 
     _y0_t0 = ca.SX.sym("_y0_t0_P0")
     _y0_tF = ca.SX.sym("_y0_tF_P0")
@@ -812,14 +822,13 @@ def test_collect_pycollo_variables_full_br_specific(
         _t0,
         _tF,
     )
-    utils.assert_ca_syms_identical(
-        phase_backend.x_point_var_full, expected_x_point_var_full
-    )
+    utils.assert_ca_syms_identical(phase_backend.x_point_var_full,
+                                   expected_x_point_var_full)
 
 
-def test_collect_user_variables_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_collect_user_variables_dp_specific(double_pendulum_fixture,
+                                            casadi_backend_fixture,
+                                            phase_backend_fixture, utils):
     """Test collection of user vars/data in to groups by phase backend."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -844,7 +853,7 @@ def test_collect_user_variables_dp_specific(
         user_syms.v1,
     )
     assert phase_backend.u_var_user == (user_syms.T0, user_syms.T1)
-    assert phase_backend.q_var_user == (q0,)
+    assert phase_backend.q_var_user == (q0, )
     assert phase_backend.t_var_user == (t0, tF)
     assert phase_backend.x_var_user == (
         user_syms.a0,
@@ -892,32 +901,30 @@ def test_collect_user_variables_dp_specific(
         t0,
         tF,
     )
-    assert phase_backend.all_user_var == set(
-        (
-            user_syms.a0,
-            user_syms.a1,
-            user_syms.v0,
-            user_syms.v1,
-            a0_t0,
-            a0_tF,
-            a1_t0,
-            a1_tF,
-            v0_t0,
-            v0_tF,
-            v1_t0,
-            v1_tF,
-            user_syms.T0,
-            user_syms.T1,
-            q0,
-            t0,
-            tF,
-        )
-    )
+    assert phase_backend.all_user_var == set((
+        user_syms.a0,
+        user_syms.a1,
+        user_syms.v0,
+        user_syms.v1,
+        a0_t0,
+        a0_tF,
+        a1_t0,
+        a1_tF,
+        v0_t0,
+        v0_tF,
+        v1_t0,
+        v1_tF,
+        user_syms.T0,
+        user_syms.T1,
+        q0,
+        t0,
+        tF,
+    ))
 
 
-def test_collect_user_variables_br_specific(
-    brachistochrone_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_collect_user_variables_br_specific(brachistochrone_fixture,
+                                            casadi_backend_fixture,
+                                            phase_backend_fixture, utils):
     """Test collection of user vars/data in to groups by phase backend."""
     ocp, user_syms = brachistochrone_fixture
     backend = casadi_backend_fixture
@@ -935,7 +942,7 @@ def test_collect_user_variables_br_specific(
     tF = sym.Symbol("tF_P0")
 
     assert phase_backend.y_var_user == (user_syms.x, user_syms.y, user_syms.v)
-    assert phase_backend.u_var_user == (user_syms.u,)
+    assert phase_backend.u_var_user == (user_syms.u, )
     assert phase_backend.q_var_user == ()
     assert phase_backend.t_var_user == (t0, tF)
     assert phase_backend.x_var_user == (
@@ -956,7 +963,8 @@ def test_collect_user_variables_br_specific(
 
     assert phase_backend.y_t0_var_user == (x_t0, y_t0, v_t0)
     assert phase_backend.y_tF_var_user == (x_tF, y_tF, v_tF)
-    assert phase_backend.y_point_var_user == (x_t0, x_tF, y_t0, y_tF, v_t0, v_tF)
+    assert phase_backend.y_point_var_user == (x_t0, x_tF, y_t0, y_tF, v_t0,
+                                              v_tF)
     assert phase_backend.x_point_var_user == (
         x_t0,
         x_tF,
@@ -967,27 +975,25 @@ def test_collect_user_variables_br_specific(
         t0,
         tF,
     )
-    assert phase_backend.all_user_var == set(
-        (
-            user_syms.x,
-            user_syms.y,
-            user_syms.v,
-            user_syms.u,
-            x_t0,
-            x_tF,
-            y_t0,
-            y_tF,
-            v_t0,
-            v_tF,
-            t0,
-            tF,
-        )
-    )
+    assert phase_backend.all_user_var == set((
+        user_syms.x,
+        user_syms.y,
+        user_syms.v,
+        user_syms.u,
+        x_t0,
+        x_tF,
+        y_t0,
+        y_tF,
+        v_t0,
+        v_tF,
+        t0,
+        tF,
+    ))
 
 
-def test_create_phase_backends_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_create_phase_backends_dp_specific(double_pendulum_fixture,
+                                           casadi_backend_fixture,
+                                           phase_backend_fixture, utils):
     """Test create of phase backend for double pendulum problem."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -1009,55 +1015,51 @@ def test_create_phase_backends_dp_specific(
     v0_tF = sym.Symbol("v0_P0(tF)")
     v1_tF = sym.Symbol("v1_P0(tF)")
 
-    assert backend.all_phase_user_var == set(
-        (
-            user_syms.a0,
-            user_syms.a1,
-            user_syms.v0,
-            user_syms.v1,
-            a0_t0,
-            a0_tF,
-            a1_t0,
-            a1_tF,
-            v0_t0,
-            v0_tF,
-            v1_t0,
-            v1_tF,
-            user_syms.T0,
-            user_syms.T1,
-            q0,
-            t0,
-            tF,
-        )
-    )
-    assert backend.all_user_var == set(
-        (
-            user_syms.a0,
-            user_syms.a1,
-            user_syms.v0,
-            user_syms.v1,
-            a0_t0,
-            a0_tF,
-            a1_t0,
-            a1_tF,
-            v0_t0,
-            v0_tF,
-            v1_t0,
-            v1_tF,
-            user_syms.T0,
-            user_syms.T1,
-            q0,
-            t0,
-            tF,
-            user_syms.m0,
-            user_syms.p0,
-        )
-    )
+    assert backend.all_phase_user_var == set((
+        user_syms.a0,
+        user_syms.a1,
+        user_syms.v0,
+        user_syms.v1,
+        a0_t0,
+        a0_tF,
+        a1_t0,
+        a1_tF,
+        v0_t0,
+        v0_tF,
+        v1_t0,
+        v1_tF,
+        user_syms.T0,
+        user_syms.T1,
+        q0,
+        t0,
+        tF,
+    ))
+    assert backend.all_user_var == set((
+        user_syms.a0,
+        user_syms.a1,
+        user_syms.v0,
+        user_syms.v1,
+        a0_t0,
+        a0_tF,
+        a1_t0,
+        a1_tF,
+        v0_t0,
+        v0_tF,
+        v1_t0,
+        v1_tF,
+        user_syms.T0,
+        user_syms.T1,
+        q0,
+        t0,
+        tF,
+        user_syms.m0,
+        user_syms.p0,
+    ))
 
 
-def test_create_phase_backends_br_specific(
-    brachistochrone_fixture, casadi_backend_fixture, phase_backend_fixture, utils
-):
+def test_create_phase_backends_br_specific(brachistochrone_fixture,
+                                           casadi_backend_fixture,
+                                           phase_backend_fixture, utils):
     """Test create of phase backend for brachistochrone problem."""
     ocp, user_syms = brachistochrone_fixture
     backend = casadi_backend_fixture
@@ -1076,43 +1078,38 @@ def test_create_phase_backends_br_specific(
     y_tF = sym.Symbol("y_P0(tF)")
     v_tF = sym.Symbol("v_P0(tF)")
 
-    assert backend.all_phase_user_var == set(
-        (
-            user_syms.x,
-            user_syms.y,
-            user_syms.v,
-            user_syms.u,
-            x_t0,
-            x_tF,
-            y_t0,
-            y_tF,
-            v_t0,
-            v_tF,
-            t0,
-            tF,
-        )
-    )
-    assert backend.all_user_var == set(
-        (
-            user_syms.x,
-            user_syms.y,
-            user_syms.v,
-            user_syms.u,
-            x_t0,
-            x_tF,
-            y_t0,
-            y_tF,
-            v_t0,
-            v_tF,
-            t0,
-            tF,
-        )
-    )
+    assert backend.all_phase_user_var == set((
+        user_syms.x,
+        user_syms.y,
+        user_syms.v,
+        user_syms.u,
+        x_t0,
+        x_tF,
+        y_t0,
+        y_tF,
+        v_t0,
+        v_tF,
+        t0,
+        tF,
+    ))
+    assert backend.all_user_var == set((
+        user_syms.x,
+        user_syms.y,
+        user_syms.v,
+        user_syms.u,
+        x_t0,
+        x_tF,
+        y_t0,
+        y_tF,
+        v_t0,
+        v_tF,
+        t0,
+        tF,
+    ))
 
 
 def test_create_full_continuous_variable_indexes_slices(
-    double_pendulum_phase_backend_fixture,
-):
+        double_pendulum_phase_backend_fixture, ):
     """Slices for continuous Pycollo variables are correctly indexed."""
     phase_backend = double_pendulum_phase_backend_fixture
     phase_backend.create_variable_symbols()
@@ -1129,8 +1126,7 @@ def test_create_full_continuous_variable_indexes_slices(
 
 
 def test_create_full_point_variable_indexes_slices(
-    double_pendulum_phase_backend_fixture,
-):
+        double_pendulum_phase_backend_fixture, ):
     """Slices for endpoint Pycollo variables are correctly indexed."""
     phase_backend = double_pendulum_phase_backend_fixture
     phase_backend.create_variable_symbols()
@@ -1144,9 +1140,9 @@ def test_create_full_point_variable_indexes_slices(
     assert phase_backend.y_point_qt_point_full_split == 8
 
 
-def test_preprocess_aux_data_partition_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, utils
-):
+def test_preprocess_aux_data_partition_dp_specific(double_pendulum_fixture,
+                                                   casadi_backend_fixture,
+                                                   utils):
     """User-supplied aux data is categorised correctly during preprocessing."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -1166,8 +1162,8 @@ def test_preprocess_aux_data_partition_dp_specific(
     }
     expect_user_aux_data_supplied_in_ocp_and_phase = {
         user_syms.g: sym.sympify(0),
-        user_syms.I0: user_syms.m0 * (user_syms.k0 ** 2 + user_syms.p0 ** 2),
-        user_syms.I1: user_syms.m1 * (user_syms.k1 ** 2 + user_syms.p1 ** 2),
+        user_syms.I0: user_syms.m0 * (user_syms.k0**2 + user_syms.p0**2),
+        user_syms.I1: user_syms.m1 * (user_syms.k1**2 + user_syms.p1**2),
         user_syms.s0: sym.sin(user_syms.a0),
         user_syms.c1: sym.cos(user_syms.a1),
     }
@@ -1180,16 +1176,16 @@ def test_preprocess_aux_data_partition_dp_specific(
     K0_sub_expr_2 = user_syms.T0 + K0_sub_expr_1
     K0_sub_expr_3 = user_syms.s1 * user_syms.c0 - user_syms.s0 * user_syms.c1
     K0_sub_expr_4 = user_syms.m1 * user_syms.p1 * user_syms.l0 * K0_sub_expr_3
-    K0_sub_expr_5 = K0_sub_expr_4 * user_syms.v1 ** 2
+    K0_sub_expr_5 = K0_sub_expr_4 * user_syms.v1**2
     K0_eqn = K0_sub_expr_2 + K0_sub_expr_5
     K1_sub_expr_0 = user_syms.g * user_syms.m1
     K1_sub_expr_1 = user_syms.T1 + K1_sub_expr_0 * user_syms.p1 * user_syms.c1
     K1_sub_expr_2 = user_syms.s0 * user_syms.c1 - user_syms.s1 * user_syms.c0
     K1_sub_expr_3 = user_syms.m1 * user_syms.p1 * user_syms.l0 * K1_sub_expr_2
-    K1_sub_expr_4 = K1_sub_expr_3 * user_syms.v0 ** 2
+    K1_sub_expr_4 = K1_sub_expr_3 * user_syms.v0**2
     K1_eqn = K1_sub_expr_1 + K1_sub_expr_4
     expect_user_aux_data_phase_dependent = {
-        user_syms.M00: user_syms.I0 + user_syms.m1 * user_syms.l0 ** 2,
+        user_syms.M00: user_syms.I0 + user_syms.m1 * user_syms.l0**2,
         user_syms.M01: M01_eqn,
         user_syms.M11: user_syms.I1,
         user_syms.K0: K0_eqn,
@@ -1257,9 +1253,9 @@ def test_preprocess_aux_data_partition_dp_specific(
         assert user_eqn == backend_eqn
 
 
-def test_partition_user_problem_aux_data_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, utils
-):
+def test_partition_user_problem_aux_data_dp_specific(double_pendulum_fixture,
+                                                     casadi_backend_fixture,
+                                                     utils):
     """User-supplied aux data is categorised correctly during preprocessing."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -1277,19 +1273,19 @@ def test_partition_user_problem_aux_data_dp_specific(
     K0_sub_expr_2 = user_syms.T0 + K0_sub_expr_1
     K0_sub_expr_3 = user_syms.s1 * user_syms.c0 - user_syms.s0 * user_syms.c1
     K0_sub_expr_4 = user_syms.m1 * user_syms.p1 * user_syms.l0 * K0_sub_expr_3
-    K0_sub_expr_5 = K0_sub_expr_4 * user_syms.v1 ** 2
+    K0_sub_expr_5 = K0_sub_expr_4 * user_syms.v1**2
     K0_eqn = K0_sub_expr_2 + K0_sub_expr_5
     K1_sub_expr_0 = user_syms.g * user_syms.m1
     K1_sub_expr_1 = user_syms.T1 + K1_sub_expr_0 * user_syms.p1 * user_syms.c1
     K1_sub_expr_2 = user_syms.s0 * user_syms.c1 - user_syms.s1 * user_syms.c0
     K1_sub_expr_3 = user_syms.m1 * user_syms.p1 * user_syms.l0 * K1_sub_expr_2
-    K1_sub_expr_4 = K1_sub_expr_3 * user_syms.v0 ** 2
+    K1_sub_expr_4 = K1_sub_expr_3 * user_syms.v0**2
     K1_eqn = K1_sub_expr_1 + K1_sub_expr_4
     detM_eqn = user_syms.M00 * user_syms.M11 - user_syms.M01 * user_syms.M10
     expect_user_aux_data_phase_dependent = {
         user_syms.c0: sym.cos(user_syms.a0),
         user_syms.s1: sym.sin(user_syms.a1),
-        user_syms.M00: user_syms.I0 + user_syms.m1 * user_syms.l0 ** 2,
+        user_syms.M00: user_syms.I0 + user_syms.m1 * user_syms.l0**2,
         user_syms.M01: M01_eqn,
         user_syms.M10: user_syms.M01,
         user_syms.M11: user_syms.I1,
@@ -1327,9 +1323,9 @@ def test_partition_user_problem_aux_data_dp_specific(
         assert user_eqn == backend_eqn
 
 
-def test_preprocess_phase_ind_aux_data_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, utils
-):
+def test_preprocess_phase_ind_aux_data_dp_specific(double_pendulum_fixture,
+                                                   casadi_backend_fixture,
+                                                   utils):
     """Phase-independent aux data correctly added to aux data."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -1377,9 +1373,9 @@ def test_preprocess_phase_ind_aux_data_dp_specific(
         utils.assert_ca_expr_identical(backend_expr, expect_backend_expr)
 
 
-def test_preprocess_phase_dep_aux_data_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, utils
-):
+def test_preprocess_phase_dep_aux_data_dp_specific(double_pendulum_fixture,
+                                                   casadi_backend_fixture,
+                                                   utils):
     """Phase-dependent aux data correctly added to aux data."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -1439,21 +1435,21 @@ def test_preprocess_phase_dep_aux_data_dp_specific(
     }
 
     K0_sub_expr_0 = T0 + g * (m0 * p0 + m1 * l0) * c0
-    K0_sub_expr_1 = m1 * p1 * l0 * (s1 * c0 - s0 * c1) * v1 ** 2
+    K0_sub_expr_1 = m1 * p1 * l0 * (s1 * c0 - s0 * c1) * v1**2
     K0_eqn = K0_sub_expr_0 + K0_sub_expr_1
     K1_sub_expr_0 = T1 + g * m1 * p1 * c1
-    K1_sub_expr_1 = m1 * p1 * l0 * (s0 * c1 - s1 * c0) * v0 ** 2
+    K1_sub_expr_1 = m1 * p1 * l0 * (s0 * c1 - s1 * c0) * v0**2
     K1_eqn = K1_sub_expr_0 + K1_sub_expr_1
     expect_aux_data = {
         g: ca.DM(-9.81),
         k1: ca.DM(1 / 12),
-        I0: m0 * (k0 ** 2 + p0 ** 2),
-        I1: m1 * (k1 ** 2 + p1 ** 2),
+        I0: m0 * (k0**2 + p0**2),
+        I1: m1 * (k1**2 + p1**2),
         c0: ca.cos(a0),
         s0: ca.sin(a0),
         c1: ca.cos(a1),
         s1: ca.sin(a1),
-        M00: I0 + m1 * l0 ** 2,
+        M00: I0 + m1 * l0**2,
         M01: m1 * p1 * l0 * (s0 * s1 + c0 * c1),
         M10: M01,
         M11: I1,
@@ -1464,16 +1460,16 @@ def test_preprocess_phase_dep_aux_data_dp_specific(
     for expect_user_sym, expect_backend_sym in expect_sub_mapping.items():
         expect_backend_expr = expect_aux_data[expect_backend_sym]
         assert expect_user_sym in phase_backend.phase_user_to_backend_mapping
-        backend_sym = phase_backend.phase_user_to_backend_mapping.get(expect_user_sym)
+        backend_sym = phase_backend.phase_user_to_backend_mapping.get(
+            expect_user_sym)
         assert backend_sym in backend.aux_data
         backend_expr = backend.aux_data[backend_sym]
         utils.assert_ca_sym_identical(backend_sym, expect_backend_sym)
         utils.assert_ca_expr_identical(backend_expr, expect_backend_expr)
 
 
-def test_preprocess_phase_state_eqn_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, utils
-):
+def test_preprocess_phase_state_eqn_dp_specific(double_pendulum_fixture,
+                                                casadi_backend_fixture, utils):
     """Phase state equations preprocessed correctly."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -1521,21 +1517,21 @@ def test_preprocess_phase_state_eqn_dp_specific(
     k1 = phase_backend.all_user_to_backend_mapping[user_syms.k1]
     _k1 = backend.aux_data[k1]
     _l0 = _p0 + _d0
-    _I0 = _m0 * (_k0 ** 2 + _p0 ** 2)
-    _I1 = _m1 * (_k1 ** 2 + _p1 ** 2)
+    _I0 = _m0 * (_k0**2 + _p0**2)
+    _I1 = _m1 * (_k1**2 + _p1**2)
     _c0 = ca.cos(_a0)
     _s0 = ca.sin(_a0)
     _c1 = ca.cos(_a1)
     _s1 = ca.sin(_a1)
-    _M00 = _I0 + _m1 * _l0 ** 2
+    _M00 = _I0 + _m1 * _l0**2
     _M01 = _m1 * _p1 * _l0 * (_s0 * _s1 + _c0 * _c1)
     _M10 = _M01
     _M11 = _I1
     _K0_sub_expr_0 = _T0 + _g * (_m0 * _p0 + _m1 * _l0) * _c0
-    _K0_sub_expr_1 = _m1 * _p1 * _l0 * (_s1 * _c0 - _s0 * _c1) * _v1 ** 2
+    _K0_sub_expr_1 = _m1 * _p1 * _l0 * (_s1 * _c0 - _s0 * _c1) * _v1**2
     _K0 = _K0_sub_expr_0 + _K0_sub_expr_1
     _K1_sub_expr_0 = _T1 + _g * _m1 * _p1 * _c1
-    _K1_sub_expr_1 = _m1 * _p1 * _l0 * (_s0 * _c1 - _s1 * _c0) * _v0 ** 2
+    _K1_sub_expr_1 = _m1 * _p1 * _l0 * (_s0 * _c1 - _s1 * _c0) * _v0**2
     _K1 = _K1_sub_expr_0 + _K1_sub_expr_1
     _detM = _M00 * _M11 - _M01 * _M10
 
@@ -1550,9 +1546,8 @@ def test_preprocess_phase_state_eqn_dp_specific(
     assert phase_backend.num_y_eqn == 4
 
 
-def test_preprocess_phase_state_eqn_br_specific(
-    brachistochrone_fixture, casadi_backend_fixture, utils
-):
+def test_preprocess_phase_state_eqn_br_specific(brachistochrone_fixture,
+                                                casadi_backend_fixture, utils):
     """Phase state equations preprocessed correctly."""
     ocp, user_syms = brachistochrone_fixture
     backend = casadi_backend_fixture
@@ -1570,9 +1565,9 @@ def test_preprocess_phase_state_eqn_br_specific(
     _V_y0, _V_y1, _V_y2 = phase_backend.V_y_var_full
     _r_y0, _r_y1, _r_y2 = phase_backend.r_y_var_full
 
-    (_u0,) = phase_backend.u_var_full
-    (_V_u0,) = phase_backend.V_u_var_full
-    (_r_u0,) = phase_backend.r_u_var_full
+    (_u0, ) = phase_backend.u_var_full
+    (_V_u0, ) = phase_backend.V_u_var_full
+    (_r_u0, ) = phase_backend.r_u_var_full
 
     expect_y_eqn = (
         (_V_y2 * _y2 + _r_y2) * ca.sin(_V_u0 * _u0 + _r_u0),
@@ -1584,9 +1579,8 @@ def test_preprocess_phase_state_eqn_br_specific(
     assert phase_backend.num_y_eqn == 3
 
 
-def test_preprocess_phase_path_con_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, utils
-):
+def test_preprocess_phase_path_con_dp_specific(double_pendulum_fixture,
+                                               casadi_backend_fixture, utils):
     """Phase path constraint equations preprocessed correctly."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -1606,9 +1600,9 @@ def test_preprocess_phase_path_con_dp_specific(
     assert phase_backend.num_p_con == 0
 
 
-def test_preprocess_phase_integrand_fnc_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, utils
-):
+def test_preprocess_phase_integrand_fnc_dp_specific(double_pendulum_fixture,
+                                                    casadi_backend_fixture,
+                                                    utils):
     """Phase integrand functions preprocessed correctly."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -1629,15 +1623,15 @@ def test_preprocess_phase_integrand_fnc_dp_specific(
     _T0 = _V_u0 * _u0 + _r_u0
     _T1 = _V_u1 * _u1 + _r_u1
 
-    expect_q_fnc = (_T0 ** 2 + _T1 ** 2,)
+    expect_q_fnc = (_T0**2 + _T1**2, )
 
     utils.assert_ca_exprs_identical(phase_backend.q_fnc, expect_q_fnc)
     assert phase_backend.num_q_fnc == 1
 
 
-def test_preprocess_phase_collect_cons_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, utils
-):
+def test_preprocess_phase_collect_cons_dp_specific(double_pendulum_fixture,
+                                                   casadi_backend_fixture,
+                                                   utils):
     """Phase integrand functions preprocessed correctly."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -1664,9 +1658,8 @@ def test_preprocess_phase_collect_cons_dp_specific(
     assert phase_backend.q_fnc_slice == slice(4, 5)
 
 
-def test_preprocess_objective_fnc_dp_specific(
-    double_pendulum_fixture, casadi_backend_fixture, utils
-):
+def test_preprocess_objective_fnc_dp_specific(double_pendulum_fixture,
+                                              casadi_backend_fixture, utils):
     """Objective function preprocessed correctly."""
     ocp, user_syms = double_pendulum_fixture
     backend = casadi_backend_fixture
@@ -1679,18 +1672,17 @@ def test_preprocess_objective_fnc_dp_specific(
     backend.preprocess_problem_backend()
     phase_backend = backend.p[0]
 
-    (_q0,) = phase_backend.q_var_full
-    (_V_q0,) = phase_backend.V_q_var_full
-    (_r_q0,) = phase_backend.r_q_var_full
+    (_q0, ) = phase_backend.q_var_full
+    (_V_q0, ) = phase_backend.V_q_var_full
+    (_r_q0, ) = phase_backend.r_q_var_full
 
     expect_J = _V_q0 * _q0 + _r_q0
 
     utils.assert_ca_expr_identical(backend.J, expect_J)
 
 
-def test_preprocess_objective_fnc_br_specific(
-    brachistochrone_fixture, casadi_backend_fixture, utils
-):
+def test_preprocess_objective_fnc_br_specific(brachistochrone_fixture,
+                                              casadi_backend_fixture, utils):
     """Objective function preprocessed correctly."""
     ocp, user_syms = brachistochrone_fixture
     backend = casadi_backend_fixture

@@ -36,7 +36,6 @@ dcdx_info_fields = [
 ]
 dcdxInfo = collections.namedtuple("dcdxInfo", dcdx_info_fields)
 
-
 SUPPORTED_ITER_TYPES = (tuple, list, np.ndarray)
 SYMPY_TO_CASADI_API_MAPPING = {
     "ImmutableDenseMatrix": ca.blockcat,
@@ -149,7 +148,9 @@ def sympy_to_casadi(sympy_expr, sympy_to_casadi_sym_mapping, *, phase=None):
         sympy_to_casadi_sym_mapping.update({sympy_var: casadi_var})
         sympy_vars = sym.Matrix.vstack(sympy_vars, sym.Matrix([[sympy_var]]))
         casadi_vars = ca.vertcat(casadi_vars, casadi_var)
-    f = sym.lambdify(sympy_vars, sympy_expr, modules=[SYMPY_TO_CASADI_API_MAPPING, ca])
+    f = sym.lambdify(sympy_vars,
+                     sympy_expr,
+                     modules=[SYMPY_TO_CASADI_API_MAPPING, ca])
     return f(*ca.vertsplit(casadi_vars)), sympy_to_casadi_sym_mapping
 
 
@@ -176,10 +177,10 @@ def casadi_substitute(casadi_eqn, casadi_sym_mapping):
 
 
 def format_as_named_tuple(
-    iterable: OptionalSymsType,
-    use_named: bool = True,
-    named_keys: Optional[NamedTuple] = None,
-    sympify: bool = True,
+        iterable: OptionalSymsType,
+        use_named: bool = True,
+        named_keys: Optional[NamedTuple] = None,
+        sympify: bool = True,
 ) -> TupleSymsType:
     """Formats user supplied arguments as a named tuple."""
 
@@ -188,7 +189,7 @@ def format_as_named_tuple(
     try:
         iter(iterable)
     except TypeError:
-        iterable = (iterable,)
+        iterable = (iterable, )
     else:
         try:
             named_keys = iterable.keys()
@@ -227,25 +228,19 @@ def check_sym_name_clash(syms: TupleSymsType) -> None:
     """
     for sym in syms:
         if str(sym)[0] == "_":
-            msg = (
-                f"The user defined symbol {sym} is invalid as its leading "
-                f"character '_' is reserved for use by `Pycollo`. Please "
-                f"rename this symbol."
-            )
+            msg = (f"The user defined symbol {sym} is invalid as its leading "
+                   f"character '_' is reserved for use by `Pycollo`. Please "
+                   f"rename this symbol.")
             raise ValueError(msg)
         elif str(sym)[-4:] == "(t0)":
-            msg = (
-                f"The user defined symbol {sym} is invalid as it is named "
-                f"with the suffix '(t0)' which is reserved for use by "
-                f"`Pycollo`. Please rename this symbol."
-            )
+            msg = (f"The user defined symbol {sym} is invalid as it is named "
+                   f"with the suffix '(t0)' which is reserved for use by "
+                   f"`Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
         elif str(sym)[-4:] == "(tF)":
-            msg = (
-                f"The user defined symbol {sym} is invalid as it is named "
-                f"with the suffix '(tF)' which is reserved for use by "
-                f"`Pycollo`. Please rename this symbol."
-            )
+            msg = (f"The user defined symbol {sym} is invalid as it is named "
+                   f"with the suffix '(tF)' which is reserved for use by "
+                   f"`Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
 
     if len(set(syms)) != len(syms):
@@ -262,13 +257,13 @@ def dict_merge(*dicts: Iterable[Mapping]) -> dict:
 
 
 def console_out(
-    msg,
-    heading=False,
-    subheading=False,
-    prefix="",
-    suffix="",
-    *,
-    trailing_blank_line=False,
+        msg,
+        heading=False,
+        subheading=False,
+        prefix="",
+        suffix="",
+        *,
+        trailing_blank_line=False,
 ):
     msg = f"{prefix}{msg}{suffix}"
     msg_len = len(msg)
@@ -309,7 +304,8 @@ def parse_parameter_var(var, var_name_str, var_type):
         if len(var) != 2:
             msg = f"If an iterable of values in being passed for `{var_name_str}` then this must be of length 2. {var} of length {len(var)} is not a valid argument."
             raise TypeError(msg)
-        if not isinstance(var[0], var_type) or not isinstance(var[1], var_type):
+        if not isinstance(var[0], var_type) or not isinstance(
+                var[1], var_type):
             msg = f"Both items in `{var_name_str}` must be {var_type} objects. {var[0]} at index 0 is of type {type(var[0])} and {var[1]} at index 1 is of type {type(var[1])}."
             raise TypeError(msg)
         return tuple(var)
@@ -364,14 +360,14 @@ def format_for_output(items, *args, **kwargs):
 
 
 def format_multiple_items_for_output(
-    items,
-    wrapping_char="'",
-    *,
-    prefix_char="",
-    case=None,
-    with_verb=False,
-    with_or=False,
-    with_preposition=False,
+        items,
+        wrapping_char="'",
+        *,
+        prefix_char="",
+        case=None,
+        with_verb=False,
+        with_or=False,
+        with_preposition=False,
 ):
     """Format multiple items for pretty console output.
 
@@ -394,7 +390,7 @@ def format_multiple_items_for_output(
         Formatted string of multiple items for console output.
 
     """
-    items = (items,) if isinstance(items, str) else items
+    items = (items, ) if isinstance(items, str) else items
     items = [f"{prefix_char}{format_case(item, case)}" for item in items]
     if len(items) == 1:
         formatted_items = f"{wrapping_char}{items[0]}{wrapping_char}"
@@ -410,11 +406,9 @@ def format_multiple_items_for_output(
     else:
         pad = f"{wrapping_char}, {wrapping_char}"
         joiner = "or" if with_or else "and"
-        formatted_items = (
-            f"{wrapping_char}{pad.join(items[:-1])}"
-            f"{wrapping_char} {joiner} {wrapping_char}"
-            f"{items[-1]}{wrapping_char}"
-        )
+        formatted_items = (f"{wrapping_char}{pad.join(items[:-1])}"
+                           f"{wrapping_char} {joiner} {wrapping_char}"
+                           f"{items[-1]}{wrapping_char}")
     verb = "is" if len(items) == 1 else "are"
     if with_verb:
         formatted_items = f"{formatted_items} {verb}"

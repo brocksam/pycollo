@@ -120,14 +120,18 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         mapping = {}
         mapping_point = {}
         for p, N in zip(self.backend.p, self.ph_mesh.N):
-            mapping.update({y: self.backend.sym(symbol_name(y), N) for y in p.y_var})
+            mapping.update(
+                {y: self.backend.sym(symbol_name(y), N)
+                 for y in p.y_var})
             mapping_point.update(
-                {y_t0: mapping[y][0] for y, y_t0 in zip(p.y_var, p.y_t0_var)}
-            )
+                {y_t0: mapping[y][0]
+                 for y, y_t0 in zip(p.y_var, p.y_t0_var)})
             mapping_point.update(
-                {y_tF: mapping[y][-1] for y, y_tF in zip(p.y_var, p.y_tF_var)}
-            )
-            mapping.update({u: self.backend.sym(symbol_name(u), N) for u in p.u_var})
+                {y_tF: mapping[y][-1]
+                 for y, y_tF in zip(p.y_var, p.y_tF_var)})
+            mapping.update(
+                {u: self.backend.sym(symbol_name(u), N)
+                 for u in p.u_var})
             mapping_point.update({q: q for q in p.q_var})
             mapping_point.update({t: t for t in p.t_var})
         mapping_point.update({s: s for s in self.backend.s_var})
@@ -146,8 +150,10 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         all_phase_mapping = make_all_phase_mapping(self.ph_mesh)
         subs = dict_merge(
             ocp_ph_sym_point_mapping,
-            {V: 1 for V in self.backend.V_sym_val_mapping_iter},
-            {r: 0 for r in self.backend.r_sym_val_mapping_iter},
+            {V: 1
+             for V in self.backend.V_sym_val_mapping_iter},
+            {r: 0
+             for r in self.backend.r_sym_val_mapping_iter},
             self.backend.bounds.aux_data,
         )
         dy_ph_fncs = []
@@ -194,14 +200,12 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             u_ph = get_u_ph(p, p_data)
             y_ph_all.append(y_ph)
             u_ph_all.append(u_ph)
-            x_ph = chain_from_iter(
-                (
-                    (y for y in y_ph),
-                    (u for u in u_ph),
-                    (np.array([q]) for q in p_data.q),
-                    (np.array([t]) for t in p_data.t),
-                )
-            )
+            x_ph = chain_from_iter((
+                (y for y in y_ph),
+                (u for u in u_ph),
+                (np.array([q]) for q in p_data.q),
+                (np.array([t]) for t in p_data.t),
+            ))
             x_ph_all.append(np.concatenate(tuple(x_ph)))
         x_ph_all.append([np.array(s) for s in self.sol._s])
         x_ph_all = np.concatenate(x_ph_all)
@@ -217,13 +221,12 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         mesh_error = np.zeros((dim_1, dim_2, dim_3))
         rel_error_scale_factor = np.zeros((self.it.mesh.K[p.i], p.num_y_var))
 
-        zipped = zip(
-            self.ph_mesh.mesh_index_boundaries[p.i][:-1], self.ph_mesh.N_K[p.i] - 1
-        )
+        zipped = zip(self.ph_mesh.mesh_index_boundaries[p.i][:-1],
+                     self.ph_mesh.N_K[p.i] - 1)
         for i_k, (i_start, m_k) in enumerate(zipped):
             y_k = y_ph[:, i_start]
-            Y_ph_k = (y_k + I_dy_ph[i_start : i_start + m_k]).T
-            Y_k = y_ph[:, i_start + 1 : i_start + 1 + m_k]
+            Y_ph_k = (y_k + I_dy_ph[i_start:i_start + m_k]).T
+            Y_k = y_ph[:, i_start + 1:i_start + 1 + m_k]
             mesh_error[i_k, :, :m_k] = Y_ph_k - Y_k
             rel_error_scale_factor[i_k, :] = np.max(np.abs(Y_k), axis=1) + 1
 
@@ -253,7 +256,8 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
         return new_mesh
 
     def next_iteration_phase_mesh(self, p):
-        def merge_sections(new_mesh_sec_sizes, new_num_mesh_sec_nodes, merge_group):
+        def merge_sections(new_mesh_sec_sizes, new_num_mesh_sec_nodes,
+                           merge_group):
             merge_group = np.array(merge_group)
             P_q = merge_group[:, 0]
             h_q = merge_group[:, 1]
@@ -277,17 +281,18 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
                     bounds_error=False,
                     fill_value="extrapolate",
                 )
-                new_density = np.linspace(1 / mesh_secs_needed, 1, mesh_secs_needed)
-                new_knots = np.concatenate([np.array([0]), density_func(new_density)])
+                new_density = np.linspace(1 / mesh_secs_needed, 1,
+                                          mesh_secs_needed)
+                new_knots = np.concatenate(
+                    [np.array([0]), density_func(new_density)])
                 new_mesh_secs = T * np.diff(new_knots)
             new_mesh_sec_sizes.extend(new_mesh_secs.tolist())
             new_node_counts = [collocation_points_min] * mesh_secs_needed
             new_num_mesh_sec_nodes.extend(new_node_counts)
             return new_mesh_sec_sizes, new_num_mesh_sec_nodes
 
-        def subdivide_sections(
-            new_mesh_sec_sizes, new_num_mesh_sec_nodes, subdivide_group
-        ):
+        def subdivide_sections(new_mesh_sec_sizes, new_num_mesh_sec_nodes,
+                               subdivide_group):
             subdivide_group = np.array(subdivide_group)
             subdivide_required = subdivide_group[:, 0].astype(np.bool)
             subdivide_factor = subdivide_group[:, 1].astype(np.int)
@@ -299,17 +304,14 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             is_node_reduction = P_q <= 0
 
             predicted_nodes = P_q + p_q
-            predicted_nodes[is_node_reduction] = (
-                np.ceil(P_q[is_node_reduction] * reduction_tol[is_node_reduction])
-                + p_q[is_node_reduction]
-            )
+            predicted_nodes[is_node_reduction] = (np.ceil(
+                P_q[is_node_reduction] * reduction_tol[is_node_reduction]) +
+                                                  p_q[is_node_reduction])
 
-            next_mesh_nodes = (
-                np.ones_like(predicted_nodes, dtype=np.int) * col_points_min
-            )
+            next_mesh_nodes = (np.ones_like(predicted_nodes, dtype=np.int) *
+                               col_points_min)
             next_mesh_nodes[np.invert(subdivide_required)] = predicted_nodes[
-                np.invert(subdivide_required)
-            ]
+                np.invert(subdivide_required)]
             next_mesh_nodes_lower_than_min = next_mesh_nodes < col_points_min
             next_mesh_nodes[next_mesh_nodes_lower_than_min] = col_points_min
 
@@ -347,8 +349,7 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             subdivide_required = predicted_nodes >= col_points_max
             subdivide_level = np.ones_like(predicted_nodes)
             subdivide_level[subdivide_required] = np.ceil(
-                predicted_nodes[subdivide_required] / col_points_min
-            )
+                predicted_nodes[subdivide_required] / col_points_min)
 
             merge_group = []
             subdivide_group = []
@@ -367,28 +368,30 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
                 if need_merge:
                     if subdivide_group != []:
                         new_mesh_sec_sizes, new_num_mesh_sec_nodes = subdivide_sections(
-                            new_mesh_sec_sizes, new_num_mesh_sec_nodes, subdivide_group
-                        )
+                            new_mesh_sec_sizes, new_num_mesh_sec_nodes,
+                            subdivide_group)
                         subdivide_group = []
                     merge = [P, h, N_k]
                     merge_group.append(merge)
                 else:
                     if merge_group != []:
                         new_mesh_sec_sizes, new_num_mesh_sec_nodes = merge_sections(
-                            new_mesh_sec_sizes, new_num_mesh_sec_nodes, merge_group
-                        )
+                            new_mesh_sec_sizes, new_num_mesh_sec_nodes,
+                            merge_group)
                         merge_group = []
-                    subdivide = [need_subdivide, subdivide_factor, tol, P, h, N_k]
+                    subdivide = [
+                        need_subdivide, subdivide_factor, tol, P, h, N_k
+                    ]
                     subdivide_group.append(subdivide)
             else:
                 if merge_group != []:
                     new_mesh_sec_sizes, new_num_mesh_sec_nodes = merge_sections(
-                        new_mesh_sec_sizes, new_num_mesh_sec_nodes, merge_group
-                    )
+                        new_mesh_sec_sizes, new_num_mesh_sec_nodes,
+                        merge_group)
                 elif subdivide_group != []:
                     new_mesh_sec_sizes, new_num_mesh_sec_nodes = subdivide_sections(
-                        new_mesh_sec_sizes, new_num_mesh_sec_nodes, subdivide_group
-                    )
+                        new_mesh_sec_sizes, new_num_mesh_sec_nodes,
+                        subdivide_group)
             new_number_mesh_secs = len(new_mesh_sec_sizes)
             new_mesh = PhaseMesh(
                 phase=p.ocp_phase,
@@ -401,6 +404,6 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             return p.ocp_phase.mesh
 
 
-MESH_REFINEMENT_ALGORITHMS = Options(
-    (PATTERSON_RAO,), default=PATTERSON_RAO, handles=(PattersonRaoMeshRefinement,)
-)
+MESH_REFINEMENT_ALGORITHMS = Options((PATTERSON_RAO, ),
+                                     default=PATTERSON_RAO,
+                                     handles=(PattersonRaoMeshRefinement, ))

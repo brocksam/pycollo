@@ -139,9 +139,10 @@ class Iteration:
             """
             new_guess = np.empty((num_vars, N))
             for index, row in enumerate(prev):
-                interp_func = interpolate.interp1d(
-                    prev_tau, row, bounds_error=False, fill_value="extrapolate"
-                )
+                interp_func = interpolate.interp1d(prev_tau,
+                                                   row,
+                                                   bounds_error=False,
+                                                   fill_value="extrapolate")
                 new_guess[index, :] = interp_func(tau)
             return new_guess
 
@@ -156,17 +157,17 @@ class Iteration:
             0.5 * (t0 + tF) for t0, tF in zip(self.guess_t0, self.guess_tF)
         ]
         zipped = zip(self.guess_tau, self.guess_stretch, self.guess_shift)
-        self.guess_time = [tau * stretch + shift for tau, stretch, shift in zipped]
-        zipped = zip(
-            prev_guess.tau, self.guess_tau, self.backend.p, prev_guess.y, self.mesh.N
-        )
+        self.guess_time = [
+            tau * stretch + shift for tau, stretch, shift in zipped
+        ]
+        zipped = zip(prev_guess.tau, self.guess_tau, self.backend.p,
+                     prev_guess.y, self.mesh.N)
         self.guess_y = [
             interpolate_to_new_mesh(prev_tau, tau, p.num_y_var, prev_y, N)
             for prev_tau, tau, p, prev_y, N in zipped
         ]
-        zipped = zip(
-            prev_guess.tau, self.guess_tau, self.backend.p, prev_guess.u, self.mesh.N
-        )
+        zipped = zip(prev_guess.tau, self.guess_tau, self.backend.p,
+                     prev_guess.u, self.mesh.N)
         self.guess_u = [
             interpolate_to_new_mesh(prev_tau, tau, p.num_u_var, prev_u, N)
             for prev_tau, tau, p, prev_u, N in zipped
@@ -188,10 +189,8 @@ class Iteration:
 
         time_guess_stop = timer()
         self._time_guess_interpolation = time_guess_stop - time_guess_start
-        msg = (
-            f"Guess interpolated to iteration mesh in "
-            f"{format_time(self._time_guess_interpolation)}."
-        )
+        msg = (f"Guess interpolated to iteration mesh in "
+               f"{format_time(self._time_guess_interpolation)}.")
         console_out(msg)
 
     def create_variable_constraint_counts_slices(self):
@@ -229,7 +228,8 @@ class Iteration:
         self.num_q = sum(num_q for num_q in self.num_q_per_phase)
         self.num_t = sum(num_t for num_t in self.num_t_per_phase)
         self.num_s = self.backend.num_s_var
-        self.num_x = sum([self.num_y, self.num_u, self.num_q, self.num_t, self.num_s])
+        self.num_x = sum(
+            [self.num_y, self.num_u, self.num_q, self.num_t, self.num_s])
 
     def create_variable_slices_per_phase(self):
         """Slices to each variable category per phase from all variables."""
@@ -278,16 +278,15 @@ class Iteration:
             self.num_c_per_phase.append(num_c)
         self.num_c_defect = sum(num_c for num_c in self.num_c_defect_per_phase)
         self.num_c_path = sum(num_c for num_c in self.num_c_path_per_phase)
-        self.num_c_integral = sum(num_c for num_c in self.num_c_integral_per_phase)
+        self.num_c_integral = sum(num_c
+                                  for num_c in self.num_c_integral_per_phase)
         self.num_c_endpoint = self.backend.num_b_con
-        self.num_c = sum(
-            [
-                self.num_c_defect,
-                self.num_c_path,
-                self.num_c_integral,
-                self.num_c_endpoint,
-            ]
-        )
+        self.num_c = sum([
+            self.num_c_defect,
+            self.num_c_path,
+            self.num_c_integral,
+            self.num_c_endpoint,
+        ])
 
     def create_constraint_slices_per_phase(self):
         """Slices to each variable category per phase for all constraints."""
@@ -312,7 +311,8 @@ class Iteration:
             self.c_integral_slices.append(slice(c_integral_start, c_con_stop))
             self.c_slices.append(slice(c_defect_start, c_con_stop))
             total += num_c
-        self.c_endpoint_slice = slice(self.num_c - self.num_c_endpoint, self.num_c)
+        self.c_endpoint_slice = slice(self.num_c - self.num_c_endpoint,
+                                      self.num_c)
 
     def create_constraint_component_function_slices_per_phase(self):
         """Slices to different types of constraint component functions.
@@ -356,9 +356,8 @@ class Iteration:
         self.scaling = self.backend.iteration_scaling(self)
         init_scaling_stop = timer()
         self._time_initialise_scaling = init_scaling_stop - init_scaling_start
-        msg = (
-            f"Scaling initialised in " f"{format_time(self._time_initialise_scaling)}."
-        )
+        msg = (f"Scaling initialised in "
+               f"{format_time(self._time_initialise_scaling)}.")
         console_out(msg)
 
     def scale_guess(self):
@@ -404,10 +403,8 @@ class Iteration:
         self.scale_bounds()
         gen_bounds_stop = timer()
         self._time_generate_bounds = gen_bounds_stop - gen_bounds_start
-        msg = (
-            f"Mesh-specific bounds generated in "
-            f"{format_time(self._time_generate_bounds)}."
-        )
+        msg = (f"Mesh-specific bounds generated in "
+               f"{format_time(self._time_generate_bounds)}.")
         console_out(msg, trailing_blank_line=True)
 
     def generate_variable_bounds(self):
@@ -475,10 +472,8 @@ class Iteration:
             self._time_generate_bounds,
         )
         self._time_iteration_initialisation = sum(all_times)
-        msg = (
-            f"Mesh iteration #{self.number} initialised in "
-            f"{format_time(self._time_iteration_initialisation)}."
-        )
+        msg = (f"Mesh iteration #{self.number} initialised in "
+               f"{format_time(self._time_iteration_initialisation)}.")
         console_out(msg, trailing_blank_line=True)
 
     def solve(self):
@@ -518,9 +513,9 @@ class Iteration:
         next_iter_guess = self.generate_guess_for_next_mesh_iteration()
         mesh_tolerance_met = self.check_if_mesh_tolerance_met(next_iter_mesh)
         self.display_mesh_iteration_info(mesh_tolerance_met, next_iter_mesh)
-        mesh_iteration_result = MeshIterationResult(
-            mesh_tolerance_met, next_iter_mesh, next_iter_guess
-        )
+        mesh_iteration_result = MeshIterationResult(mesh_tolerance_met,
+                                                    next_iter_mesh,
+                                                    next_iter_guess)
         return mesh_iteration_result
 
     def generate_guess_for_next_mesh_iteration(self):
@@ -623,18 +618,17 @@ class Iteration:
         console_out(msg, subheading=True, suffix=":")
 
         max_rel_mesh_error = np.max(
-            np.array(
-                [
-                    np.max(el)
-                    for el in self.solution.mesh_refinement.maximum_relative_mesh_errors
-                ]
-            )
-        )
+            np.array([
+                np.max(el) for el in
+                self.solution.mesh_refinement.maximum_relative_mesh_errors
+            ]))
 
         print(f"Objective Evaluation:       {self.solution.objective}")
         print(f"Max Relative Mesh Error:    {max_rel_mesh_error}\n")
         if mesh_tol_met:
-            print(f"Adjusting Collocation Mesh: {next_iter_mesh.K} mesh sections\n")
+            print(
+                f"Adjusting Collocation Mesh: {next_iter_mesh.K} mesh sections\n"
+            )
 
         settings = self.optimal_control_problem.settings
         if settings.display_mesh_result_info:
@@ -649,9 +643,8 @@ mesh_iteration_result_fields = (
     "next_iteration_mesh",
     "next_iteration_guess",
 )
-MeshIterationResult = collections.namedtuple(
-    "MeshIterationResult", mesh_iteration_result_fields
-)
+MeshIterationResult = collections.namedtuple("MeshIterationResult",
+                                             mesh_iteration_result_fields)
 
 
 class IterationOld:
@@ -702,19 +695,20 @@ class IterationOld:
         """Summary"""
         self._x_endpoint_indices = []
         for p_backend, x_slice, q_slice, t_slice, N in zip(
-            self.backend.p, self.x_slices, self.q_slices, self.t_slices, self.mesh.N
-        ):
+                self.backend.p, self.x_slices, self.q_slices, self.t_slices,
+                self.mesh.N):
             for i in range(p_backend.num_y_vars):
                 start = x_slice.start
                 i_y_t0 = start + i * N
                 i_y_tF = start + (i + 1) * N - 1
                 self._x_endpoint_indices.append(i_y_t0)
                 self._x_endpoint_indices.append(i_y_tF)
-            self._x_endpoint_indices.extend(list(range(q_slice.start, q_slice.stop)))
-            self._x_endpoint_indices.extend(list(range(t_slice.start, t_slice.stop)))
+            self._x_endpoint_indices.extend(
+                list(range(q_slice.start, q_slice.stop)))
+            self._x_endpoint_indices.extend(
+                list(range(t_slice.start, t_slice.stop)))
         self._x_endpoint_indices.extend(
-            list(range(self.s_slice.start, self.s_slice.stop))
-        )
+            list(range(self.s_slice.start, self.s_slice.stop)))
 
         def reshape_x_point(x_tilde):
             """Summary
@@ -731,8 +725,7 @@ class IterationOld:
             """
             x = self.scaling.unscale_x(x_tilde)
             return self.backend.compiled_functions.x_reshape_lambda_point(
-                x, self._x_endpoint_indices
-            )
+                x, self._x_endpoint_indices)
 
         self._reshape_x_point = reshape_x_point
         msg = "Endpoint variable reshape lambda generated successfully."
@@ -782,7 +775,8 @@ class IterationOld:
                 Description
             """
             x_tuple_point = self._reshape_x_point(x)
-            g = self.backend.compiled_functions.g_lambda(x_tuple_point, self.mesh.N)
+            g = self.backend.compiled_functions.g_lambda(
+                x_tuple_point, self.mesh.N)
             g_tilde = self.scaling.scale_g(g)
             # print(g)
             # print(g_tilde)
@@ -820,17 +814,15 @@ class IterationOld:
                 [
                     slice(p_var_slice.start, p_var_slice.start + p.num_y_vars)
                     for p, p_var_slice in zip(
-                        self.backend.p, self.backend.phase_variable_slices
-                    )
+                        self.backend.p, self.backend.phase_variable_slices)
                 ],
                 [
                     slice(
                         p_var_slice.start + p.num_y_vars + p.num_u_vars,
-                        p_var_slice.start + p.num_y_vars + p.num_u_vars + p.num_q_vars,
-                    )
-                    for p, p_var_slice in zip(
-                        self.backend.p, self.backend.phase_variable_slices
-                    )
+                        p_var_slice.start + p.num_y_vars + p.num_u_vars +
+                        p.num_q_vars,
+                    ) for p, p_var_slice in zip(
+                        self.backend.p, self.backend.phase_variable_slices)
                 ],
                 self.c_lambda_dy_slices,
                 self.c_lambda_p_slices,
@@ -863,7 +855,8 @@ class IterationOld:
             """
             G = jacobian(x)
             G_zeros = sparse.coo_matrix(
-                (np.full(self._G_nnz, 1e-20), self._jacobian_structure_lambda()),
+                (np.full(self._G_nnz,
+                         1e-20), self._jacobian_structure_lambda()),
                 shape=self._G_shape,
             ).tocsr()
             return (G + G_zeros).tocoo().data
@@ -896,39 +889,31 @@ class IterationOld:
                 [
                     slice(p_var_slice.start, p_var_slice.start + p.num_y_vars)
                     for p, p_var_slice in zip(
-                        self.backend.p, self.backend.phase_variable_slices
-                    )
+                        self.backend.p, self.backend.phase_variable_slices)
                 ],
                 [
                     slice(
                         p_var_slice.start + p.num_y_vars,
                         p_var_slice.start + p.num_y_vars + p.num_u_vars,
-                    )
-                    for p, p_var_slice in zip(
-                        self.backend.p, self.backend.phase_variable_slices
-                    )
+                    ) for p, p_var_slice in zip(
+                        self.backend.p, self.backend.phase_variable_slices)
                 ],
                 [
                     slice(
                         p_var_slice.start + p.num_y_vars + p.num_u_vars,
-                        p_var_slice.start + p.num_y_vars + p.num_u_vars + p.num_q_vars,
-                    )
-                    for p, p_var_slice in zip(
-                        self.backend.p, self.backend.phase_variable_slices
-                    )
+                        p_var_slice.start + p.num_y_vars + p.num_u_vars +
+                        p.num_q_vars,
+                    ) for p, p_var_slice in zip(
+                        self.backend.p, self.backend.phase_variable_slices)
                 ],
                 [
                     slice(
-                        p_var_slice.start + p.num_y_vars + p.num_u_vars + p.num_q_vars,
-                        p_var_slice.start
-                        + p.num_y_vars
-                        + p.num_u_vars
-                        + p.num_q_vars
-                        + p.num_t_vars,
-                    )
-                    for p, p_var_slice in zip(
-                        self.backend.p, self.backend.phase_variable_slices
-                    )
+                        p_var_slice.start + p.num_y_vars + p.num_u_vars +
+                        p.num_q_vars,
+                        p_var_slice.start + p.num_y_vars + p.num_u_vars +
+                        p.num_q_vars + p.num_t_vars,
+                    ) for p, p_var_slice in zip(
+                        self.backend.p, self.backend.phase_variable_slices)
                 ],
                 self.c_lambda_dy_slices,
                 self.c_lambda_p_slices,
@@ -936,29 +921,22 @@ class IterationOld:
                 [
                     slice(p_c_slice.start, p_c_slice.start + p.num_c_defect)
                     for p, p_c_slice in zip(
-                        self.backend.p, self.backend.phase_constraint_slices
-                    )
+                        self.backend.p, self.backend.phase_constraint_slices)
                 ],
                 [
                     slice(
                         p_c_slice.start + p.num_c_defect,
                         p_c_slice.start + p.num_c_defect + p.num_c_path,
-                    )
-                    for p, p_c_slice in zip(
-                        self.backend.p, self.backend.phase_constraint_slices
-                    )
+                    ) for p, p_c_slice in zip(
+                        self.backend.p, self.backend.phase_constraint_slices)
                 ],
                 [
                     slice(
                         p_c_slice.start + p.num_c_defect + p.num_c_path,
-                        p_c_slice.start
-                        + p.num_c_defect
-                        + p.num_c_path
-                        + p.num_c_integral,
-                    )
-                    for p, p_c_slice in zip(
-                        self.backend.p, self.backend.phase_constraint_slices
-                    )
+                        p_c_slice.start + p.num_c_defect + p.num_c_path +
+                        p.num_c_integral,
+                    ) for p, p_c_slice in zip(
+                        self.backend.p, self.backend.phase_constraint_slices)
                 ],
                 self.num_y_per_phase,
                 self.num_u_per_phase,
@@ -1020,9 +998,9 @@ class IterationOld:
             lagrange_sparsity_detect = np.full(self.num_c, np.nan)
             obj_factor_sparsity_detect = np.nan
 
-            H_sparsity_detect = hessian(
-                x_sparsity_detect, obj_factor_sparsity_detect, lagrange_sparsity_detect
-            ).tocoo()
+            H_sparsity_detect = hessian(x_sparsity_detect,
+                                        obj_factor_sparsity_detect,
+                                        lagrange_sparsity_detect).tocoo()
             self._H_nonzero_row = H_sparsity_detect.row
             self._H_nonzero_col = H_sparsity_detect.col
             self._H_nnz = H_sparsity_detect.nnz
@@ -1068,13 +1046,14 @@ class IterationOld:
                 phase_indices.append(i)
                 i += 1
 
-            ocp_index_to_phase_index_mapping = dict(zip(ocp_indices, phase_indices))
+            ocp_index_to_phase_index_mapping = dict(
+                zip(ocp_indices, phase_indices))
 
             x_endpoint_row_indices = []
             x_endpoint_col_indices = []
             for (
-                i_row_ocp,
-                i_col_ocp,
+                    i_row_ocp,
+                    i_col_ocp,
             ) in self.backend.expression_graph.ddL_dxbdxb.entries.keys():
                 i_row_phase = ocp_index_to_phase_index(i_row_ocp)
                 i_col_phase = ocp_index_to_phase_index(i_col_ocp)
@@ -1094,16 +1073,14 @@ class IterationOld:
             offset = 0
             for p in self.backend.p:
                 phase_ocp_indices = [
-                    (i, j)
-                    for i in range(offset, offset + p.num_vars)
+                    (i, j) for i in range(offset, offset + p.num_vars)
                     for j in range(offset, i + 1)
                 ]
 
                 offset += p.num_vars
                 ocp_indices += phase_ocp_indices
             ocp_indices += [
-                (i, j)
-                for i in range(offset, offset + self.backend.num_vars)
+                (i, j) for i in range(offset, offset + self.backend.num_vars)
                 for j in range(i + 1)
             ]
             phase_blocks = []
@@ -1120,35 +1097,29 @@ class IterationOld:
                     sparse.coo_matrix(([2], ([0], [0])), shape=(1, N)),
                 )
                 block_qt_qt = sparse.csr_matrix(
-                    3 * np.tril(np.ones((num_qt_ocp, num_qt_ocp)))
-                )
+                    3 * np.tril(np.ones((num_qt_ocp, num_qt_ocp))))
                 block_yu_s = sparse.kron(
                     np.ones((self.backend.num_s_vars, num_yu_ocp)),
                     sparse.coo_matrix(([2], ([0], [0])), shape=(1, N)),
                 )
-                block_qt_s = sparse.csr_matrix(
-                    3 * np.ones((self.backend.num_s_vars, num_qt_ocp))
-                )
+                block_qt_s = sparse.csr_matrix(3 * np.ones(
+                    (self.backend.num_s_vars, num_qt_ocp)))
                 phase_blocks.append(
-                    sparse.bmat([[block_yu_yu, None], [block_yu_qt, block_qt_qt]])
-                )
+                    sparse.bmat([[block_yu_yu, None],
+                                 [block_yu_qt, block_qt_qt]]))
                 endpoint_blocks.append(sparse.hstack([block_yu_s, block_qt_s]))
             phase_block = sparse.block_diag(phase_blocks)
             endpoint_block = sparse.hstack(endpoint_blocks)
-            parameter_block = sparse.csr_matrix(
-                3 * np.tril(np.ones((self.backend.num_s_vars, self.backend.num_s_vars)))
-            )
-            continuous = (
-                sparse.bmat([[phase_block, None], [endpoint_block, parameter_block]])
-                .tocsr()
-                .tocoo()
-            )
+            parameter_block = sparse.csr_matrix(3 * np.tril(
+                np.ones((self.backend.num_s_vars, self.backend.num_s_vars))))
+            continuous = (sparse.bmat([[phase_block, None],
+                                       [endpoint_block,
+                                        parameter_block]]).tocsr().tocoo())
             ocp_index_to_phase_index_mapping = dict(
                 zip(
                     ocp_indices,
                     zip(zip(continuous.row, continuous.col), continuous.data),
-                )
-            )
+                ))
             H_continuous_indices_iteration = [
                 ocp_index_to_phase_index_mapping[index]
                 for index in self.backend.expression_graph.ddL_dxdx.entries
@@ -1174,7 +1145,8 @@ class IterationOld:
             """
             H = hessian(x, obj_factor, lagrange)
             H_zeros = sparse.coo_matrix(
-                (np.full(self._H_nnz, 1e-20), self._hessian_structure_lambda()),
+                (np.full(self._H_nnz,
+                         1e-20), self._hessian_structure_lambda()),
                 shape=self._H_shape,
             ).tocsr()
             return (H + H_zeros).tocoo().data
@@ -1196,50 +1168,37 @@ class IterationOld:
             lagrange_prime = self.scaling.scale_lagrange(lagrange)
             chunks = []
             for (
-                p,
-                c_defect_slice,
-                c_path_slice,
-                c_integral_slice,
-                sA_matrix,
-                W_matrix,
+                    p,
+                    c_defect_slice,
+                    c_path_slice,
+                    c_integral_slice,
+                    sA_matrix,
+                    W_matrix,
             ) in zip(
-                self.backend.p,
-                self.c_defect_slices,
-                self.c_path_slices,
-                self.c_integral_slices,
-                self.mesh.sA_matrix,
-                self.mesh.W_matrix,
+                    self.backend.p,
+                    self.c_defect_slices,
+                    self.c_path_slices,
+                    self.c_integral_slices,
+                    self.mesh.sA_matrix,
+                    self.mesh.W_matrix,
             ):
-                chunks.extend(
-                    [
-                        *sA_matrix.T.dot(
-                            lagrange_prime[c_defect_slice]
-                            .reshape((p.num_c_defect, -1))
-                            .T
-                        ).T
-                    ]
-                )
+                chunks.extend([
+                    *sA_matrix.T.dot(lagrange_prime[c_defect_slice].reshape(
+                        (p.num_c_defect, -1)).T).T
+                ])
                 if p.num_c_path:
-                    chunks.extend(
-                        [*lagrange_prime[c_path_slice].reshape((p.num_c_path, -1))]
-                    )
+                    chunks.extend([
+                        *lagrange_prime[c_path_slice].reshape(
+                            (p.num_c_path, -1))
+                    ])
                 if p.num_c_integral:
-                    chunks.extend(
-                        [
-                            *lagrange_prime[c_integral_slice]
-                            .reshape(-1, 1)
-                            .dot(-W_matrix.reshape((1, -1)))
-                        ]
-                    )
+                    chunks.extend([
+                        *lagrange_prime[c_integral_slice].reshape(
+                            -1, 1).dot(-W_matrix.reshape((1, -1)))
+                    ])
             if self.num_c_endpoint:
                 chunks.extend(
-                    [
-                        *0
-                        * lagrange_prime[self.c_endpoint_slice].reshape(
-                            -1,
-                        )
-                    ]
-                )
+                    [*0 * lagrange_prime[self.c_endpoint_slice].reshape(-1, )])
 
             return chunks
 
@@ -1350,10 +1309,9 @@ class IterationOld:
 
             if self.optimal_control_problem.settings.dump_nlp_check_json:
                 file_extension = ".json"
-                filename_full = (
-                    str(self.optimal_control_problem.settings.dump_nlp_check_json)
-                    + file_extension
-                )
+                filename_full = (str(
+                    self.optimal_control_problem.settings.dump_nlp_check_json)
+                                 + file_extension)
 
                 sG = sparse.coo_matrix((G, G_struct), shape=self._G_shape)
 

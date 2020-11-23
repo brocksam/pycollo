@@ -19,10 +19,8 @@ class Utils:
     def assert_ca_sym_identical(*syms):
         """Assert if a number of CasADi SX symbols appear identical."""
         if len(syms) > 2:
-            msg = (
-                "Two or more symbols are required for asserting whether "
-                "they're identical."
-            )
+            msg = ("Two or more symbols are required for asserting whether "
+                   "they're identical.")
             raise ValueError(msg)
         for sym in syms[1:]:
             assert syms[0].name() == sym.name()
@@ -51,10 +49,8 @@ class Utils:
 
         """
         if len(exprs) > 2:
-            msg = (
-                "Two or more expressions are required for asserting "
-                "whether they're identical."
-            )
+            msg = ("Two or more expressions are required for asserting "
+                   "whether they're identical.")
             raise ValueError(msg)
         base_prims, base_names = cls.get_primitives_and_names(exprs[0])
         num_args = len(base_prims)
@@ -88,10 +84,8 @@ class Utils:
             prims = []
             names = []
         else:
-            msg = (
-                f"Unexpected expression type of {type(expr)}. Expecting "
-                f"CasADi or Sympy."
-            )
+            msg = (f"Unexpected expression type of {type(expr)}. Expecting "
+                   f"CasADi or Sympy.")
             raise TypeError(msg)
         return (prims, names)
 
@@ -112,10 +106,8 @@ class Utils:
             return lambda: expr
         elif isinstance(expr, ca.DM):
             return lambda: expr[0]
-        msg = (
-            f"Unexpected expression type of {type(expr)}. Expecting CasADi "
-            f"or Sympy."
-        )
+        msg = (f"Unexpected expression type of {type(expr)}. Expecting CasADi "
+               f"or Sympy.")
         raise TypeError(msg)
 
 
@@ -149,18 +141,14 @@ def pytest_runtest_makereport(item, call):
             cls_name = str(item.cls)
             # retrieve the index of the test (if parametrize is used in
             # combination with incremental)
-            parametrize_index = (
-                tuple(item.callspec.indices.values())
-                if hasattr(item, "callspec")
-                else ()
-            )
+            parametrize_index = (tuple(item.callspec.indices.values())
+                                 if hasattr(item, "callspec") else ())
             # retrieve the name of the test function
             test_name = item.originalname or item.name
             # store in _test_failed_incremental the original name of the failed
             # test
             _test_failed_incremental.setdefault(cls_name, {}).setdefault(
-                parametrize_index, test_name
-            )
+                parametrize_index, test_name)
 
 
 def pytest_runtest_setup(item):
@@ -177,11 +165,8 @@ def pytest_runtest_setup(item):
         if cls_name in _test_failed_incremental:
             # retrieve the index of the test (if parametrize is used in
             # combination with incremental)
-            parametrize_index = (
-                tuple(item.callspec.indices.values())
-                if hasattr(item, "callspec")
-                else ()
-            )
+            parametrize_index = (tuple(item.callspec.indices.values())
+                                 if hasattr(item, "callspec") else ())
             # retrieve the name of the first test function to fail for this
             # class name and index
             test_class = _test_failed_incremental[cls_name]

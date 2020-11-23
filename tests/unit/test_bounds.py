@@ -133,7 +133,6 @@ To do:
 
 """
 
-
 DEFAULT_DP_BOUNDS_T0 = 0
 DEFAULT_DP_BOUNDS_TF = [1, 3]
 DEFAULT_DP_BOUNDS_Y = [[-np.pi, np.pi], [-np.pi, np.pi], [-10, 10], [-10, 10]]
@@ -176,7 +175,8 @@ def test_all_processed_user_bounds(double_pendulum_init_fixture):
     ocp._initialise_backend()
     ocp._check_problem_and_phase_bounds()
 
-    np.testing.assert_allclose(ocp.bounds._s_bnd, np.array(DEFAULT_DP_BOUNDS_S))
+    np.testing.assert_allclose(ocp.bounds._s_bnd,
+                               np.array(DEFAULT_DP_BOUNDS_S))
     np.testing.assert_equal(ocp.bounds._s_needed, np.array([True, True]))
 
 
@@ -188,11 +188,9 @@ def test_all_processed_user_bounds(double_pendulum_init_fixture):
 #                 {sym.Symbol("_q0_P0"): tuple(DEFAULT_DP_BOUNDS_Q)},
 #                 ]
 
-
 # @pytest.mark.parametrize("bounds", valid_bounds)
 # def test_valid_forms_of_one_variable(double_pendulum_init_fixture, bounds):
 #     """Single variables """
-
 
 m0 = sym.Symbol("m0")
 p0 = sym.Symbol("p0")
@@ -200,9 +198,18 @@ valid_bounds = [
     DEFAULT_DP_BOUNDS_S,
     np.array(DEFAULT_DP_BOUNDS_S),
     tuple(DEFAULT_DP_BOUNDS_S),
-    {m0: DEFAULT_DP_BOUNDS_S[0], p0: DEFAULT_DP_BOUNDS_S[1]},
-    {m0: np.array(DEFAULT_DP_BOUNDS_S)[0, :], p0: np.array(DEFAULT_DP_BOUNDS_S)[1, :]},
-    {m0: tuple(DEFAULT_DP_BOUNDS_S)[0], p0: tuple(DEFAULT_DP_BOUNDS_S)[1]},
+    {
+        m0: DEFAULT_DP_BOUNDS_S[0],
+        p0: DEFAULT_DP_BOUNDS_S[1]
+    },
+    {
+        m0: np.array(DEFAULT_DP_BOUNDS_S)[0, :],
+        p0: np.array(DEFAULT_DP_BOUNDS_S)[1, :]
+    },
+    {
+        m0: tuple(DEFAULT_DP_BOUNDS_S)[0],
+        p0: tuple(DEFAULT_DP_BOUNDS_S)[1]
+    },
 ]
 
 
@@ -214,7 +221,8 @@ def test_valid_forms_of_two_variable(double_pendulum_init_fixture, bounds):
     ocp.bounds._backend = ocp._backend
     ocp.bounds._INF = ocp.settings.numerical_inf
     ocp.bounds._process_parameter_vars()
-    np.testing.assert_allclose(ocp.bounds._s_bnd, np.array(DEFAULT_DP_BOUNDS_S))
+    np.testing.assert_allclose(ocp.bounds._s_bnd,
+                               np.array(DEFAULT_DP_BOUNDS_S))
     np.testing.assert_array_equal(ocp.bounds._s_needed, np.array([True, True]))
 
 
@@ -226,15 +234,13 @@ def test_var_bound_mapping_var_missing(double_pendulum_init_fixture, bounds):
     ocp.bounds._backend = ocp._backend
     ocp.bounds._INF = ocp.settings.numerical_inf
     ocp.bounds._process_parameter_vars()
-    np.testing.assert_allclose(
-        ocp.bounds._s_bnd, np.array([[0.5, 1.5], [-10e19, 10e19]])
-    )
+    np.testing.assert_allclose(ocp.bounds._s_bnd,
+                               np.array([[0.5, 1.5], [-10e19, 10e19]]))
     np.testing.assert_array_equal(ocp.bounds._s_needed, np.array([True, True]))
 
     ocp.settings.assume_inf_bounds = False
-    expected_error_msg = re.escape(
-        "No bounds have been supplied for the " "parameter variable 'p0' (index #1)."
-    )
+    expected_error_msg = re.escape("No bounds have been supplied for the "
+                                   "parameter variable 'p0' (index #1).")
     with pytest.raises(ValueError, match=expected_error_msg):
         ocp.bounds._process_parameter_vars()
 
@@ -247,10 +253,10 @@ def test_var_bounds_almost_equal(double_pendulum_init_fixture, bounds):
     ocp.bounds._backend = ocp._backend
     ocp.bounds._INF = ocp.settings.numerical_inf
     ocp.bounds._process_parameter_vars()
-    np.testing.assert_allclose(
-        ocp.bounds._s_bnd, np.array([[-5e-8, -5e-8], [-10e19, 10e19]])
-    )
-    np.testing.assert_array_equal(ocp.bounds._s_needed, np.array([False, True]))
+    np.testing.assert_allclose(ocp.bounds._s_bnd,
+                               np.array([[-5e-8, -5e-8], [-10e19, 10e19]]))
+    np.testing.assert_array_equal(ocp.bounds._s_needed, np.array([False,
+                                                                  True]))
 
 
 @pytest.mark.parametrize("bounds", [{m0: [0.0, -1e-3]}])
@@ -260,49 +266,41 @@ def test_var_bounds_not_almost_equal(double_pendulum_init_fixture, bounds):
     ocp.bounds.parameter_variables = bounds
     ocp.bounds._backend = ocp._backend
     ocp.bounds._INF = ocp.settings.numerical_inf
-    expected_error_msg = re.escape(
-        "The user-supplied upper bound for the "
-        "parameter variable 'm0' (index #0) of "
-        "'-0.001' cannot be less than the "
-        "user-supplied lower bound of '0.0'."
-    )
+    expected_error_msg = re.escape("The user-supplied upper bound for the "
+                                   "parameter variable 'm0' (index #0) of "
+                                   "'-0.001' cannot be less than the "
+                                   "user-supplied lower bound of '0.0'.")
     with pytest.raises(ValueError, match=expected_error_msg):
         ocp.bounds._process_parameter_vars()
 
 
 @pytest.mark.parametrize("t0_bounds, tF_bounds", [([1.0, 5.0], [0.0, 10.0])])
-def test_t0_lower_less_than_tF_lower(
-    double_pendulum_init_fixture, t0_bounds, tF_bounds
-):
+def test_t0_lower_less_than_tF_lower(double_pendulum_init_fixture, t0_bounds,
+                                     tF_bounds):
     """Initial time lower bound must be less than final time lower bounds."""
     ocp, user_syms = double_pendulum_init_fixture
     phase = ocp.phases.A
     phase.bounds.initial_time = t0_bounds
     phase.bounds.final_time = tF_bounds
-    expected_error_msg = re.escape(
-        "The lower bound for the final time "
-        "('0.0') must be greater than the lower "
-        "bound for the initial time ('1.0') in "
-        "phase A (index #0)."
-    )
+    expected_error_msg = re.escape("The lower bound for the final time "
+                                   "('0.0') must be greater than the lower "
+                                   "bound for the initial time ('1.0') in "
+                                   "phase A (index #0).")
     with pytest.raises(ValueError, match=expected_error_msg):
         ocp._check_problem_and_phase_bounds()
 
 
 @pytest.mark.parametrize("t0_bounds, tF_bounds", [([0.0, 10.0], [1.0, 5.0])])
-def test_t0_upper_less_than_tF_upper(
-    double_pendulum_init_fixture, t0_bounds, tF_bounds
-):
+def test_t0_upper_less_than_tF_upper(double_pendulum_init_fixture, t0_bounds,
+                                     tF_bounds):
     """Initial time upper bound must be less than final time upper bounds."""
     ocp, user_syms = double_pendulum_init_fixture
     phase = ocp.phases.A
     phase.bounds.initial_time = t0_bounds
     phase.bounds.final_time = tF_bounds
-    expected_error_msg = re.escape(
-        "The upper bound for the final time "
-        "('5.0') must be greater than the upper "
-        "bound for the initial time ('10.0') in "
-        "phase A (index #0)."
-    )
+    expected_error_msg = re.escape("The upper bound for the final time "
+                                   "('5.0') must be greater than the upper "
+                                   "bound for the initial time ('10.0') in "
+                                   "phase A (index #0).")
     with pytest.raises(ValueError, match=expected_error_msg):
         ocp._check_problem_and_phase_bounds()

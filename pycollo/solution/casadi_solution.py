@@ -17,8 +17,7 @@ class CasadiSolution(SolutionABC):
         x = self.it.scaling.unscale_x(self.x)
         self.phase_data = []
         self.phase_data = tuple(
-            self.extract_full_solution_one_phase(p, x) for p in self.backend.p
-        )
+            self.extract_full_solution_one_phase(p, x) for p in self.backend.p)
         self._y = tuple(p.y for p in self.phase_data)
         self._dy = tuple(p.dy for p in self.phase_data)
         self._u = tuple(p.u for p in self.phase_data)
@@ -82,4 +81,5 @@ class CasadiSolution(SolutionABC):
         shift = (t0 + tF) / 2
         time = tau * stretch + shift
 
-        return PhaseSolutionData(tau, y, dy, u, q, t, t0, tF, T, stretch, shift, time)
+        return PhaseSolutionData(tau, y, dy, u, q, t, t0, tF, T, stretch,
+                                 shift, time)

@@ -198,7 +198,7 @@ phase_A = problem.new_phase("A")
 phase_A.state_variables = [r_x, r_y, r_z, v_x, v_y, v_z, m]
 phase_A.control_variables = [u_x, u_y, u_z]
 
-A = -(mu / (r_vec_norm ** 3))
+A = -(mu / (r_vec_norm**3))
 phase_A.state_equations = {
     r_x: v_x,
     r_y: v_y,
@@ -225,7 +225,11 @@ phase_A.bounds.state_variables = {
     v_y: [-10000, 10000],
     m: [m_lower_bnd, m_upper_bnd],
 }
-phase_A.bounds.control_variables = {u_x: [-10, 10], u_y: [-10, 10], u_z: [-10, 10]}
+phase_A.bounds.control_variables = {
+    u_x: [-10, 10],
+    u_y: [-10, 10],
+    u_z: [-10, 10]
+}
 phase_A.bounds.path_constraints = [1, [R_E, "inf"]]
 v_y_t0 = -omega_E * R_E * sym.cos(psi_L)
 phase_A.bounds.initial_state_constraints = {
@@ -292,34 +296,18 @@ phase_D.auxiliary_data = {
 problem.objective_function = problem.phases[2].final_state_variables.m
 
 problem.endpoint_constraints = [
-    (
-        phase_A.final_state_variables.m
-        - phase_A.initial_state_variables.m
-        + 6 * m_prop_S
-        + (tau_burn_S / tau_burn_1) * m_prop_1
-    ),
-    (
-        phase_B.initial_state_variables.m
-        - phase_A.final_state_variables.m
-        + 6 * m_struct_S
-    ),
-    (
-        phase_B.final_state_variables.m
-        - phase_B.initial_state_variables.m
-        + 3 * m_prop_S
-        + (tau_burn_S / tau_burn_1) * m_prop_1
-    ),
-    (
-        phase_C.initial_state_variables.m
-        - phase_B.final_state_variables.m
-        + 3 * m_struct_S
-    ),
-    (
-        phase_C.final_state_variables.m
-        - phase_C.initial_state_variables.m
-        + (1 - 2 * (tau_burn_S / tau_burn_1)) * m_prop_1
-    ),
-    (phase_D.initial_state_variables.m - phase_C.final_state_variables.m + m_struct_1),
+    (phase_A.final_state_variables.m - phase_A.initial_state_variables.m +
+     6 * m_prop_S + (tau_burn_S / tau_burn_1) * m_prop_1),
+    (phase_B.initial_state_variables.m - phase_A.final_state_variables.m +
+     6 * m_struct_S),
+    (phase_B.final_state_variables.m - phase_B.initial_state_variables.m +
+     3 * m_prop_S + (tau_burn_S / tau_burn_1) * m_prop_1),
+    (phase_C.initial_state_variables.m - phase_B.final_state_variables.m +
+     3 * m_struct_S),
+    (phase_C.final_state_variables.m - phase_C.initial_state_variables.m +
+     (1 - 2 * (tau_burn_S / tau_burn_1)) * m_prop_1),
+    (phase_D.initial_state_variables.m - phase_C.final_state_variables.m +
+     m_struct_1),
     phase_A.final_state_variables.r_x - phase_B.initial_state_variables.r_x,
     phase_A.final_state_variables.r_y - phase_B.initial_state_variables.r_y,
     phase_A.final_state_variables.r_z - phase_B.initial_state_variables.r_z,
@@ -370,15 +358,15 @@ problem.bounds.endpoint_constraints = [
 problem.auxiliary_data = {
     mu: 3.986012e14,
     R_E: 6378145,
-    r_vec_norm: sym.sqrt(r_x ** 2 + r_y ** 2 + r_z ** 2),
-    v_vec_norm: sym.sqrt(v_x ** 2 + v_y ** 2 + v_z ** 2),
-    u_vec_norm: sym.sqrt(u_x ** 2 + u_y ** 2 + u_z ** 2),
+    r_vec_norm: sym.sqrt(r_x**2 + r_y**2 + r_z**2),
+    v_vec_norm: sym.sqrt(v_x**2 + v_y**2 + v_z**2),
+    u_vec_norm: sym.sqrt(u_x**2 + u_y**2 + u_z**2),
     D_x: -0.5 * C_D * S_rho * v_r_vec_norm * v_r_x,
     D_y: -0.5 * C_D * S_rho * v_r_vec_norm * v_r_y,
     D_z: -0.5 * C_D * S_rho * v_r_vec_norm * v_r_z,
     C_D: 0.5,
     S_rho: 4 * np.pi,
-    v_r_vec_norm: sym.sqrt(v_r_x ** 2 + v_r_y ** 2 + v_r_z ** 2),
+    v_r_vec_norm: sym.sqrt(v_r_x**2 + v_r_y**2 + v_r_z**2),
     v_r_x: v_x - (omega_x_r_x),
     v_r_y: v_y - (omega_x_r_y),
     v_r_z: v_z - (omega_x_r_z),
@@ -418,10 +406,10 @@ problem.auxiliary_data = {
     scale_acceleration: scale_speed / scale_time,
     scale_mass: m_t0_A,
     scale_force: scale_mass * scale_acceleration,
-    scale_area: scale_length ** 2,
+    scale_area: scale_length**2,
     scale_volume: scale_area * scale_length,
     scale_density: scale_mass / scale_volume,
-    scale_gravity: scale_acceleration * scale_length ** 2,
+    scale_gravity: scale_acceleration * scale_length**2,
 }
 
 # problem.settings.nlp_tolerance = 10e-7

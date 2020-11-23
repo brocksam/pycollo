@@ -18,7 +18,6 @@ EXPECT_X_TILDE : np.ndarray
     Expected scaled variable values on the temporal mesh.
 
 """
-
 import numpy as np
 
 EXPECT_V_DP = np.array(

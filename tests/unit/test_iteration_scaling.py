@@ -1,21 +1,18 @@
 """Test creation and initialisation of Iteration objects."""
-
-
 import numpy as np
 import pytest
 
 import pycollo
-
-from .iteration_scaling_test_data_brachistochrone import (EXPECT_R_BR,
-                                                          EXPECT_V_BR,
-                                                          EXPECT_V_INV_BR,
-                                                          EXPECT_X_BR,
-                                                          EXPECT_X_TILDE_BR)
-from .iteration_scaling_test_data_double_pendulum import (EXPECT_R_DP,
-                                                          EXPECT_V_DP,
-                                                          EXPECT_V_INV_DP,
-                                                          EXPECT_X_DP,
-                                                          EXPECT_X_TILDE_DP)
+from .iteration_scaling_test_data_brachistochrone import EXPECT_R_BR
+from .iteration_scaling_test_data_brachistochrone import EXPECT_V_BR
+from .iteration_scaling_test_data_brachistochrone import EXPECT_V_INV_BR
+from .iteration_scaling_test_data_brachistochrone import EXPECT_X_BR
+from .iteration_scaling_test_data_brachistochrone import EXPECT_X_TILDE_BR
+from .iteration_scaling_test_data_double_pendulum import EXPECT_R_DP
+from .iteration_scaling_test_data_double_pendulum import EXPECT_V_DP
+from .iteration_scaling_test_data_double_pendulum import EXPECT_V_INV_DP
+from .iteration_scaling_test_data_double_pendulum import EXPECT_X_DP
+from .iteration_scaling_test_data_double_pendulum import EXPECT_X_TILDE_DP
 
 
 @pytest.fixture

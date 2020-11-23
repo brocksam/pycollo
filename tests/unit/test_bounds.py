@@ -16,7 +16,6 @@ ALL_FIXTURE_REFS : list
     used to easily parametrize the test problems.
 
 """
-
 import re
 from collections import namedtuple
 

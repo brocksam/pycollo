@@ -13,10 +13,9 @@ PATTERSON_RAO : str
     String keyword identifier for the Patterson-Rao mesh refinement algorithm.
 
 """
-
-
 import itertools
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 
 import casadi as ca
 import matplotlib.pyplot as plt
@@ -24,8 +23,11 @@ import numpy as np
 import scipy.interpolate as interpolate
 from pyproprop import Options
 
-from .mesh import Mesh, PhaseMesh
-from .utils import casadi_substitute, dict_merge, symbol_name
+from .mesh import Mesh
+from .mesh import PhaseMesh
+from .utils import casadi_substitute
+from .utils import dict_merge
+from .utils import symbol_name
 from .vis.plot import plot_mesh
 
 DEFAULT_MESH_TOLERANCE = 1e-7

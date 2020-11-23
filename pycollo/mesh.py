@@ -1,4 +1,5 @@
-from typing import Iterable, Optional
+from typing import Iterable
+from typing import Optional
 
 import numpy as np
 import scipy.sparse as sparse

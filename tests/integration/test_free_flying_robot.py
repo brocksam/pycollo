@@ -5,7 +5,6 @@ free_flying_robot.py` for a description of and reference for this
 optimal control problem.
 
 """
-
 import numpy as np
 import pytest
 import sympy as sym

@@ -1,16 +1,27 @@
 import collections
 import itertools
 from numbers import Number
-from typing import Iterable, Mapping, NamedTuple, Optional, Tuple
+from typing import Iterable
+from typing import Mapping
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import casadi as ca
 import numba
 import numpy as np
 import scipy.interpolate as interpolate
 import sympy as sym
-from numpy import arctan, cos, exp, sin, sqrt, tan, tanh
+from numpy import arctan
+from numpy import cos
+from numpy import exp
+from numpy import sin
+from numpy import sqrt
+from numpy import tan
+from numpy import tanh
 
-from .typing import OptionalSymsType, TupleSymsType
+from .typing import OptionalSymsType
+from .typing import TupleSymsType
 
 dcdx_info_fields = [
     "zeta_y",

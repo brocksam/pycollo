@@ -3,8 +3,6 @@
 Quadrature schemes computed are: Radau (LGR), Lobatto (LGL) and Gauss (LG). 
 
 """
-
-
 import numpy as np
 import pytest
 

@@ -1,6 +1,4 @@
 """Test stages of problem initialisation."""
-
-
 import re
 
 import pytest

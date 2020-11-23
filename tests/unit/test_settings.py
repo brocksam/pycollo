@@ -1,10 +1,10 @@
 """Tests for Pycollo, OCP and NLP settings."""
-
 import re
 
 import hypothesis.strategies as st
 import pytest
-from hypothesis import assume, given
+from hypothesis import assume
+from hypothesis import given
 
 import pycollo
 

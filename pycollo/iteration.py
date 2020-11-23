@@ -1,6 +1,4 @@
 """Solving a single transcription of an OCP to an NLP."""
-
-
 import collections
 import csv
 import itertools
@@ -16,11 +14,14 @@ import scipy.sparse as sparse
 import sympy as sym
 from pyproprop import processed_property
 
-from .guess import EndpointGuess, Guess, PhaseGuess
+from .guess import EndpointGuess
+from .guess import Guess
+from .guess import PhaseGuess
 from .mesh import Mesh
 from .nlp import initialise_nlp_backend
 from .scaling import IterationScaling
-from .utils import console_out, format_time
+from .utils import console_out
+from .utils import format_time
 
 
 class Iteration:

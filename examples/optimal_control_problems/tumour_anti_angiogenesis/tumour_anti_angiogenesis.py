@@ -28,7 +28,6 @@ A : `Symbol <sympy>`
     Constant (nondimensional)
 
 """
-
 import sympy as sym
 
 import pycollo

@@ -4,8 +4,8 @@ import sympy as sym
 from pyproprop import Options
 
 from .numbafy import numbafy
-from .numbafy_hessian import (numbafy_continuous_hessian,
-                              numbafy_endpoint_hessian)
+from .numbafy_hessian import numbafy_continuous_hessian
+from .numbafy_hessian import numbafy_endpoint_hessian
 from .utils import console_out
 
 DIFFERENTIAL = "differential"

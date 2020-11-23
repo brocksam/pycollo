@@ -1,6 +1,7 @@
 import numpy as np
 
-from .solution_abc import PhaseSolutionData, SolutionABC
+from .solution_abc import PhaseSolutionData
+from .solution_abc import SolutionABC
 
 
 class CasadiSolution(SolutionABC):

@@ -1,5 +1,4 @@
 """Tests for the :class:`Phase` class."""
-
 import pytest
 
 import pycollo

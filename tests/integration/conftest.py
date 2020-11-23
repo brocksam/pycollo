@@ -1,6 +1,4 @@
 """Fixtures and utilities for integration tests."""
-
-
 import pytest
 
 

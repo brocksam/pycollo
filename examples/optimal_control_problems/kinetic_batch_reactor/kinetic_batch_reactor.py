@@ -8,7 +8,6 @@ Attributes
 ----------
 
 """
-
 import sympy as sym
 
 import pycollo

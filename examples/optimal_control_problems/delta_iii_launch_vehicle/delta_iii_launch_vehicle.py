@@ -118,7 +118,6 @@ psi_L : `Symbol <sympy>`
     (Geocentric) latitude of Cape Canaveral launch site (in rad)
 
 """
-
 import numpy as np
 import sympy as sym
 

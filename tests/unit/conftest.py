@@ -1,5 +1,4 @@
 """Fixture for unit tests."""
-
 from collections import namedtuple
 
 import numpy as np

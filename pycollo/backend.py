@@ -13,10 +13,9 @@ BACKENDS : :py:class:`Options <pyproprop>`
     identifier).
 
 """
-
-
 import itertools
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from collections import namedtuple
 from timeit import default_timer as timer
 
@@ -24,7 +23,8 @@ import casadi as ca
 import numpy as np
 import scipy.sparse as sparse
 import sympy as sym
-from pyproprop import Options, processed_property
+from pyproprop import Options
+from pyproprop import processed_property
 
 from .bounds import Bounds
 from .compiled import CompiledFunctions
@@ -33,12 +33,22 @@ from .guess import Guess
 from .iteration import Iteration
 from .mesh import Mesh
 from .quadrature import Quadrature
-from .scaling import (CasadiIterationScaling, HsadIterationScaling,
-                      PycolloIterationScaling, Scaling, SympyIterationScaling)
-from .solution import CasadiSolution, NlpResult
-from .utils import (SUPPORTED_ITER_TYPES, casadi_substitute, console_out,
-                    dict_merge, fast_sympify, format_multiple_items_for_output,
-                    symbol_name, symbol_primitives, sympy_to_casadi)
+from .scaling import CasadiIterationScaling
+from .scaling import HsadIterationScaling
+from .scaling import PycolloIterationScaling
+from .scaling import Scaling
+from .scaling import SympyIterationScaling
+from .solution import CasadiSolution
+from .solution import NlpResult
+from .utils import casadi_substitute
+from .utils import console_out
+from .utils import dict_merge
+from .utils import fast_sympify
+from .utils import format_multiple_items_for_output
+from .utils import SUPPORTED_ITER_TYPES
+from .utils import symbol_name
+from .utils import symbol_primitives
+from .utils import sympy_to_casadi
 
 __all__ = []
 

@@ -1,5 +1,4 @@
 """Generic pytest-related classes/functions used throughout test suite."""
-
 import itertools
 
 import casadi as ca

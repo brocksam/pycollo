@@ -1,5 +1,4 @@
 """Tests for the :class:`OptimalControlProblem` class."""
-
 import pytest
 
 import pycollo

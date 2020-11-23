@@ -5,7 +5,6 @@ and estimation using nonlinear programming - 2nd Edition. Society for
 Industrial and Applied Mathematics, p215 - 216.
 
 """
-
 import numpy as np
 import sympy as sym
 

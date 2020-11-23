@@ -36,7 +36,6 @@ I_yy : `Symbol <sympy>`
     Moment of inertia about the y-axis (in kg/m^2)
 
 """
-
 import numpy as np
 import sympy as sym
 

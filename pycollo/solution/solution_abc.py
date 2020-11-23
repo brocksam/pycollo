@@ -1,5 +1,6 @@
 import collections
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 
 import numpy as np
 from pyproprop import processed_property

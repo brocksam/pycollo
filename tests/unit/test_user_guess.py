@@ -1,5 +1,4 @@
 """Tests for sanitising and processing user-supplied guesses."""
-
 import numpy as np
 import pytest
 import sympy as sym

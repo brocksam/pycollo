@@ -5,7 +5,16 @@ import numba as nb
 import numpy as np
 import scipy.interpolate as interpolate
 import sympy as sym
-from numpy import arccos, arcsin, arctan, cos, exp, log, sin, sqrt, tan, tanh
+from numpy import arccos
+from numpy import arcsin
+from numpy import arctan
+from numpy import cos
+from numpy import exp
+from numpy import log
+from numpy import sin
+from numpy import sqrt
+from numpy import tan
+from numpy import tanh
 
 acos = arccos
 asin = arcsin

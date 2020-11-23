@@ -1,6 +1,4 @@
 """Test scaling."""
-
-
 import numpy as np
 
 

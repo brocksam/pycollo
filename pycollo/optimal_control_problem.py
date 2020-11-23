@@ -32,15 +32,17 @@ Notes:
 	* n = len(x): number of free variables
 	* m = len(c): number of constraints
 """
-
-
 import itertools
 from timeit import default_timer as timer
-from typing import AnyStr, Iterable, Optional, Tuple, TypeVar, Union
+from typing import AnyStr
+from typing import Iterable
+from typing import Optional
+from typing import Tuple
+from typing import TypeVar
+from typing import Union
 
 import numba as nb
 import numpy as np
-# from ordered_set import OrderedSet
 import scipy.sparse as sparse
 import sympy as sym
 import sympy.physics.mechanics as me
@@ -56,8 +58,12 @@ from .phase import Phase
 from .quadrature import Quadrature
 from .scaling import EndpointScaling
 from .settings import Settings
-from .typing import OptionalSymsType, TupleSymsType
-from .utils import check_sym_name_clash, console_out, format_as_named_tuple
+from .typing import OptionalSymsType
+from .typing import TupleSymsType
+from .utils import check_sym_name_clash
+from .utils import console_out
+from .utils import format_as_named_tuple
+# from ordered_set import OrderedSet
 
 __all__ = ["OptimalControlProblem"]
 

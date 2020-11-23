@@ -2,7 +2,8 @@ import abc
 
 import numpy as np
 import scipy.sparse as sparse
-from pyproprop import Options, processed_property
+from pyproprop import Options
+from pyproprop import processed_property
 
 BOUNDS = "bounds"
 GUESS = "guess"

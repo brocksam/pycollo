@@ -22,6 +22,8 @@ SUPPORTED_ITER_TYPES = (tuple, list, np.ndarray)
 SYMPY_TO_CASADI_API_MAPPING = {"ImmutableDenseMatrix": ca.blockcat,
                                "MutableDenseMatrix": ca.blockcat,
                                "Abs": ca.fabs,
+                               "sec": lambda x: (1 / ca.cos(x)),
+                               "cosec": lambda x: (1 / ca.sin(x)),
                                }
 
 

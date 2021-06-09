@@ -217,7 +217,7 @@ class OptimalControlProblem():
                         types of problem are not currently supported.
         """
         msg = (f"Pycollo do not currently support dynamic, path or integral "
-                f"constraints that are explicit functions of continuous time.")
+               f"constraints that are explicit functions of continuous time.")
         raise NotImplementedError(msg)
 
     @property
@@ -345,6 +345,7 @@ class OptimalControlProblem():
         self._initialise_initial_mesh()
         self._check_initial_guess()
         self._initialise_first_mesh_iteration()
+        self._is_initialised = True
 
     def _console_out_initialisation_message(self):
         msg = "Initialising optimal control problem."
@@ -406,12 +407,18 @@ class OptimalControlProblem():
                 Option for whether progress updates should be outputted to the
                 console during solving. Defaults to False.
         """
+        self._check_if_initialisation_required_before_solve()
         self.mesh_tolerance_met = False
         self._set_solve_options(display_progress)
         tolerances_met = False
         while not tolerances_met:
             tolerances_met = self._solve_iteration()
         self._final_output()
+
+    def _check_if_initialisation_required_before_solve(self):
+        """Initialise the optimal control problem before solve if required."""
+        if self._is_initialised == False:
+            self.initialise()
 
     def _solve_iteration(self):
         """Solve a single mesh iteration.

@@ -11,7 +11,7 @@ POINT_OPTIONS = {"marker": "x",
                  "color": "black"}
 LINE_OPTIONS = {"linewidth": 2}
 MESH_OPTIONS = {"align": "edge",
-                "alpha": 0.5}       
+                "alpha": 0.5}
 X_TITLES = {"y": "States", "dy": "State Derivatives", "u": "Controls"}
 
 

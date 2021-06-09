@@ -360,7 +360,10 @@ class IterationScaling:
         args = np.concatenate([x_guess, np.ones(1)])
         g = self.backend.g_iter_scale_callable(args)
         g_norm = np.sqrt(np.sum(g**2))
-        obj_scaling = 1 / g_norm
+        if np.isclose(g_norm, 0.0):
+            obj_scaling = 1
+        else:
+            obj_scaling = 1 / g_norm
         return obj_scaling
 
     def _calculate_constraint_scaling(self, x_guess):

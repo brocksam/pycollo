@@ -20,18 +20,6 @@ phase.control_variables = u
 phase.state_equations = [-y**3 + u]
 phase.integrand_functions = [0.5*(y**2 + u**2)]
 phase.auxiliary_data = {}
-# problem.settings.collocation_points_min = 2
-phase.mesh.number_mesh_sections = 10
-phase.mesh.number_mesh_section_nodes = 8
-# phase.mesh.number_mesh_section_nodes = 2
-
-# phase.bounds.initial_time = 0.0
-# phase.bounds.final_time = 10000.0
-# phase.bounds.state_variables = [[0, 2]]
-# phase.bounds.control_variables = [[-1, 8]]
-# phase.bounds.integral_variables = [[0, 2000]]
-# phase.bounds.initial_state_constraints = [[1.0, 1.0]]
-# phase.bounds.final_state_constraints = [[1.5, 1.5]]
 
 phase.bounds.initial_time = 0.0
 phase.bounds.final_time = 10000.0

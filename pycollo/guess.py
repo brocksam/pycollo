@@ -179,7 +179,7 @@ class Guess:
         return data
 
     def check_guess(self, guess, num_var, num_t=None):
-        if guess is None:
+        if guess is None or num_var == 0:
             if num_var != 0:
                 msg = "A guess must be supplied."
                 raise ValueError(msg)

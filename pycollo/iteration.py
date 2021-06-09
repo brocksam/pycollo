@@ -511,9 +511,21 @@ class Iteration:
         return nlp_result
 
     def process_nlp_solution(self, nlp_result):
+        msg = f"Post-processing mesh iteration #{self.number}."
+        console_out(msg, heading=True)
+
+        process_time_start = timer()
         self.solution = self.backend.process_solution(self, nlp_result)
         next_iter_mesh = self.solution.refine_mesh()
         next_iter_guess = self.generate_guess_for_next_mesh_iteration()
+        process_time_stop = timer()
+        self._time_process = process_time_stop - process_time_start
+        msg = (f"Mesh iteration #{self.number} solved in "
+               f"{format_time(self._time_solve)}.")
+        console_out(msg)
+        msg = (f"Mesh iteration #{self.number} post-processed in "
+               f"{format_time(self._time_process)}.")
+        console_out(msg, trailing_blank_line=True)
         mesh_tolerance_met = self.check_if_mesh_tolerance_met(next_iter_mesh)
         self.display_mesh_iteration_info(mesh_tolerance_met, next_iter_mesh)
         mesh_iteration_result = MeshIterationResult(mesh_tolerance_met,
@@ -615,16 +627,24 @@ class Iteration:
         NotImplementedError
             Description
         """
-        msg = (f"Pycollo Analysis of Mesh Iteration {self.number}")
-        console_out(msg, subheading=True, suffix=":")
+        msg = f"Analysing mesh iteration #{self.number}."
+        console_out(msg, heading=True)
 
         max_rel_mesh_error = np.max(np.array([np.max(el)
             for el in self.solution.mesh_refinement.maximum_relative_mesh_errors]))
 
         print(f'Objective Evaluation:       {self.solution.objective}')
-        print(f'Max Relative Mesh Error:    {max_rel_mesh_error}\n')
+        print(f'Max Relative Mesh Error:    {max_rel_mesh_error}')
+        print(f'Collocation Points Used:    {sum([N for N in self.mesh.N])}\n')
         if mesh_tol_met:
             print(f'Adjusting Collocation Mesh: {next_iter_mesh.K} mesh sections\n')
+
+        self._time_complete = sum([self._time_iteration_initialisation,
+                                   self._time_solve,
+                                   self._time_process])
+        msg = (f"Mesh iteration #{self.number} completed in "
+               f"{format_time(self._time_complete)}.")
+        console_out(msg, trailing_blank_line=True)
 
         settings = self.optimal_control_problem.settings
         if settings.display_mesh_result_info:

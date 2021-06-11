@@ -173,7 +173,7 @@ class TestFreeFlyingRobot:
         state.phase.guess.integral_variables = [0]
 
         # Settings
-        state.ocp.settings.mesh_tolerance = 1e-6
+        state.ocp.settings.mesh_tolerance = 1e-5
         state.ocp.settings.max_mesh_iterations = 15
 
     def test_ocp_initialisation(self, state):

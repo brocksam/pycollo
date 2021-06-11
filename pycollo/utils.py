@@ -159,6 +159,11 @@ def casadi_substitute(casadi_eqn, casadi_sym_mapping):
     return ca.substitute(casadi_eqn, remove_sym, add_sym)
 
 
+def needed_to_tuple(var_full, needed):
+    """Extract only needed variables to a new tuple."""
+    return tuple(var for var, n in zip(var_full, needed) if n)
+
+
 def format_as_named_tuple(
         iterable: OptionalSymsType,
         use_named: bool = True,

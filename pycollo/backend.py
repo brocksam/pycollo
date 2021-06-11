@@ -45,6 +45,7 @@ from .utils import (casadi_substitute,
                     dict_merge,
                     fast_sympify,
                     format_multiple_items_for_output,
+                    needed_to_tuple,
                     SUPPORTED_ITER_TYPES,
                     symbol_name,
                     symbol_primitives,
@@ -637,14 +638,14 @@ class BackendABC(ABC):
             p.collect_pycollo_variables()
             p.create_variable_indexes_slices()
 
-        self.s_var = tuple(np.array(self.s_var_full)[
-                           self.ocp.bounds._s_needed].tolist())
+        self.s_var = needed_to_tuple(self.s_var_full,
+                                     self.ocp.bounds._s_needed)
         self.num_s_var = len(self.s_var)
 
-        self.V_s_var = tuple(np.array(self.V_s_var_full)[
-                             self.ocp.bounds._s_needed].tolist())
-        self.r_s_var = tuple(np.array(self.r_s_var_full)[
-                             self.ocp.bounds._s_needed].tolist())
+        self.V_s_var = needed_to_tuple(self.V_s_var_full,
+                                       self.ocp.bounds._s_needed)
+        self.r_s_var = needed_to_tuple(self.r_s_var_full,
+                                       self.ocp.bounds._s_needed)
 
         self.V_x_var = tuple(itertools.chain(*list(p.V_x_var for p in self.p),
                                              self.V_s_var))
@@ -1211,10 +1212,6 @@ class PycolloPhaseData:
 
     def collect_pycollo_variables(self):
         """Recollect Pycollo variables accounting for 'constant' variables."""
-
-        def needed_to_tuple(var_full, needed):
-            return tuple(np.array(var_full)[needed].tolist())
-
         self.y_var = needed_to_tuple(self.y_var_full,
                                      self.ocp_phase.bounds._y_needed)
         self.u_var = needed_to_tuple(self.u_var_full,

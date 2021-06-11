@@ -260,7 +260,7 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             T = np.sum(h_q)
             collocation_points_min = self.ocp.settings.collocation_points_min
             merge_ratio = p_q / (collocation_points_min - P_q)
-            mesh_secs_needed = np.ceil(np.sum(merge_ratio)).astype(np.int)
+            mesh_secs_needed = np.ceil(np.sum(merge_ratio)).astype(int)
             if mesh_secs_needed == 1:
                 new_mesh_secs = np.array([T])
             else:
@@ -288,8 +288,8 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
                                new_num_mesh_sec_nodes,
                                subdivide_group):
             subdivide_group = np.array(subdivide_group)
-            subdivide_required = subdivide_group[:, 0].astype(np.bool)
-            subdivide_factor = subdivide_group[:, 1].astype(np.int)
+            subdivide_required = subdivide_group[:, 0].astype(bool)
+            subdivide_factor = subdivide_group[:, 1].astype(int)
             reduction_tol = subdivide_group[:, 2]
             P_q = subdivide_group[:, 3]
             h_q = subdivide_group[:, 4]
@@ -302,7 +302,7 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
                 P_q[is_node_reduction] * reduction_tol[is_node_reduction]) + p_q[is_node_reduction]
 
             next_mesh_nodes = np.ones_like(
-                predicted_nodes, dtype=np.int) * col_points_min
+                predicted_nodes, dtype=int) * col_points_min
             next_mesh_nodes[np.invert(
                 subdivide_required)] = predicted_nodes[np.invert(subdivide_required)]
             next_mesh_nodes_lower_than_min = next_mesh_nodes < col_points_min

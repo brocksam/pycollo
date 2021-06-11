@@ -28,12 +28,8 @@ jobs:
       - name: Install Pycollo
         run: python setup.py install
       - name: Test with pytest
-        run: pytest --cov-report term --cov=pycollo tests/
+        run: pytest tests/
       - name: Build dummy documentation
         run: |
-          cd docs & make clean & cd ..
+          cd docs; make clean; cd ..
           sphinx-build -nWT -b dummy docs/source docs/build
-      - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}

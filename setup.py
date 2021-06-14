@@ -138,7 +138,7 @@ def get_contents_from_file(filepath, by_line=False, strip=""):
 
 
 PACKAGE_NAME = "pycollo"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 AUTHOR = "Sam Brockie"
 AUTHOR_EMAIL = "sgb39@cam.ac.uk"
 DESCRIPTION = ("General-purpose nonlinear programming and optimal control "

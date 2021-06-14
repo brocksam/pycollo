@@ -1,0 +1,8 @@
+include setup.py
+include LICENSE
+include CHANGELOG.rst
+include README.rst
+include requirements.txt
+recursive-include pyproprop .*py
+recursive-include tests *.py *.txt
+recursive-include docs Makefile *.bat *.rst *.py *.txt

@@ -1,5 +1,7 @@
 """Delta III Launch Vehicle Ascent problem.
 
+NOTE: THIS EXAMPLE IS INCOMPLETE AND IS NOT CURRENTLY SOLVABLE USING PYCOLLO.
+
 Example 6.15 from Betts, J. T. (2010). Practical methods for optimal control
 and estimation using nonlinear programming - 2nd Edition. Society for
 Industrial and Applied Mathematics, p336 - 345.

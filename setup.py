@@ -138,20 +138,23 @@ def get_contents_from_file(filepath, by_line=False, strip=""):
 
 
 PACKAGE_NAME = "pycollo"
-VERSION = "0.0.0.dev0"
+VERSION = "0.1.0"
 AUTHOR = "Sam Brockie"
 AUTHOR_EMAIL = "sgb39@cam.ac.uk"
 DESCRIPTION = ("General-purpose nonlinear programming and optimal control "
                "using collocation methods")
 LICENSE = "MIT"
 URL = "https://pypi.org/project/pycollo/"
-KEYWORDS = ["property", "type-checking", "bound-checking", "type-casting"]
+KEYWORDS = ["optimal control", "optimal control problem", "ocp",
+            "trajectory optimisation", "trajectory optimization", 
+            "collocation", "direct collocation"]
 CLASSIFIERS = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Natural Language :: English",

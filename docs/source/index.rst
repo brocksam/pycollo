@@ -1,18 +1,22 @@
-.. opyt documentation master file, created by
-   sphinx-quickstart on Fri Jan  4 13:20:06 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+*********************
+Pycollo Documentation
+*********************
 
-Welcome to opyt's documentation!
-================================
+Pycollo (a portmanteau of Python and collocation) is a Python package for the general-purpose solving of optimal control problems (trajectory optimisation problems), including parameter optimisation, using direct collocation.
+
+New users of Pycollo should check out the :doc:`User Manual <user/index>`.
 
 .. toctree::
+   :numbered:
    :maxdepth: 2
    :caption: Contents:
 
+   user/index
+   dev/index
+   api/index
 
 
-Indices and tables
+Indices and Tables
 ==================
 
 * :ref:`genindex`

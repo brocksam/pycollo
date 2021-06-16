@@ -1363,7 +1363,7 @@ class Casadi(BackendABC):
             expr, _ = sympy_to_casadi(expr, user_to_backend_mapping)
         elif isinstance(expr, SUPPORTED_ITER_TYPES + (sym.Matrix, )):
             return self.substitute_matrix_pycollo_sym(expr)
-        if isinstance(expr, (int, float, np.int64, np.float64)):
+        if isinstance(expr, (int, float, np.int32, np.int64, np.float64)):
             expr = ca.SX(expr)
         if not isinstance(expr, ca.SX):
             msg = (f"Unsupported type of {type(expr)} for substitution.")

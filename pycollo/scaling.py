@@ -357,6 +357,8 @@ class IterationScaling:
             The scaling factor (`w`) for the objective function (`J`).
 
         """
+        if self.backend.ocp.settings.scaling_method is None:
+            return 1
         args = np.concatenate([x_guess, np.ones(1)])
         g = self.backend.g_iter_scale_callable(args)
         g_norm = np.sqrt(np.sum(g**2))
@@ -386,6 +388,8 @@ class IterationScaling:
 
         """
         null_scaling = np.ones(self.backend.num_c)
+        if self.backend.ocp.settings.scaling_method is None:
+            return null_scaling
         args = np.concatenate([x_guess, null_scaling])
         G = self.backend.G_iter_scale_callable(args)
         sG = sparse.coo_matrix(np.array(G))

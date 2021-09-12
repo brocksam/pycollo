@@ -1,4 +1,3 @@
-codecov>=2.1
 hypothesis>=5.28
 pytest>=6.0
 pytest-cases>=2.2.5

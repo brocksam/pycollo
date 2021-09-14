@@ -2,6 +2,6 @@ casadi>=3.5.5
 matplotlib>=3.3.2
 numba>=0.51.2
 numpy>=1.19.1
-pyproprop>=0.4.2
+pyproprop>=0.4.10
 scipy>=1.5.2
 sympy>=1.6.2

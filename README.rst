@@ -2,7 +2,7 @@
 Pycollo
 *******
 
-*Pycollo*, a combination of 'Python' and 'collocation', is a Python package for solving mutliphase optimal control problems using direct orthogonal collocation.
+*Pycollo*, a combination of 'Python' and 'collocation', is a Python package for solving multiphase optimal control problems using direct orthogonal collocation.
 
 Getting Started
 ===============

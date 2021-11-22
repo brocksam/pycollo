@@ -29,7 +29,7 @@ jobs:
       - name: Install basic dependencies
         run: conda install -q -y --file=requirements.txt --file=tests/requirements.txt
       - name: Install Pycollo
-        run: pip install
+        run: pip install .
       - name: Test with pytest
         run: pytest --cov-report=xml --cov=pyproprop tests/
       - name: Upload Coverage to Codecov

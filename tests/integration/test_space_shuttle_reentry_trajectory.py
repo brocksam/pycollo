@@ -7,7 +7,6 @@ description of and reference for this optimal control problem.
 
 import numpy as np
 import pytest
-import sympy as sym
 
 import pycollo
 
@@ -22,43 +21,43 @@ class TestHypersensitiveProblem:
         """Instantiate the required symbols and variables."""
 
         # Variable symbols
-        self.h = sym.Symbol("h")
-        self.phi = sym.Symbol("phi")
-        self.theta = sym.Symbol("theta")
-        self.nu = sym.Symbol("nu")
-        self.gamma = sym.Symbol("gamma")
-        self.psi = sym.Symbol("psi")
-        self.alpha = sym.Symbol("alpha")
-        self.beta = sym.Symbol("beta")
+        self.h = pycollo.Symbol("h")
+        self.phi = pycollo.Symbol("phi")
+        self.theta = pycollo.Symbol("theta")
+        self.nu = pycollo.Symbol("nu")
+        self.gamma = pycollo.Symbol("gamma")
+        self.psi = pycollo.Symbol("psi")
+        self.alpha = pycollo.Symbol("alpha")
+        self.beta = pycollo.Symbol("beta")
 
         # Auxiliary symbols
-        self.D = sym.Symbol("D")
-        self.L = sym.Symbol("L")
-        self.g = sym.Symbol("g")
-        self.r = sym.Symbol("r")
-        self.rho = sym.Symbol("rho")
-        self.rho_0 = sym.Symbol("rho_0")
-        self.h_r = sym.Symbol("h_r")
-        self.c_L = sym.Symbol("c_L")
-        self.c_D = sym.Symbol("c_D")
-        self.alpha_hat = sym.Symbol("alpha_hat")
-        self.Re = sym.Symbol("Re")
-        self.S = sym.Symbol("S")
-        self.c_lift_0 = sym.Symbol("c_lift_0")
-        self.c_lift_1 = sym.Symbol("c_lift_1")
-        self.mu = sym.Symbol("mu")
-        self.c_drag_0 = sym.Symbol("c_drag_0")
-        self.c_drag_1 = sym.Symbol("c_drag_1")
-        self.c_drag_2 = sym.Symbol("c_drag_2")
-        self.q_r = sym.Symbol("q_r")
-        self.q_a = sym.Symbol("q_a")
-        self.c_0 = sym.Symbol("c_0")
-        self.c_1 = sym.Symbol("c_1")
-        self.c_2 = sym.Symbol("c_2")
-        self.c_3 = sym.Symbol("c_3")
-        self.w = sym.Symbol("w")
-        self.m = sym.Symbol("m")
-        self.g_0 = sym.Symbol("g_0")
+        self.D = pycollo.Symbol("D")
+        self.L = pycollo.Symbol("L")
+        self.g = pycollo.Symbol("g")
+        self.r = pycollo.Symbol("r")
+        self.rho = pycollo.Symbol("rho")
+        self.rho_0 = pycollo.Symbol("rho_0")
+        self.h_r = pycollo.Symbol("h_r")
+        self.c_L = pycollo.Symbol("c_L")
+        self.c_D = pycollo.Symbol("c_D")
+        self.alpha_hat = pycollo.Symbol("alpha_hat")
+        self.Re = pycollo.Symbol("Re")
+        self.S = pycollo.Symbol("S")
+        self.c_lift_0 = pycollo.Symbol("c_lift_0")
+        self.c_lift_1 = pycollo.Symbol("c_lift_1")
+        self.mu = pycollo.Symbol("mu")
+        self.c_drag_0 = pycollo.Symbol("c_drag_0")
+        self.c_drag_1 = pycollo.Symbol("c_drag_1")
+        self.c_drag_2 = pycollo.Symbol("c_drag_2")
+        self.q_r = pycollo.Symbol("q_r")
+        self.q_a = pycollo.Symbol("q_a")
+        self.c_0 = pycollo.Symbol("c_0")
+        self.c_1 = pycollo.Symbol("c_1")
+        self.c_2 = pycollo.Symbol("c_2")
+        self.c_3 = pycollo.Symbol("c_3")
+        self.w = pycollo.Symbol("w")
+        self.m = pycollo.Symbol("m")
+        self.g_0 = pycollo.Symbol("g_0")
 
         # Numerical bounds on time endpoints
         self.t_0 = 0.0
@@ -135,26 +134,26 @@ class TestHypersensitiveProblem:
                                        self.psi]
         state.phase.control_variables = [self.alpha, self.beta]
 
-        dh = self.nu * sym.sin(self.gamma)
+        dh = self.nu * pycollo.sin(self.gamma)
 
-        dphi_1 = self.nu * sym.cos(self.gamma) * sym.sin(self.psi)
-        dphi_2 = (self.r * sym.cos(self.theta))
+        dphi_1 = self.nu * pycollo.cos(self.gamma) * pycollo.sin(self.psi)
+        dphi_2 = (self.r * pycollo.cos(self.theta))
         dphi = dphi_1 / dphi_2
 
-        dtheta = self.nu * sym.cos(self.gamma) * sym.cos(self.psi) / self.r
+        dtheta = self.nu * pycollo.cos(self.gamma) * pycollo.cos(self.psi) / self.r
 
-        dnu = -(self.D / self.m) - self.g * sym.sin(self.gamma)
+        dnu = -(self.D / self.m) - self.g * pycollo.sin(self.gamma)
 
-        dgamma_1 = self.L * sym.cos(self.beta) / (self.m * self.nu)
-        dgamma_2 = sym.cos(self.gamma)
+        dgamma_1 = self.L * pycollo.cos(self.beta) / (self.m * self.nu)
+        dgamma_2 = pycollo.cos(self.gamma)
         dgamma_3 = ((self.nu / self.r) - (self.g / self.nu))
         dgamma = dgamma_1 + dgamma_2 * dgamma_3
 
-        dpsi_1 = self.L * sym.sin(self.beta)
-        dpsi_2 = (self.m * self.nu * sym.cos(self.gamma))
-        dpsi_3 = self.nu * sym.cos(self.gamma)
-        dpsi_4 = sym.sin(self.psi) * sym.sin(self.theta)
-        dpsi_5 = self.r * sym.cos(self.theta)
+        dpsi_1 = self.L * pycollo.sin(self.beta)
+        dpsi_2 = (self.m * self.nu * pycollo.cos(self.gamma))
+        dpsi_3 = self.nu * pycollo.cos(self.gamma)
+        dpsi_4 = pycollo.sin(self.psi) * pycollo.sin(self.theta)
+        dpsi_5 = self.r * pycollo.cos(self.theta)
         dpsi = (dpsi_1 / dpsi_2) + (dpsi_3 * dpsi_4) / dpsi_5
 
         state.phase.state_equations = {self.h: dh,
@@ -185,7 +184,7 @@ class TestHypersensitiveProblem:
             self.L: 0.5 * self.c_L * self.S * self.rho * self.nu**2,
             self.g: self.mu / (self.r**2),
             self.r: self.Re + self.h,
-            self.rho: self.rho_0 * sym.exp(-self.h / self.h_r),
+            self.rho: self.rho_0 * pycollo.exp(-self.h / self.h_r),
             self.c_L: self.c_lift_0 + (self.c_lift_1 * self.alpha),
             self.c_D: c_D,
             self.m: 92079.2525560557,

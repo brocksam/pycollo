@@ -8,7 +8,6 @@ optimal control problem.
 
 import numpy as np
 import pytest
-import sympy as sym
 
 import pycollo
 
@@ -23,29 +22,29 @@ class TestTumourAntiAngiogenesis:
         """Instantiate the required symbols and variables."""
 
         # Symbol creation
-        self.p = sym.Symbol("p")
-        self.q = sym.Symbol("q")
-        self.u = sym.Symbol("u")
+        self.p = pycollo.Symbol("p")
+        self.q = pycollo.Symbol("q")
+        self.u = pycollo.Symbol("u")
 
-        self.xi = sym.Symbol("xi")
-        self.b = sym.Symbol("b")
-        self.d = sym.Symbol("d")
-        self.G = sym.Symbol("G")
-        self.mu = sym.Symbol("mu")
-        self.a = sym.Symbol("a")
-        self.A = sym.Symbol("A")
+        self.xi = pycollo.Symbol("xi")
+        self.b = pycollo.Symbol("b")
+        self.d = pycollo.Symbol("d")
+        self.G = pycollo.Symbol("G")
+        self.mu = pycollo.Symbol("mu")
+        self.a = pycollo.Symbol("a")
+        self.A = pycollo.Symbol("A")
 
-        self.p_max = sym.Symbol("p_max")
-        self.p_min = sym.Symbol("p_min")
-        self.q_max = sym.Symbol("q_max")
-        self.q_min = sym.Symbol("q_min")
-        self.y_max = sym.Symbol("y_max")
-        self.y_min = sym.Symbol("y_min")
-        self.u_max = sym.Symbol("u_max")
-        self.u_min = sym.Symbol("u_min")
-        self.p_t0 = sym.Symbol("p_t0")
-        self.q_t0 = sym.Symbol("q_t0")
-        self.y_t0 = sym.Symbol("y_t0")
+        self.p_max = pycollo.Symbol("p_max")
+        self.p_min = pycollo.Symbol("p_min")
+        self.q_max = pycollo.Symbol("q_max")
+        self.q_min = pycollo.Symbol("q_min")
+        self.y_max = pycollo.Symbol("y_max")
+        self.y_min = pycollo.Symbol("y_min")
+        self.u_max = pycollo.Symbol("u_max")
+        self.u_min = pycollo.Symbol("u_min")
+        self.p_t0 = pycollo.Symbol("p_t0")
+        self.q_t0 = pycollo.Symbol("q_t0")
+        self.y_t0 = pycollo.Symbol("y_t0")
 
         # Auxiliary information
         self.t0 = 0.0
@@ -63,7 +62,7 @@ class TestTumourAntiAngiogenesis:
                                           control_variables=self.u)
 
         # Phase information
-        p_eqn = -self.xi * self.p * sym.log(self.p / self.q)
+        p_eqn = -self.xi * self.p * pycollo.log(self.p / self.q)
         q_eqn_1 = (self.mu + (self.d * self.p**(2 / 3)) + (self.G * self.u))
         q_eqn = self.q * (self.b - q_eqn_1)
         state.phase.state_equations = {self.p: p_eqn,

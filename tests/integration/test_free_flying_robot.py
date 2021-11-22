@@ -8,7 +8,6 @@ optimal control problem.
 
 import numpy as np
 import pytest
-import sympy as sym
 
 import pycollo
 
@@ -23,23 +22,23 @@ class TestFreeFlyingRobot:
         """Instantiate the required symbols and variables."""
 
         # Symbol creation
-        self.r_x = sym.Symbol("r_x")
-        self.r_y = sym.Symbol("r_y")
-        self.theta = sym.Symbol("theta")
-        self.v_x = sym.Symbol("v_x")
-        self.v_y = sym.Symbol("v_y")
-        self.omega = sym.Symbol("omega")
+        self.r_x = pycollo.Symbol("r_x")
+        self.r_y = pycollo.Symbol("r_y")
+        self.theta = pycollo.Symbol("theta")
+        self.v_x = pycollo.Symbol("v_x")
+        self.v_y = pycollo.Symbol("v_y")
+        self.omega = pycollo.Symbol("omega")
 
-        self.u_x_pos = sym.Symbol("u_x_pos")
-        self.u_x_neg = sym.Symbol("u_x_neg")
-        self.u_y_pos = sym.Symbol("u_y_pos")
-        self.u_y_neg = sym.Symbol("u_y_neg")
+        self.u_x_pos = pycollo.Symbol("u_x_pos")
+        self.u_x_neg = pycollo.Symbol("u_x_neg")
+        self.u_y_pos = pycollo.Symbol("u_y_pos")
+        self.u_y_neg = pycollo.Symbol("u_y_neg")
 
-        self.T_x = sym.Symbol("T_x")
-        self.T_y = sym.Symbol("T_y")
+        self.T_x = pycollo.Symbol("T_x")
+        self.T_y = pycollo.Symbol("T_y")
 
-        self.I_xx = sym.Symbol("I_xx")
-        self.I_yy = sym.Symbol("I_yy")
+        self.I_xx = pycollo.Symbol("I_xx")
+        self.I_yy = pycollo.Symbol("I_yy")
 
         # Auxiliary information
         self.u_x_pos_min = 0
@@ -107,8 +106,8 @@ class TestFreeFlyingRobot:
                                           control_variables=u_vars)
 
         # Phase information
-        v_x_dot = (self.T_x + self.T_y) * sym.cos(self.theta)
-        v_y_dot = (self.T_x + self.T_y) * sym.sin(self.theta)
+        v_x_dot = (self.T_x + self.T_y) * pycollo.cos(self.theta)
+        v_y_dot = (self.T_x + self.T_y) * pycollo.sin(self.theta)
         omega_dot = (self.I_xx * self.T_x) - (self.I_yy * self.T_y)
         state.phase.state_equations = {self.r_x: self.v_x,
                                        self.r_y: self.v_y,

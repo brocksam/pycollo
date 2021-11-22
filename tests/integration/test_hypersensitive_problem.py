@@ -8,7 +8,6 @@ reference for this optimal control problem.
 
 import numpy as np
 import pytest
-import sympy as sym
 
 import pycollo
 
@@ -21,8 +20,8 @@ class TestHypersensitiveProblem:
     @pytest.fixture(autouse=True)
     def ocp_fixture(self):
         """Instantiate the required symbols."""
-        self.y = sym.Symbol("y")
-        self.u = sym.Symbol("u")
+        self.y = pycollo.Symbol("y")
+        self.u = pycollo.Symbol("u")
 
     def test_instantiate_ocp(self, state):
         """OCP object is instantiated correctly."""

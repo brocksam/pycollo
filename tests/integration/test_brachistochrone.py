@@ -8,7 +8,6 @@ reference for this optimal control problem.
 
 import numpy as np
 import pytest
-import sympy as sym
 
 import pycollo
 
@@ -21,10 +20,10 @@ class TestHypersensitiveProblem:
     @pytest.fixture(autouse=True)
     def ocp_fixture(self):
         """Instantiate the required symbols."""
-        self.x = sym.Symbol("x")
-        self.y = sym.Symbol("y")
-        self.v = sym.Symbol("v")
-        self.u = sym.Symbol("u")
+        self.x = pycollo.Symbol("x")
+        self.y = pycollo.Symbol("y")
+        self.v = pycollo.Symbol("v")
+        self.u = pycollo.Symbol("u")
 
         self.g = 9.81
         self.t0 = 0
@@ -60,9 +59,9 @@ class TestHypersensitiveProblem:
 
     def test_set_phase_data(self, state):
         """Phase data (equations etc.) can be added correctly."""
-        x_eqn = self.v * sym.sin(self.u)
-        y_eqn = self.v * sym.cos(self.u)
-        v_eqn = self.g * sym.cos(self.u)
+        x_eqn = self.v * pycollo.sin(self.u)
+        y_eqn = self.v * pycollo.cos(self.u)
+        v_eqn = self.g * pycollo.cos(self.u)
         state.ocp.phases.A.state_variables = [self.x, self.y, self.v]
         state.ocp.phases.A.control_variables = self.u
         state.ocp.phases.A.state_equations = [x_eqn, y_eqn, v_eqn]

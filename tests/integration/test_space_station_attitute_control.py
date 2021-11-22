@@ -7,7 +7,6 @@ description of and reference for this optimal control problem.
 
 import numpy as np
 import pytest
-import sympy as sym
 
 import pycollo
 
@@ -22,59 +21,59 @@ class TestHypersensitiveProblem:
         """Instantiate the required symbols and variables."""
 
         # Symbol creation
-        self.J_00 = sym.Symbol("J_00")
-        self.J_01 = sym.Symbol("J_01")
-        self.J_02 = sym.Symbol("J_02")
-        self.J_10 = sym.Symbol("J_10")
-        self.J_11 = sym.Symbol("J_11")
-        self.J_12 = sym.Symbol("J_12")
-        self.J_20 = sym.Symbol("J_20")
-        self.J_21 = sym.Symbol("J_21")
-        self.J_22 = sym.Symbol("J_22")
-        self.J_inv_00 = sym.Symbol("J_inv_00")
-        self.J_inv_01 = sym.Symbol("J_inv_01")
-        self.J_inv_02 = sym.Symbol("J_inv_02")
-        self.J_inv_10 = sym.Symbol("J_inv_10")
-        self.J_inv_11 = sym.Symbol("J_inv_11")
-        self.J_inv_12 = sym.Symbol("J_inv_12")
-        self.J_inv_20 = sym.Symbol("J_inv_20")
-        self.J_inv_21 = sym.Symbol("J_inv_21")
-        self.J_inv_22 = sym.Symbol("J_inv_22")
-        self.omega_x = sym.Symbol("omega_x")
-        self.omega_y = sym.Symbol("omega_y")
-        self.omega_z = sym.Symbol("omega_z")
-        self.r_x = sym.Symbol("r_x")
-        self.r_y = sym.Symbol("r_y")
-        self.r_z = sym.Symbol("r_z")
-        self.h_x = sym.Symbol("h_x")
-        self.h_y = sym.Symbol("h_y")
-        self.h_z = sym.Symbol("h_z")
-        self.u_x = sym.Symbol("u_x")
-        self.u_y = sym.Symbol("u_y")
-        self.u_z = sym.Symbol("u_z")
+        self.J_00 = pycollo.Symbol("J_00")
+        self.J_01 = pycollo.Symbol("J_01")
+        self.J_02 = pycollo.Symbol("J_02")
+        self.J_10 = pycollo.Symbol("J_10")
+        self.J_11 = pycollo.Symbol("J_11")
+        self.J_12 = pycollo.Symbol("J_12")
+        self.J_20 = pycollo.Symbol("J_20")
+        self.J_21 = pycollo.Symbol("J_21")
+        self.J_22 = pycollo.Symbol("J_22")
+        self.J_inv_00 = pycollo.Symbol("J_inv_00")
+        self.J_inv_01 = pycollo.Symbol("J_inv_01")
+        self.J_inv_02 = pycollo.Symbol("J_inv_02")
+        self.J_inv_10 = pycollo.Symbol("J_inv_10")
+        self.J_inv_11 = pycollo.Symbol("J_inv_11")
+        self.J_inv_12 = pycollo.Symbol("J_inv_12")
+        self.J_inv_20 = pycollo.Symbol("J_inv_20")
+        self.J_inv_21 = pycollo.Symbol("J_inv_21")
+        self.J_inv_22 = pycollo.Symbol("J_inv_22")
+        self.omega_x = pycollo.Symbol("omega_x")
+        self.omega_y = pycollo.Symbol("omega_y")
+        self.omega_z = pycollo.Symbol("omega_z")
+        self.r_x = pycollo.Symbol("r_x")
+        self.r_y = pycollo.Symbol("r_y")
+        self.r_z = pycollo.Symbol("r_z")
+        self.h_x = pycollo.Symbol("h_x")
+        self.h_y = pycollo.Symbol("h_y")
+        self.h_z = pycollo.Symbol("h_z")
+        self.u_x = pycollo.Symbol("u_x")
+        self.u_y = pycollo.Symbol("u_y")
+        self.u_z = pycollo.Symbol("u_z")
 
-        self.domega_x_dt = sym.Symbol("domega_x_dt")
-        self.domega_y_dt = sym.Symbol("domega_y_dt")
-        self.domega_z_dt = sym.Symbol("domega_z_dt")
-        self.dr_x_dt = sym.Symbol("dr_x_dt")
-        self.dr_y_dt = sym.Symbol("dr_y_dt")
-        self.dr_z_dt = sym.Symbol("dr_z_dt")
-        self.dh_x_dt = sym.Symbol("dh_x_dt")
-        self.dh_y_dt = sym.Symbol("dh_y_dt")
-        self.dh_z_dt = sym.Symbol("dh_z_dt")
+        self.domega_x_dt = pycollo.Symbol("domega_x_dt")
+        self.domega_y_dt = pycollo.Symbol("domega_y_dt")
+        self.domega_z_dt = pycollo.Symbol("domega_z_dt")
+        self.dr_x_dt = pycollo.Symbol("dr_x_dt")
+        self.dr_y_dt = pycollo.Symbol("dr_y_dt")
+        self.dr_z_dt = pycollo.Symbol("dr_z_dt")
+        self.dh_x_dt = pycollo.Symbol("dh_x_dt")
+        self.dh_y_dt = pycollo.Symbol("dh_y_dt")
+        self.dh_z_dt = pycollo.Symbol("dh_z_dt")
 
-        self.domega_x_dt_tF = sym.Symbol("domega_x_dt_tF")
-        self.domega_y_dt_tF = sym.Symbol("domega_y_dt_tF")
-        self.domega_z_dt_tF = sym.Symbol("domega_z_dt_tF")
-        self.dr_x_dt_tF = sym.Symbol("dr_x_dt_tF")
-        self.dr_y_dt_tF = sym.Symbol("dr_y_dt_tF")
-        self.dr_z_dt_tF = sym.Symbol("dr_z_dt_tF")
+        self.domega_x_dt_tF = pycollo.Symbol("domega_x_dt_tF")
+        self.domega_y_dt_tF = pycollo.Symbol("domega_y_dt_tF")
+        self.domega_z_dt_tF = pycollo.Symbol("domega_z_dt_tF")
+        self.dr_x_dt_tF = pycollo.Symbol("dr_x_dt_tF")
+        self.dr_y_dt_tF = pycollo.Symbol("dr_y_dt_tF")
+        self.dr_z_dt_tF = pycollo.Symbol("dr_z_dt_tF")
 
-        self.omega_orb = sym.Symbol("omega_orb")
-        self.h_max = sym.Symbol("h_max")
+        self.omega_orb = pycollo.Symbol("omega_orb")
+        self.h_max = pycollo.Symbol("h_max")
 
-        self.h_inner_prod_squared = sym.Symbol("h_inner_prod_squared")
-        self.u_inner_prod_squared = sym.Symbol("u_inner_prod_squared")
+        self.h_inner_prod_squared = pycollo.Symbol("h_inner_prod_squared")
+        self.u_inner_prod_squared = pycollo.Symbol("u_inner_prod_squared")
 
         # Auxiliary information
         self.t0 = 0
@@ -186,24 +185,24 @@ class TestHypersensitiveProblem:
         state.phase.guess.integral_variables = np.array([10])
 
         # J matrices
-        J = sym.Matrix([
+        J = pycollo.Matrix([
             [self.J_00, self.J_01, self.J_02],
             [self.J_10, self.J_11, self.J_12],
             [self.J_20, self.J_21, self.J_22]])
-        J_inv = sym.Matrix([
+        J_inv = pycollo.Matrix([
             [self.J_inv_00, self.J_inv_01, self.J_inv_02],
             [self.J_inv_10, self.J_inv_11, self.J_inv_12],
             [self.J_inv_20, self.J_inv_21, self.J_inv_22]])
 
         # Continuous vectors
-        omega = sym.Matrix([self.omega_x, self.omega_y, self.omega_z])
-        r = sym.Matrix([self.r_x, self.r_y, self.r_z])
-        h = sym.Matrix([self.h_x, self.h_y, self.h_z])
-        u = sym.Matrix([self.u_x, self.u_y, self.u_z])
+        omega = pycollo.Matrix([self.omega_x, self.omega_y, self.omega_z])
+        r = pycollo.Matrix([self.r_x, self.r_y, self.r_z])
+        h = pycollo.Matrix([self.h_x, self.h_y, self.h_z])
+        u = pycollo.Matrix([self.u_x, self.u_y, self.u_z])
 
         # Calculating domega/dt
         r_skew_symmetric = skew_symmetric_cross_product_operator(r)
-        I = sym.eye(3)
+        I = pycollo.eye(3)
         D = 2 / (1 + col_vec_dot_row_vec(r.T, r))
         E = (r_skew_symmetric * r_skew_symmetric) - r_skew_symmetric
         C = I + (D * E)
@@ -220,9 +219,9 @@ class TestHypersensitiveProblem:
         dr_dt = 0.5 * (r_sqrd + I + r_skew_symmetric) * (omega - omega_0)
 
         # Endpoint equations
-        omega_tF = sym.Matrix(state.phase.final_state_variables[:3])
-        r_tF = sym.Matrix(state.phase.final_state_variables[3:6])
-        h_tF = sym.Matrix(state.phase.final_state_variables[6:])
+        omega_tF = pycollo.Matrix(state.phase.final_state_variables[:3])
+        r_tF = pycollo.Matrix(state.phase.final_state_variables[3:6])
+        h_tF = pycollo.Matrix(state.phase.final_state_variables[6:])
 
         # Calculating domega(tF)/dt
         r_tF_skew_symmetric = skew_symmetric_cross_product_operator(r_tF)
@@ -310,7 +309,7 @@ def skew_symmetric_cross_product_operator(vec):
     if vec.shape != (3, 1):
         raise ValueError(f"Vector must be a column vector and have shape "
                          f"(3, 1) but is {vec.shape}")
-    skew_symmetric_cross_product_operator = sym.Matrix([
+    skew_symmetric_cross_product_operator = pycollo.Matrix([
         [0, -vec[2], vec[1]],
         [vec[2], 0, -vec[0]],
         [-vec[1], vec[0], 0]])
@@ -324,7 +323,7 @@ def row_vec_dot_col_vec(vec_1, vec_2):
     if vec_2.shape != (1, 3):
         raise ValueError(f"Second vector must be a row vector and have shape "
                          f"(1, 3) but is {vec_2.shape}")
-    matrix = sym.Matrix([[vec_1[0, 0] * vec_2[0, 0],
+    matrix = pycollo.Matrix([[vec_1[0, 0] * vec_2[0, 0],
                           vec_1[0, 0] * vec_2[0, 1],
                           vec_1[0, 0] * vec_2[0, 2]],
                          [vec_1[1, 0] * vec_2[0, 0],

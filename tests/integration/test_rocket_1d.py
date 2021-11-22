@@ -8,7 +8,6 @@ reference for this optimal control problem.
 
 import numpy as np
 import pytest
-import sympy as sym
 
 import pycollo
 
@@ -29,12 +28,12 @@ class TestRocket1D:
     @pytest.fixture(autouse=True)
     def ocp_fixture(self):
         """Instantiate the required symbols."""
-        self.h = sym.Symbol("h")
-        self.v = sym.Symbol("v")
-        self.m = sym.Symbol("m")
-        self.T = sym.Symbol("T")
-        self.g = sym.Symbol("g")
-        self.alpha = sym.Symbol("alpha")
+        self.h = pycollo.Symbol("h")
+        self.v = pycollo.Symbol("v")
+        self.m = pycollo.Symbol("m")
+        self.T = pycollo.Symbol("T")
+        self.g = pycollo.Symbol("g")
+        self.alpha = pycollo.Symbol("alpha")
 
     def test_instantiate_ocp(self, state):
         """OCP object is instantiated correctly."""

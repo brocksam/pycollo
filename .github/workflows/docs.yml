@@ -16,7 +16,6 @@ jobs:
       - name: Build docs
         run: |
           pip install --upgrade -r docs/requirements.txt
-          pip install --upgrade .[all]
           cd docs
           make clean
           cd ..

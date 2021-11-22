@@ -22,6 +22,6 @@ jobs:
       - name: Install basic dependencies
         run: conda install -q -y --file=requirements.txt --file=tests/requirements.txt
       - name: Install Pycollo
-        run: python setup.py install
+        run: pip install .
       - name: Test with pytest
         run: pytest tests/

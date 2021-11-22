@@ -3,8 +3,9 @@
 # Explicitly available classes
 from .bounds import *
 from .guess import *
-from .settings import *
 from .optimal_control_problem import *
+from .settings import *
+from .symbol import *
 
 # Modules accessible as submodules
 from . import backend

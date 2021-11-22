@@ -7,11 +7,10 @@ Industrial and Applied Mathematics, p170 - 171.
 """
 
 import numpy as np
-import sympy as sym
 
 import pycollo
 
-y, u = sym.symbols("y u")
+y, u = pycollo.symbols("y u")
 
 problem = pycollo.OptimalControlProblem(name="Hypersensitive problem")
 phase = problem.new_phase(name="A")

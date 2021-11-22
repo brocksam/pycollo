@@ -6,59 +6,58 @@ Industrial and Applied Mathematics, p326 - 330.
 
 Attributes
 ----------
-r_x : `Symbol <sympy>`
+r_x : `Symbol`
     First inertial coordinate of the centre of gravity (in m)
-r_y : `Symbol <sympy>`
+r_y : `Symbol`
     Second inertial coordinate of the centre of gravity (in m)
-theta : `Symbol <sympy>`
+theta : `Symbol`
     Thrust direction (in rad)
-v_x : `Symbol <sympy>`
+v_x : `Symbol`
     First inertial velocity of the centre of gravity (in m/s)
-v_y : `Symbol <sympy>`
+v_y : `Symbol`
     Second inertial velocity of the centre of gravity  (in m/s)
-omega : `Symbol <sympy>`
+omega : `Symbol`
     Thurst angular velocity (in rad/s)
-u_x_pos : `Symbol <sympy>`
+u_x_pos : `Symbol`
     Positive component of the thrust in the x-direction (in N)
-u_x_neg : `Symbol <sympy>`
+u_x_neg : `Symbol`
     Negative component of the thrust in the x-direction (in N)
-u_y_pos : `Symbol <sympy>`
+u_y_pos : `Symbol`
     Positive component of the thrust in the y-direction (in N)
-u_y_neg : `Symbol <sympy>`
+u_y_neg : `Symbol`
     Negative component of the thrust in the y-direction (in N)
-T_x : `Symbol <sympy>`
+T_x : `Symbol`
     Total thrust in the x-direction (in N)
-T_y : `Symbol <sympy>`
+T_y : `Symbol`
     Total thrust in the y-direction (in N)
-I_xx : `Symbol <sympy>`
+I_xx : `Symbol`
     Moment of inertia about the x-axis (in kg/m^2)
-I_yy : `Symbol <sympy>`
+I_yy : `Symbol`
     Moment of inertia about the y-axis (in kg/m^2)
 
 """
 
 import numpy as np
 import pycollo
-import sympy as sym
 
 # Symbol creation
-r_x = sym.Symbol("r_x")
-r_y = sym.Symbol("r_y")
-theta = sym.Symbol("theta")
-v_x = sym.Symbol("v_x")
-v_y = sym.Symbol("v_y")
-omega = sym.Symbol("omega")
+r_x = pycollo.Symbol("r_x")
+r_y = pycollo.Symbol("r_y")
+theta = pycollo.Symbol("theta")
+v_x = pycollo.Symbol("v_x")
+v_y = pycollo.Symbol("v_y")
+omega = pycollo.Symbol("omega")
 
-u_x_pos = sym.Symbol("u_x_pos")
-u_x_neg = sym.Symbol("u_x_neg")
-u_y_pos = sym.Symbol("u_y_pos")
-u_y_neg = sym.Symbol("u_y_neg")
+u_x_pos = pycollo.Symbol("u_x_pos")
+u_x_neg = pycollo.Symbol("u_x_neg")
+u_y_pos = pycollo.Symbol("u_y_pos")
+u_y_neg = pycollo.Symbol("u_y_neg")
 
-T_x = sym.Symbol("T_x")
-T_y = sym.Symbol("T_y")
+T_x = pycollo.Symbol("T_x")
+T_y = pycollo.Symbol("T_y")
 
-I_xx = sym.Symbol("I_xx")
-I_yy = sym.Symbol("I_yy")
+I_xx = pycollo.Symbol("I_xx")
+I_yy = pycollo.Symbol("I_yy")
 
 # Auxiliary information
 u_x_pos_min = 0
@@ -120,8 +119,8 @@ phase = problem.new_phase(name="A",
 phase.state_equations = {r_x: v_x,
                          r_y: v_y,
                          theta: omega,
-                         v_x: (T_x + T_y) * sym.cos(theta),
-                         v_y: (T_x + T_y) * sym.sin(theta),
+                         v_x: (T_x + T_y) * pycollo.cos(theta),
+                         v_y: (T_x + T_y) * pycollo.sin(theta),
                          omega: (I_xx * T_x) - (I_yy * T_y)}
 phase.integrand_functions = [u_x_pos + u_x_neg + u_y_pos + u_y_neg]
 phase.path_constraints = [(u_x_pos + u_x_neg), (u_y_pos + u_y_neg)]

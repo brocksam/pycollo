@@ -7,48 +7,47 @@ Industrial and Applied Mathematics, p247 - 251.
 """
 
 import numpy as np
-import sympy as sym
 
 import pycollo
 
 # Variable symbols
-h = sym.Symbol("h")
-phi = sym.Symbol("phi")
-theta = sym.Symbol("theta")
-nu = sym.Symbol("nu")
-gamma = sym.Symbol("gamma")
-psi = sym.Symbol("psi")
-alpha = sym.Symbol("alpha")
-beta = sym.Symbol("beta")
+h = pycollo.Symbol("h")
+phi = pycollo.Symbol("phi")
+theta = pycollo.Symbol("theta")
+nu = pycollo.Symbol("nu")
+gamma = pycollo.Symbol("gamma")
+psi = pycollo.Symbol("psi")
+alpha = pycollo.Symbol("alpha")
+beta = pycollo.Symbol("beta")
 
 # Auxiliary symbols
-D = sym.Symbol("D")
-L = sym.Symbol("L")
-g = sym.Symbol("g")
-r = sym.Symbol("r")
-rho = sym.Symbol("rho")
-rho_0 = sym.Symbol("rho_0")
-h_r = sym.Symbol("h_r")
-c_L = sym.Symbol("c_L")
-c_D = sym.Symbol("c_D")
-alpha_hat = sym.Symbol("alpha_hat")
-Re = sym.Symbol("Re")
-S = sym.Symbol("S")
-c_lift_0 = sym.Symbol("c_lift_0")
-c_lift_1 = sym.Symbol("c_lift_1")
-mu = sym.Symbol("mu")
-c_drag_0 = sym.Symbol("c_drag_0")
-c_drag_1 = sym.Symbol("c_drag_1")
-c_drag_2 = sym.Symbol("c_drag_2")
-q_r = sym.Symbol("q_r")
-q_a = sym.Symbol("q_a")
-c_0 = sym.Symbol("c_0")
-c_1 = sym.Symbol("c_1")
-c_2 = sym.Symbol("c_2")
-c_3 = sym.Symbol("c_3")
-w = sym.Symbol("w")
-m = sym.Symbol("m")
-g_0 = sym.Symbol("g_0")
+D = pycollo.Symbol("D")
+L = pycollo.Symbol("L")
+g = pycollo.Symbol("g")
+r = pycollo.Symbol("r")
+rho = pycollo.Symbol("rho")
+rho_0 = pycollo.Symbol("rho_0")
+h_r = pycollo.Symbol("h_r")
+c_L = pycollo.Symbol("c_L")
+c_D = pycollo.Symbol("c_D")
+alpha_hat = pycollo.Symbol("alpha_hat")
+Re = pycollo.Symbol("Re")
+S = pycollo.Symbol("S")
+c_lift_0 = pycollo.Symbol("c_lift_0")
+c_lift_1 = pycollo.Symbol("c_lift_1")
+mu = pycollo.Symbol("mu")
+c_drag_0 = pycollo.Symbol("c_drag_0")
+c_drag_1 = pycollo.Symbol("c_drag_1")
+c_drag_2 = pycollo.Symbol("c_drag_2")
+q_r = pycollo.Symbol("q_r")
+q_a = pycollo.Symbol("q_a")
+c_0 = pycollo.Symbol("c_0")
+c_1 = pycollo.Symbol("c_1")
+c_2 = pycollo.Symbol("c_2")
+c_3 = pycollo.Symbol("c_3")
+w = pycollo.Symbol("w")
+m = pycollo.Symbol("m")
+g_0 = pycollo.Symbol("g_0")
 
 # Numerical bounds on time endpoints
 t_0 = 0.0
@@ -116,16 +115,16 @@ phase = problem.new_phase(name="A")
 # Phase information
 phase.state_variables = [h, phi, theta, nu, gamma, psi]
 phase.control_variables = [alpha, beta]
-dgamma_1 = L * sym.cos(beta) / (m * nu)
-dgamma_2 = sym.cos(gamma) * ((nu / r) - (g / nu))
-dpsi_1 = L * sym.sin(beta) / (m * nu * sym.cos(gamma))
-dpsi_2 = nu * sym.cos(gamma) * sym.sin(psi) * sym.sin(theta)
-dpsi_3 = r * sym.cos(theta)
+dgamma_1 = L * pycollo.cos(beta) / (m * nu)
+dgamma_2 = pycollo.cos(gamma) * ((nu / r) - (g / nu))
+dpsi_1 = L * pycollo.sin(beta) / (m * nu * pycollo.cos(gamma))
+dpsi_2 = nu * pycollo.cos(gamma) * pycollo.sin(psi) * pycollo.sin(theta)
+dpsi_3 = r * pycollo.cos(theta)
 phase.state_equations = {
-    h: nu * sym.sin(gamma),
-    phi: nu * sym.cos(gamma) * sym.sin(psi) / (r * sym.cos(theta)),
-    theta: nu * sym.cos(gamma) * sym.cos(psi) / r,
-    nu: - (D / m) - g * sym.sin(gamma),
+    h: nu * pycollo.sin(gamma),
+    phi: nu * pycollo.cos(gamma) * pycollo.sin(psi) / (r * pycollo.cos(theta)),
+    theta: nu * pycollo.cos(gamma) * pycollo.cos(psi) / r,
+    nu: - (D / m) - g * pycollo.sin(gamma),
     gamma: dgamma_1 + dgamma_2,
     psi: dpsi_1 + dpsi_2 / dpsi_3,
 }
@@ -154,11 +153,11 @@ problem.auxiliary_data = {
     L: 0.5 * c_L * S * rho * nu**2,
     g: mu / (r**2),
     r: Re + h,
-    rho: rho_0 * sym.exp(-h / h_r),
+    rho: rho_0 * pycollo.exp(-h / h_r),
     c_L: c_lift_0 + (c_lift_1 * alpha),
     c_D: c_drag_0 + (c_drag_1 * alpha) + (c_drag_2 * alpha**2),
     # alpha_hat: 180*alpha/np.pi,
-    # q_r: 17700*sym.sqrt(rho)*(0.0001*nu)**3.07,
+    # q_r: 17700*pycollo.sqrt(rho)*(0.0001*nu)**3.07,
     # q_a: c_0 + c_1*alpha_hat + c_2*alpha_hat**2 + c_3*alpha_hat**3,
     m: 92079.2525560557,
 }

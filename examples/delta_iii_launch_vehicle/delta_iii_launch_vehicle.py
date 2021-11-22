@@ -9,179 +9,178 @@ Industrial and Applied Mathematics, p336 - 345.
 Attributes
 ----------
 
-r_x : `Symbol <sympy>`
+r_x : `Symbol`
     Cartesian x-vector position relative to the centre of the earth
         using earth-centered inertial (ECI) coordinates (in m)
-r_y : `Symbol <sympy>`
+r_y : `Symbol`
     Cartesian y-vector position using ECI coordinates (in m)
-r_z : `Symbol <sympy>`
+r_z : `Symbol`
     Cartesian z-vector position using ECI coordinates (in m)
-v_x : `Symbol <sympy>`
+v_x : `Symbol`
     Cartesian x-vector velocity using ECI coordinates (in m/s)
-v_y : `Symbol <sympy>`
+v_y : `Symbol`
     Cartesian y-vector velocity using ECI coordinates (in m/s)
-v_z : `Symbol <sympy>`
+v_z : `Symbol`
     Cartesian z-vector velocity using ECI coordinates (in m/s)
-m : `Symbol <sympy>`
+m : `Symbol`
     Total mass (in kg)
-u_x : `Symbol <sympy>`
+u_x : `Symbol`
     Cartesian x-vector inertial trust (N)
-u_y : `Symbol <sympy>`
+u_y : `Symbol`
     Cartesian y-vector inertial trust (N)
-u_z : `Symbol <sympy>`
+u_z : `Symbol`
     Cartesian z-vector inertial trust (N)
-mu : `Symbol <sympy>`
+mu : `Symbol`
     Gravitational parameter
-R_E : `Symbol <sympy>`
+R_E : `Symbol`
     Radius of Earth (in m)
-r_vec_norm : `Symbol <sympy>`
+r_vec_norm : `Symbol`
     Absolute position (in m)
-v_vec_norm : `Symbol <sympy>`
+v_vec_norm : `Symbol`
     Absolute velocity (in m/s)
-u_vec_norm : `Symbol <sympy>`
+u_vec_norm : `Symbol`
     Absolute control (in N)
-D_x : `Symbol <sympy>`
+D_x : `Symbol`
     Drag for in x-direction (in N)
-D_y : `Symbol <sympy>`
+D_y : `Symbol`
     Drag for in y-direction (in N)
-D_z : `Symbol <sympy>`
+D_z : `Symbol`
     Drag for in z-direction (in N)
-C_D : `Symbol <sympy>`
+C_D : `Symbol`
     Coefficient of drag (nondimensional)
-S : `Symbol <sympy>`
+S : `Symbol`
     Drag reference area (in m^3)
-v_r_vec_norm : `Symbol <sympy>`
+v_r_vec_norm : `Symbol`
     Absolute Earth relative velocity (in m/s)
-v_r_x : `Symbol <sympy>`
+v_r_x : `Symbol`
     Absolute Earth relative velocity in x-direction (in m/s)
-v_r_y : `Symbol <sympy>`
+v_r_y : `Symbol`
     Absolute Earth relative velocity in y-direction (in m/s)
-v_r_z : `Symbol <sympy>`
+v_r_z : `Symbol`
     Absolute Earth relative velocity in z-direction (in m/s)
-omega_x_r_x : `Symbol <sympy>`
+omega_x_r_x : `Symbol`
     x-component of cross product of `omega` and `r`
-omega_x_r_y : `Symbol <sympy>`
+omega_x_r_y : `Symbol`
     y-component of cross product of `omega` and `r`
-omega_x_r_z : `Symbol <sympy>`
+omega_x_r_z : `Symbol`
     z-component of cross product of `omega` and `r`
-g_0 : `Symbol <sympy>`
+g_0 : `Symbol`
     Accerlation due to gravity at sea level (in m/s^2)
-h_0 : `Symbol <sympy>`
+h_0 : `Symbol`
     Density scale height (in m)
-h : `Symbol <sympy>`
+h : `Symbol`
     Absolute altitude above sea level (in m)
-rho : `Symbol <sympy>`
+rho : `Symbol`
     Atmospheric density (in kg/m^3)
-rho_0 : `Symbol <sympy>`
+rho_0 : `Symbol`
     Atmospheric density at sea level (in kg/m^3)
-omega_E : `Symbol <sympy>`
+omega_E : `Symbol`
     Angular velocity of earth relative to inertial space (in rad/s)
-m_tot_S : `Symbol <sympy>`
+m_tot_S : `Symbol`
     Total mass of solid boosters (in kg)
-m_tot_1 : `Symbol <sympy>`
+m_tot_1 : `Symbol`
     Total mass of stage 1 (in kg)
-m_tot_2 : `Symbol <sympy>`
+m_tot_2 : `Symbol`
     Total mass of stage 2 (in kg)
-m_prop_S : `Symbol <sympy>`
+m_prop_S : `Symbol`
     Propellant mass of solid boosters (in kg)
-m_prop_1 : `Symbol <sympy>`
+m_prop_1 : `Symbol`
     Propellant mass of stage 1 (in kg)
-m_prop_2 : `Symbol <sympy>`
+m_prop_2 : `Symbol`
     Propellant mass of stage 2 (in kg)
-m_struct_S : `Symbol <sympy>`
+m_struct_S : `Symbol`
     Structure mass of solid boosters (in kg)
-m_struct_1 : `Symbol <sympy>`
+m_struct_1 : `Symbol`
     Structure mass of stage 1 (in kg)
-m_struct_2 : `Symbol <sympy>`
+m_struct_2 : `Symbol`
     Structure mass of stage 2 (in kg)
-T_eng_S : `Symbol <sympy>`
+T_eng_S : `Symbol`
     Engine thrust of solid boosters (in N)
-T_eng_1 : `Symbol <sympy>`
+T_eng_1 : `Symbol`
     Engine thrust of stage 1 (in N)
-T_eng_2 : `Symbol <sympy>`
+T_eng_2 : `Symbol`
     Engine thrust of stage 2 (in N)
-I_S : `Symbol <sympy>`
+I_S : `Symbol`
     Specific impulse of solid boosters (in s)
-I_1 : `Symbol <sympy>`
+I_1 : `Symbol`
     Specific impulse of stage 1 (in s)
-I_2 : `Symbol <sympy>`
+I_2 : `Symbol`
     Specific impulse of stage 2 (in s)
-tau_burn_S : `Symbol <sympy>`
+tau_burn_S : `Symbol`
     Burn time of solid boosters (in s)
-tau_burn_1 : `Symbol <sympy>`
+tau_burn_1 : `Symbol`
     Burn time of stage 1 (in s)
-tau_burn_2 : `Symbol <sympy>`
+tau_burn_2 : `Symbol`
     Burn time of stage 2 (in s)
-m_payload : `Symbol <sympy>`
+m_payload : `Symbol`
     Mass of payload (in kg)
-T_over_m : `Symbol <sympy>`
+T_over_m : `Symbol`
     `T` divided by `m`
-psi_L : `Symbol <sympy>`
+psi_L : `Symbol`
     (Geocentric) latitude of Cape Canaveral launch site (in rad)
 
 """
 
 import numpy as np
 import pycollo
-import sympy as sym
 
 # Define all symbols for building problem equations
-r_x = sym.Symbol("r_x")
-r_y = sym.Symbol("r_y")
-r_z = sym.Symbol("r_z")
-v_x = sym.Symbol("v_x")
-v_y = sym.Symbol("v_y")
-v_z = sym.Symbol("v_z")
-m = sym.Symbol("m")
-u_x = sym.Symbol("u_x")
-u_y = sym.Symbol("u_y")
-u_z = sym.Symbol("u_z")
-D_x = sym.Symbol("D_x")
-D_y = sym.Symbol("D_y")
-D_z = sym.Symbol("D_z")
-T = sym.Symbol("T")
-xi = sym.Symbol("xi")
-C_D = sym.Symbol("C_D")
-S = sym.Symbol("S")
-omega_E = sym.Symbol("omega_E")
-v_r_x = sym.Symbol("v_r_x")
-v_r_y = sym.Symbol("v_r_y")
-v_r_z = sym.Symbol("v_r_z")
-omega_x_r_x = sym.Symbol("omega_x_r_x")
-omega_x_r_y = sym.Symbol("omega_x_r_y")
-omega_x_r_z = sym.Symbol("omega_x_r_z")
-mu = sym.Symbol("mu")
-R_E = sym.Symbol("R_E")
-psi_L = sym.Symbol("psi_L")
-g_0 = sym.Symbol("g_0")
-h_0 = sym.Symbol("h_0")
-h = sym.Symbol("h")
-rho = sym.Symbol("rho")
-rho_0 = sym.Symbol("rho_0")
-r_vec_norm = sym.Symbol("r_vec_norm")
-u_vec_norm = sym.Symbol("u_vec_norm")
-v_vec_norm = sym.Symbol("v_vec_norm")
-v_r_vec_norm = sym.Symbol("v_r_vec_norm")
-I_S = sym.Symbol("I_S")
-I_1 = sym.Symbol("I_1")
-I_2 = sym.Symbol("I_2")
-m_tot_S = sym.Symbol("m_tot_S")
-m_tot_1 = sym.Symbol("m_tot_1")
-m_tot_2 = sym.Symbol("m_tot_2")
-m_payload = sym.Symbol("m_payload")
-m_prop_S = sym.Symbol("m_prop_S")
-m_prop_1 = sym.Symbol("m_prop_1")
-m_prop_2 = sym.Symbol("m_prop_2")
-m_struct_S = sym.Symbol("m_struct_S")
-m_struct_1 = sym.Symbol("m_struct_1")
-m_struct_2 = sym.Symbol("m_struct_2")
-tau_burn_S = sym.Symbol("tau_burn_S")
-tau_burn_1 = sym.Symbol("tau_burn_1")
-tau_burn_2 = sym.Symbol("tau_burn_2")
-T_eng_S = sym.Symbol("T_eng_S")
-T_eng_1 = sym.Symbol("T_eng_1")
-T_eng_2 = sym.Symbol("T_eng_2")
-T_over_m = sym.Symbol("T_over_m")
+r_x = pycollo.Symbol("r_x")
+r_y = pycollo.Symbol("r_y")
+r_z = pycollo.Symbol("r_z")
+v_x = pycollo.Symbol("v_x")
+v_y = pycollo.Symbol("v_y")
+v_z = pycollo.Symbol("v_z")
+m = pycollo.Symbol("m")
+u_x = pycollo.Symbol("u_x")
+u_y = pycollo.Symbol("u_y")
+u_z = pycollo.Symbol("u_z")
+D_x = pycollo.Symbol("D_x")
+D_y = pycollo.Symbol("D_y")
+D_z = pycollo.Symbol("D_z")
+T = pycollo.Symbol("T")
+xi = pycollo.Symbol("xi")
+C_D = pycollo.Symbol("C_D")
+S = pycollo.Symbol("S")
+omega_E = pycollo.Symbol("omega_E")
+v_r_x = pycollo.Symbol("v_r_x")
+v_r_y = pycollo.Symbol("v_r_y")
+v_r_z = pycollo.Symbol("v_r_z")
+omega_x_r_x = pycollo.Symbol("omega_x_r_x")
+omega_x_r_y = pycollo.Symbol("omega_x_r_y")
+omega_x_r_z = pycollo.Symbol("omega_x_r_z")
+mu = pycollo.Symbol("mu")
+R_E = pycollo.Symbol("R_E")
+psi_L = pycollo.Symbol("psi_L")
+g_0 = pycollo.Symbol("g_0")
+h_0 = pycollo.Symbol("h_0")
+h = pycollo.Symbol("h")
+rho = pycollo.Symbol("rho")
+rho_0 = pycollo.Symbol("rho_0")
+r_vec_norm = pycollo.Symbol("r_vec_norm")
+u_vec_norm = pycollo.Symbol("u_vec_norm")
+v_vec_norm = pycollo.Symbol("v_vec_norm")
+v_r_vec_norm = pycollo.Symbol("v_r_vec_norm")
+I_S = pycollo.Symbol("I_S")
+I_1 = pycollo.Symbol("I_1")
+I_2 = pycollo.Symbol("I_2")
+m_tot_S = pycollo.Symbol("m_tot_S")
+m_tot_1 = pycollo.Symbol("m_tot_1")
+m_tot_2 = pycollo.Symbol("m_tot_2")
+m_payload = pycollo.Symbol("m_payload")
+m_prop_S = pycollo.Symbol("m_prop_S")
+m_prop_1 = pycollo.Symbol("m_prop_1")
+m_prop_2 = pycollo.Symbol("m_prop_2")
+m_struct_S = pycollo.Symbol("m_struct_S")
+m_struct_1 = pycollo.Symbol("m_struct_1")
+m_struct_2 = pycollo.Symbol("m_struct_2")
+tau_burn_S = pycollo.Symbol("tau_burn_S")
+tau_burn_1 = pycollo.Symbol("tau_burn_1")
+tau_burn_2 = pycollo.Symbol("tau_burn_2")
+T_eng_S = pycollo.Symbol("T_eng_S")
+T_eng_1 = pycollo.Symbol("T_eng_1")
+T_eng_2 = pycollo.Symbol("T_eng_2")
+T_over_m = pycollo.Symbol("T_over_m")
 
 # Define auxiliary information
 t_launch = 0.0
@@ -245,7 +244,7 @@ phase_A.path_constraints = [u_vec_norm - 1, r_vec_norm - R_E]
 phase_A.auxiliary_data = {T: (6 * T_eng_S) + T_eng_1,
                           xi: (1 / g_0) * (6 * (T_eng_S / I_S) + (T_eng_1 / I_1))}
 
-v_y_t0 = omega_E * R_E * sym.cos(psi_L)
+v_y_t0 = omega_E * R_E * pycollo.cos(psi_L)
 phase_A.bounds.initial_time = t_launch
 phase_A.bounds.final_time = t_sep_S
 phase_A.bounds.state_variables = {r_x: [-2 * R_E, 2 * R_E],
@@ -259,9 +258,9 @@ phase_A.bounds.control_variables = {u_x: [-1.1, 1.1],
                                     u_y: [-1.1, 1.1],
                                     u_z: [-1.1, 1.1]}
 phase_A.bounds.path_constraints = [[0, 0], [0, "inf"]]
-phase_A.bounds.initial_state_constraints = {r_x: R_E * sym.cos(psi_L),
+phase_A.bounds.initial_state_constraints = {r_x: R_E * pycollo.cos(psi_L),
                                             r_y: 0,
-                                            r_z: R_E * sym.sin(psi_L),
+                                            r_z: R_E * pycollo.sin(psi_L),
                                             v_x: 0,
                                             v_y: v_y_t0,
                                             v_z: 0,
@@ -269,9 +268,9 @@ phase_A.bounds.initial_state_constraints = {r_x: R_E * sym.cos(psi_L),
 phase_A.bounds.final_state_constraints = {m: m_tF_A}
 
 phase_A.guess.time = [t_launch, t_sep_S]
-phase_A.guess.state_variables = [[R_E * sym.cos(psi_L), R_E * sym.cos(psi_L)],
+phase_A.guess.state_variables = [[R_E * pycollo.cos(psi_L), R_E * pycollo.cos(psi_L)],
                                  [0, 0],
-                                 [R_E * sym.sin(psi_L), R_E * sym.sin(psi_L)],
+                                 [R_E * pycollo.sin(psi_L), R_E * pycollo.sin(psi_L)],
                                  [0, 0],
                                  [v_y_t0, v_y_t0],
                                  [0, 0],
@@ -318,9 +317,9 @@ phase_B.bounds.initial_state_constraints = {m: m_t0_B}
 phase_B.bounds.final_state_constraints = {m: m_tF_B}
 
 phase_B.guess.time = [t_sep_S, t_sep_1]
-phase_B.guess.state_variables = [[R_E * sym.cos(psi_L), R_E * sym.cos(psi_L)],
+phase_B.guess.state_variables = [[R_E * pycollo.cos(psi_L), R_E * pycollo.cos(psi_L)],
                                  [0, 0],
-                                 [R_E * sym.sin(psi_L), R_E * sym.sin(psi_L)],
+                                 [R_E * pycollo.sin(psi_L), R_E * pycollo.sin(psi_L)],
                                  [0, 0],
                                  [v_y_t0, v_y_t0],
                                  [0, 0],
@@ -339,9 +338,9 @@ phase_C.bounds.initial_state_constraints = {m: m_t0_C}
 phase_C.bounds.final_state_constraints = {m: m_tF_C}
 
 phase_C.guess.time = [t_sep_S, t_sep_1]
-phase_C.guess.state_variables = [[R_E * sym.cos(psi_L), R_E * sym.cos(psi_L)],
+phase_C.guess.state_variables = [[R_E * pycollo.cos(psi_L), R_E * pycollo.cos(psi_L)],
                                  [0, 0],
-                                 [R_E * sym.sin(psi_L), R_E * sym.sin(psi_L)],
+                                 [R_E * pycollo.sin(psi_L), R_E * pycollo.sin(psi_L)],
                                  [0, 0],
                                  [v_y_t0, v_y_t0],
                                  [0, 0],
@@ -360,9 +359,9 @@ phase_D.bounds.initial_state_constraints = {m: m_t0_D}
 phase_D.bounds.final_state_constraints = {m: m_tF_D}
 
 phase_D.guess.time = [t_sep_S, t_sep_1]
-phase_D.guess.state_variables = [[R_E * sym.cos(psi_L), R_E * sym.cos(psi_L)],
+phase_D.guess.state_variables = [[R_E * pycollo.cos(psi_L), R_E * pycollo.cos(psi_L)],
                                  [0, 0],
-                                 [R_E * sym.sin(psi_L), R_E * sym.sin(psi_L)],
+                                 [R_E * pycollo.sin(psi_L), R_E * pycollo.sin(psi_L)],
                                  [0, 0],
                                  [v_y_t0, v_y_t0],
                                  [0, 0],
@@ -370,7 +369,7 @@ phase_D.guess.state_variables = [[R_E * sym.cos(psi_L), R_E * sym.cos(psi_L)],
 phase_D.guess.control_variables = [[0.9, 0.9], [0.05, 0.05], [0.45, 0.45]]
 
 # problem.objective_function = problem.phases[2].final_state_variables.m
-problem.objective_function = -(sym.sqrt(phase_D.final_state_variables.r_x**2 + phase_D.final_state_variables.r_y**2 + phase_D.final_state_variables.r_z**2) - R_E)
+problem.objective_function = -(pycollo.sqrt(phase_D.final_state_variables.r_x**2 + phase_D.final_state_variables.r_y**2 + phase_D.final_state_variables.r_z**2) - R_E)
 # problem.endpoint_constraints = [
 #     (phase_A.final_state_variables.m - phase_A.initial_state_variables.m 
 #         + 6*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1),
@@ -431,15 +430,15 @@ problem.bounds.endpoint_constraints = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 problem.auxiliary_data = {
     mu: 3.986012e14,
     R_E: 6378145,
-    r_vec_norm: sym.sqrt(r_x**2 + r_y**2 + r_z**2),
-    v_vec_norm: sym.sqrt(v_x**2 + v_y**2 + v_z**2),
-    u_vec_norm: sym.sqrt(u_x**2 + u_y**2 + u_z**2),
+    r_vec_norm: pycollo.sqrt(r_x**2 + r_y**2 + r_z**2),
+    v_vec_norm: pycollo.sqrt(v_x**2 + v_y**2 + v_z**2),
+    u_vec_norm: pycollo.sqrt(u_x**2 + u_y**2 + u_z**2),
     D_x: -0.5 * C_D * S * rho * v_r_vec_norm * v_r_x,
     D_y: -0.5 * C_D * S * rho * v_r_vec_norm * v_r_y,
     D_z: -0.5 * C_D * S * rho * v_r_vec_norm * v_r_z,
     C_D: 0.5,
     S: 4 * np.pi,
-    v_r_vec_norm: sym.sqrt(v_r_x**2 + v_r_y**2 + v_r_z**2),
+    v_r_vec_norm: pycollo.sqrt(v_r_x**2 + v_r_y**2 + v_r_z**2),
     v_r_x: v_x - omega_x_r_x,
     v_r_y: v_y - omega_x_r_y,
     v_r_z: v_z - omega_x_r_z,
@@ -449,7 +448,7 @@ problem.auxiliary_data = {
     g_0: 9.80665,
     h_0: 7200,
     h: r_vec_norm - R_E,
-    rho: rho_0 * sym.exp(-h / h_0),
+    rho: rho_0 * pycollo.exp(-h / h_0),
     rho_0: 1.225,
     omega_E: 7.29211585e-5,
     T_over_m: T / m,

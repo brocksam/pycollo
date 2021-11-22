@@ -8,49 +8,48 @@ Industrial and Applied Mathematics, p293 - 298.
 
 import numpy as np
 import pycollo
-import sympy as sym
 
 # Symbol creation
-J_00 = sym.Symbol("J_00")
-J_01 = sym.Symbol("J_01")
-J_02 = sym.Symbol("J_02")
-J_10 = sym.Symbol("J_10")
-J_11 = sym.Symbol("J_11")
-J_12 = sym.Symbol("J_12")
-J_20 = sym.Symbol("J_20")
-J_21 = sym.Symbol("J_21")
-J_22 = sym.Symbol("J_22")
-J_inv_00 = sym.Symbol("J_inv_00")
-J_inv_01 = sym.Symbol("J_inv_01")
-J_inv_02 = sym.Symbol("J_inv_02")
-J_inv_10 = sym.Symbol("J_inv_10")
-J_inv_11 = sym.Symbol("J_inv_11")
-J_inv_12 = sym.Symbol("J_inv_12")
-J_inv_20 = sym.Symbol("J_inv_20")
-J_inv_21 = sym.Symbol("J_inv_21")
-J_inv_22 = sym.Symbol("J_inv_22")
-omega_x, omega_y, omega_z = sym.symbols("omega_x omega_y omega_z")
-r_x, r_y, r_z = sym.symbols("r_x r_y r_z")
-h_x, h_y, h_z = sym.symbols("h_x h_y h_z")
-u_x, u_y, u_z = sym.symbols("u_x u_y u_z")
+J_00 = pycollo.Symbol("J_00")
+J_01 = pycollo.Symbol("J_01")
+J_02 = pycollo.Symbol("J_02")
+J_10 = pycollo.Symbol("J_10")
+J_11 = pycollo.Symbol("J_11")
+J_12 = pycollo.Symbol("J_12")
+J_20 = pycollo.Symbol("J_20")
+J_21 = pycollo.Symbol("J_21")
+J_22 = pycollo.Symbol("J_22")
+J_inv_00 = pycollo.Symbol("J_inv_00")
+J_inv_01 = pycollo.Symbol("J_inv_01")
+J_inv_02 = pycollo.Symbol("J_inv_02")
+J_inv_10 = pycollo.Symbol("J_inv_10")
+J_inv_11 = pycollo.Symbol("J_inv_11")
+J_inv_12 = pycollo.Symbol("J_inv_12")
+J_inv_20 = pycollo.Symbol("J_inv_20")
+J_inv_21 = pycollo.Symbol("J_inv_21")
+J_inv_22 = pycollo.Symbol("J_inv_22")
+omega_x, omega_y, omega_z = pycollo.symbols("omega_x omega_y omega_z")
+r_x, r_y, r_z = pycollo.symbols("r_x r_y r_z")
+h_x, h_y, h_z = pycollo.symbols("h_x h_y h_z")
+u_x, u_y, u_z = pycollo.symbols("u_x u_y u_z")
 
-domega_x_dt = sym.Symbol("domega_x_dt")
-domega_y_dt = sym.Symbol("domega_y_dt")
-domega_z_dt = sym.Symbol("domega_z_dt")
-dr_x_dt, dr_y_dt, dr_z_dt = sym.symbols("dr_x_dt dr_y_dt dr_z_dt")
-dh_x_dt, dh_y_dt, dh_z_dt = sym.symbols("dh_x_dt dh_y_dt dh_z_dt")
+domega_x_dt = pycollo.Symbol("domega_x_dt")
+domega_y_dt = pycollo.Symbol("domega_y_dt")
+domega_z_dt = pycollo.Symbol("domega_z_dt")
+dr_x_dt, dr_y_dt, dr_z_dt = pycollo.symbols("dr_x_dt dr_y_dt dr_z_dt")
+dh_x_dt, dh_y_dt, dh_z_dt = pycollo.symbols("dh_x_dt dh_y_dt dh_z_dt")
 
-domega_x_dt_tF = sym.Symbol("domega_x_dt_tF")
-domega_y_dt_tF = sym.Symbol("domega_y_dt_tF")
-domega_z_dt_tF = sym.Symbol("domega_z_dt_tF")
-dr_x_dt_tF = sym.Symbol("dr_x_dt_tF")
-dr_y_dt_tF = sym.Symbol("dr_y_dt_tF")
-dr_z_dt_tF = sym.Symbol("dr_z_dt_tF")
+domega_x_dt_tF = pycollo.Symbol("domega_x_dt_tF")
+domega_y_dt_tF = pycollo.Symbol("domega_y_dt_tF")
+domega_z_dt_tF = pycollo.Symbol("domega_z_dt_tF")
+dr_x_dt_tF = pycollo.Symbol("dr_x_dt_tF")
+dr_y_dt_tF = pycollo.Symbol("dr_y_dt_tF")
+dr_z_dt_tF = pycollo.Symbol("dr_z_dt_tF")
 
-omega_orb, h_max = sym.symbols("omega_orb h_max")
+omega_orb, h_max = pycollo.symbols("omega_orb h_max")
 
-h_inner_prod_squared = sym.Symbol("h_inner_prod_squared")
-u_inner_prod_squared = sym.Symbol("u_inner_prod_squared")
+h_inner_prod_squared = pycollo.Symbol("h_inner_prod_squared")
+u_inner_prod_squared = pycollo.Symbol("u_inner_prod_squared")
 
 # Auxiliary information
 t0 = 0
@@ -169,7 +168,7 @@ def skew_symmetric_cross_product_operator(vec):
     if vec.shape != (3, 1):
         raise ValueError(f"Vector must be a column vector and have shape "
                          f"(3, 1) but is {vec.shape}")
-    skew_symmetric_cross_product_operator = sym.Matrix([
+    skew_symmetric_cross_product_operator = pycollo.Matrix([
         [0, -vec[2], vec[1]],
         [vec[2], 0, -vec[0]],
         [-vec[1], vec[0], 0]])
@@ -183,7 +182,7 @@ def row_vec_dot_col_vec(vec_1, vec_2):
     if vec_2.shape != (1, 3):
         raise ValueError(f"Second vector must be a row vector and have shape "
                          f"(1, 3) but is {vec_2.shape}")
-    matrix = sym.Matrix([[vec_1[0, 0] * vec_2[0, 0],
+    matrix = pycollo.Matrix([[vec_1[0, 0] * vec_2[0, 0],
                           vec_1[0, 0] * vec_2[0, 1],
                           vec_1[0, 0] * vec_2[0, 2]],
                          [vec_1[1, 0] * vec_2[0, 0],
@@ -205,24 +204,24 @@ def col_vec_dot_row_vec(vec_1, vec_2):
     return vec_1.dot(vec_2)
 
 
-J = sym.Matrix([
+J = pycollo.Matrix([
     [J_00, J_01, J_02],
     [J_10, J_11, J_12],
     [J_20, J_21, J_22]])
-J_inv = sym.Matrix([
+J_inv = pycollo.Matrix([
     [J_inv_00, J_inv_01, J_inv_02],
     [J_inv_10, J_inv_11, J_inv_12],
     [J_inv_20, J_inv_21, J_inv_22]])
 
 # Continuous vectors
-omega = sym.Matrix([omega_x, omega_y, omega_z])
-r = sym.Matrix([r_x, r_y, r_z])
-h = sym.Matrix([h_x, h_y, h_z])
-u = sym.Matrix([u_x, u_y, u_z])
+omega = pycollo.Matrix([omega_x, omega_y, omega_z])
+r = pycollo.Matrix([r_x, r_y, r_z])
+h = pycollo.Matrix([h_x, h_y, h_z])
+u = pycollo.Matrix([u_x, u_y, u_z])
 
 # Calculating domega/dt
 r_skew_symmetric = skew_symmetric_cross_product_operator(r)
-I = sym.eye(3)
+I = pycollo.eye(3)
 D = 2 / (1 + col_vec_dot_row_vec(r.T, r))
 E = (r_skew_symmetric * r_skew_symmetric) - r_skew_symmetric
 C = I + (D * E)
@@ -239,9 +238,9 @@ r_sqrd = row_vec_dot_col_vec(r, r.T)
 dr_dt = 0.5 * (r_sqrd + I + r_skew_symmetric) * (omega - omega_0)
 
 # Endpoint equations
-omega_tF = sym.Matrix(phase.final_state_variables[:3])
-r_tF = sym.Matrix(phase.final_state_variables[3:6])
-h_tF = sym.Matrix(phase.final_state_variables[6:])
+omega_tF = pycollo.Matrix(phase.final_state_variables[:3])
+r_tF = pycollo.Matrix(phase.final_state_variables[3:6])
+h_tF = pycollo.Matrix(phase.final_state_variables[6:])
 
 # Calculating domega(tF)/dt
 r_tF_skew_symmetric = skew_symmetric_cross_product_operator(r_tF)

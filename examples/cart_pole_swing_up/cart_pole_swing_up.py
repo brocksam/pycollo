@@ -14,15 +14,14 @@ animation.
 import matplotlib.pyplot as plt
 import numpy as np
 import pycollo
-import sympy as sym
 
 
-q1, q2 = sym.symbols("q1, q2")
-q1d, q2d = sym.symbols("q1d, q2d")
-q1dd, q2dd = sym.symbols("q1dd, q2dd")
-u = sym.symbols("u")
-m1, m2 = sym.symbols("m1, m2")
-l, g = sym.symbols("l, g")
+q1, q2 = pycollo.symbols("q1, q2")
+q1d, q2d = pycollo.symbols("q1d, q2d")
+q1dd, q2dd = pycollo.symbols("q1dd, q2dd")
+u = pycollo.symbols("u")
+m1, m2 = pycollo.symbols("m1, m2")
+l, g = pycollo.symbols("l, g")
 
 u_max = 20.0
 d_max = 2.0
@@ -59,8 +58,8 @@ phase.guess.control_variables = [[0, 0]]
 phase.guess.integral_variables = [0]
 
 # These equations are taken from Kelly's paper
-q1dd_eqn = (l * m2 * sym.sin(q2) * q2d**2 + u + m2 * g * sym.cos(q2) * sym.sin(q2)) / (m1 + m2 * (1 - sym.cos(q2)**2))
-q2dd_eqn = - (l * m2 * sym.cos(q2) * sym.sin(q2) * q2d**2 + u * sym.cos(q2) + (m1 + m2) * g * sym.sin(q2)) / (l * m1 + l * m2 * (1 - sym.cos(q2)**2))
+q1dd_eqn = (l * m2 * pycollo.sin(q2) * q2d**2 + u + m2 * g * pycollo.cos(q2) * pycollo.sin(q2)) / (m1 + m2 * (1 - pycollo.cos(q2)**2))
+q2dd_eqn = - (l * m2 * pycollo.cos(q2) * pycollo.sin(q2) * q2d**2 + u * pycollo.cos(q2) + (m1 + m2) * g * pycollo.sin(q2)) / (l * m1 + l * m2 * (1 - pycollo.cos(q2)**2))
 
 problem.objective_function = phase.integral_variables[0]
 problem.auxiliary_data = {g: 9.81,

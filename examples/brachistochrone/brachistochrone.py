@@ -7,11 +7,10 @@ Industrial and Applied Mathematics, p215 - 216.
 """
 
 import numpy as np
-import sympy as sym
 
 import pycollo
 
-x, y, v, u = sym.symbols('x y v u')
+x, y, v, u = pycollo.symbols('x y v u')
 
 problem = pycollo.OptimalControlProblem(name="Brachistochrone")
 phase = problem.new_phase(name="A")
@@ -36,7 +35,11 @@ vmax = 50
 umin = -np.pi / 2
 umax = np.pi / 2
 
-phase.state_equations = [v * sym.sin(u), v * sym.cos(u), g * sym.cos(u)]
+phase.state_equations = {
+    x: v * pycollo.sin(u),
+    y: v * pycollo.cos(u),
+    v: g * pycollo.cos(u),
+}
 
 phase.auxiliary_data = {}
 

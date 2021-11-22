@@ -6,56 +6,56 @@ Industrial and Applied Mathematics, p348 - 352.
 
 Attributes
 ----------
-p : `Symbol <sympy>`
+p : `Symbol`
     Primary tumour volume
-q : `Symbol <sympy>`
+q : `Symbol`
     Carrying capacity of the vascular
-u : `Symbol <sympy>`
+u : `Symbol`
     Angiogenic dose rate
-xi : `Symbol <sympy>`
+xi : `Symbol`
     Tumour growth parameter (in 1/day)
-b : `Symbol <sympy>`
+b : `Symbol`
     "Birth" rate (in 1/day)
-d : `Symbol <sympy>`
+d : `Symbol`
     "Death" rate (in 1/mm^2/day)
-G : `Symbol <sympy>`
+G : `Symbol`
     Anti-angiogenic killing parameter (in kg/mg/day)
-mu : `Symbol <sympy>`
+mu : `Symbol`
     Loss of endothelial cells due to natural causes (in 1/day)
-a : `Symbol <sympy>`
+a : `Symbol`
     Constant (nondimensional)
-A : `Symbol <sympy>`
+A : `Symbol`
     Constant (nondimensional)
 
 """
 
 import pycollo
-import sympy as sym
+
 
 # Symbol creation
-p = sym.Symbol("p")
-q = sym.Symbol("q")
-u = sym.Symbol("u")
+p = pycollo.Symbol("p")
+q = pycollo.Symbol("q")
+u = pycollo.Symbol("u")
 
-xi = sym.Symbol("xi")
-b = sym.Symbol("b")
-d = sym.Symbol("d")
-G = sym.Symbol("G")
-mu = sym.Symbol("mu")
-a = sym.Symbol("a")
-A = sym.Symbol("A")
+xi = pycollo.Symbol("xi")
+b = pycollo.Symbol("b")
+d = pycollo.Symbol("d")
+G = pycollo.Symbol("G")
+mu = pycollo.Symbol("mu")
+a = pycollo.Symbol("a")
+A = pycollo.Symbol("A")
 
-p_max = sym.Symbol("p_max")
-p_min = sym.Symbol("p_min")
-q_max = sym.Symbol("q_max")
-q_min = sym.Symbol("q_min")
-y_max = sym.Symbol("y_max")
-y_min = sym.Symbol("y_min")
-u_max = sym.Symbol("u_max")
-u_min = sym.Symbol("u_min")
-p_t0 = sym.Symbol("p_t0")
-q_t0 = sym.Symbol("q_t0")
-y_t0 = sym.Symbol("y_t0")
+p_max = pycollo.Symbol("p_max")
+p_min = pycollo.Symbol("p_min")
+q_max = pycollo.Symbol("q_max")
+q_min = pycollo.Symbol("q_min")
+y_max = pycollo.Symbol("y_max")
+y_min = pycollo.Symbol("y_min")
+u_max = pycollo.Symbol("u_max")
+u_min = pycollo.Symbol("u_min")
+p_t0 = pycollo.Symbol("p_t0")
+q_t0 = pycollo.Symbol("q_t0")
+y_t0 = pycollo.Symbol("y_t0")
 
 # Auxiliary information
 t0 = 0.0
@@ -68,7 +68,7 @@ phase = problem.new_phase(name="A",
                           state_variables=[p, q],
                           control_variables=u)
 
-phase.state_equations = {p: -xi * p * sym.log(p / q),
+phase.state_equations = {p: -xi * p * pycollo.log(p / q),
                          q: q * (b - (mu + (d * p**(2 / 3)) + (G * u)))}
 phase.integrand_functions = [u]
 

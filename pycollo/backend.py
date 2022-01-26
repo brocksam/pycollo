@@ -1531,8 +1531,11 @@ class Casadi(BackendABC):
             for p, N in zip(self.p, mesh.N):
                 phase_mapping = {}
                 for i in range(N):
-                    mapping = {k: v[i]
-                               for k, v in self.ocp_iter_sym_mapping.items()}
+                    mapping = {}
+                    for y in p.y_var:
+                        mapping[y] = self.ocp_iter_sym_mapping[y][i]
+                    for u in p.u_var:
+                        mapping[u] = self.ocp_iter_sym_mapping[u][i]
                     phase_mapping[i] = mapping
                 all_phase_mapping[p] = phase_mapping
             return all_phase_mapping

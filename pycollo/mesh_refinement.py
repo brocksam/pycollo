@@ -96,8 +96,11 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             for p, N in zip(self.backend.p, mesh.N):
                 phase_mapping = {}
                 for i in range(N):
-                    mapping = {k: v[i]
-                               for k, v in ocp_ph_sym_mapping.items()}
+                    mapping = {}
+                    for y in p.y_var:
+                        mapping[y] = ocp_ph_sym_mapping[y][i]
+                    for u in p.u_var:
+                        mapping[u] = ocp_ph_sym_mapping[u][i]
                     phase_mapping[i] = mapping
                 all_phase_mapping[p] = phase_mapping
             return all_phase_mapping

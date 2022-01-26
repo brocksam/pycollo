@@ -64,7 +64,7 @@ class CasadiSolution(SolutionABC):
 
         def extract_tF(p, t):
             if p.ocp_phase.bounds._t_needed[1]:
-                return t[0]
+                return t[-1]
             return self.it.guess_time[p.i][-1]
 
         dy = self.backend.dy_iter_callable(self.x)

@@ -113,7 +113,7 @@ phase_B.auxiliary_data = {}
 
 # Inbound phase bounds
 phase_B.bounds.initial_time = [0.5, 1.5]
-phase_B.bounds.final_time = 2
+phase_B.bounds.final_time = [1.5, 2.0]
 phase_B.bounds.initial_state_constraints = {
     x: 0,
     y: 2,

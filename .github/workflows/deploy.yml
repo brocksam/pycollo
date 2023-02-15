@@ -32,7 +32,7 @@ jobs:
           git add -A
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git commit -m 'deploy'
+          git commit -m 'Deploy documentation'
       - name: Force push to destination branch
         uses: ad-m/github-push-action@master
         with:

@@ -16,7 +16,7 @@ name = "Pycollo"
 description = "General-purpose optimal control, trajectory optimisation and parameter optimisation using direct collocation"
 readme = "README.rst"
 requires-python = ">=3.8"
-license = {text = "MIT", file = "LICENSE"}
+license = {file = "LICENSE"}
 authors = [
     {name = "Sam Brockie", email = "sambrockie@icloud.com"},
 ]

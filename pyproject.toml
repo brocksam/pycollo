@@ -11,92 +11,175 @@ build-backend = "setuptools.build_meta"
 # See configuration details in https://github.com/pypa/setuptools_scm
 version_scheme = "no-guess-dev"
 
-[metadata]
-name = pycollo
-author = Sam Brockie
-author_email = sambrockie@icloud.com
-description = General-purpose optimal control, trajectory optimisation and parameter optimisation using direct collocation
-long_description = file: README.rst
-long_description_content_type = text/x-rst
-url = https://pycollo.readthedocs.io
-project_urls =
-    Documentation = https://brocksam.github.io/pycollo
-    PyPI = https://pypi.org/project/pycollo/
-    conda-forge = https://anaconda.org/conda-forge/pycollo
-    Source Code = https://github.com/brocksam/pycollo
-    Bug Tracker = https://github.com/brocksam/pycollo/issues
-classifiers =
-    Development Status :: 2 - Pre-Alpha
-    Intended Audience :: Science/Research
-    Programming Language :: Python :: 3
-    Programming Language :: Python :: 3.8
-    Programming Language :: Python :: 3.9
-    Programming Language :: Python :: 3.10
-    License :: OSI Approved :: MIT License
-    Operating System :: OS Independent
-    Natural Language :: English
-    Topic :: Utilities
-license = MIT
-license_files = [LICENSE]
-keyword =
-    optimal control
-    optimal control problem
-    ocp
-    trajectory optimisation
-    trajectory optimization
-    parameter optimisation
-    parameter optimization
-    collocation
-    direct collocation
-    predictive simulation
+[project]
+name = "Pycollo"
+description = "General-purpose optimal control, trajectory optimisation and parameter optimisation using direct collocation"
+readme = "README.rst"
+requires-python = ">=3.8"
+license = {text = "MIT", file = "LICENSE"}
+authors = [
+    {name = "Sam Brockie", email = "sambrockie@icloud.com"},
+]
+keywords = [
+    "optimal control",
+    "optimal control problem",
+    "ocp",
+    "trajectory optimisation",
+    "trajectory optimization",
+    "parameter optimisation",
+    "parameter optimization",
+    "collocation",
+    "direct collocation",
+    "predictive simulation",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Natural Language :: English",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "casadi >=3.5.5",
+    "matplotlib >=3.3.2",
+    "numba >=0.51.2",
+    "numpy >=1.19.1",
+    "pyproprop >=0.4.10",
+    "scipy >=1.5.2",
+    "sympy >=1.6.2",
+]
+dynamic = [
+  "version",
+]
 
-[options]
-zip_safe = False
-include_package_data = True
-packages = pycollo
-python_requires = >=3.7
-install_requires =
-    casadi >=3.5.5
-    matplotlib >=3.3.2
-    numba >=0.51.2
-    numpy >=1.19.1
-    pyproprop >=0.4.10
-    scipy >=1.5.2
-    sympy >=1.6.2
+[project.optional-dependencies]
+docs = [
+    "sphinx >=3.2",
+    "sphinx-autodoc-typehints >=1.11",
+    "sphinx-material >=0.35",
+]
+tests = [
+    "hypothesis >=5.28",
+    "pytest >=6.0",
+    "pytest-cases >=2.2.5",
+]
+dev = [
+    "black",
+    "mypy",
+    "ruff",
+]
 
-[options.extras_require]
-docs =
-    sphinx >=3.2
-    sphinx-autodoc-typehints >=1.11
-    sphinx-material >=0.35
-tests =
-    hypothesis >=5.28
-    pytest >=6.0
-    pytest-cases >=2.2.5
+[project.urls]
+"Documentation" = "https://brocksam.github.io/pycollo"
+"PyPI" = "https://pypi.org/project/pycollo"
+"conda-forge" = "https://anaconda.org/conda-forge/pycollo"
+"Source Code" = "https://github.com/brocksam/pycollo"
+"Issue Tracker" = "https://github.com/brocksam/pycollo/issues"
 
-[tool:pytest]
-testpaths =
-    tests
-markers =
-    incremental: marks related sequential tests to stop after an earlier failure
+[tool.pytest]
+testpaths = "tests"
+markers = "incremental: marks related sequential tests to stop after an earlier failure"
 
-[bdist_wheel]
-universal = 1
+[tool.black]
+exclude = '''
+(
+    asv_bench/env
+  | \.egg
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.nox
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | setup.py
+)
+'''
 
-[devpi:upload]
-no_vcs = 1
-formats = bdist_wheel
+[tool.ruff]
+line-length = 88
+update-check = false
+target-version = "py38"
 
-[flake8]
-max_line_length = 88
-extend_ignore =
-    E203  # whitespace before ‘:’
-    E731  # do not assign a lambda expression, use a def
-    E741  # do not use variables named ‘l’, ‘O’, or ‘I’
-    W503  # line break before binary operator
-exclude =
-    .tox
-    build
-    dist
-    .eggs
-    docs/conf.py
+select = [
+  # pyflakes
+  "F",
+  # pycodestyle
+  "E",
+  "W",
+  # flake8-2020
+  "YTT",
+  # flake8-bugbear
+  "B",
+  # flake8-quotes
+  "Q",
+  # pylint
+  "PLE", "PLR", "PLW",
+]
+
+ignore = [
+  # space before : (needed for how black formats slicing)
+  # "E203",  # not yet implemented
+  # module level import not at top of file
+  "E402",
+  # do not assign a lambda expression, use a def
+  "E731",
+  # line break before binary operator
+  # "W503",  # not yet implemented
+  # line break after binary operator
+  # "W504",  # not yet implemented
+  # controversial
+  "B006",
+  # controversial
+  "B007",
+  # controversial
+  "B008",
+  # setattr is used to side-step mypy
+  "B009",
+  # getattr is used to side-step mypy
+  "B010",
+  # tests use assert False
+  "B011",
+  # tests use comparisons but not their returned value
+  "B015",
+  # false positives
+  "B019",
+  # Loop control variable overrides iterable it iterates
+  "B020",
+  # Function definition does not bind loop variable
+  "B023",
+  # Functions defined inside a loop must not use variables redefined in the loop
+  # "B301",  # not yet implemented
+  # Too many arguments to function call
+  "PLR0913",
+  # Too many returns
+  "PLR0911",
+  # Too many branches
+  "PLR0912",
+  # Too many statements
+  "PLR0915",
+
+  # Additional checks that don't pass yet
+  # Within an except clause, raise exceptions with ...
+  "B904",
+  # Magic number
+  "PLR2004",
+]
+
+exclude = [
+  "docs/sphinxext/*.py",
+  "docs/build/*.py",
+  "docs/temp/*.py",
+  ".eggs/*.py",
+  "versioneer.py",
+  # exclude asv benchmark environments from linting
+  "env",
+]

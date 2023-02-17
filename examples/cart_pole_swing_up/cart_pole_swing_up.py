@@ -74,7 +74,7 @@ problem.auxiliary_data = {g: 9.81,
 problem.initialise()
 problem.solve()
 
-time_solution = problem.solution.tau[0] + 1.0
+time_solution = problem.solution._time_[0]
 position_solution = problem.solution.state[0][0]
 angle_solution = problem.solution.state[0][1]
 control_solution = problem.solution.control[0][0]

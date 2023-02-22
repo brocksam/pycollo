@@ -110,7 +110,6 @@ exclude = '''
 # Enable Pyflakes `E` and `F` codes by default.
 select = ["C4", "E", "F", "I"]
 ignore = [
-    "C416",  # Unnecessary `list` comprehension (rewrite using `list()`)
     "E101",  # Indentation contains mixed spaces and tabs
     "E501",  # Line too long (<LINE LENGTH> > <LINE LENGTH LIMIT> characters)
     "E712",  # Comparison to `<BOOL>` should be `cond is <BOOL>`

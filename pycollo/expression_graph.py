@@ -98,9 +98,9 @@ class ExpressionGraph:
     def initialise_default_singleton_number_nodes(self):
         self._zero_node = Node(0, self)
         self._one_node = Node(1, self)
-        two_node = Node(2, self)
-        neg_one_node = Node(-1, self)
-        half_node = Node(0.5, self)
+        Node(2, self)
+        Node(-1, self)
+        Node(0.5, self)
 
     def initialise_auxiliary_constant_nodes(self, aux_info):
         self.user_symbol_to_expression_auxiliary_mapping = {}
@@ -112,7 +112,7 @@ class ExpressionGraph:
                 self.user_symbol_to_expression_auxiliary_mapping[key] = value
             else:
                 self._user_constants_set.add(key)
-                node = Node(key, self, value=value)
+                Node(key, self, value=value)
 
     def initialise_time_normalisation_nodes(self):
         self._t_norm_nodes = tuple(Node(p.t_norm, self)
@@ -237,7 +237,7 @@ class ExpressionGraph:
             Node(symbol, self) for symbol in portions_requiring_summing.values()
         }
 
-        ddL_dxdx_dependent_nodes = {
+        {
             node for tier in self.ddL_dxdx_dependent_tiers.values() for node in tier
         }
         nodes_requiring_summing = set()
@@ -300,7 +300,7 @@ class ExpressionGraph:
             return self
 
         init_args = self._initialise_function(func)
-        temp = init_args[0]
+        init_args[0]
 
         if init_func is True:
             self = add_to_namespace(self, init_args, func_abrv)

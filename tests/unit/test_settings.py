@@ -213,7 +213,6 @@ class TestSettings:
     def test_invalid_collocation_matrix_form(self, test_value):
         """Invalid collocation matrix forms raise ValueError."""
         assume(test_value not in {"integral", "differential"})
-        regex_wildcard = r"[\s\S]*"
         expected_error_msg = re.escape(
             f"`{repr(test_value)}` is not a valid option of form of the "
             f"collocation matrices (`collocation_matrix_form`). Choose one "

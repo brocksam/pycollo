@@ -80,7 +80,7 @@ class SolutionABC(ABC):
                     dy_polys[i_y, i_k] = dy_poly
 
                     scale_factor = p_data.T / self.it.mesh._PERIOD
-                    y_k = state[i_start:i_stop + 1]
+                    state[i_start:i_stop + 1]
                     dy_k = state_deriv[i_start:i_stop + 1] * scale_factor
                     dy_poly = np.polynomial.Legendre.fit(t_k,
                                                          dy_k,
@@ -89,7 +89,7 @@ class SolutionABC(ABC):
                     y_poly = dy_poly.integ(k=state[i_start])
                     y_polys[i_y, i_k] = y_poly
 
-                    t_data = np.linspace(t_k[0], t_k[-1])
+                    np.linspace(t_k[0], t_k[-1])
 
             for i_u, control in enumerate(p_data.u):
                 for i_k, (i_start, i_stop) in enumerate(zip(mesh_index_boundaries[:-1], mesh_index_boundaries[1:])):

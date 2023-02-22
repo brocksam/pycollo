@@ -250,7 +250,7 @@ class Mesh:
             step = self._PERIOD * fraction
             section_boundaries.append(section_boundaries[index] + step)
         section_boundaries = np.array(section_boundaries)
-        section_lengths = np.diff(section_boundaries)
+        np.diff(section_boundaries)
 
         mesh = []
         for section_num, (sec_start, sec_end, sec_num_points) in enumerate(zip(section_boundaries[:-1], section_boundaries[1:], p.number_mesh_section_nodes)):
@@ -295,7 +295,7 @@ class Mesh:
         h_K_expanded = []
 
         for block_size, h_k, block_start in zip(p.number_mesh_section_nodes, h_K, block_starts):
-            row_slice = slice(block_start, block_start + block_size - 1)
+            slice(block_start, block_start + block_size - 1)
             col_slice = slice(block_start, block_start + block_size)
             A_block = self.quadrature.A_matrix(block_size) * h_k
             A_vals_entry = A_block.flatten().tolist()

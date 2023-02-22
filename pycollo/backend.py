@@ -583,7 +583,7 @@ class BackendABC(ABC):
                                                       p.r_q_var_full))
                                   for p in self.p])
         phase_point_sym = set.union(*[set(p.x_point_var_full) for p in self.p])
-        all_backend_sym = set.union(point_sym,
+        set.union(point_sym,
                                     V_point_sym,
                                     r_point_sym,
                                     phase_sym,
@@ -1350,7 +1350,6 @@ class Casadi(BackendABC):
 
     def substitute_pycollo_sym(self, expr, phase=None):
         """Convert to ca.SX and replace user syms with Pycollo backend syms."""
-        expr_sym = expr
         if isinstance(expr, sym.Expr):
             if isinstance(phase, PycolloPhaseData):
                 user_to_backend_mapping = phase.all_user_to_backend_mapping

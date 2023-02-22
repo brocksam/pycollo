@@ -31,7 +31,6 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 			expression_list = []
 			row = expression.row(row_num)
 			for col_num, e, in enumerate(row):
-				index = row_num*expression.cols + col_num
 				e_entry = f'{e}'
 				expression_list.append(e_entry)
 			expression_row = ', '.join(f'{e}' for e in expression_list)

@@ -256,7 +256,7 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             P_q = merge_group[:, 0]
             h_q = merge_group[:, 1]
             p_q = merge_group[:, 2]
-            N = np.sum(p_q)
+            np.sum(p_q)
             T = np.sum(h_q)
             collocation_points_min = self.ocp.settings.collocation_points_min
             merge_ratio = p_q / (collocation_points_min - P_q)

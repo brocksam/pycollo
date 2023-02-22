@@ -99,7 +99,6 @@ class Utils:
 
         """
         if isinstance(expr, ca.SX):
-            func_name = "base_func" if base else "other_func"
             return ca.Function("base_func", prims, [expr])
         elif isinstance(expr, (sym.Expr, sym.Matrix)):
             return sym.lambdify(prims, expr, "numpy")

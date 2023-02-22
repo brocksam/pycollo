@@ -428,7 +428,6 @@ class OptimalControlProblem():
             _ = self._backend.new_mesh_iteration(self._next_iteration_mesh,
                                                  self._next_iteration_guess)
         result = self._backend.mesh_iterations[-1].solve()
-        mesh_tolerance_met = result.mesh_tolerance_met
         self._next_iteration_mesh = result.next_iteration_mesh
         self._next_iteration_guess = result.next_iteration_guess
         if result.mesh_tolerance_met:

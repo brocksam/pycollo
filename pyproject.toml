@@ -113,7 +113,6 @@ ignore = [
     "E501",  # Line too long (<LINE LENGTH> > <LINE LENGTH LIMIT> characters)
     "E741",  # Ambiguous variable name: `<VARIABLE NAME>`
     "F541",  # f-string without any placeholders
-    "F811",  # Redefinition of unused `<FUNCTION NAME>` from line 243
     "F821",  # Undefined name `<VARIABLE>`
 ]
 

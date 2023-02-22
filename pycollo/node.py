@@ -17,7 +17,7 @@ class Cached(type):
 		if args in self.__cache:
 			cached_node = self.__cache[args]
 			equation = kwargs.get('equation')
-			if equation != None:
+			if equation is not None:
 				cached_node.equation = equation
 			return cached_node
 		else:

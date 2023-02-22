@@ -172,11 +172,9 @@ def format_as_named_tuple(
     except TypeError:
         iterable = (iterable, )
     else:
-        try:
+        if isinstance(iterable, dict):
             named_keys = iterable.keys()
             iterable = iterable.values()
-        except:
-            pass
 
     if sympify:
         entries = [sym.sympify(entry) for entry in iterable]

@@ -104,7 +104,7 @@ class ExpressionGraph:
 
     def initialise_auxiliary_constant_nodes(self, aux_info):
         self.user_symbol_to_expression_auxiliary_mapping = {}
-        self._user_constants_ordered = tuple()
+        self._user_constants_ordered = ()
         self._user_constants_set = set()
         for key, value in aux_info.items():
             is_expression = isinstance(value, (sym.Expr, sym.Symbol))

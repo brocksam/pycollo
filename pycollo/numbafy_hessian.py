@@ -66,7 +66,7 @@ def numbafy_endpoint_hessian(*args, **kwargs):
 		input()
 	
 	exec(function_string)
-	   
+
 	return locals()['numbafied_func']
 
 
@@ -161,7 +161,7 @@ def numbafy_continuous_hessian(*args, **kwargs):
 		input()
 	
 	exec(function_string)
-	   
+
 	return locals()['numbafied_func']
 
 

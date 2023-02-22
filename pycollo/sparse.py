@@ -119,8 +119,8 @@ class SparseCOOMatrix:
 			sum = self._entries.get(key, self.ZERO) + other._entries.get(key, self.ZERO)
 			if sum != 0:
 				smat[key] = sum
-	    # Add new nodes to expression graph and return new sparse matrix with
-	    # nodes as nonzero entries
+        # Add new nodes to expression graph and return new sparse matrix with
+        # nodes as nonzero entries
 		new = self._new(smat, *self._shape, self._expr_graph)
 		return new
 

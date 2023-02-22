@@ -242,7 +242,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 	# input()
 	
 	exec(function_string)
-	   
+
 	return locals()['numbafied_func']
 
 

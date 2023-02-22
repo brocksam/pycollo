@@ -149,8 +149,8 @@ class Node(metaclass=Cached):
 			return set()
 		else:
 			nodes = set.union(*[
-			    set.union(parent.dependent_nodes, {parent})
-			    for parent in self.parent_nodes
+                set.union(parent.dependent_nodes, {parent})
+                for parent in self.parent_nodes
 			])
 			return nodes
 

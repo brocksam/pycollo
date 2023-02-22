@@ -774,7 +774,7 @@ def get_bound_as_number(bnds_obj, bnds_info, lower_upper, p_info):
     bnds = bnds_obj.ocp._backend.substitute_pycollo_sym(bnds)
     if symbol_primitives(bnds):
         msg = (f"The user-supplied {lower_upper} for the "
-               f"{bnds_info.bnds_type} '{bnd_info.user_syms}' "
+               f"{bnds_info.bnds_type} '{bnds_info.user_syms}' "
                f"(index #{bnds_info.num}) of '{bnds}' "
                f"cannot be precomputed.")
         raise ValueError(msg)

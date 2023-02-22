@@ -1853,11 +1853,11 @@ class Hsad(BackendABC):
         raise NotImplementedError(cls.not_implemented_error_msg)
 
     @staticmethod
-    def const(val):
-        raise NotImplementedError(not_implemented_error_msg)
+    def const(cls, val):
+        raise NotImplementedError(cls.not_implemented_error_msg)
 
     def substitute_pycollo_sym(self, expr):
-        raise NotImplementedError(not_implemented_error_msg)
+        raise NotImplementedError(self.not_implemented_error_msg)
 
     @staticmethod
     def iteration_scaling(*args, **kwargs):
@@ -1890,15 +1890,15 @@ class Sympy(BackendABC):
         raise NotImplementedError(self.not_implemented_error_msg)
 
     @staticmethod
-    def sym(name):
-        raise NotImplementedError(not_implemented_error_msg)
+    def sym(cls, name):
+        raise NotImplementedError(cls.not_implemented_error_msg)
 
     @staticmethod
-    def const(val):
-        raise NotImplementedError(not_implemented_error_msg)
+    def const(cls, val):
+        raise NotImplementedError(cls.not_implemented_error_msg)
 
     def substitute_pycollo_sym(self, expr):
-        raise NotImplementedError(not_implemented_error_msg)
+        raise NotImplementedError(self.not_implemented_error_msg)
 
     @staticmethod
     def iteration_scaling(*args, **kwargs):

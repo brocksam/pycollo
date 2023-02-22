@@ -407,7 +407,7 @@ class OptimalControlProblem():
 
     def _check_if_initialisation_required_before_solve(self):
         """Initialise the optimal control problem before solve if required."""
-        if self._is_initialised == False:
+        if not self._is_initialised:
             self.initialise()
 
     def _solve_iteration(self):
@@ -508,7 +508,7 @@ class OptimalControlProblem():
         self._display_progress = display_progress
 
     def _check_if_initialisation_required_before_solve(self):
-        if self._is_initialised == False:
+        if not self._is_initialised:
             self.initialise()
 
     def _final_output(self):

@@ -81,9 +81,11 @@ dev = [
 "Source Code" = "https://github.com/brocksam/pycollo"
 "Issue Tracker" = "https://github.com/brocksam/pycollo/issues"
 
-[tool.pytest]
+[tool.pytest.ini_options]
 testpaths = "tests"
-markers = "incremental: marks related sequential tests to stop after an earlier failure"
+markers = [
+    "incremental: marks related sequential tests to stop after an earlier failure",
+]
 
 [tool.black]
 exclude = '''

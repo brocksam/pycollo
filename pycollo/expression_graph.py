@@ -233,11 +233,13 @@ class ExpressionGraph:
                                p.qt_slice.stop + offset)
             portions_requiring_summing.update({**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, p_qt_slice).entries})
         portions_requiring_summing.update({**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, self.ocp_backend.variable_slice).entries})
-        final_nodes = set(Node(symbol, self)
-                          for symbol in portions_requiring_summing.values())
+        final_nodes = {
+            Node(symbol, self) for symbol in portions_requiring_summing.values()
+        }
 
-        ddL_dxdx_dependent_nodes = set(
-            node for tier in self.ddL_dxdx_dependent_tiers.values() for node in tier)
+        ddL_dxdx_dependent_nodes = {
+            node for tier in self.ddL_dxdx_dependent_tiers.values() for node in tier
+        }
         nodes_requiring_summing = set()
 
         def requires_summing(node):
@@ -254,9 +256,10 @@ class ExpressionGraph:
             _ = requires_summing(Node(L, self))
 
         self.ddL_dxdx_sum_nodes = nodes_requiring_summing.difference(
-            set(Node(symbol, self) for symbol in L_syms))
+            {Node(symbol, self) for symbol in L_syms}
+        )
 
-        L_nodes = set(Node(L, self) for L in L_syms)
+        L_nodes = {Node(L, self) for L in L_syms}
         nodes_requiring_summing = set()
 
         def requires_summing(node):

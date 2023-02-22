@@ -79,7 +79,7 @@ class SparseCOOMatrix:
 		matrix_lookup = collections.defaultdict(dict)
 		for (i, j), val in self._entries.items():
 			matrix_lookup[j][i] = val
-		vector_indices = set(k for k in vector_lookup.keys())
+		vector_indices = {k for k in vector_lookup.keys()}
 
 		smat = {}
 		for col_ind, col in matrix_lookup.items():

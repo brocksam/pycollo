@@ -106,7 +106,7 @@ exclude = '''
 
 [tool.ruff]
 # Enable Pyflakes `E` and `F` codes by default.
-select = ["C4", "E", "F"]
+select = ["C4", "E", "F", "I"]
 ignore = [
     "C400",  # Unnecessary generator (rewrite as a `list` comprehension)
     "C401",  # Unnecessary generator (rewrite as a `set` comprehension)
@@ -128,7 +128,7 @@ ignore = [
 ]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = ["A", "B", "C", "D", "E", "F"]
+fixable = ["A", "B", "C", "D", "E", "F", "I"]
 unfixable = []
 
 # Exclude a variety of commonly ignored directories.

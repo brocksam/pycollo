@@ -107,7 +107,6 @@ exclude = '''
 '''
 
 [tool.ruff]
-# Enable Pyflakes `E` and `F` codes by default.
 select = ["C4", "E", "F", "I", "W"]
 ignore = [
     "E501",  # Line too long (<LINE LENGTH> > <LINE LENGTH LIMIT> characters)

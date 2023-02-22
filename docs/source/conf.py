@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Pycollo"
-copyright = "2023, Sam Brockie"
+copyright = "2023, Sam Brockie"  # noqa: A001
 author = "Sam Brockie"
 
 # -- General configuration ---------------------------------------------------

@@ -116,9 +116,9 @@ class SparseCOOMatrix:
 			raise NotImplementedError 
 		smat = {}
 		for key in set().union(self._entries.keys(), other._entries.keys()):
-			sum = self._entries.get(key, self.ZERO) + other._entries.get(key, self.ZERO)
-			if sum != 0:
-				smat[key] = sum
+			total = self._entries.get(key, self.ZERO) + other._entries.get(key, self.ZERO)
+			if total != 0:
+				smat[key] = total
         # Add new nodes to expression graph and return new sparse matrix with
         # nodes as nonzero entries
 		new = self._new(smat, *self._shape, self._expr_graph)

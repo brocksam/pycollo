@@ -17,7 +17,6 @@ BACKENDS : :py:class:`Options <pyproprop>`
 
 import itertools
 from abc import ABC, abstractmethod
-from collections import namedtuple
 from timeit import default_timer as timer
 
 import casadi as ca
@@ -28,7 +27,6 @@ from pyproprop import Options, processed_property
 
 from .bounds import Bounds
 from .compiled import CompiledFunctions
-from .expression_graph import ExpressionGraph
 from .guess import Guess
 from .iteration import Iteration
 from .mesh import Mesh

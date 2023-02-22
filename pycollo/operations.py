@@ -1,5 +1,4 @@
 import abc
-import collections
 
 import sympy as sym
 

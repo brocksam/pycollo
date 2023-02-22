@@ -19,14 +19,12 @@ from abc import ABC, abstractmethod
 import itertools
 
 import casadi as ca
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate as interpolate
 from pyproprop import Options
 
 from .mesh import Mesh, PhaseMesh
 from .utils import casadi_substitute, dict_merge, symbol_name
-from .vis.plot import plot_mesh
 
 
 DEFAULT_MESH_TOLERANCE = 1e-7

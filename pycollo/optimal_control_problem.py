@@ -34,27 +34,17 @@ Notes:
 """
 
 
-import itertools
-from typing import (AnyStr, Iterable, Optional, Tuple, TypeVar, Union)
-from timeit import default_timer as timer
+from typing import (AnyStr, Iterable, Tuple)
 
-import numba as nb
 import numpy as np
 # from ordered_set import OrderedSet
-import scipy.sparse as sparse
 import sympy as sym
-import sympy.physics.mechanics as me
 
 from .backend import BACKENDS
 from .bounds import EndpointBounds
-from .expression_graph import ExpressionGraph
 from .guess import EndpointGuess
-from .iteration import Iteration
-from .mesh import Mesh
-from .numbafy import numbafy
 from .phase import Phase
-from .quadrature import Quadrature
-from .typing import (OptionalSymsType, TupleSymsType)
+from .typing import (OptionalSymsType)
 from .scaling import EndpointScaling
 from .settings import Settings
 from .utils import (check_sym_name_clash, console_out, format_as_named_tuple)

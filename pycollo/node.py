@@ -1,10 +1,6 @@
 import abc
-import itertools
-import numbers
-from timeit import default_timer as timer
 import weakref
 
-import numpy as np
 import sympy as sym
 
 from .operations import (determine_operation, PycolloUnsetOp)

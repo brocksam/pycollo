@@ -6,7 +6,6 @@ Classes:
 
 
 import copy
-import itertools
 from typing import (Optional, Tuple)
 
 import sympy as sym

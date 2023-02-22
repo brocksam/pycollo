@@ -1,10 +1,6 @@
 import itertools
-from numbers import Number
 
-import numba as nb
-import numpy as np
-from numpy import sin, cos, tan, exp, log, sqrt, arccos, arcsin, arctan, tanh
-import scipy.interpolate as interpolate
+from numpy import arccos, arcsin, arctan
 import sympy as sym
 
 acos = arccos

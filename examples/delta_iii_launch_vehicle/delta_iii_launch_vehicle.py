@@ -121,6 +121,7 @@ psi_L : `Symbol <sympy>`
 
 """
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pycollo
 import sympy as sym
@@ -461,10 +462,6 @@ problem.settings.quadrature_method = "lobatto"
 
 problem.initialise()
 problem.solve()
-
-
-import matplotlib.pyplot as plt
-
 
 # Plot altitude
 plt.figure()

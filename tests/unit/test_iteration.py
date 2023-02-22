@@ -10,8 +10,7 @@ import pycollo
 from .iteration_scaling_test_data_double_pendulum import (EXPECT_X_DP,
                                                           EXPECT_X_TILDE_DP,
                                                           )
-from .iteration_scaling_test_data_brachistochrone import (EXPECT_X_BR,
-                                                          EXPECT_X_TILDE_BR,
+from .iteration_scaling_test_data_brachistochrone import (EXPECT_X_TILDE_BR,
                                                           )
 
 

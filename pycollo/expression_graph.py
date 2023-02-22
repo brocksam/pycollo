@@ -1,17 +1,12 @@
-import abc
-import collections
 import functools
 import itertools
-import numbers
-from timeit import default_timer as timer
-import weakref
 
 import numpy as np
 import sympy as sym
 
 from .node import Node
 from .sparse import SparseCOOMatrix
-from .utils import (console_out, dict_merge)
+from .utils import (console_out)
 
 """
 

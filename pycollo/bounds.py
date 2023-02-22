@@ -17,17 +17,12 @@ __all__ = ["EndpointBounds", "PhaseBounds"]
 
 from abc import (ABC, abstractmethod)
 from collections import namedtuple
-from numbers import Number
-from typing import (Iterable, Optional, Union)
+from typing import (Optional)
 
 import numpy as np
-import scipy.optimize as optimize
-import sympy as sym
 
-from .node import Node
 from .typing import OptionalBoundsType
-from .utils import (fast_sympify,
-                    format_for_output,
+from .utils import (format_for_output,
                     SUPPORTED_ITER_TYPES,
                     symbol_primitives,
                     )

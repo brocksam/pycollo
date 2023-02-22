@@ -1,13 +1,8 @@
 import collections
-import itertools
-from numbers import Number
-from typing import (Iterable, Mapping, NamedTuple, Optional, Tuple)
+from typing import (Iterable, Mapping, NamedTuple, Optional)
 
 import casadi as ca
-import numba
 import numpy as np
-from numpy import sin, cos, tan, exp, sqrt, arctan, tanh
-import scipy.interpolate as interpolate
 import sympy as sym
 
 from .typing import OptionalSymsType, TupleSymsType

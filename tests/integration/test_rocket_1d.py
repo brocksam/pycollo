@@ -6,7 +6,6 @@ reference for this optimal control problem.
 """
 
 
-import numpy as np
 import pytest
 import sympy as sym
 

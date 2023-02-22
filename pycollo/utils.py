@@ -1,17 +1,11 @@
 import collections
-import itertools
-from numbers import Number
-from typing import (Iterable, Mapping, NamedTuple, Optional, Tuple)
+from typing import Iterable, Mapping, NamedTuple, Optional
 
 import casadi as ca
-import numba
 import numpy as np
-from numpy import sin, cos, tan, exp, sqrt, arctan, tanh
-import scipy.interpolate as interpolate
 import sympy as sym
 
 from .typing import OptionalSymsType, TupleSymsType
-
 
 dcdx_info_fields = ["zeta_y", "zeta_u", "zeta_s", "gamma_y", "gamma_u",
                     "gamma_s", "rho_y", "rho_u", "rho_s"]
@@ -178,11 +172,9 @@ def format_as_named_tuple(
     except TypeError:
         iterable = (iterable, )
     else:
-        try:
+        if isinstance(iterable, dict):
             named_keys = iterable.keys()
             iterable = iterable.values()
-        except:
-            pass
 
     if sympify:
         entries = [sym.sympify(entry) for entry in iterable]
@@ -213,25 +205,25 @@ def check_sym_name_clash(syms: TupleSymsType) -> None:
     Raises:
         ValueError: If any of the Pycollo naming rules are not obeyed.
     """
-    for sym in syms:
-        if str(sym)[0] == '_':
-            msg = (f"The user defined symbol {sym} is invalid as its leading "
+    for symbol in syms:
+        if str(symbol)[0] == '_':
+            msg = (f"The user defined symbol {symbol} is invalid as its leading "
                    f"character '_' is reserved for use by `Pycollo`. Please "
                    f"rename this symbol.")
             raise ValueError(msg)
-        elif str(sym)[-4:] == '(t0)':
-            msg = (f"The user defined symbol {sym} is invalid as it is named "
+        elif str(symbol)[-4:] == '(t0)':
+            msg = (f"The user defined symbol {symbol} is invalid as it is named "
                    f"with the suffix '(t0)' which is reserved for use by "
                    f"`Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
-        elif str(sym)[-4:] == '(tF)':
-            msg = (f"The user defined symbol {sym} is invalid as it is named "
+        elif str(symbol)[-4:] == '(tF)':
+            msg = (f"The user defined symbol {symbol} is invalid as it is named "
                    f"with the suffix '(tF)' which is reserved for use by "
                    f"`Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
 
     if len(set(syms)) != len(syms):
-        msg = (f"All user defined symbols must have unique names.")
+        msg = ("All user defined symbols must have unique names.")
         raise ValueError(msg)
 
 

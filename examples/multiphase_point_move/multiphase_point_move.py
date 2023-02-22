@@ -17,7 +17,6 @@ import sympy as sym
 
 import pycollo
 
-
 # State variables
 x = sym.Symbol("x")  # Position (m) of the point horizontally from the origin (x-axis)
 y = sym.Symbol("y")  # Position (m) of the point vertically from the origin (y-axis)

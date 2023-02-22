@@ -18,7 +18,6 @@ import sympy as sym
 
 import pycollo
 
-
 PHASE_NAMES = {0: "A", 1: "B", 2: "C", 3: "D"}
 EXPECTED_SOLUTION = 0.4472136
 
@@ -41,7 +40,7 @@ def variable_phase_problem(num_phases):
         phase = problem.new_phase(PHASE_NAMES[i],
                                   state_variables=[x, v],
                                   control_variables=[f])
-        phase.state_equations = state_equations = {x: v, v: f}
+        phase.state_equations = {x: v, v: f}
         phase.bounds.initial_time = [0, MAX_T] if i else 0
         phase.bounds.final_time = [0, MAX_T]
         phase.bounds.initial_state_constraints = {

@@ -1,11 +1,7 @@
 import itertools
-from numbers import Number
 
-import numba as nb
-import numpy as np
-from numpy import sin, cos, tan, exp, log, sqrt, arccos, arcsin, arctan, tanh
-import scipy.interpolate as interpolate
 import sympy as sym
+from numpy import arccos, arcsin, arctan
 
 acos = arccos
 asin = arcsin
@@ -19,9 +15,9 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 
 	def expand_to_array(e, node):
 		if e is zero_sym or e == 0:
-			e_entry = f'_np_zeros_array_N'
+			e_entry = '_np_zeros_array_N'
 		elif e is one_sym:
-			e_entry = f'_np_ones_array_N'
+			e_entry = '_np_ones_array_N'
 		elif node.is_vector:
 			e_entry = f'{e}'
 		else:
@@ -35,7 +31,6 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 			expression_list = []
 			row = expression.row(row_num)
 			for col_num, e, in enumerate(row):
-				index = row_num*expression.cols + col_num
 				e_entry = f'{e}'
 				expression_list.append(e_entry)
 			expression_row = ', '.join(f'{e}' for e in expression_list)
@@ -135,7 +130,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 				array_argument = ', '.join(array_arguments)
 				return_value = f'np.stack(({array_argument}, ))'
 			else:
-				return_value = f'np.zeros((_N, _N))'
+				return_value = 'np.zeros((_N, _N))'
 
 	elif return_dims is None:
 		return_value = f'{expression}'
@@ -162,7 +157,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 
 			y_str = ', '.join(f'{e}' for e in y_tuple)
 
-			u_str = ', '.join(f'_np_zeros_array_N' for i in range(ocp_num_vars[1]))
+			u_str = ', '.join('_np_zeros_array_N' for i in range(ocp_num_vars[1]))
 
 			qts_str = ', '.join(f'{e}' for e in expression[yu_qts_endpoint_split:])
 
@@ -246,7 +241,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 	# input()
 	
 	exec(function_string)
-	   
+
 	return locals()['numbafied_func']
 
 

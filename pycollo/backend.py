@@ -17,7 +17,6 @@ BACKENDS : :py:class:`Options <pyproprop>`
 
 import itertools
 from abc import ABC, abstractmethod
-from collections import namedtuple
 from timeit import default_timer as timer
 
 import casadi as ca
@@ -28,30 +27,30 @@ from pyproprop import Options, processed_property
 
 from .bounds import Bounds
 from .compiled import CompiledFunctions
-from .expression_graph import ExpressionGraph
 from .guess import Guess
 from .iteration import Iteration
 from .mesh import Mesh
 from .quadrature import Quadrature
-from .scaling import (Scaling,
-                      CasadiIterationScaling,
-                      HsadIterationScaling,
-                      PycolloIterationScaling,
-                      SympyIterationScaling,
-                      )
+from .scaling import (
+    CasadiIterationScaling,
+    HsadIterationScaling,
+    PycolloIterationScaling,
+    Scaling,
+    SympyIterationScaling,
+)
 from .solution import CasadiSolution, NlpResult
-from .utils import (casadi_substitute,
-                    console_out,
-                    dict_merge,
-                    fast_sympify,
-                    format_multiple_items_for_output,
-                    needed_to_tuple,
-                    SUPPORTED_ITER_TYPES,
-                    symbol_name,
-                    symbol_primitives,
-                    sympy_to_casadi,
-                    )
-
+from .utils import (
+    SUPPORTED_ITER_TYPES,
+    casadi_substitute,
+    console_out,
+    dict_merge,
+    fast_sympify,
+    format_multiple_items_for_output,
+    needed_to_tuple,
+    symbol_name,
+    symbol_primitives,
+    sympy_to_casadi,
+)
 
 __all__ = []
 
@@ -584,7 +583,7 @@ class BackendABC(ABC):
                                                       p.r_q_var_full))
                                   for p in self.p])
         phase_point_sym = set.union(*[set(p.x_point_var_full) for p in self.p])
-        all_backend_sym = set.union(point_sym,
+        set.union(point_sym,
                                     V_point_sym,
                                     r_point_sym,
                                     phase_sym,
@@ -647,9 +646,9 @@ class BackendABC(ABC):
         self.r_s_var = needed_to_tuple(self.r_s_var_full,
                                        self.ocp.bounds._s_needed)
 
-        self.V_x_var = tuple(itertools.chain(*list(p.V_x_var for p in self.p),
+        self.V_x_var = tuple(itertools.chain(*[p.V_x_var for p in self.p],
                                              self.V_s_var))
-        self.r_x_var = tuple(itertools.chain(*list(p.r_x_var for p in self.p),
+        self.r_x_var = tuple(itertools.chain(*[p.r_x_var for p in self.p],
                                              self.r_s_var))
 
         all_phase_var = chain_from_iterable(p.x_var for p in self.p)
@@ -1351,7 +1350,6 @@ class Casadi(BackendABC):
 
     def substitute_pycollo_sym(self, expr, phase=None):
         """Convert to ca.SX and replace user syms with Pycollo backend syms."""
-        expr_sym = expr
         if isinstance(expr, sym.Expr):
             if isinstance(phase, PycolloPhaseData):
                 user_to_backend_mapping = phase.all_user_to_backend_mapping
@@ -1479,17 +1477,17 @@ class Casadi(BackendABC):
         self.W_iter_mapping = {}
         for p in self.p:
             phase_W_iter_mapping = {}
-            W_d = list(self.sym(f"W_d{i}_P{p.i}") for i in range(p.num_y_eqn))
+            W_d = [self.sym(f"W_d{i}_P{p.i}") for i in range(p.num_y_eqn)]
             phase_W_iter_mapping["d"] = W_d
             W.extend(W_d)
-            W_p = list(self.sym(f"W_p{i}_P{p.i}") for i in range(p.num_p_con))
+            W_p = [self.sym(f"W_p{i}_P{p.i}") for i in range(p.num_p_con)]
             phase_W_iter_mapping["p"] = W_p
             W.extend(W_p)
-            W_i = list(self.sym(f"W_i{i}_P{p.i}") for i in range(p.num_q_fnc))
+            W_i = [self.sym(f"W_i{i}_P{p.i}") for i in range(p.num_q_fnc)]
             phase_W_iter_mapping["i"] = W_i
             W.extend(W_i)
             self.W_iter_mapping[p] = phase_W_iter_mapping
-        W_e = list(self.sym(f"W_b{i}") for i in range(self.num_b_con))
+        W_e = [self.sym(f"W_b{i}") for i in range(self.num_b_con)]
         self.W_iter_mapping["e"] = W_e
         W.extend(W_e)
         self.W_iter = ca.vertcat(*W)
@@ -1855,11 +1853,11 @@ class Hsad(BackendABC):
         raise NotImplementedError(cls.not_implemented_error_msg)
 
     @staticmethod
-    def const(val):
-        raise NotImplementedError(not_implemented_error_msg)
+    def const(cls, val):
+        raise NotImplementedError(cls.not_implemented_error_msg)
 
     def substitute_pycollo_sym(self, expr):
-        raise NotImplementedError(not_implemented_error_msg)
+        raise NotImplementedError(self.not_implemented_error_msg)
 
     @staticmethod
     def iteration_scaling(*args, **kwargs):
@@ -1892,15 +1890,15 @@ class Sympy(BackendABC):
         raise NotImplementedError(self.not_implemented_error_msg)
 
     @staticmethod
-    def sym(name):
-        raise NotImplementedError(not_implemented_error_msg)
+    def sym(cls, name):
+        raise NotImplementedError(cls.not_implemented_error_msg)
 
     @staticmethod
-    def const(val):
-        raise NotImplementedError(not_implemented_error_msg)
+    def const(cls, val):
+        raise NotImplementedError(cls.not_implemented_error_msg)
 
     def substitute_pycollo_sym(self, expr):
-        raise NotImplementedError(not_implemented_error_msg)
+        raise NotImplementedError(self.not_implemented_error_msg)
 
     @staticmethod
     def iteration_scaling(*args, **kwargs):

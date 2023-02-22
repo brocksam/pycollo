@@ -15,19 +15,16 @@ PATTERSON_RAO : str
 """
 
 
-from abc import ABC, abstractmethod
 import itertools
+from abc import ABC, abstractmethod
 
 import casadi as ca
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate as interpolate
 from pyproprop import Options
 
 from .mesh import Mesh, PhaseMesh
 from .utils import casadi_substitute, dict_merge, symbol_name
-from .vis.plot import plot_mesh
-
 
 DEFAULT_MESH_TOLERANCE = 1e-7
 DEFAULT_MAX_MESH_ITERATIONS = 10
@@ -259,7 +256,7 @@ class PattersonRaoMeshRefinement(MeshRefinementABC):
             P_q = merge_group[:, 0]
             h_q = merge_group[:, 1]
             p_q = merge_group[:, 2]
-            N = np.sum(p_q)
+            np.sum(p_q)
             T = np.sum(h_q)
             collocation_points_min = self.ocp.settings.collocation_points_min
             merge_ratio = p_q / (collocation_points_min - P_q)

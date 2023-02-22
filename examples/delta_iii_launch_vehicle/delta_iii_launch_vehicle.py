@@ -121,9 +121,11 @@ psi_L : `Symbol <sympy>`
 
 """
 
+import matplotlib.pyplot as plt
 import numpy as np
-import pycollo
 import sympy as sym
+
+import pycollo
 
 # Define all symbols for building problem equations
 r_x = sym.Symbol("r_x")
@@ -461,10 +463,6 @@ problem.settings.quadrature_method = "lobatto"
 
 problem.initialise()
 problem.solve()
-
-
-import matplotlib.pyplot as plt
-
 
 # Plot altitude
 plt.figure()

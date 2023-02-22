@@ -4,7 +4,6 @@ import numpy as np
 import scipy.sparse as sparse
 from pyproprop import Options, processed_property
 
-
 BOUNDS = "bounds"
 GUESS = "guess"
 NONE = "none"
@@ -413,11 +412,11 @@ class IterationScaling:
             ocp_defect_slice = args[2]
             ocp_path_slice = args[3]
             ocp_integral_slice = args[4]
-            defect_slice = args[5]
+            args[5]
             path_slice = args[6]
-            integral_slice = args[7]
+            args[7]
             p = args[8]
-            n_defect = args[9]
+            args[9]
             N = args[10]
             ocp_c_scales[ocp_defect_slice] = np.reciprocal(
                 self.V_ocp[ocp_y_slice])

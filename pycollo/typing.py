@@ -9,8 +9,7 @@ part of Pycollo.
 """
 
 
-from collections import namedtuple
-from typing import (Iterable, NamedTuple, Optional, Tuple, Union)
+from typing import Iterable, NamedTuple, Optional, Tuple, Union
 
 import sympy as sym
 

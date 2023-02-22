@@ -34,31 +34,21 @@ Notes:
 """
 
 
-import itertools
-from typing import (AnyStr, Iterable, Optional, Tuple, TypeVar, Union)
-from timeit import default_timer as timer
+from typing import AnyStr, Iterable, Tuple
 
-import numba as nb
 import numpy as np
+
 # from ordered_set import OrderedSet
-import scipy.sparse as sparse
 import sympy as sym
-import sympy.physics.mechanics as me
 
 from .backend import BACKENDS
 from .bounds import EndpointBounds
-from .expression_graph import ExpressionGraph
 from .guess import EndpointGuess
-from .iteration import Iteration
-from .mesh import Mesh
-from .numbafy import numbafy
 from .phase import Phase
-from .quadrature import Quadrature
-from .typing import (OptionalSymsType, TupleSymsType)
 from .scaling import EndpointScaling
 from .settings import Settings
-from .utils import (check_sym_name_clash, console_out, format_as_named_tuple)
-
+from .typing import OptionalSymsType
+from .utils import check_sym_name_clash, console_out, format_as_named_tuple
 
 __all__ = ["OptimalControlProblem"]
 
@@ -197,7 +187,7 @@ class OptimalControlProblem():
                         number of specified new phases.
         """
         if len(names) != int(number):
-            msg = (f"Must supply a name for each new phase.")
+            msg = ("Must supply a name for each new phase.")
             raise ValueError(msg)
         new_phases = (self.new_phase_like(phase_for_copying, name, **kwargs)
                       for name in names)
@@ -216,8 +206,8 @@ class OptimalControlProblem():
                 NotImplementedError: Whenever called to inform the user that these 
                         types of problem are not currently supported.
         """
-        msg = (f"Pycollo do not currently support dynamic, path or integral "
-               f"constraints that are explicit functions of continuous time.")
+        msg = ("Pycollo do not currently support dynamic, path or integral "
+               "constraints that are explicit functions of continuous time.")
         raise NotImplementedError(msg)
 
     @property
@@ -417,7 +407,7 @@ class OptimalControlProblem():
 
     def _check_if_initialisation_required_before_solve(self):
         """Initialise the optimal control problem before solve if required."""
-        if self._is_initialised == False:
+        if not self._is_initialised:
             self.initialise()
 
     def _solve_iteration(self):
@@ -438,7 +428,6 @@ class OptimalControlProblem():
             _ = self._backend.new_mesh_iteration(self._next_iteration_mesh,
                                                  self._next_iteration_guess)
         result = self._backend.mesh_iterations[-1].solve()
-        mesh_tolerance_met = result.mesh_tolerance_met
         self._next_iteration_mesh = result.next_iteration_mesh
         self._next_iteration_guess = result.next_iteration_guess
         if result.mesh_tolerance_met:
@@ -518,7 +507,7 @@ class OptimalControlProblem():
         self._display_progress = display_progress
 
     def _check_if_initialisation_required_before_solve(self):
-        if self._is_initialised == False:
+        if not self._is_initialised:
             self.initialise()
 
     def _final_output(self):

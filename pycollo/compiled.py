@@ -3,11 +3,10 @@ import scipy.sparse as sparse
 import sympy as sym
 from pyproprop import Options
 
-from .numbafy import numbafy
-from .numbafy_hessian import (
-    numbafy_endpoint_hessian, numbafy_continuous_hessian)
+# from .numbafy import numbafy
+# from .numbafy_hessian import (
+#     numbafy_endpoint_hessian, numbafy_continuous_hessian)
 from .utils import console_out
-
 
 DIFFERENTIAL = "differential"
 INTEGRAL = "integral"
@@ -222,10 +221,10 @@ class CompiledFunctions:
 
             stretch = t_stretch_lambda(*x_tuple)
             c_continuous = c_continuous_lambda(*x_tuple, N)
-            y = np.vstack(x_tuple[y_slice])
-            q = np.array(x_tuple[q_slice])
+            np.vstack(x_tuple[y_slice])
+            np.array(x_tuple[q_slice])
             dy = c_continuous[dy_slice].reshape((-1, N))
-            p = c_continuous[p_slice]
+            c_continuous[p_slice]
             g = c_continuous[g_slice].reshape((-1, N))
 
             dc_dx = dc_dx_lambda(*x_tuple, N).astype(float)
@@ -380,7 +379,6 @@ class CompiledFunctions:
             return G_drho_ds
 
         def endpoint_jacobian_lambda(G_shape, x_point_tuple, db_dxb_phase_lambdas, db_ds_lambda, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase, num_s, num_c_endpoint):
-            row_offset = 0
             db_dxb_phases = []
             for db_dxb_lambda, N, num_y, num_q, num_t, num_x in zip(db_dxb_phase_lambdas, p_N, num_y_per_phase, num_q_per_phase, num_t_per_phase, num_x_per_phase):
                 ocp_num_y = int(num_y / N)

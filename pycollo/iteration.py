@@ -2,24 +2,16 @@
 
 
 import collections
-import csv
 import itertools
 import json
 from timeit import default_timer as timer
 
-import matplotlib.pyplot as plt
-import numba as nb
 import numpy as np
-import scipy.integrate as integrate
 import scipy.interpolate as interpolate
 import scipy.sparse as sparse
-import sympy as sym
 from pyproprop import processed_property
 
-from .guess import (PhaseGuess, EndpointGuess, Guess)
-from .mesh import Mesh
-from .nlp import initialise_nlp_backend
-from .scaling import IterationScaling
+from .guess import EndpointGuess, Guess, PhaseGuess
 from .utils import console_out, format_time
 
 
@@ -635,7 +627,7 @@ class Iteration:
 
         print(f'Objective Evaluation:       {self.solution.objective}')
         print(f'Max Relative Mesh Error:    {max_rel_mesh_error}')
-        print(f'Collocation Points Used:    {sum([N for N in self.mesh.N])}\n')
+        print(f'Collocation Points Used:    {sum(list(self.mesh.N))}\n')
         if mesh_tol_met:
             print(f'Adjusting Collocation Mesh: {next_iter_mesh.K} mesh sections\n')
 

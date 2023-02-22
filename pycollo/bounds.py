@@ -15,23 +15,18 @@ DEFAULT_INF_VALUE : float
 __all__ = ["EndpointBounds", "PhaseBounds"]
 
 
-from abc import (ABC, abstractmethod)
+from abc import ABC, abstractmethod
 from collections import namedtuple
-from numbers import Number
-from typing import (Iterable, Optional, Union)
+from typing import Optional
 
 import numpy as np
-import scipy.optimize as optimize
-import sympy as sym
 
-from .node import Node
 from .typing import OptionalBoundsType
-from .utils import (fast_sympify,
-                    format_for_output,
-                    SUPPORTED_ITER_TYPES,
-                    symbol_primitives,
-                    )
-
+from .utils import (
+    SUPPORTED_ITER_TYPES,
+    format_for_output,
+    symbol_primitives,
+)
 
 # Default values for settings
 DEFAULT_ASSUME_INF_BOUNDS = True
@@ -379,12 +374,12 @@ class PhaseBounds(BoundsABC):
         override = settings.override_endpoint_bounds
         lower_is_less = y_con_bnd[:, 0] < self._y_bnd[:, 0]
         if not override and np.any(lower_is_less):
-            msg = (f"")
+            msg = ("")
             raise ValueError(msg)
         y_con_bnd[lower_is_less, 0] = self._y_bnd[lower_is_less, 0]
         upper_is_more = y_con_bnd[:, 1] > self._y_bnd[:, 1]
         if not override and np.any(upper_is_more):
-            msg = (f"")
+            msg = ("")
             raise ValueError(msg)
         y_con_bnd[upper_is_more, 1] = self._y_bnd[upper_is_more, 1]
         return y_con_bnd
@@ -779,7 +774,7 @@ def get_bound_as_number(bnds_obj, bnds_info, lower_upper, p_info):
     bnds = bnds_obj.ocp._backend.substitute_pycollo_sym(bnds)
     if symbol_primitives(bnds):
         msg = (f"The user-supplied {lower_upper} for the "
-               f"{bnds_info.bnds_type} '{bnd_info.user_syms}' "
+               f"{bnds_info.bnds_type} '{bnds_info.user_syms}' "
                f"(index #{bnds_info.num}) of '{bnds}' "
                f"cannot be precomputed.")
         raise ValueError(msg)

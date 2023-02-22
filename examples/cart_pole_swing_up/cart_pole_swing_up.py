@@ -13,9 +13,9 @@ animation.
 """
 import matplotlib.pyplot as plt
 import numpy as np
-import pycollo
 import sympy as sym
 
+import pycollo
 
 q1, q2 = sym.symbols("q1, q2")
 q1d, q2d = sym.symbols("q1d, q2d")

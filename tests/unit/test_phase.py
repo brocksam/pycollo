@@ -9,14 +9,13 @@ import pycollo
 def problem_with_phase_fixture():
     """Simple OCP object with phase fixture."""
     problem = pycollo.OptimalControlProblem(name="Fixture")
-    phase = problem.new_phase(name="A")
+    problem.new_phase(name="A")
     return problem
 
 
 def test_name(problem_with_phase_fixture):
     """Phase name should be set correctly and accessible from OCP."""
     problem = problem_with_phase_fixture
-    phase = problem.phases.A
     assert hasattr(problem.phases, "A")
     assert problem.phases[0].name == "A"
     assert problem.phases.A.name == "A"

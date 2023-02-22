@@ -1,17 +1,12 @@
-import abc
-import collections
 import functools
 import itertools
-import numbers
-from timeit import default_timer as timer
-import weakref
 
 import numpy as np
 import sympy as sym
 
 from .node import Node
 from .sparse import SparseCOOMatrix
-from .utils import (console_out, dict_merge)
+from .utils import console_out
 
 """
 
@@ -53,7 +48,7 @@ class ExpressionGraph:
 
     def console_out_begin_expression_graph_creation(self):
         if self.ocp_backend.ocp.settings.console_out_progress:
-            msg = (f"Beginning expression graph creation.")
+            msg = ("Beginning expression graph creation.")
             console_out(msg)
 
     def initialise_node_symbol_number_counters(self):
@@ -103,13 +98,13 @@ class ExpressionGraph:
     def initialise_default_singleton_number_nodes(self):
         self._zero_node = Node(0, self)
         self._one_node = Node(1, self)
-        two_node = Node(2, self)
-        neg_one_node = Node(-1, self)
-        half_node = Node(0.5, self)
+        Node(2, self)
+        Node(-1, self)
+        Node(0.5, self)
 
     def initialise_auxiliary_constant_nodes(self, aux_info):
         self.user_symbol_to_expression_auxiliary_mapping = {}
-        self._user_constants_ordered = tuple()
+        self._user_constants_ordered = ()
         self._user_constants_set = set()
         for key, value in aux_info.items():
             is_expression = isinstance(value, (sym.Expr, sym.Symbol))
@@ -117,7 +112,7 @@ class ExpressionGraph:
                 self.user_symbol_to_expression_auxiliary_mapping[key] = value
             else:
                 self._user_constants_set.add(key)
-                node = Node(key, self, value=value)
+                Node(key, self, value=value)
 
     def initialise_time_normalisation_nodes(self):
         self._t_norm_nodes = tuple(Node(p.t_norm, self)
@@ -203,7 +198,7 @@ class ExpressionGraph:
         dL_dxb_terms = dL_dxb.to_dense_sympy_matrix()
         form_function_and_derivative(func=dL_dxb_terms,
                                      wrt=self._endpoint_variable_nodes, func_abrv="L",
-                                     completion_msg=f"Hessian of the endpoint Lagrangian")
+                                     completion_msg="Hessian of the endpoint Lagrangian")
         self.ddL_dxbdxb = self.ddL_dxbdxb.make_lower_triangular()
 
         L_syms_continuous_time_stretched = []
@@ -216,7 +211,7 @@ class ExpressionGraph:
             terms = [Node(sym.Mul(t_norm_node.symbol, L_sym), self).symbol
                      for L_sym in L_syms[p_c_defect_slice]]
             L_syms_continuous_time_stretched.extend(terms)
-            terms = [L_sym for L_sym in L_syms[p_c_path_slice]]
+            terms = list(L_syms[p_c_path_slice])
             L_syms_continuous_time_stretched.extend(terms)
             terms = [Node(sym.Mul(t_norm_node.symbol, L_sym), self).symbol
                      for L_sym in L_syms[p_c_integral_slice]]
@@ -227,7 +222,7 @@ class ExpressionGraph:
         dL_dx_terms = dL_dx_continuous.to_dense_sympy_matrix()
         form_function_and_derivative(func=dL_dx_terms,
                                      wrt=self._continuous_variable_nodes, func_abrv="L",
-                                     completion_msg=f"Hessian of the continuous Lagrangian")
+                                     completion_msg="Hessian of the continuous Lagrangian")
         self.ddL_dxdx = self.ddL_dxdx.make_lower_triangular()
         self.ddL_dxdx_nodes = self.ddL_dxdx_nodes.make_lower_triangular()
 
@@ -238,11 +233,13 @@ class ExpressionGraph:
                                p.qt_slice.stop + offset)
             portions_requiring_summing.update({**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, p_qt_slice).entries})
         portions_requiring_summing.update({**self.ddL_dxdx.get_subset(self.ocp_backend.variable_slice, self.ocp_backend.variable_slice).entries})
-        final_nodes = set(Node(symbol, self)
-                          for symbol in portions_requiring_summing.values())
+        final_nodes = {
+            Node(symbol, self) for symbol in portions_requiring_summing.values()
+        }
 
-        ddL_dxdx_dependent_nodes = set(
-            node for tier in self.ddL_dxdx_dependent_tiers.values() for node in tier)
+        {
+            node for tier in self.ddL_dxdx_dependent_tiers.values() for node in tier
+        }
         nodes_requiring_summing = set()
 
         def requires_summing(node):
@@ -259,9 +256,10 @@ class ExpressionGraph:
             _ = requires_summing(Node(L, self))
 
         self.ddL_dxdx_sum_nodes = nodes_requiring_summing.difference(
-            set(Node(symbol, self) for symbol in L_syms))
+            {Node(symbol, self) for symbol in L_syms}
+        )
 
-        L_nodes = set(Node(L, self) for L in L_syms)
+        L_nodes = {Node(L, self) for L in L_syms}
         nodes_requiring_summing = set()
 
         def requires_summing(node):
@@ -302,7 +300,7 @@ class ExpressionGraph:
             return self
 
         init_args = self._initialise_function(func)
-        temp = init_args[0]
+        init_args[0]
 
         if init_func is True:
             self = add_to_namespace(self, init_args, func_abrv)

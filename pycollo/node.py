@@ -1,13 +1,9 @@
 import abc
-import itertools
-import numbers
-from timeit import default_timer as timer
 import weakref
 
-import numpy as np
 import sympy as sym
 
-from .operations import (determine_operation, PycolloUnsetOp)
+from .operations import PycolloUnsetOp, determine_operation
 from .utils import cachedproperty
 
 
@@ -21,7 +17,7 @@ class Cached(type):
 		if args in self.__cache:
 			cached_node = self.__cache[args]
 			equation = kwargs.get('equation')
-			if equation != None:
+			if equation is not None:
 				cached_node.equation = equation
 			return cached_node
 		else:
@@ -152,7 +148,10 @@ class Node(metaclass=Cached):
 		if self.is_root:
 			return set()
 		else:
-			nodes = set.union(*[set.union(parent.dependent_nodes, set([parent])) for parent in self.parent_nodes])
+			nodes = set.union(*[
+                set.union(parent.dependent_nodes, {parent})
+                for parent in self.parent_nodes
+			])
 			return nodes
 
 	@property
@@ -262,7 +261,7 @@ class ExpressionNodeABC(abc.ABC):
 
 class RootNode(ExpressionNodeABC):
 
-	_parent_nodes_not_allowed_error_message = (f"Object of type RootNode do not have parent nodes.")
+	_parent_nodes_not_allowed_error_message = ("Object of type RootNode do not have parent nodes.")
 	_parent_nodes_not_allowed_error = AttributeError(_parent_nodes_not_allowed_error_message)
 
 	@staticmethod

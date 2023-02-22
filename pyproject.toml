@@ -81,9 +81,11 @@ dev = [
 "Source Code" = "https://github.com/brocksam/pycollo"
 "Issue Tracker" = "https://github.com/brocksam/pycollo/issues"
 
-[tool.pytest]
+[tool.pytest.ini_options]
 testpaths = "tests"
-markers = "incremental: marks related sequential tests to stop after an earlier failure"
+markers = [
+    "incremental: marks related sequential tests to stop after an earlier failure",
+]
 
 [tool.black]
 exclude = '''
@@ -105,12 +107,15 @@ exclude = '''
 '''
 
 [tool.ruff]
-# Enable Pyflakes `E` and `F` codes by default.
-select = ["E", "F"]
-ignore = []
+select = ["A", "C4", "E", "F", "I", "W"]
+ignore = [
+    "E501",  # Line too long (<LINE LENGTH> > <LINE LENGTH LIMIT> characters)
+    "E741",  # Ambiguous variable name: `<VARIABLE NAME>`
+    "F821",  # Undefined name `<VARIABLE>`
+]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = ["A", "B", "C", "D", "E", "F"]
+fixable = ["A", "B", "C", "D", "E", "F", "I"]
 unfixable = []
 
 # Exclude a variety of commonly ignored directories.
@@ -135,7 +140,6 @@ exclude = [
     "node_modules",
     "venv",
 ]
-per-file-ignores = {}
 
 # Same as Black.
 line-length = 88

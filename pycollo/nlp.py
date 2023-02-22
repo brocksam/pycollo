@@ -1,8 +1,6 @@
 import abc
 import itertools
 
-import numpy as np
-
 try:
     import ipopt
 except ModuleNotFoundError:

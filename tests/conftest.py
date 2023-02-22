@@ -23,9 +23,9 @@ class Utils:
             msg = ("Two or more symbols are required for asserting whether "
                    "they're identical.")
             raise ValueError(msg)
-        for sym in syms[1:]:
-            assert syms[0].name() == sym.name()
-            assert syms[0].size() == sym.size()
+        for symbol in syms[1:]:
+            assert syms[0].name() == symbol.name()
+            assert syms[0].size() == symbol.size()
 
     @classmethod
     def assert_ca_syms_identical(cls, *syms_iterables):

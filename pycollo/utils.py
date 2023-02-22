@@ -207,19 +207,19 @@ def check_sym_name_clash(syms: TupleSymsType) -> None:
     Raises:
         ValueError: If any of the Pycollo naming rules are not obeyed.
     """
-    for sym in syms:
-        if str(sym)[0] == '_':
-            msg = (f"The user defined symbol {sym} is invalid as its leading "
+    for symbol in syms:
+        if str(symbol)[0] == '_':
+            msg = (f"The user defined symbol {symbol} is invalid as its leading "
                    f"character '_' is reserved for use by `Pycollo`. Please "
                    f"rename this symbol.")
             raise ValueError(msg)
-        elif str(sym)[-4:] == '(t0)':
-            msg = (f"The user defined symbol {sym} is invalid as it is named "
+        elif str(symbol)[-4:] == '(t0)':
+            msg = (f"The user defined symbol {symbol} is invalid as it is named "
                    f"with the suffix '(t0)' which is reserved for use by "
                    f"`Pycollo`. Please rename this symbol.")
             raise ValueError(msg)
-        elif str(sym)[-4:] == '(tF)':
-            msg = (f"The user defined symbol {sym} is invalid as it is named "
+        elif str(symbol)[-4:] == '(tF)':
+            msg = (f"The user defined symbol {symbol} is invalid as it is named "
                    f"with the suffix '(tF)' which is reserved for use by "
                    f"`Pycollo`. Please rename this symbol.")
             raise ValueError(msg)

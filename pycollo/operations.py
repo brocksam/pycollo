@@ -26,7 +26,8 @@ class PycolloOp(abc.ABC):
 
 	@classmethod
 	@abc.abstractmethod
-	def SYMPY_OP(cls): pass
+	def SYMPY_OP(cls):
+		pass
 
 	@cachedproperty
 	def expression(self): 

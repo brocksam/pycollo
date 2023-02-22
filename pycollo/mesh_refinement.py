@@ -15,8 +15,8 @@ PATTERSON_RAO : str
 """
 
 
-from abc import ABC, abstractmethod
 import itertools
+from abc import ABC, abstractmethod
 
 import casadi as ca
 import numpy as np
@@ -25,7 +25,6 @@ from pyproprop import Options
 
 from .mesh import Mesh, PhaseMesh
 from .utils import casadi_substitute, dict_merge, symbol_name
-
 
 DEFAULT_MESH_TOLERANCE = 1e-7
 DEFAULT_MAX_MESH_ITERATIONS = 10

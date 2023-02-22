@@ -28,7 +28,6 @@ __all__ = []
 import numpy as np
 from pyproprop import Options
 
-
 GAUSS = "gauss"
 LOBATTO = "lobatto"
 RADAU = "radau"

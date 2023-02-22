@@ -38,8 +38,9 @@ I_yy : `Symbol <sympy>`
 """
 
 import numpy as np
-import pycollo
 import sympy as sym
+
+import pycollo
 
 # Symbol creation
 r_x = sym.Symbol("r_x")

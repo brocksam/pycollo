@@ -8,7 +8,6 @@ from pyproprop import Options
 #     numbafy_endpoint_hessian, numbafy_continuous_hessian)
 from .utils import console_out
 
-
 DIFFERENTIAL = "differential"
 INTEGRAL = "integral"
 COLLOCATION_MATRIX_FORMS = Options((DIFFERENTIAL, INTEGRAL), default=INTEGRAL,

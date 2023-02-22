@@ -11,7 +11,7 @@ import scipy.interpolate as interpolate
 import scipy.sparse as sparse
 from pyproprop import processed_property
 
-from .guess import (PhaseGuess, EndpointGuess, Guess)
+from .guess import EndpointGuess, Guess, PhaseGuess
 from .utils import console_out, format_time
 
 

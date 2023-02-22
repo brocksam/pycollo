@@ -6,7 +6,7 @@ Classes:
 
 
 import copy
-from typing import (Optional, Tuple)
+from typing import Optional, Tuple
 
 import sympy as sym
 
@@ -14,9 +14,8 @@ from .bounds import PhaseBounds
 from .guess import PhaseGuess
 from .mesh import PhaseMesh
 from .scaling import PhaseScaling
-from .typing import (OptionalExprsType, OptionalSymsType, TupleSymsType)
-from .utils import (check_sym_name_clash, format_as_named_tuple)
-
+from .typing import OptionalExprsType, OptionalSymsType, TupleSymsType
+from .utils import check_sym_name_clash, format_as_named_tuple
 
 __all__ = ["Phase"]
 

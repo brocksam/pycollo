@@ -1,7 +1,6 @@
 import abc
 import itertools
 
-
 try:
     import ipopt
 except ModuleNotFoundError:

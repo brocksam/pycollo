@@ -7,8 +7,9 @@ Industrial and Applied Mathematics, p293 - 298.
 """
 
 import numpy as np
-import pycollo
 import sympy as sym
+
+import pycollo
 
 # Symbol creation
 J_00 = sym.Symbol("J_00")

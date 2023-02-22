@@ -1,7 +1,7 @@
 import itertools
 
-from numpy import arccos, arcsin, arctan
 import sympy as sym
+from numpy import arccos, arcsin, arctan
 
 acos = arccos
 asin = arcsin

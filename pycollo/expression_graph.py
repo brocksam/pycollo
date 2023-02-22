@@ -6,7 +6,7 @@ import sympy as sym
 
 from .node import Node
 from .sparse import SparseCOOMatrix
-from .utils import (console_out)
+from .utils import console_out
 
 """
 

@@ -15,18 +15,18 @@ DEFAULT_INF_VALUE : float
 __all__ = ["EndpointBounds", "PhaseBounds"]
 
 
-from abc import (ABC, abstractmethod)
+from abc import ABC, abstractmethod
 from collections import namedtuple
-from typing import (Optional)
+from typing import Optional
 
 import numpy as np
 
 from .typing import OptionalBoundsType
-from .utils import (format_for_output,
-                    SUPPORTED_ITER_TYPES,
-                    symbol_primitives,
-                    )
-
+from .utils import (
+    SUPPORTED_ITER_TYPES,
+    format_for_output,
+    symbol_primitives,
+)
 
 # Default values for settings
 DEFAULT_ASSUME_INF_BOUNDS = True

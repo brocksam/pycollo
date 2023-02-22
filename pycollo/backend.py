@@ -31,25 +31,26 @@ from .guess import Guess
 from .iteration import Iteration
 from .mesh import Mesh
 from .quadrature import Quadrature
-from .scaling import (Scaling,
-                      CasadiIterationScaling,
-                      HsadIterationScaling,
-                      PycolloIterationScaling,
-                      SympyIterationScaling,
-                      )
+from .scaling import (
+    CasadiIterationScaling,
+    HsadIterationScaling,
+    PycolloIterationScaling,
+    Scaling,
+    SympyIterationScaling,
+)
 from .solution import CasadiSolution, NlpResult
-from .utils import (casadi_substitute,
-                    console_out,
-                    dict_merge,
-                    fast_sympify,
-                    format_multiple_items_for_output,
-                    needed_to_tuple,
-                    SUPPORTED_ITER_TYPES,
-                    symbol_name,
-                    symbol_primitives,
-                    sympy_to_casadi,
-                    )
-
+from .utils import (
+    SUPPORTED_ITER_TYPES,
+    casadi_substitute,
+    console_out,
+    dict_merge,
+    fast_sympify,
+    format_multiple_items_for_output,
+    needed_to_tuple,
+    symbol_name,
+    symbol_primitives,
+    sympy_to_casadi,
+)
 
 __all__ = []
 

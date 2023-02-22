@@ -18,7 +18,6 @@ import sympy as sym
 
 import pycollo
 
-
 PHASE_NAMES = {0: "A", 1: "B", 2: "C", 3: "D"}
 EXPECTED_SOLUTION = 0.4472136
 

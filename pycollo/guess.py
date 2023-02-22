@@ -4,7 +4,6 @@
 import numpy as np
 from pyproprop import processed_property
 
-
 __all__ = ["EndpointGuess", "PhaseGuess"]
 
 

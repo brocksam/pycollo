@@ -2,6 +2,7 @@ import numpy as np
 
 from .solution_abc import PhaseSolutionData, SolutionABC
 
+
 class CasadiSolution(SolutionABC):
 
     def __init__(self, iteration, nlp_result):

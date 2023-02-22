@@ -7,7 +7,6 @@ from pyproprop import processed_property
 from ..mesh_refinement import MESH_REFINEMENT_ALGORITHMS
 from ..vis.plot import plot_solution
 
-
 nlp_result_fields = ("solution", "info", "solve_time")
 NlpResult = collections.namedtuple("NlpResult", nlp_result_fields)
 phase_solution_data_fields = ("tau", "y", "dy", "u", "q", "t", "t0", "tF",

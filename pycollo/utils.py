@@ -1,12 +1,11 @@
 import collections
-from typing import (Iterable, Mapping, NamedTuple, Optional)
+from typing import Iterable, Mapping, NamedTuple, Optional
 
 import casadi as ca
 import numpy as np
 import sympy as sym
 
 from .typing import OptionalSymsType, TupleSymsType
-
 
 dcdx_info_fields = ["zeta_y", "zeta_u", "zeta_s", "gamma_y", "gamma_u",
                     "gamma_s", "rho_y", "rho_u", "rho_s"]

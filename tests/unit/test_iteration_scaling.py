@@ -6,18 +6,20 @@ import pytest
 
 import pycollo
 
-from .iteration_scaling_test_data_double_pendulum import (EXPECT_V_DP,
-                                                          EXPECT_R_DP,
-                                                          EXPECT_V_INV_DP,
-                                                          EXPECT_X_DP,
-                                                          EXPECT_X_TILDE_DP,
-                                                          )
-from .iteration_scaling_test_data_brachistochrone import (EXPECT_V_BR,
-                                                          EXPECT_R_BR,
-                                                          EXPECT_V_INV_BR,
-                                                          EXPECT_X_BR,
-                                                          EXPECT_X_TILDE_BR,
-                                                          )
+from .iteration_scaling_test_data_brachistochrone import (
+    EXPECT_R_BR,
+    EXPECT_V_BR,
+    EXPECT_V_INV_BR,
+    EXPECT_X_BR,
+    EXPECT_X_TILDE_BR,
+)
+from .iteration_scaling_test_data_double_pendulum import (
+    EXPECT_R_DP,
+    EXPECT_V_DP,
+    EXPECT_V_INV_DP,
+    EXPECT_X_DP,
+    EXPECT_X_TILDE_DP,
+)
 
 
 @pytest.fixture

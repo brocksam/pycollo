@@ -3,7 +3,7 @@ import weakref
 
 import sympy as sym
 
-from .operations import (determine_operation, PycolloUnsetOp)
+from .operations import PycolloUnsetOp, determine_operation
 from .utils import cachedproperty
 
 

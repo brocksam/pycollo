@@ -34,9 +34,10 @@ Notes:
 """
 
 
-from typing import (AnyStr, Iterable, Tuple)
+from typing import AnyStr, Iterable, Tuple
 
 import numpy as np
+
 # from ordered_set import OrderedSet
 import sympy as sym
 
@@ -44,11 +45,10 @@ from .backend import BACKENDS
 from .bounds import EndpointBounds
 from .guess import EndpointGuess
 from .phase import Phase
-from .typing import (OptionalSymsType)
 from .scaling import EndpointScaling
 from .settings import Settings
-from .utils import (check_sym_name_clash, console_out, format_as_named_tuple)
-
+from .typing import OptionalSymsType
+from .utils import check_sym_name_clash, console_out, format_as_named_tuple
 
 __all__ = ["OptimalControlProblem"]
 

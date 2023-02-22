@@ -455,8 +455,8 @@ class PycolloArcsec(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		msg = (f"Pycollo does not currently support differentiation of "
-			f"'arccosec' functions as they are discontinuous.")
+		msg = ("Pycollo does not currently support differentiation of "
+			"'arccosec' functions as they are discontinuous.")
 		raise NotImplementedError(msg)
 
 
@@ -468,8 +468,8 @@ class PycolloArccosec(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		msg = (f"Pycollo does not currently support differentiation of "
-			f"'arccosec' functions as they are discontinuous.")
+		msg = ("Pycollo does not currently support differentiation of "
+			"'arccosec' functions as they are discontinuous.")
 		raise NotImplementedError(msg)
 
 
@@ -606,8 +606,8 @@ class PycolloArctanh(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		msg = (f"Pycollo does not currently support differentiation of "
-			f"'arctanh' functions as they are discontinuous.")
+		msg = ("Pycollo does not currently support differentiation of "
+			"'arctanh' functions as they are discontinuous.")
 		raise NotImplementedError(msg)
 
 
@@ -619,8 +619,8 @@ class PycolloArccoth(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		msg = (f"Pycollo does not currently support differentiation of "
-			f"'arccoth' functions as they are discontinuous.")
+		msg = ("Pycollo does not currently support differentiation of "
+			"'arccoth' functions as they are discontinuous.")
 		raise NotImplementedError(msg)
 
 
@@ -652,8 +652,8 @@ class PycolloArccosech(PycolloOp):
 	def derivatives(self):
 		if self.node.is_precomputable:
 			return {}
-		msg = (f"Pycollo does not currently support differentiation of "
-			f"'arccosech' functions as they are discontinuous.")
+		msg = ("Pycollo does not currently support differentiation of "
+			"'arccosech' functions as they are discontinuous.")
 		raise NotImplementedError(msg)
 
 

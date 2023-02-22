@@ -187,7 +187,7 @@ class OptimalControlProblem():
                         number of specified new phases.
         """
         if len(names) != int(number):
-            msg = (f"Must supply a name for each new phase.")
+            msg = ("Must supply a name for each new phase.")
             raise ValueError(msg)
         new_phases = (self.new_phase_like(phase_for_copying, name, **kwargs)
                       for name in names)
@@ -206,8 +206,8 @@ class OptimalControlProblem():
                 NotImplementedError: Whenever called to inform the user that these 
                         types of problem are not currently supported.
         """
-        msg = (f"Pycollo do not currently support dynamic, path or integral "
-               f"constraints that are explicit functions of continuous time.")
+        msg = ("Pycollo do not currently support dynamic, path or integral "
+               "constraints that are explicit functions of continuous time.")
         raise NotImplementedError(msg)
 
     @property

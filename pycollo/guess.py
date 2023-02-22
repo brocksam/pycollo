@@ -157,7 +157,7 @@ class Guess:
 
     def check_time_guess(self, t_guess):
         if t_guess.ndim != 1:
-            msg = (f"Time guess must be a 1d array.")
+            msg = ("Time guess must be a 1d array.")
             raise ValueError(msg)
         return t_guess.size
 

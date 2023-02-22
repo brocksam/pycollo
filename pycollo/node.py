@@ -261,7 +261,7 @@ class ExpressionNodeABC(abc.ABC):
 
 class RootNode(ExpressionNodeABC):
 
-	_parent_nodes_not_allowed_error_message = (f"Object of type RootNode do not have parent nodes.")
+	_parent_nodes_not_allowed_error_message = ("Object of type RootNode do not have parent nodes.")
 	_parent_nodes_not_allowed_error = AttributeError(_parent_nodes_not_allowed_error_message)
 
 	@staticmethod

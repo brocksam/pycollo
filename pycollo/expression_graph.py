@@ -48,7 +48,7 @@ class ExpressionGraph:
 
     def console_out_begin_expression_graph_creation(self):
         if self.ocp_backend.ocp.settings.console_out_progress:
-            msg = (f"Beginning expression graph creation.")
+            msg = ("Beginning expression graph creation.")
             console_out(msg)
 
     def initialise_node_symbol_number_counters(self):
@@ -198,7 +198,7 @@ class ExpressionGraph:
         dL_dxb_terms = dL_dxb.to_dense_sympy_matrix()
         form_function_and_derivative(func=dL_dxb_terms,
                                      wrt=self._endpoint_variable_nodes, func_abrv="L",
-                                     completion_msg=f"Hessian of the endpoint Lagrangian")
+                                     completion_msg="Hessian of the endpoint Lagrangian")
         self.ddL_dxbdxb = self.ddL_dxbdxb.make_lower_triangular()
 
         L_syms_continuous_time_stretched = []
@@ -222,7 +222,7 @@ class ExpressionGraph:
         dL_dx_terms = dL_dx_continuous.to_dense_sympy_matrix()
         form_function_and_derivative(func=dL_dx_terms,
                                      wrt=self._continuous_variable_nodes, func_abrv="L",
-                                     completion_msg=f"Hessian of the continuous Lagrangian")
+                                     completion_msg="Hessian of the continuous Lagrangian")
         self.ddL_dxdx = self.ddL_dxdx.make_lower_triangular()
         self.ddL_dxdx_nodes = self.ddL_dxdx_nodes.make_lower_triangular()
 

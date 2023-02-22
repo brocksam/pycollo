@@ -223,7 +223,7 @@ def check_sym_name_clash(syms: TupleSymsType) -> None:
             raise ValueError(msg)
 
     if len(set(syms)) != len(syms):
-        msg = (f"All user defined symbols must have unique names.")
+        msg = ("All user defined symbols must have unique names.")
         raise ValueError(msg)
 
 

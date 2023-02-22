@@ -68,8 +68,8 @@ class SparseCOOMatrix:
 
 	def vector_premultiply(self, pre_vector):
 		if len(pre_vector) != self.num_rows:
-			msg = (f"Vector for pre-multiplication must have same number of "
-				f"entries as rows in matrix.")
+			msg = ("Vector for pre-multiplication must have same number of "
+				"entries as rows in matrix.")
 			raise ValueError(msg)
 
 		# Create quick lookup for pre-vector and sparse matrix

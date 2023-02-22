@@ -374,12 +374,12 @@ class PhaseBounds(BoundsABC):
         override = settings.override_endpoint_bounds
         lower_is_less = y_con_bnd[:, 0] < self._y_bnd[:, 0]
         if not override and np.any(lower_is_less):
-            msg = (f"")
+            msg = ("")
             raise ValueError(msg)
         y_con_bnd[lower_is_less, 0] = self._y_bnd[lower_is_less, 0]
         upper_is_more = y_con_bnd[:, 1] > self._y_bnd[:, 1]
         if not override and np.any(upper_is_more):
-            msg = (f"")
+            msg = ("")
             raise ValueError(msg)
         y_con_bnd[upper_is_more, 1] = self._y_bnd[upper_is_more, 1]
         return y_con_bnd

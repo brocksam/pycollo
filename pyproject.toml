@@ -110,7 +110,6 @@ exclude = '''
 # Enable Pyflakes `E` and `F` codes by default.
 select = ["C4", "E", "F", "I"]
 ignore = [
-    "C405",  # Unnecessary `tuple` literal (rewrite as a `set` literal)
     "C408",  # Unnecessary `tuple` call (rewrite as a literal)
     "C416",  # Unnecessary `list` comprehension (rewrite using `list()`)
     "E101",  # Indentation contains mixed spaces and tabs

@@ -646,9 +646,9 @@ class BackendABC(ABC):
         self.r_s_var = needed_to_tuple(self.r_s_var_full,
                                        self.ocp.bounds._s_needed)
 
-        self.V_x_var = tuple(itertools.chain(*list(p.V_x_var for p in self.p),
+        self.V_x_var = tuple(itertools.chain(*[p.V_x_var for p in self.p],
                                              self.V_s_var))
-        self.r_x_var = tuple(itertools.chain(*list(p.r_x_var for p in self.p),
+        self.r_x_var = tuple(itertools.chain(*[p.r_x_var for p in self.p],
                                              self.r_s_var))
 
         all_phase_var = chain_from_iterable(p.x_var for p in self.p)
@@ -1478,17 +1478,17 @@ class Casadi(BackendABC):
         self.W_iter_mapping = {}
         for p in self.p:
             phase_W_iter_mapping = {}
-            W_d = list(self.sym(f"W_d{i}_P{p.i}") for i in range(p.num_y_eqn))
+            W_d = [self.sym(f"W_d{i}_P{p.i}") for i in range(p.num_y_eqn)]
             phase_W_iter_mapping["d"] = W_d
             W.extend(W_d)
-            W_p = list(self.sym(f"W_p{i}_P{p.i}") for i in range(p.num_p_con))
+            W_p = [self.sym(f"W_p{i}_P{p.i}") for i in range(p.num_p_con)]
             phase_W_iter_mapping["p"] = W_p
             W.extend(W_p)
-            W_i = list(self.sym(f"W_i{i}_P{p.i}") for i in range(p.num_q_fnc))
+            W_i = [self.sym(f"W_i{i}_P{p.i}") for i in range(p.num_q_fnc)]
             phase_W_iter_mapping["i"] = W_i
             W.extend(W_i)
             self.W_iter_mapping[p] = phase_W_iter_mapping
-        W_e = list(self.sym(f"W_b{i}") for i in range(self.num_b_con))
+        W_e = [self.sym(f"W_b{i}") for i in range(self.num_b_con)]
         self.W_iter_mapping["e"] = W_e
         W.extend(W_e)
         self.W_iter = ca.vertcat(*W)

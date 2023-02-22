@@ -1,9 +1,16 @@
 """Govern imports for Pycollo package."""
 
 # Explicitly available classes
-from .bounds import *
-from .guess import *
-from .optimal_control_problem import *
-from .settings import *
+from .bounds import EndpointBounds, PhaseBounds
+from .guess import EndpointGuess, PhaseGuess
+from .optimal_control_problem import OptimalControlProblem
+from .settings import Settings
 
-# Modules accessible as submodules
+__all__ = [
+    EndpointBounds,
+    PhaseBounds,
+    EndpointGuess,
+    PhaseGuess,
+    OptimalControlProblem,
+    Settings,
+]

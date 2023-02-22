@@ -112,7 +112,6 @@ select = ["C4", "E", "F", "I"]
 ignore = [
     "E501",  # Line too long (<LINE LENGTH> > <LINE LENGTH LIMIT> characters)
     "E741",  # Ambiguous variable name: `<VARIABLE NAME>`
-    "F541",  # f-string without any placeholders
     "F821",  # Undefined name `<VARIABLE>`
 ]
 

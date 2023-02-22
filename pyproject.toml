@@ -106,8 +106,26 @@ exclude = '''
 
 [tool.ruff]
 # Enable Pyflakes `E` and `F` codes by default.
-select = ["E", "F"]
-ignore = []
+select = ["C4", "E", "F"]
+ignore = [
+    "C400",  # Unnecessary generator (rewrite as a `list` comprehension)
+    "C401",  # Unnecessary generator (rewrite as a `set` comprehension)
+    "C405",  # Unnecessary `tuple` literal (rewrite as a `set` literal)
+    "C408",  # Unnecessary `tuple` call (rewrite as a literal)
+    "C416",  # Unnecessary `list` comprehension (rewrite using `list()`)
+    "E101",  # Indentation contains mixed spaces and tabs
+    "E501",  # Line too long (<LINE LENGTH> > <LINE LENGTH LIMIT> characters)
+    "E712",  # Comparison to `<BOOL>` should be `cond is <BOOL>`
+    "E722",  # Do not use bare `except`
+    "E704",  # Multiple statements on one line (def)
+    "E711",  # Comparison to `None` should be `cond is not None`
+    "E741",  # Ambiguous variable name: `<VARIABLE NAME>`
+    "E999",  # SyntaxError: Tabs not allowed as part of indentation after spaces
+    "F541",  # f-string without any placeholders
+    "F811",  # Redefinition of unused `<FUNCTION NAME>` from line 243
+    "F821",  # Undefined name `<VARIABLE>`
+    "F841",  # Local variable `<VARIABLE>` is assigned to but never used
+]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "B", "C", "D", "E", "F"]

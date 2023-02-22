@@ -103,9 +103,9 @@ class HsadSolution(SolutionABC):
             y_tilde, u_tilde = self._get_y_u_tilde(p, p_data)
             y_tildes.append(y_tilde)
             u_tildes.append(u_tilde)
-            x_tilde_full += ([y for y in y_tilde] + [u for u in u_tilde]
-                             + [q for q in p_data.q] + [t for t in p_data.t])
-        x_tilde_full += [s for s in self._s]
+            x_tilde_full += (list(y_tilde) + list(u_tilde)
+                             + list(p_data.q) + list(p_data.t))
+        x_tilde_full += list(self._s)
 
         self._absolute_mesh_errors = []
         self._relative_mesh_errors = []

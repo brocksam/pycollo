@@ -99,8 +99,7 @@ def numbafy_continuous_hessian(*args, **kwargs):
 					if parent in summing_nodes else parent.symbol
 					for parent in node.parent_nodes]
 				new_sum_mapping = {parent: f"np.sum({parent})" for parent in new_parent_syms}
-				new_expr = node.operation.SYMPY_OP(*[new_parent_sym 
-					for new_parent_sym in new_parent_syms])
+				new_expr = node.operation.SYMPY_OP(*list(new_parent_syms))
 				sum_expr = f"{new_sym} = {new_expr}"
 				for k, v in new_sum_mapping.items():
 					start = sum_expr.find(str(k))

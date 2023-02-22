@@ -627,7 +627,7 @@ class Iteration:
 
         print(f'Objective Evaluation:       {self.solution.objective}')
         print(f'Max Relative Mesh Error:    {max_rel_mesh_error}')
-        print(f'Collocation Points Used:    {sum([N for N in self.mesh.N])}\n')
+        print(f'Collocation Points Used:    {sum(list(self.mesh.N))}\n')
         if mesh_tol_met:
             print(f'Adjusting Collocation Mesh: {next_iter_mesh.K} mesh sections\n')
 

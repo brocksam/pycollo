@@ -211,7 +211,7 @@ class ExpressionGraph:
             terms = [Node(sym.Mul(t_norm_node.symbol, L_sym), self).symbol
                      for L_sym in L_syms[p_c_defect_slice]]
             L_syms_continuous_time_stretched.extend(terms)
-            terms = [L_sym for L_sym in L_syms[p_c_path_slice]]
+            terms = list(L_syms[p_c_path_slice])
             L_syms_continuous_time_stretched.extend(terms)
             terms = [Node(sym.Mul(t_norm_node.symbol, L_sym), self).symbol
                      for L_sym in L_syms[p_c_integral_slice]]

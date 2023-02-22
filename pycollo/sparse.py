@@ -42,7 +42,7 @@ class SparseCOOMatrix:
 
 	@property
 	def free_symbols(self):
-		free_symbols = {v for v in self._entries.values()}
+		free_symbols = set(self._entries.values())
 		return free_symbols
 
 	def sort(self):
@@ -79,7 +79,7 @@ class SparseCOOMatrix:
 		matrix_lookup = collections.defaultdict(dict)
 		for (i, j), val in self._entries.items():
 			matrix_lookup[j][i] = val
-		vector_indices = {k for k in vector_lookup.keys()}
+		vector_indices = set(vector_lookup.keys())
 
 		smat = {}
 		for col_ind, col in matrix_lookup.items():

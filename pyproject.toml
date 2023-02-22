@@ -107,7 +107,7 @@ exclude = '''
 '''
 
 [tool.ruff]
-select = ["C4", "E", "F", "I", "W"]
+select = ["A", "C4", "E", "F", "I", "W"]
 ignore = [
     "E501",  # Line too long (<LINE LENGTH> > <LINE LENGTH LIMIT> characters)
     "E741",  # Ambiguous variable name: `<VARIABLE NAME>`

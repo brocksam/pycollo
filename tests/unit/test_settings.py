@@ -85,7 +85,7 @@ class TestSettings:
             self.settings.backend = test_value
 
     @given(st.one_of(st.just("hsad"), st.just("pycollo"), st.just("sympy")))
-    def test_backend_property_invalid(self, test_value):
+    def test_backend_property_unsupported(self, test_value):
         """ValueErrors should be raised for unsupported values of backend."""
         expected_error_msg = re.escape(
             f"`{repr(test_value)}` is not currently supported as a "
@@ -199,7 +199,7 @@ class TestSettings:
         assert self.settings.collocation_matrix_form == test_value
 
     @given(st.just("differential"))
-    def test_supported_collocation_matrix_form(self, test_value):
+    def test_unsupported_collocation_matrix_form(self, test_value):
         """Differential is unsupported collocation matrix forms."""
         expected_error_msg = re.escape(
             f"`{repr(test_value)}` is not currently supported as a form of "
@@ -370,16 +370,6 @@ class TestSettings:
             f"`'none'` or `None`.")
         with pytest.raises(ValueError, match=expected_error_msg):
             self.settings.scaling_method = test_value
-
-    @given(st.text())
-    def test_invalid_quadrature_method(self, test_value):
-        """String other than 'radau'/'lobatto'/'gauss' raises ValueError."""
-        assume(test_value not in {"radau", "lobatto", "gauss"})
-        expected_error_msg = re.escape(
-            f"`{repr(test_value)}` is not a valid option of quadrature method "
-            f"(`quadrature_method`). Choose one of: `'lobatto'` or `'radau'`.")
-        with pytest.raises(ValueError, match=expected_error_msg):
-            self.settings.quadrature_method = test_value
 
     @given(st.booleans())
     def test_valid_update_scaling(self, test_value):

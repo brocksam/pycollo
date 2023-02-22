@@ -840,12 +840,12 @@ def test_collect_user_variables_dp_specific(double_pendulum_fixture,
     assert phase_backend.x_point_var_user == (a0_t0, a0_tF, a1_t0, a1_tF,
                                               v0_t0, v0_tF, v1_t0, v1_tF,
                                               q0, t0, tF)
-    assert phase_backend.all_user_var == set((user_syms.a0, user_syms.a1,
-                                              user_syms.v0, user_syms.v1,
-                                              a0_t0, a0_tF, a1_t0, a1_tF,
-                                              v0_t0, v0_tF, v1_t0, v1_tF,
-                                              user_syms.T0, user_syms.T1,
-                                              q0, t0, tF))
+    assert phase_backend.all_user_var == {user_syms.a0, user_syms.a1,
+                                          user_syms.v0, user_syms.v1,
+                                          a0_t0, a0_tF, a1_t0, a1_tF,
+                                          v0_t0, v0_tF, v1_t0, v1_tF,
+                                          user_syms.T0, user_syms.T1,
+                                          q0, t0, tF}
 
 
 def test_collect_user_variables_br_specific(brachistochrone_fixture,
@@ -888,10 +888,10 @@ def test_collect_user_variables_br_specific(brachistochrone_fixture,
                                               v_t0, v_tF)
     assert phase_backend.x_point_var_user == (x_t0, x_tF, y_t0, y_tF,
                                               v_t0, v_tF, t0, tF)
-    assert phase_backend.all_user_var == set((user_syms.x, user_syms.y,
-                                              user_syms.v, user_syms.u,
-                                              x_t0, x_tF, y_t0, y_tF,
-                                              v_t0, v_tF, t0, tF))
+    assert phase_backend.all_user_var == {user_syms.x, user_syms.y,
+                                          user_syms.v, user_syms.u,
+                                          x_t0, x_tF, y_t0, y_tF,
+                                          v_t0, v_tF, t0, tF}
 
 
 def test_create_phase_backends_dp_specific(double_pendulum_fixture,
@@ -919,19 +919,19 @@ def test_create_phase_backends_dp_specific(double_pendulum_fixture,
     v0_tF = sym.Symbol("v0_P0(tF)")
     v1_tF = sym.Symbol("v1_P0(tF)")
 
-    assert backend.all_phase_user_var == set((user_syms.a0, user_syms.a1,
-                                              user_syms.v0, user_syms.v1,
-                                              a0_t0, a0_tF, a1_t0, a1_tF,
-                                              v0_t0, v0_tF, v1_t0, v1_tF,
-                                              user_syms.T0, user_syms.T1,
-                                              q0, t0, tF))
-    assert backend.all_user_var == set((user_syms.a0, user_syms.a1,
-                                        user_syms.v0, user_syms.v1,
-                                        a0_t0, a0_tF, a1_t0, a1_tF,
-                                        v0_t0, v0_tF, v1_t0, v1_tF,
-                                        user_syms.T0, user_syms.T1,
-                                        q0, t0, tF,
-                                        user_syms.m0, user_syms.p0))
+    assert backend.all_phase_user_var == {user_syms.a0, user_syms.a1,
+                                          user_syms.v0, user_syms.v1,
+                                          a0_t0, a0_tF, a1_t0, a1_tF,
+                                          v0_t0, v0_tF, v1_t0, v1_tF,
+                                          user_syms.T0, user_syms.T1,
+                                          q0, t0, tF}
+    assert backend.all_user_var == {user_syms.a0, user_syms.a1,
+                                    user_syms.v0, user_syms.v1,
+                                    a0_t0, a0_tF, a1_t0, a1_tF,
+                                    v0_t0, v0_tF, v1_t0, v1_tF,
+                                    user_syms.T0, user_syms.T1,
+                                    q0, t0, tF,
+                                    user_syms.m0, user_syms.p0}
 
 
 def test_create_phase_backends_br_specific(brachistochrone_fixture,
@@ -956,14 +956,14 @@ def test_create_phase_backends_br_specific(brachistochrone_fixture,
     y_tF = sym.Symbol("y_P0(tF)")
     v_tF = sym.Symbol("v_P0(tF)")
 
-    assert backend.all_phase_user_var == set((user_syms.x, user_syms.y,
-                                              user_syms.v, user_syms.u,
-                                              x_t0, x_tF, y_t0, y_tF,
-                                              v_t0, v_tF, t0, tF))
-    assert backend.all_user_var == set((user_syms.x, user_syms.y,
-                                        user_syms.v, user_syms.u,
-                                        x_t0, x_tF, y_t0, y_tF,
-                                        v_t0, v_tF, t0, tF))
+    assert backend.all_phase_user_var == {user_syms.x, user_syms.y,
+                                          user_syms.v, user_syms.u,
+                                          x_t0, x_tF, y_t0, y_tF,
+                                          v_t0, v_tF, t0, tF}
+    assert backend.all_user_var == {user_syms.x, user_syms.y,
+                                    user_syms.v, user_syms.u,
+                                    x_t0, x_tF, y_t0, y_tF,
+                                    v_t0, v_tF, t0, tF}
 
 
 def test_create_full_continuous_variable_indexes_slices(

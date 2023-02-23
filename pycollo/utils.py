@@ -55,7 +55,7 @@ def symbol_name(symbol):
     """
     if isinstance(symbol, ca.SX):
         return symbol.name()
-    elif isinstance(symbol, sym.Symbol):
+    elif isinstance(symbol, (sym.Symbol, sym.core.backend.AppliedUndef)):
         return symbol.name
     msg = f"Cannot get name for symbol of type {type(symbol)}."
     raise NotImplementedError(msg)

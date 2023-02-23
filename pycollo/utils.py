@@ -182,7 +182,12 @@ def format_as_named_tuple(
         entries = iterable
     if use_named:
         if named_keys is None:
-            named_keys = [str(entry) for entry in entries]
+            named_keys = []
+            for entry in entries:
+                identifier = str(entry)
+                if not identifier.isidentifier() and identifier[-3:] == "(t)":
+                    identifier = identifier[:-3]
+                named_keys.append(identifier)
         NamedTuple = collections.namedtuple('NamedTuple', named_keys)
         formatted_entries = NamedTuple(*entries)
     else:

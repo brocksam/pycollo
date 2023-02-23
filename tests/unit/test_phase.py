@@ -1,7 +1,5 @@
 """Tests for the :class:`Phase` class."""
 
-from collections import namedtuple
-
 import pytest
 import sympy as sm
 import sympy.physics.mechanics as me

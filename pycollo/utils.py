@@ -4,6 +4,7 @@ from typing import Iterable, Mapping, NamedTuple, Optional
 import casadi as ca
 import numpy as np
 import sympy as sym
+from sympy.core.backend import AppliedUndef
 
 from .typing import OptionalSymsType, TupleSymsType
 
@@ -55,7 +56,7 @@ def symbol_name(symbol):
     """
     if isinstance(symbol, ca.SX):
         return symbol.name()
-    elif isinstance(symbol, (sym.Symbol, sym.core.backend.AppliedUndef)):
+    elif isinstance(symbol, (sym.Symbol, AppliedUndef)):
         return symbol.name
     msg = f"Cannot get name for symbol of type {type(symbol)}."
     raise NotImplementedError(msg)

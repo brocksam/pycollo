@@ -12,6 +12,7 @@ part of Pycollo.
 from typing import Iterable, NamedTuple, Optional, Tuple, Union
 
 import sympy as sm
+from sympy.core.backend import AppliedUndef
 
 SympyType = Union[sm.Symbol, sm.Expr]
 """For Sympy symbols and expressions."""
@@ -26,8 +27,8 @@ OptionalSymsType = Union[
     None,
     sm.Symbol,
     Iterable[sm.Symbol],
-    sm.backend.core.AppliedUndef,  # for sm.physics.mechanics.dynamicsymbols
-    Iterable[sm.backend.core.AppliedUndef],
+    AppliedUndef,  # for sm.physics.mechanics.dynamicsymbols
+    Iterable[AppliedUndef],
 ]
 """For user-supplied symbols for variables."""
 

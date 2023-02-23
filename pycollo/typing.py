@@ -11,9 +11,9 @@ part of Pycollo.
 
 from typing import Iterable, NamedTuple, Optional, Tuple, Union
 
-import sympy as sym
+import sympy as sm
 
-SympyType = Union[sym.Symbol, sym.Expr]
+SympyType = Union[sm.Symbol, sm.Expr]
 """For Sympy symbols and expressions."""
 
 OptionalBoundsType = Optional[Iterable[Union[None, float, Iterable[float]]]]
@@ -22,8 +22,14 @@ OptionalBoundsType = Optional[Iterable[Union[None, float, Iterable[float]]]]
 OptionalExprsType = Union[None, SympyType, Iterable[SympyType]]
 """For user-supplied symbols/equations for functions."""
 
-OptionalSymsType = Union[None, sym.Symbol, Iterable[sym.Symbol]]
+OptionalSymsType = Union[
+    None,
+    sm.Symbol,
+    Iterable[sm.Symbol],
+    sm.backend.core.AppliedUndef,  # for sm.physics.mechanics.dynamicsymbols
+    Iterable[sm.backend.core.AppliedUndef],
+]
 """For user-supplied symbols for variables."""
 
-TupleSymsType = Union[Tuple[sym.Symbol, ...], NamedTuple]
+TupleSymsType = Union[Tuple[sm.Symbol, ...], NamedTuple]
 """For return values of varible properties."""

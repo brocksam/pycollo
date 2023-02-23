@@ -4,6 +4,7 @@ from typing import Iterable, Mapping, NamedTuple, Optional
 import casadi as ca
 import numpy as np
 import sympy as sym
+from sympy.core.backend import AppliedUndef
 
 from .typing import OptionalSymsType, TupleSymsType
 
@@ -55,7 +56,7 @@ def symbol_name(symbol):
     """
     if isinstance(symbol, ca.SX):
         return symbol.name()
-    elif isinstance(symbol, sym.Symbol):
+    elif isinstance(symbol, (sym.Symbol, AppliedUndef)):
         return symbol.name
     msg = f"Cannot get name for symbol of type {type(symbol)}."
     raise NotImplementedError(msg)
@@ -182,7 +183,12 @@ def format_as_named_tuple(
         entries = iterable
     if use_named:
         if named_keys is None:
-            named_keys = [str(entry) for entry in entries]
+            named_keys = []
+            for entry in entries:
+                identifier = str(entry)
+                if not identifier.isidentifier() and identifier[-3:] == "(t)":
+                    identifier = identifier[:-3]
+                named_keys.append(identifier)
         NamedTuple = collections.namedtuple('NamedTuple', named_keys)
         formatted_entries = NamedTuple(*entries)
     else:

@@ -9,6 +9,7 @@ reference for this optimal control problem.
 import numpy as np
 import pytest
 import sympy as sym
+import sympy.physics.mechanics as me
 
 import pycollo
 
@@ -21,10 +22,10 @@ class TestHypersensitiveProblem:
     @pytest.fixture(autouse=True)
     def ocp_fixture(self):
         """Instantiate the required symbols."""
-        self.x = sym.Symbol("x")
-        self.y = sym.Symbol("y")
-        self.v = sym.Symbol("v")
-        self.u = sym.Symbol("u")
+        self.x = me.dynamicsymbols("x")
+        self.y = me.dynamicsymbols("y")
+        self.v = me.dynamicsymbols("v")
+        self.u = me.dynamicsymbols("u")
 
         self.g = 9.81
         self.t0 = 0

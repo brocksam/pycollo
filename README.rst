@@ -41,6 +41,24 @@ License
 This project is licensed under the terms of the `MIT license <LICENSE>`_.
 
 Authors
-========
+=======
 
 - Sam Brockie - sgb39@cam.ac.uk
+
+Citation
+========
+
+If you have used Pycollo in your research, please cite it in your publications as:
+
+    Brockie, S. G. (2021). Predictive Simulation of Musculoskeletal Models Using Direct Collocation PhD Thesis, University of Cambridge.
+
+The equivalent BibTeX entry is:
+
+.. code-block::
+
+    @phdthesis{Brockie2021,
+        title={Predictive Simulation of Musculoskeletal Models Using Direct Collocation},
+        author={Brockie, Samuel George},
+        year={2021},
+        school={University of Cambridge}
+    }

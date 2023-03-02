@@ -69,9 +69,9 @@ tests = [
     "pytest-cases >=2.2.5",
 ]
 dev = [
-    "black",
-    "mypy",
-    "ruff",
+    "black >=23.1.0",
+    "mypy >=1.0.1",
+    "ruff >=0.0253",
 ]
 
 [project.urls]

@@ -20,11 +20,11 @@ import pycollo
 q1, q2 = sym.symbols("q1, q2")
 q1d, q2d = sym.symbols("q1d, q2d")
 q1dd, q2dd = sym.symbols("q1dd, q2dd")
-u = sym.symbols("u")
+F = sym.symbols("F")
 m1, m2 = sym.symbols("m1, m2")
 l, g = sym.symbols("l, g")
 
-u_max = 20.0
+F_max = 20.0
 d_max = 2.0
 d = 1.0
 T = 2.0
@@ -32,9 +32,9 @@ T = 2.0
 problem = pycollo.OptimalControlProblem(name="Cart-Pole Swing-Up")
 phase = problem.new_phase(name="A")
 phase.state_variables = [q1, q2, q1d, q2d]
-phase.control_variables = u
+phase.control_variables = F
 phase.state_equations = [q1d, q2d, q1dd, q2dd]
-phase.integrand_functions = [u**2]
+phase.integrand_functions = [F**2]
 
 phase.bounds.initial_time = 0
 phase.bounds.final_time = T
@@ -42,7 +42,7 @@ phase.bounds.state_variables = {q1: [-d_max, d_max],
                                 q2: [-10, 10],
                                 q1d: [-10, 10],
                                 q2d: [-10, 10]}
-phase.bounds.control_variables = {u: [-u_max, u_max]}
+phase.bounds.control_variables = {F: [-F_max, F_max]}
 phase.bounds.integral_variables = [[0, 100]]
 phase.bounds.initial_state_constraints = {q1: 0,
                                           q2: 0,
@@ -59,8 +59,8 @@ phase.guess.control_variables = [[0, 0]]
 phase.guess.integral_variables = [0]
 
 # These equations are taken from Kelly's paper
-q1dd_eqn = (l * m2 * sym.sin(q2) * q2d**2 + u + m2 * g * sym.cos(q2) * sym.sin(q2)) / (m1 + m2 * (1 - sym.cos(q2)**2))
-q2dd_eqn = - (l * m2 * sym.cos(q2) * sym.sin(q2) * q2d**2 + u * sym.cos(q2) + (m1 + m2) * g * sym.sin(q2)) / (l * m1 + l * m2 * (1 - sym.cos(q2)**2))
+q1dd_eqn = (l * m2 * sym.sin(q2) * q2d**2 + F + m2 * g * sym.cos(q2) * sym.sin(q2)) / (m1 + m2 * (1 - sym.cos(q2)**2))
+q2dd_eqn = - (l * m2 * sym.cos(q2) * sym.sin(q2) * q2d**2 + F * sym.cos(q2) + (m1 + m2) * g * sym.sin(q2)) / (l * m1 + l * m2 * (1 - sym.cos(q2)**2))
 
 problem.objective_function = phase.integral_variables[0]
 problem.auxiliary_data = {g: 9.81,

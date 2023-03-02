@@ -374,13 +374,13 @@ phase_D.guess.control_variables = [[0.9, 0.9], [0.05, 0.05], [0.45, 0.45]]
 # problem.objective_function = problem.phases[2].final_state_variables.m
 problem.objective_function = -(sym.sqrt(phase_D.final_state_variables.r_x**2 + phase_D.final_state_variables.r_y**2 + phase_D.final_state_variables.r_z**2) - R_E)
 # problem.endpoint_constraints = [
-#     (phase_A.final_state_variables.m - phase_A.initial_state_variables.m 
+#     (phase_A.final_state_variables.m - phase_A.initial_state_variables.m
 #         + 6*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1),
-#     (phase_B.initial_state_variables.m - phase_A.final_state_variables.m 
+#     (phase_B.initial_state_variables.m - phase_A.final_state_variables.m
 #         + 6*m_struct_S),
-#     (phase_B.final_state_variables.m - phase_B.initial_state_variables.m 
+#     (phase_B.final_state_variables.m - phase_B.initial_state_variables.m
 #         + 3*m_prop_S + (tau_burn_S/tau_burn_1)*m_prop_1),
-#     (phase_C.initial_state_variables.m - phase_B.final_state_variables.m 
+#     (phase_C.initial_state_variables.m - phase_B.final_state_variables.m
 #         + 3*m_struct_S),
 #     (phase_C.final_state_variables.m - phase_C.initial_state_variables.m
 #         + (1 - 2*(tau_burn_S/tau_burn_1))*m_prop_1),

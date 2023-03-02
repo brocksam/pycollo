@@ -30,8 +30,8 @@ class PycolloOp(abc.ABC):
 		pass
 
 	@cachedproperty
-	def expression(self): 
-		return self.SYMPY_OP(*[parent_node.symbol 
+	def expression(self):
+		return self.SYMPY_OP(*[parent_node.symbol
 			for parent_node in self.node.parent_nodes])
 
 	@cachedproperty
@@ -44,7 +44,7 @@ class PycolloUnsetOp(PycolloOp):
 	SYMPY_OP = None
 
 	@cachedproperty
-	def expression(self): 
+	def expression(self):
 		return None
 
 	@cachedproperty
@@ -124,7 +124,7 @@ class PycolloTernaryMul(PycolloOp):
 			derivative_node = self.node.new_node(derivative, self.node.graph)
 			derivatives[self.node.parent_nodes[2]] = derivative_node
 		return derivatives
-		
+
 
 class PycolloAdd(PycolloOp):
 
@@ -155,7 +155,7 @@ class PycolloPow(PycolloOp):
 		derivative_node = self.node.new_node(derivative, self.node.graph)
 		derivatives = {self.node.parent_nodes[0]: derivative_node}
 		return derivatives
-	
+
 
 class PycolloSquare(PycolloOp):
 

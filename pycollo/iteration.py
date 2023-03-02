@@ -690,12 +690,12 @@ class IterationOld:
         """
         def reshape_x(x_tilde):
             """Summary
-            
+
             Parameters
             ----------
             x_tilde : TYPE
                 Description
-            
+
             Returns
             -------
             TYPE
@@ -703,11 +703,11 @@ class IterationOld:
             """
             x = self.scaling.unscale_x(x_tilde)
             x_tuple = self.backend.compiled_functions.x_reshape_lambda(
-                x, 
-                self.y_slices, 
-                self.u_slices, 
-                self.q_slices, 
-                self.t_slices, 
+                x,
+                self.y_slices,
+                self.u_slices,
+                self.q_slices,
+                self.t_slices,
                 self.s_slice,
                 self.mesh.N,
                 )
@@ -734,12 +734,12 @@ class IterationOld:
 
         def reshape_x_point(x_tilde):
             """Summary
-            
+
             Parameters
             ----------
             x_tilde : TYPE
                 Description
-            
+
             Returns
             -------
             TYPE
@@ -757,12 +757,12 @@ class IterationOld:
         """
         def objective(x_tilde):
             """Summary
-            
+
             Parameters
             ----------
             x_tilde : TYPE
                 Description
-            
+
             Returns
             -------
             TYPE
@@ -784,12 +784,12 @@ class IterationOld:
         """
         def gradient(x):
             """Summary
-            
+
             Parameters
             ----------
             x : TYPE
                 Description
-            
+
             Returns
             -------
             TYPE
@@ -811,12 +811,12 @@ class IterationOld:
         """
         def constraint(x):
             """Summary
-            
+
             Parameters
             ----------
             x : TYPE
                 Description
-            
+
             Returns
             -------
             TYPE
@@ -825,11 +825,11 @@ class IterationOld:
             x_tuple = self._reshape_x(x)
             x_tuple_point = self._reshape_x_point(x)
             c = self.backend.compiled_functions.c_lambda(
-                x_tuple, 
-                x_tuple_point, 
-                self.mesh.sA_matrix, 
-                self.mesh.sD_matrix, 
-                self.mesh.W_matrix, 
+                x_tuple,
+                x_tuple_point,
+                self.mesh.sA_matrix,
+                self.mesh.sD_matrix,
+                self.mesh.W_matrix,
                 self.mesh.N,
                 [slice(p_var_slice.start, p_var_slice.start + p.num_y_vars) for p, p_var_slice in zip(self.backend.p, self.backend.phase_variable_slices)],
                 [slice(p_var_slice.start + p.num_y_vars + p.num_u_vars, p_var_slice.start + p.num_y_vars + p.num_u_vars + p.num_q_vars) for p, p_var_slice in zip(self.backend.p, self.backend.phase_variable_slices)],
@@ -851,12 +851,12 @@ class IterationOld:
         """
         def jacobian_data(x):
             """Summary
-            
+
             Parameters
             ----------
             x : TYPE
                 Description
-            
+
             Returns
             -------
             TYPE
@@ -868,12 +868,12 @@ class IterationOld:
 
         def jacobian(x):
             """Summary
-            
+
             Parameters
             ----------
             x : TYPE
                 Description
-            
+
             Returns
             -------
             TYPE
@@ -883,11 +883,11 @@ class IterationOld:
             x_tuple_point = self._reshape_x_point(x)
             G = self.backend.compiled_functions.G_lambda(
                 self._G_shape,
-                x_tuple, 
+                x_tuple,
                 x_tuple_point,
-                self.mesh.sA_matrix, 
-                self.mesh.sD_matrix, 
-                self.mesh.W_matrix, 
+                self.mesh.sA_matrix,
+                self.mesh.sD_matrix,
+                self.mesh.W_matrix,
                 self.mesh.N,
                 [c_slice.start for c_slice in self.c_slices],
                 [x_slice.start for x_slice in self.x_slices],
@@ -936,7 +936,7 @@ class IterationOld:
 
         def jacobian_structure():
             """Summary
-            
+
             Returns
             -------
             TYPE
@@ -961,7 +961,7 @@ class IterationOld:
             x_sparsity_detect = np.full(self.num_x, np.nan)
             lagrange_sparsity_detect = np.full(self.num_c, np.nan)
             obj_factor_sparsity_detect = np.nan
-            
+
             H_sparsity_detect = hessian(x_sparsity_detect, obj_factor_sparsity_detect, lagrange_sparsity_detect).tocoo()
             self._H_nonzero_row = H_sparsity_detect.row
             self._H_nonzero_col = H_sparsity_detect.col
@@ -969,7 +969,7 @@ class IterationOld:
 
         def detect_endpoint_hessian_sparsity():
             """Summary
-            
+
             Returns
             -------
             TYPE
@@ -977,12 +977,12 @@ class IterationOld:
             """
             def ocp_index_to_phase_index(ocp_index):
                 """Summary
-                
+
                 Parameters
                 ----------
                 ocp_index : TYPE
                     Description
-                
+
                 Returns
                 -------
                 TYPE
@@ -1020,7 +1020,7 @@ class IterationOld:
 
         def detect_continuous_hessian_sparsity():
             """Summary
-            
+
             Returns
             -------
             TYPE
@@ -1039,7 +1039,7 @@ class IterationOld:
             for p, N in zip(self.backend.p, self.mesh.N):
                 num_yu_ocp = p.num_y_vars + p.num_u_vars
                 block_yu_yu = sparse.kron(np.tril(np.ones((num_yu_ocp, num_yu_ocp))), sparse.coo_matrix(([1], ([0], [0])), shape=(N, N)))
-                num_qt_ocp = p.num_q_vars + p.num_t_vars 
+                num_qt_ocp = p.num_q_vars + p.num_t_vars
                 block_yu_qt = sparse.kron(np.ones((num_qt_ocp, num_yu_ocp)), sparse.coo_matrix(([2], ([0], [0])), shape=(1, N)))
                 block_qt_qt = sparse.csr_matrix(3 * np.tril(np.ones((num_qt_ocp, num_qt_ocp))))
                 block_yu_s = sparse.kron(np.ones((self.backend.num_s_vars, num_yu_ocp)), sparse.coo_matrix(([2], ([0], [0])), shape=(1, N)))
@@ -1056,7 +1056,7 @@ class IterationOld:
 
         def hessian_data(x, lagrange, obj_factor):
             """Summary
-            
+
             Parameters
             ----------
             x : TYPE
@@ -1065,7 +1065,7 @@ class IterationOld:
                 Description
             obj_factor : TYPE
                 Description
-            
+
             Returns
             -------
             TYPE
@@ -1077,12 +1077,12 @@ class IterationOld:
 
         def reshape_lagrange(lagrange):
             """Summary
-            
+
             Parameters
             ----------
             lagrange : TYPE
                 Description
-            
+
             Returns
             -------
             TYPE
@@ -1104,7 +1104,7 @@ class IterationOld:
 
         def hessian(x, obj_factor, lagrange):
             """Summary
-            
+
             Parameters
             ----------
             x : TYPE
@@ -1113,7 +1113,7 @@ class IterationOld:
                 Description
             lagrange : TYPE
                 Description
-            
+
             Returns
             -------
             TYPE
@@ -1125,7 +1125,7 @@ class IterationOld:
             lagrange_prime = reshape_lagrange(lagrange)
             H = self.backend.compiled_functions.H_lambda(
                 self._H_shape,
-                x_tuple, 
+                x_tuple,
                 x_tuple_point,
                 obj_factor_prime,
                 lagrange_prime,
@@ -1141,7 +1141,7 @@ class IterationOld:
 
         def hessian_structure():
             """Summary
-            
+
             Returns
             -------
             TYPE
@@ -1159,16 +1159,12 @@ class IterationOld:
     #   self._x_bnd_u = self._x_bnd_u - self.scaling.x_shifts
 
     def check_nlp_functions(self):
-        """Dumps values of the NLP callables evaluated at the initial guess.
-        
-        
-
-        """
+        """Dumps values of the NLP callables evaluated at the initial guess."""
         if self.backend.ocp.settings.check_nlp_functions:
             print('\n\n\n')
             x_data = np.array(range(1, self.num_x + 1), dtype=float)
             # x_data = np.ones(self.num_x)
-            
+
             print(f"x Variables:\n{self.backend.x_var}\n")
             print(f"x Data:\n{x_data}\n")
 
@@ -1216,12 +1212,12 @@ class IterationOld:
                 filename_full = str(self.optimal_control_problem.settings.dump_nlp_check_json) + file_extension
 
                 sG = sparse.coo_matrix((G, G_struct), shape=self._G_shape)
-                
+
                 data = {
                     "x": x_data.tolist(),
                     "J": float(J),
                     "g": np.array(g).tolist(),
-                    "c": np.array(c).tolist(), 
+                    "c": np.array(c).tolist(),
                     "G_data": sG.data.tolist(),
                     "G_row": sG.row.tolist(),
                     "G_col": sG.col.tolist(),

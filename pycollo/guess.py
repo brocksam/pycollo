@@ -65,7 +65,7 @@ class PhaseGuess:
     """
 
     phase = processed_property("phase", read_only=True)
-    time = processed_property("time", description="phase time guess", 
+    time = processed_property("time", description="phase time guess",
         type=np.ndarray, cast=True, optional=True, method=assert_increasing)
     state_variables = processed_property("state_variables",
         description="phase state variables guess", type=np.ndarray, cast=True,

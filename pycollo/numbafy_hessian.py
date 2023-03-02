@@ -18,7 +18,7 @@ def numbafy_endpoint_hessian(*args, **kwargs):
 
 	def collect_precomputable_constants(precomputable_nodes):
 		if precomputable_nodes:
-			precomputed_constants = '\n    '.join(f'{node.numbafy_expression}' 
+			precomputed_constants = '\n    '.join(f'{node.numbafy_expression}'
 				for node in precomputable_nodes)
 		else:
 			precomputed_constants = '    '
@@ -27,10 +27,10 @@ def numbafy_endpoint_hessian(*args, **kwargs):
 	def collect_intermediate_substitutions(dependent_tiers):
 		substitution_tiers = []
 		for tier in list(dependent_tiers.values())[1:]:
-			tier_substitutions = '\n    '.join(f'{node.numbafy_expression}' 
+			tier_substitutions = '\n    '.join(f'{node.numbafy_expression}'
 				for node in tier)
 			substitution_tiers.append(tier_substitutions)
-		intermediate_substitutions = '\n    '.join(f'{sub_tier}' 
+		intermediate_substitutions = '\n    '.join(f'{sub_tier}'
 			for sub_tier in substitution_tiers)
 		return intermediate_substitutions
 
@@ -64,7 +64,7 @@ def numbafy_endpoint_hessian(*args, **kwargs):
 	if cout_function_string:
 		cout(function_string)
 		input()
-	
+
 	exec(function_string)
 
 	return locals()['numbafied_func']
@@ -84,7 +84,7 @@ def numbafy_continuous_hessian(*args, **kwargs):
 
 	def collect_precomputable_constants(precomputable_nodes):
 		if precomputable_nodes:
-			precomputed_constants = '\n    '.join(f'{node.numbafy_expression}' 
+			precomputed_constants = '\n    '.join(f'{node.numbafy_expression}'
 				for node in precomputable_nodes)
 		else:
 			precomputed_constants = '    '
@@ -95,7 +95,7 @@ def numbafy_continuous_hessian(*args, **kwargs):
 		def check_if_needs_summing(node):
 			if node in final_nodes:
 				new_sym = sym.Symbol(f"_sum{node.symbol}")
-				new_parent_syms = [sym.Symbol(f"{parent.symbol}") 
+				new_parent_syms = [sym.Symbol(f"{parent.symbol}")
 					if parent in summing_nodes else parent.symbol
 					for parent in node.parent_nodes]
 				new_sum_mapping = {parent: f"np.sum({parent})" for parent in new_parent_syms}
@@ -115,7 +115,7 @@ def numbafy_continuous_hessian(*args, **kwargs):
 			tier_substitutions = '\n    '.join(f"{check_if_needs_summing(node)}\n"
 				for node in tier)
 			substitution_tiers.append(tier_substitutions)
-		intermediate_substitutions = '\n    '.join(f'{sub_tier}' 
+		intermediate_substitutions = '\n    '.join(f'{sub_tier}'
 			for sub_tier in substitution_tiers)
 
 		return intermediate_substitutions
@@ -159,7 +159,7 @@ def numbafy_continuous_hessian(*args, **kwargs):
 	if cout_function_string:
 		cout(function_string)
 		input()
-	
+
 	exec(function_string)
 
 	return locals()['numbafied_func']

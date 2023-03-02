@@ -31,7 +31,7 @@ class SparseCOOMatrix:
 	@property
 	def num_rows(self):
 		return self._shape[0]
-	
+
 	@property
 	def num_cols(self):
 		return self._shape[1]
@@ -85,7 +85,7 @@ class SparseCOOMatrix:
 		for col_ind, col in matrix_lookup.items():
 			indices = vector_indices & set(col.keys())
 			if indices:
-				val = sym.Add(*[Node(sym.Mul(vector_lookup[i], matrix_lookup[col_ind][i]), self._expr_graph).symbol 
+				val = sym.Add(*[Node(sym.Mul(vector_lookup[i], matrix_lookup[col_ind][i]), self._expr_graph).symbol
 					for i in indices])
 				smat[0, col_ind] = val
 
@@ -113,7 +113,7 @@ class SparseCOOMatrix:
 
 	def __add__(self, other):
 		if not isinstance(other, self.__class__):
-			raise NotImplementedError 
+			raise NotImplementedError
 		smat = {}
 		for key in set().union(self._entries.keys(), other._entries.keys()):
 			total = self._entries.get(key, self.ZERO) + other._entries.get(key, self.ZERO)

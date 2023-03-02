@@ -3,7 +3,7 @@
 
 # @pytest.fixture
 # def fixture_pendulum():
-	
+
 # 	# Symbols
 # 	q = sym.Symbol('q')
 # 	u = sym.Symbol('u')
@@ -13,7 +13,7 @@
 
 # 	# Optimal Control Problem
 # 	problem = OptimalControlProblem(name="Pendulum swing-up problem")
-# 	phase = problem.new_phase("phase")	
+# 	phase = problem.new_phase("phase")
 # 	phase.state_variables = [q, u]
 # 	phase.control_variables = T
 # 	phase.state_equations = [u, (m*g*l*sym.sin(q) - T)/I]

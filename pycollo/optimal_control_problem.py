@@ -1,8 +1,8 @@
 """The main way to define and interact with a Pycollo optimal control problem.
 
 This module contains the main class that the user will interact with to define
-and run their optimal control problem when working with Pycollo. Terminolgy is 
-loosely defined in accordance with "Betts, JT (2010). Practical Methods for 
+and run their optimal control problem when working with Pycollo. Terminolgy is
+loosely defined in accordance with "Betts, JT (2010). Practical Methods for
 Optimal Control and Estimiation Using Nonlinear Programming (Second Edition)".
 See the ``Notes`` section for a full list of symbols used.
 
@@ -74,8 +74,8 @@ class OptimalControlProblem():
         """Initialise the optimal control problem with user-passed objects.
 
         Args:
-                phases (:obj:`Iterable` of :obj:`Phase`, optional): Phases to be 
-                        associated with the optimal control problem at initialisation. 
+                phases (:obj:`Iterable` of :obj:`Phase`, optional): Phases to be
+                        associated with the optimal control problem at initialisation.
                         Defaults to None.
                 parameter_variables ()
         """
@@ -97,14 +97,14 @@ class OptimalControlProblem():
 
     @property
     def name(self) -> str:
-        """The name associated with the optimal control problem. For setter 
+        """The name associated with the optimal control problem. For setter
         behaviour, the supplied `name` is cast to a str.
 
-        The name is not strictly needed, however it improves the usefulness of 
-        Pycollo console output. This is particularly useful in cases where the 
-        user may wish to instantiate multiple :obj:`OptimalControlProblem` 
-        objects within a single script, or instantiates other Pycollo objects 
-        without providing a valid `optimal_control_problem` argument for them 
+        The name is not strictly needed, however it improves the usefulness of
+        Pycollo console output. This is particularly useful in cases where the
+        user may wish to instantiate multiple :obj:`OptimalControlProblem`
+        objects within a single script, or instantiates other Pycollo objects
+        without providing a valid `optimal_control_problem` argument for them
         to be linked to at initialisation.
         """
         return self._name
@@ -117,11 +117,11 @@ class OptimalControlProblem():
     def phases(self) -> Tuple[Phase, ...]:
         """A tuple of all phases associated with the optimal control problem.
 
-        Phase numbers (`Phase.number`) are integers beginning at 1 and are 
-        ordered corresponding to the order that they were added to the optimal 
-        control problem. As Python uses zero-based indexing the phase numbers 
-        do not directly map to the indexes of phases within `self.phases`. 
-        Phases are however ordered sequentially corresponding to the 
+        Phase numbers (`Phase.number`) are integers beginning at 1 and are
+        ordered corresponding to the order that they were added to the optimal
+        control problem. As Python uses zero-based indexing the phase numbers
+        do not directly map to the indexes of phases within `self.phases`.
+        Phases are however ordered sequentially corresponding to the
         cronological order they were added to the optimal control problem.
         """
         return self._phases
@@ -129,17 +129,17 @@ class OptimalControlProblem():
     def add_phase(self, phase: Iterable[Phase]) -> Phase:
         """Add an already instantiated `Phase` to this optimal control problem.
 
-        This method is needed as `self.phases` is read only ("private") and 
-        therefore users cannot manually add `Phase` objects to an optimal 
-        control problem. `self.phases` is required to be read only as it is an 
-        iterable of `Phase` objects and must be protected from accidental errors 
+        This method is needed as `self.phases` is read only ("private") and
+        therefore users cannot manually add `Phase` objects to an optimal
+        control problem. `self.phases` is required to be read only as it is an
+        iterable of `Phase` objects and must be protected from accidental errors
         introduced by user interacting with it incorrectly.
 
         Args:
                 phase (Phase): The phase to be added to the optimal control problem
 
         Returns:
-                Phase: the phase that has been added. It is the same 
+                Phase: the phase that has been added. It is the same
         """
         phase.optimal_control_problem = self
         return self.phases[-1]
@@ -147,7 +147,7 @@ class OptimalControlProblem():
     def add_phases(self, phases: Iterable[Phase]) -> Tuple[Phase, ...]:
         """Associate multiple already instantiated `Phase` objects.
 
-        This is a convinience method to allow the user to add multiple `Phase` 
+        This is a convinience method to allow the user to add multiple `Phase`
         objects to the optimal control problem in one go.
         """
         return tuple(self.add_phase(phase) for phase in phases)
@@ -158,7 +158,7 @@ class OptimalControlProblem():
                   control_variables: OptionalSymsType = None) -> Phase:
         """Create a new :obj:`Phase` and add to this optimal control problem.
 
-        Provides the same behaviour as manually creating a :obj:`Phase` called 
+        Provides the same behaviour as manually creating a :obj:`Phase` called
         `phase` and calling `self.add_phase(phase)`.
         """
         new_phase = Phase(name, optimal_control_problem=self,
@@ -176,14 +176,14 @@ class OptimalControlProblem():
                         **kwargs) -> Tuple[Phase, ...]:
         """Creates multiple new phases like an already instantiated phase.
 
-        For a list of key word arguments and default values see the docstring 
+        For a list of key word arguments and default values see the docstring
         for the `OptimalControlProblem.new_phase_like` method.
 
         Returns:
                 The newly instantiated and associated phases.
 
         Raises:
-                ValueError: If the same number of names are not supplied as the 
+                ValueError: If the same number of names are not supplied as the
                         number of specified new phases.
         """
         if len(names) != int(number):
@@ -203,7 +203,7 @@ class OptimalControlProblem():
         """
 
         Raises:
-                NotImplementedError: Whenever called to inform the user that these 
+                NotImplementedError: Whenever called to inform the user that these
                         types of problem are not currently supported.
         """
         msg = ("Pycollo do not currently support dynamic, path or integral "
@@ -389,7 +389,7 @@ class OptimalControlProblem():
         """Solve the optimal control problem.
 
         If the initialisation flag is not set to True then the initialisation
-        method is called to initialise the optimal control problem. 
+        method is called to initialise the optimal control problem.
 
         Parameters:
         -----------

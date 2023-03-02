@@ -107,7 +107,14 @@ exclude = '''
 '''
 
 [tool.ruff]
-select = ["A", "C4", "E", "F", "I", "W"]
+select = [
+    "A",
+    "C4",
+    "E",
+    "F",
+    "I",
+    "W",
+]
 ignore = [
     "E501",  # Line too long (<LINE LENGTH> > <LINE LENGTH LIMIT> characters)
     "E741",  # Ambiguous variable name: `<VARIABLE NAME>`
@@ -115,7 +122,16 @@ ignore = [
 ]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = ["A", "B", "C", "D", "E", "F", "I", "W"]
+fixable = [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "I",
+    "W",
+]
 unfixable = []
 
 # Exclude a variety of commonly ignored directories.

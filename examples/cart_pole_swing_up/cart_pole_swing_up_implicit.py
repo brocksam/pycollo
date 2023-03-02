@@ -19,7 +19,6 @@ import sympy as sym
 
 import pycollo
 
-
 q1, q2 = sym.symbols("q1, q2")
 q1d, q2d = sym.symbols("q1d, q2d")
 q1dd, q2dd = sym.symbols("q1dd, q2dd")

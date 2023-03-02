@@ -76,7 +76,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 				function_arguments += f', {lagrange_parameters}'
 			else:
 				function_arguments += ', '
-				function_arguments += ', '.join(f'{L}' 
+				function_arguments += ', '.join(f'{L}'
 					for L in lagrange_parameters)
 		if N_arg:
 			function_arguments += ', _N'
@@ -88,18 +88,18 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 		raise NotImplementedError
 
 	if precomputable_nodes:
-		precomputed_constants = '\n    '.join(f'{node.numbafy_expression}' 
+		precomputed_constants = '\n    '.join(f'{node.numbafy_expression}'
 			for node in precomputable_nodes)
 	else:
 		precomputed_constants = '    '
 
 	substitution_tiers = []
 	for tier in list(dependent_tiers.values())[1:]:
-		tier_substitutions = '\n    '.join(f'{node.numbafy_expression}' 
+		tier_substitutions = '\n    '.join(f'{node.numbafy_expression}'
 			for node in tier)
 		substitution_tiers.append(tier_substitutions)
 
-	intermediate_substitutions = '\n    '.join(f'{sub_tier}' 
+	intermediate_substitutions = '\n    '.join(f'{sub_tier}'
 			for sub_tier in substitution_tiers)
 
 	if ocp_num_vars:
@@ -239,7 +239,7 @@ def numbafy(expression_graph=None, expression=None, expression_nodes=None, preco
 
 	# cout(function_string)
 	# input()
-	
+
 	exec(function_string)
 
 	return locals()['numbafied_func']

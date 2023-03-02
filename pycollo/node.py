@@ -26,7 +26,7 @@ class Cached(type):
 			args = (obj.symbol, ) + args[1:]
 			self.__cache[args] = obj
 			return obj
-	
+
 
 class Node(metaclass=Cached):
 
@@ -65,7 +65,7 @@ class Node(metaclass=Cached):
 	@property
 	def key(self):
 		return self._key
-	
+
 	@key.setter
 	def key(self, key):
 		self._key = sym.sympify(key)
@@ -135,7 +135,7 @@ class Node(metaclass=Cached):
 			self.graph._precomputable_nodes.update({self.symbol: self})
 			if self.value is None:
 				sympy_op = self.operation.SYMPY_OP
-				self.value = float(sympy_op(*[parent.value 
+				self.value = float(sympy_op(*[parent.value
 					for parent in self.parent_nodes]))
 		return is_precomputable
 
@@ -464,7 +464,7 @@ class IntermediateNode(ExpressionNodeABC):
 					add_new_parent_node(arg)
 			else:
 				add_new_parent_node(equation)
-			node_instance._operation = determine_operation(equation.func, 
+			node_instance._operation = determine_operation(equation.func,
 				node_instance)
 
 	@staticmethod
@@ -499,13 +499,13 @@ class IntermediateNode(ExpressionNodeABC):
 
 	@staticmethod
 	def is_precomputable(node_instance):
-		is_precomputable = all([parent.is_precomputable 
+		is_precomputable = all([parent.is_precomputable
 			for parent in node_instance.parent_nodes])
 		return is_precomputable
 
 	@staticmethod
 	def is_vector(node_instance):
-		return any([parent.is_vector 
+		return any([parent.is_vector
 			for parent in node_instance.parent_nodes])
 
 	@staticmethod

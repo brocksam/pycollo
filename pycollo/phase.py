@@ -24,39 +24,39 @@ class Phase:
     """A single continuous time phase as part of an optimal control problem.
 
     Attributes:
-            name: The name associated with a problem. Should be something short 
+            name: The name associated with a problem. Should be something short
                     like 'A'.
-            optimal_control_problem: The :obj:`OptimalControlProblem` with which 
+            optimal_control_problem: The :obj:`OptimalControlProblem` with which
                     this phase is to be associated.
             state_variables: The continuous time state variables in this phase.
             control_variables: The continuous time control variables in this phase.
-            state_equations: The dynamical state equations associated with this 
+            state_equations: The dynamical state equations associated with this
                     state variables in this phase.
-            integrand_functions: The integrand functions corresponding to the 
+            integrand_functions: The integrand functions corresponding to the
                     integral variables in this phase.
-            path_constraints: The continuous time path constraints associated with 
+            path_constraints: The continuous time path constraints associated with
                     this phase.
-            bounds: The phase bounds on this phase. See :obj:PhaseBounds for more 
+            bounds: The phase bounds on this phase. See :obj:PhaseBounds for more
                     details.
-            scaling: The phase scaling on this phase. See :obj:PhaseScaling for 
+            scaling: The phase scaling on this phase. See :obj:PhaseScaling for
                     more details.
             guess: The initial guess at which this phase is to be solved.
             mesh: This initial mesh on which this phase is to be solved.
             _name: Protected version of :attr:`name`.
             _ocp: Protected version of :attr:`optimal_control_problem`.
-            _phase_number: Protected integer number associated with this phase. If 
-                    not associated with any optimal control problem then defaults to 
-                    None until one is associated. These are ordered sequentially 
-                    starting at '0' in the order with which phases are added to an 
+            _phase_number: Protected integer number associated with this phase. If
+                    not associated with any optimal control problem then defaults to
+                    None until one is associated. These are ordered sequentially
+                    starting at '0' in the order with which phases are added to an
                     optimal control problem.
             _phase_suffix: Protected str which is used in the naming of auto-
                     generated Pycollo variables such as the endpoint state variables.
-            _y_var_user: Protected version of :attr:`state_variables`. 
+            _y_var_user: Protected version of :attr:`state_variables`.
             _u_var_user: Protected version of :attr:`control_variables`.
             _q_var_user: Protected version of :attr:`integral_variables`.
             _t_var_user: Protected version of :attr:`time_variables`.
-            _y_eqn_user: Protected version of :attr:`state_equations`. 
-            _c_con_user: Protected version of :attr:`path_constraints`. 
+            _y_eqn_user: Protected version of :attr:`state_equations`.
+            _c_con_user: Protected version of :attr:`path_constraints`.
             _q_fnc_user: Protected version of :attr:`integrand_functions`.
             _t0_USER: Protected version of :attr:`initial_time_variable`.
             _tF_USER: Protected version of :attr:`final_time_variable`.
@@ -82,43 +82,43 @@ class Phase:
                  ):
         """Initialise the Phase object with minimum a name.
 
-        Args: 
-                name: The name associated with a problem. Should be something short 
+        Args:
+                name: The name associated with a problem. Should be something short
                         like 'A'.
-                optimal_control_problem: The :obj:`OptimalControlProblem` with 
-                        which this phase is to be associated. Default value is None in 
-                        which case the phase remain uninitialised to an optimal control 
+                optimal_control_problem: The :obj:`OptimalControlProblem` with
+                        which this phase is to be associated. Default value is None in
+                        which case the phase remain uninitialised to an optimal control
                         problem.
-                state_variables: The continuous time state variables in this phase. 
-                        Default value is None in which case the phase has no associated 
-                        state variables and no phase-specific endpoint time or state 
+                state_variables: The continuous time state variables in this phase.
+                        Default value is None in which case the phase has no associated
+                        state variables and no phase-specific endpoint time or state
                         variables are created.
-                control_variables: The continuous time control variables in this 
-                        phase. Default value is None in which case the phase has no 
+                control_variables: The continuous time control variables in this
+                        phase. Default value is None in which case the phase has no
                         associated control variables.
-                state_equations: The dynamical state equations associated with this 
-                        state variables in this phase. Default value is None in which 
+                state_equations: The dynamical state equations associated with this
+                        state variables in this phase. Default value is None in which
                         case no dynamical equations have been added to the phase yet.
-                integrand_functions: The integrand functions corresponding to the 
-                        integral variables in this phase. Default value is None in 
-                        which case the phase has no integrand functions associated with 
+                integrand_functions: The integrand functions corresponding to the
+                        integral variables in this phase. Default value is None in
+                        which case the phase has no integrand functions associated with
                         it and no phase-specific integral variables are created.
-                path_constraints: The continuous time path constraints associated 
-                        with this phase. Default value is None in which case the phase 
+                path_constraints: The continuous time path constraints associated
+                        with this phase. Default value is None in which case the phase
                         has no path constraints associated with it.
-                bounds: The phase bounds on this phase. See :obj:PhaseBounds for 
-                        more details. Default value is None in which case an empty 
-                        :obj:`PhaseBounds` object is instantiated and associated with 
+                bounds: The phase bounds on this phase. See :obj:PhaseBounds for
+                        more details. Default value is None in which case an empty
+                        :obj:`PhaseBounds` object is instantiated and associated with
                         the phase.
-                scaling: The phase scaling on this phase. See :obj:PhaseScaling for 
-                        more details. Default value is None in which case an empty 
-                        :obj:`PhaseScaling` object is instantiated and associated with 
+                scaling: The phase scaling on this phase. See :obj:PhaseScaling for
+                        more details. Default value is None in which case an empty
+                        :obj:`PhaseScaling` object is instantiated and associated with
                         the phase.
-                guess: The initial guess at which this phase is to be solved. 
-                        Default value is None in which case an empty :obj:`PhaseGuess` 
+                guess: The initial guess at which this phase is to be solved.
+                        Default value is None in which case an empty :obj:`PhaseGuess`
                         object is instantiated and associated with the phase.
-                mesh: This initial mesh on which this phase is to be solved. 
-                        Default value is None in which case an empty :obj:`PhaseMesh` 
+                mesh: This initial mesh on which this phase is to be solved.
+                        Default value is None in which case an empty :obj:`PhaseMesh`
                         object is instantiated and associated with the phase.
         """
 
@@ -225,37 +225,37 @@ class Phase:
     def optimal_control_problem(self) -> Optional["OptimalControlProblem"]:
         """The optimal control problem with which this phase is associated.
 
-        There are two allowable scenarios. In the first scenario a phase may be 
-        instantiated without being associated with an optimal control problem. 
-        If this is the case then the default values of `None` for the phase 
-        number and 'X' for the phase suffix remain. 
+        There are two allowable scenarios. In the first scenario a phase may be
+        instantiated without being associated with an optimal control problem.
+        If this is the case then the default values of `None` for the phase
+        number and 'X' for the phase suffix remain.
 
-        In the second scenario a phase is instantiated with an associated 
-        optimal control problem or is associated with an optimal control 
-        problem after the first type of instantiation. In this case the phase 
-        is appended to the protected `_phases` attribute of the 
-        :obj:`OptimalControlProblem`, the phase number is set according to its 
-        position in the order of addition to the optimal controls problem's 
-        phases, and its phase suffix is set as a string version of the phase 
-        number. Finally a replacement of any symbols that may have been used in 
-        supplementary information about the phase that contained the placeholder 
+        In the second scenario a phase is instantiated with an associated
+        optimal control problem or is associated with an optimal control
+        problem after the first type of instantiation. In this case the phase
+        is appended to the protected `_phases` attribute of the
+        :obj:`OptimalControlProblem`, the phase number is set according to its
+        position in the order of addition to the optimal controls problem's
+        phases, and its phase suffix is set as a string version of the phase
+        number. Finally a replacement of any symbols that may have been used in
+        supplementary information about the phase that contained the placeholder
         'X' phase suffix are renamed and substituted.
 
-        No checking is done to see whether the phase is already associated with 
-        the optimal control problem in question or any other optimal control 
-        problem. The reason being that if the setter method for this property is 
-        accessed after having already been set then an `AttributeError` is 
-        raised (see below). The reason this class works like that is to avoid 
-        having to allow phases to be disassociated from an 
-        :obj:`OptimalControlProblem` and thus having to handled the complexities 
-        that would come with the phase renumbering and substitution of any 
-        phase-related information that has already been given to the optimal 
+        No checking is done to see whether the phase is already associated with
+        the optimal control problem in question or any other optimal control
+        problem. The reason being that if the setter method for this property is
+        accessed after having already been set then an `AttributeError` is
+        raised (see below). The reason this class works like that is to avoid
+        having to allow phases to be disassociated from an
+        :obj:`OptimalControlProblem` and thus having to handled the complexities
+        that would come with the phase renumbering and substitution of any
+        phase-related information that has already been given to the optimal
         control problem.
 
         Raises:
-                AttributeError: If an :obj:`OptimalControlProblem` has already been 
-                        associated with `self`. If a argument of any type other than 
-                        :obj:`OptimalControlProblem` is passed to the 
+                AttributeError: If an :obj:`OptimalControlProblem` has already been
+                        associated with `self`. If a argument of any type other than
+                        :obj:`OptimalControlProblem` is passed to the
                         `optimal_control_problem` property setter.
         """
         return self._ocp
@@ -286,10 +286,10 @@ class Phase:
     def phase_number(self) -> Optional[int]:
         """The integer numerical identifier for the phase.
 
-        If this phase has not yet been associated with an optimal control 
+        If this phase has not yet been associated with an optimal control
         problem then None is returned.
 
-        Corresponds to the chronological order in which it was associated with 
+        Corresponds to the chronological order in which it was associated with
         the optimal control problem in question.
         """
         return self._phase_number
@@ -319,8 +319,8 @@ class Phase:
         """Symbols for this phase's state variables at the initial time.
 
         Raises:
-                AttributeError: If `optimal_control_problem` property has not yet 
-                        been set to a not None value. See docstring for 
+                AttributeError: If `optimal_control_problem` property has not yet
+                        been set to a not None value. See docstring for
                         `state_variables` for details about why.
         """
         try:
@@ -335,8 +335,8 @@ class Phase:
         """Symbols for this phase's state variables at the final time.
 
         Raises:
-                AttributeError: If `optimal_control_problem` property has not yet 
-                        been set to a not None value. See docstring for 
+                AttributeError: If `optimal_control_problem` property has not yet
+                        been set to a not None value. See docstring for
                         `state_variables` for details about why.
         """
         try:
@@ -350,14 +350,14 @@ class Phase:
     def state_variables(self) -> TupleSymsType:
         """Symbols for this phase's state variables in order added by user.
 
-        The user may supply either a single symbol or an iterable of symbols. 
-        The supplied argument is handled by the `format_as_tuple` method from 
-        the `utils` module. Additional protected attributes `_y_t0_user` and 
-        `_y_tF_user` are set by post-appending either '_PX(t0)' or '_PX(tF)' to 
-        the user supplied symbols where the X is replaced by the phase suffix. 
-        As such if this phase has not yet been associated with an optimal 
-        control problem yet then `self` will not have attributes `_y_t0_user` 
-        and `_y_tF_user` and accessing either the `initial_state` or 
+        The user may supply either a single symbol or an iterable of symbols.
+        The supplied argument is handled by the `format_as_tuple` method from
+        the `utils` module. Additional protected attributes `_y_t0_user` and
+        `_y_tF_user` are set by post-appending either '_PX(t0)' or '_PX(tF)' to
+        the user supplied symbols where the X is replaced by the phase suffix.
+        As such if this phase has not yet been associated with an optimal
+        control problem yet then `self` will not have attributes `_y_t0_user`
+        and `_y_tF_user` and accessing either the `initial_state` or
         `final_state` property will raise an AttributeError.
         """
         return self._y_var_user
@@ -440,11 +440,11 @@ class Phase:
     def state_equations(self) -> Tuple[sym.Expr, ...]:
         """User-supplied dynamical equations in the phase.
 
-        These equations are the dynamical equations associated with each of the 
-        state variables in the phase. There should therefore be exactly one 
+        These equations are the dynamical equations associated with each of the
+        state variables in the phase. There should therefore be exactly one
         state equation for each dynamics symbol.
 
-        State equations can be supplied in a compact form by the user defining additional auxiliary symbols and 
+        State equations can be supplied in a compact form by the user defining additional auxiliary symbols and
         """
         return self._y_eqn_user
 
@@ -461,7 +461,7 @@ class Phase:
     def number_state_equations(self) -> int:
         """Integer number of state equations in the phase.
 
-        Should be the same as the number of state variables, i.e. there should 
+        Should be the same as the number of state variables, i.e. there should
         be a direct mapping between the two.
         """
         return len(self._y_eqn_user)

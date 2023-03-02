@@ -203,7 +203,7 @@ def check_sym_name_clash(syms: TupleSymsType) -> None:
     Pycollo reserves certain naming conventions of sympy symbols for itself.
     This function enforces those rules to make sure that any symbols Pycollo
     creates and/or manipulates iternally do not conflict with ones that the
-    user expects ownership of. These naming conventions include all internal 
+    user expects ownership of. These naming conventions include all internal
     Pycollo symbols being named with a leading underscore as well as the
     suffixes '(t0)' and '(tF)'. Finally all user symbols must be uniquely named
     for obvious reasons.

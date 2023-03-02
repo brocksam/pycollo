@@ -1,6 +1,6 @@
 """Expected data for testing iteration scaling classes.
 
-This is specific to the double pendulum swing up test problem using Lobatto 
+This is specific to the double pendulum swing up test problem using Lobatto
 quadrature on an evenly spaced temporal grid with four collocation points per
 mesh section.
 

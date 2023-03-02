@@ -25,7 +25,7 @@ Notes:
 
 	Optimisations:
 	* Add handling for _n0 vs 0 when making L matricies lower triangular
-	
+
 """
 
 class ExpressionGraph:

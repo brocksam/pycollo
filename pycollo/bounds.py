@@ -457,26 +457,26 @@ class Bounds:
         self.aux_data = {}
         for p in self.ocp_backend.p:
             p_bnd = p.ocp_phase.bounds
-            self.aux_data.update({y: np.mean(value) 
+            self.aux_data.update({y: np.mean(value)
                 for y, y_needed, value in zip(
-                    p.y_var_full, p_bnd._y_needed, p_bnd._y_bnd) 
+                    p.y_var_full, p_bnd._y_needed, p_bnd._y_bnd)
                 if not y_needed})
-            self.aux_data.update({u: np.mean(value) 
+            self.aux_data.update({u: np.mean(value)
                 for u, u_needed, value in zip(
-                    p.u_var_full, p_bnd._u_needed, p_bnd._u_bnd) 
+                    p.u_var_full, p_bnd._u_needed, p_bnd._u_bnd)
                 if not u_needed})
-            self.aux_data.update({q: np.mean(value) 
+            self.aux_data.update({q: np.mean(value)
                 for q, q_needed, value in zip(
-                    p.q_var_full, p_bnd._q_needed, p_bnd._q_bnd) 
+                    p.q_var_full, p_bnd._q_needed, p_bnd._q_bnd)
                 if not q_needed})
-            self.aux_data.update({t: np.mean(value) 
+            self.aux_data.update({t: np.mean(value)
                 for t, t_needed, value in zip(
-                    p.t_var_full, p_bnd._t_needed, p_bnd._t_bnd) 
+                    p.t_var_full, p_bnd._t_needed, p_bnd._t_bnd)
                 if not t_needed})
         prob_bnd = self.ocp_backend.ocp.bounds
-        self.aux_data.update({s: np.mean(value) 
+        self.aux_data.update({s: np.mean(value)
             for s, s_needed, value in zip(
-                self.ocp_backend.s_var_full, prob_bnd._s_needed, prob_bnd._s_bnd) 
+                self.ocp_backend.s_var_full, prob_bnd._s_needed, prob_bnd._s_bnd)
             if not s_needed})
 
 

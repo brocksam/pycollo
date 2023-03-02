@@ -11,11 +11,14 @@ https://github.com/MatthewPeterKelly/OptimTraj, for this solution and
 animation.
 
 """
+
+
 import matplotlib.pyplot as plt
 import numpy as np
 import sympy as sym
 
 import pycollo
+
 
 q1, q2 = sym.symbols("q1, q2")
 q1d, q2d = sym.symbols("q1d, q2d")
@@ -38,20 +41,16 @@ phase.integrand_functions = [F**2]
 
 phase.bounds.initial_time = 0
 phase.bounds.final_time = T
-phase.bounds.state_variables = {q1: [-d_max, d_max],
-                                q2: [-10, 10],
-                                q1d: [-10, 10],
-                                q2d: [-10, 10]}
+phase.bounds.state_variables = {
+    q1: [-d_max, d_max],
+    q2: [-10, 10],
+    q1d: [-10, 10],
+    q2d: [-10, 10],
+}
 phase.bounds.control_variables = {F: [-F_max, F_max]}
 phase.bounds.integral_variables = [[0, 100]]
-phase.bounds.initial_state_constraints = {q1: 0,
-                                          q2: 0,
-                                          q1d: 0,
-                                          q2d: 0}
-phase.bounds.final_state_constraints = {q1: d,
-                                        q2: np.pi,
-                                        q1d: 0,
-                                        q2d: 0}
+phase.bounds.initial_state_constraints = {q1: 0, q2: 0, q1d: 0, q2d: 0}
+phase.bounds.final_state_constraints = {q1: d, q2: np.pi, q1d: 0, q2d: 0}
 
 phase.guess.time = [0, T]
 phase.guess.state_variables = [[0, d], [0, np.pi], [0, 0], [0, 0]]
@@ -59,17 +58,24 @@ phase.guess.control_variables = [[0, 0]]
 phase.guess.integral_variables = [0]
 
 # These equations are taken from Kelly's paper
-q1dd_eqn = (l * m2 * sym.sin(q2) * q2d**2 + F + m2 * g * sym.cos(q2) * sym.sin(q2)) / (m1 + m2 * (1 - sym.cos(q2)**2))
-q2dd_eqn = - (l * m2 * sym.cos(q2) * sym.sin(q2) * q2d**2 + F * sym.cos(q2) + (m1 + m2) * g * sym.sin(q2)) / (l * m1 + l * m2 * (1 - sym.cos(q2)**2))
+q1dd_eqn = (
+    l * m2 * sym.sin(q2) * q2d**2 + F + m2 * g * sym.cos(q2) * sym.sin(q2)
+) / (m1 + m2 * (1 - sym.cos(q2) ** 2))
+q2dd_eqn = -(
+    l * m2 * sym.cos(q2) * sym.sin(q2) * q2d**2
+    + F * sym.cos(q2)
+    + (m1 + m2) * g * sym.sin(q2)
+) / (l * m1 + l * m2 * (1 - sym.cos(q2) ** 2))
 
 problem.objective_function = phase.integral_variables[0]
-problem.auxiliary_data = {g: 9.81,
-                          l: 0.5,
-                          m1: 1.0,
-                          m2: 0.3,
-                          q1dd: q1dd_eqn,
-                          q2dd: q2dd_eqn,
-                          }
+problem.auxiliary_data = {
+    g: 9.81,
+    l: 0.5,
+    m1: 1.0,
+    m2: 0.3,
+    q1dd: q1dd_eqn,
+    q2dd: q2dd_eqn,
+}
 
 problem.initialise()
 problem.solve()

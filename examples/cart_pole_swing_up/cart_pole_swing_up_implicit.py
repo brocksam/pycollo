@@ -11,11 +11,14 @@ https://github.com/MatthewPeterKelly/OptimTraj, for this solution and
 animation.
 
 """
+
+
 import matplotlib.pyplot as plt
 import numpy as np
 import sympy as sym
 
 import pycollo
+
 
 q1, q2 = sym.symbols("q1, q2")
 q1d, q2d = sym.symbols("q1d, q2d")
@@ -35,31 +38,30 @@ phase.state_variables = [q1, q2, q1d, q2d]
 phase.control_variables = [F, q1dd, q2dd]
 phase.state_equations = [q1d, q2d, q1dd, q2dd]
 phase.path_constraints = [
-    ((m1 + m2) * q1dd) + (m2 * l * sym.cos(q2) * q2dd) - (F + m2 * l * sym.sin(q2) * q2d**2),
+    ((m1 + m2) * q1dd)
+    + (m2 * l * sym.cos(q2) * q2dd)
+    - (F + m2 * l * sym.sin(q2) * q2d**2),
     (m2 * l * sym.cos(q2) * q1dd) + (m2 * l**2 * q2dd) + (m2 * g * l * sym.sin(q2)),
-
 ]
 phase.integrand_functions = [F**2]
 
 phase.bounds.initial_time = 0
 phase.bounds.final_time = T
-phase.bounds.state_variables = {q1: [-d_max, d_max],
-                                q2: [-10, 10],
-                                q1d: [-10, 10],
-                                q2d: [-10, 10]}
-phase.bounds.control_variables = {F: [-F_max, F_max],
-                                  q1dd: [-1000, 1000],
-                                  q2dd: [-1000, 1000]}
+phase.bounds.state_variables = {
+    q1: [-d_max, d_max],
+    q2: [-10, 10],
+    q1d: [-10, 10],
+    q2d: [-10, 10],
+}
+phase.bounds.control_variables = {
+    F: [-F_max, F_max],
+    q1dd: [-1000, 1000],
+    q2dd: [-1000, 1000],
+}
 phase.bounds.path_constraints = [[0, 0], [0, 0]]
 phase.bounds.integral_variables = [[0, 100]]
-phase.bounds.initial_state_constraints = {q1: 0,
-                                          q2: 0,
-                                          q1d: 0,
-                                          q2d: 0}
-phase.bounds.final_state_constraints = {q1: d,
-                                        q2: np.pi,
-                                        q1d: 0,
-                                        q2d: 0}
+phase.bounds.initial_state_constraints = {q1: 0, q2: 0, q1d: 0, q2d: 0}
+phase.bounds.final_state_constraints = {q1: d, q2: np.pi, q1d: 0, q2d: 0}
 
 phase.guess.time = [0, T]
 phase.guess.state_variables = [[0, d], [0, np.pi], [0, 0], [0, 0]]
@@ -67,11 +69,12 @@ phase.guess.control_variables = [[0, 0], [0, 0], [0, 0]]
 phase.guess.integral_variables = [0]
 
 problem.objective_function = phase.integral_variables[0]
-problem.auxiliary_data = {g: 9.81,
-                          l: 0.5,
-                          m1: 1.0,
-                          m2: 0.3,
-                          }
+problem.auxiliary_data = {
+    g: 9.81,
+    l: 0.5,
+    m1: 1.0,
+    m2: 0.3,
+}
 
 problem.initialise()
 problem.solve()

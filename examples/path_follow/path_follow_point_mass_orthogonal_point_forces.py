@@ -47,7 +47,7 @@ phase.state_equations = {
     dx: ddx,
     dy: ddy,
 }
-phase.integrand_functions = [(sm.sin(x) - y)**2]
+phase.integrand_functions = [(sm.sin(x) - y)**2, Fx**2 + Fy**2]
 
 # Outbound phase bounds
 phase.bounds.initial_time = 0.0
@@ -62,7 +62,7 @@ phase.bounds.control_variables = {
     Fx: [-50, 50],
     Fy: [-50, 50],
 }
-phase.bounds.integral_variables = [[0, 1000]]
+phase.bounds.integral_variables = [[0, 1000], [0, 10_000]]
 phase.bounds.initial_state_constraints = {x: 0.0}
 phase.bounds.final_state_constraints = {x: 2*sm.pi}
 
@@ -82,10 +82,15 @@ phase.guess.control_variables = np.array(
         [0, 0],
     ]
 )
-phase.guess.integral_variables = np.array([0])
+phase.guess.integral_variables = np.array([0, 0])
 
 # Problem definitions
-problem.objective_function = phase.integral_variables[0]
+TRACKING_WEIGHTING = 0.99
+CONTROL_WEIGHTING = 0.01
+problem.objective_function = (
+    TRACKING_WEIGHTING * phase.integral_variables[0]
+    + CONTROL_WEIGHTING * phase.integral_variables[1]
+)
 
 problem.auxiliary_data = {
     ddx: Fx / m,
@@ -102,21 +107,31 @@ problem.endpoint_constraints = [
 # Problem bounds
 problem.bounds.endpoint_constraints = [0, 0, 0]
 
-# Problem settings
-problem.settings.mesh_tolerance = 1e-4
-
 # Solve
 problem.initialise()
 problem.solve()
 
-# Create obstacle coordinates
+# Create target path coordinates
 x_path = np.linspace(0, 2 * np.pi, 1000)
 y_path = np.sin(x_path)
 
-# Plot obstacle and solution in plan view
+# Plot target path and solution in plan view
 x = problem.solution.state[0][0]
 y = problem.solution.state[0][1]
+plt.figure()
 plt.plot(x_path, y_path, color="#000000")
 plt.plot(x, y)
 plt.gca().set_aspect("equal", adjustable="box")
+plt.show()
+
+# Plot
+t = problem.solution._time_[0]
+Fx = problem.solution.control[0][0]
+Fy = problem.solution.control[0][1]
+plt.figure()
+plt.plot(t, Fx, label="Fx")
+plt.plot(t, Fy, label="Fx")
+plt.xlabel("Time / s")
+plt.ylabel("Control / N")
+plt.legend()
 plt.show()

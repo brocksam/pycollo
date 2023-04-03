@@ -91,7 +91,6 @@ problem.objective_function = (
     TRACKING_WEIGHTING * phase.integral_variables[0]
     + CONTROL_WEIGHTING * phase.integral_variables[1]
 )
-
 problem.auxiliary_data = {
     ddx: Fx / m,
     ddy: Fy / m,

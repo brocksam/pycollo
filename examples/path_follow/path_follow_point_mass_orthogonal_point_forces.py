@@ -115,7 +115,7 @@ problem.solve()
 x_path = np.linspace(0, 2 * np.pi, 1000)
 y_path = np.sin(x_path)
 
-# Plot target path and solution in plan view
+# Plot target path and solution trajectory in plan view
 x = problem.solution.state[0][0]
 y = problem.solution.state[0][1]
 plt.figure()
@@ -124,7 +124,7 @@ plt.plot(x, y)
 plt.gca().set_aspect("equal", adjustable="box")
 plt.show()
 
-# Plot
+# Plot control solution
 t = problem.solution._time_[0]
 Fx = problem.solution.control[0][0]
 Fy = problem.solution.control[0][1]

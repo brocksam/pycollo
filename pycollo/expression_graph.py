@@ -12,19 +12,19 @@ from .utils import console_out
 
 Notes:
 ------
-	Todo - add checking for:
-	* Auxiliary data
-	* Objective function
-	* State equations
-	* Path constraints
-	* Integrand functions
-	* State endpoint constraints
-	* Endpoint constraints
+    Todo - add checking for:
+    * Auxiliary data
+    * Objective function
+    * State equations
+    * Path constraints
+    * Integrand functions
+    * State endpoint constraints
+    * Endpoint constraints
 
-	Todo - use sympy.matrix.sparse in hSAD
+    Todo - use sympy.matrix.sparse in hSAD
 
-	Optimisations:
-	* Add handling for _n0 vs 0 when making L matricies lower triangular
+    Optimisations:
+    * Add handling for _n0 vs 0 when making L matricies lower triangular
 
 """
 

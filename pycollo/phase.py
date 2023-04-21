@@ -1,7 +1,7 @@
 """Everything needed for defining phases within an optimal control problem.
 
 Classes:
-	Phase
+    Phase
 """
 
 

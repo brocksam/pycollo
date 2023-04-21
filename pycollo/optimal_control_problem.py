@@ -8,29 +8,29 @@ See the ``Notes`` section for a full list of symbols used.
 
 Notes:
 ------
-	* t: independent parameter (time).
-	* x = [y, u, q, t0, tf, s]: vector of problem variables.
-	* y: vector state variables (which are functions of time).
-	* u: vector control variables (which are functions of time).
-	* q: vector of integral constraints.
-	* t0: the initial time of the (single) phase.
-	* tf: the final time of the (single) phase.
-	* s: vector of static parameter variables (which are phase-independent).
+    * t: independent parameter (time).
+    * x = [y, u, q, t0, tf, s]: vector of problem variables.
+    * y: vector state variables (which are functions of time).
+    * u: vector control variables (which are functions of time).
+    * q: vector of integral constraints.
+    * t0: the initial time of the (single) phase.
+    * tf: the final time of the (single) phase.
+    * s: vector of static parameter variables (which are phase-independent).
 
-	* J: objective function.
-	* g: gradient of the objective function w.r.t. x.
-	* L: Lagrangian of the objective function and constraints.
-	* H: Hessian of the Lagrangian.
+    * J: objective function.
+    * g: gradient of the objective function w.r.t. x.
+    * L: Lagrangian of the objective function and constraints.
+    * H: Hessian of the Lagrangian.
 
-	* c = [zeta, gamma, rho, beta]: vector of constraints.
-	* zeta: vector of defect constraints.
-	* gamma: vector of path constraints.
-	* rho: vector of integral constraints.
-	* beta: vector of endpoint constraints.
-	* G: Jacobian of the constaints.
+    * c = [zeta, gamma, rho, beta]: vector of constraints.
+    * zeta: vector of defect constraints.
+    * gamma: vector of path constraints.
+    * rho: vector of integral constraints.
+    * beta: vector of endpoint constraints.
+    * G: Jacobian of the constaints.
 
-	* n = len(x): number of free variables
-	* m = len(c): number of constraints
+    * n = len(x): number of free variables
+    * m = len(c): number of constraints
 """
 
 
@@ -449,59 +449,59 @@ class OptimalControlProblem():
         self._display_progress = display_progress
 
     # def _initialise(self):
-    # 	self._check_user_supplied_bounds()
-    # 	self._generate_scaling()
-    # 	self._generate_expression_graph()
-    # 	self._generate_quadrature()
-    # 	self._compile_numba_functions()
-    # 	self._check_user_supplied_initial_guess()
+    #   self._check_user_supplied_bounds()
+    #   self._generate_scaling()
+    #   self._generate_expression_graph()
+    #   self._generate_quadrature()
+    #   self._compile_numba_functions()
+    #   self._check_user_supplied_initial_guess()
 
-    # 	# Initialise the initial mesh iterations
-    # 	self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
+    #   # Initialise the initial mesh iterations
+    #   self._mesh_iterations[0]._initialise_iteration(self.initial_guess)
 
-    # 	ocp_initialisation_time_stop = timer()
-    # 	self._ocp_initialisation_time = (ocp_initialisation_time_stop
-    # 		- ocp_initialisation_time_start)
-    # 	self._is_initialised = True
+    #   ocp_initialisation_time_stop = timer()
+    #   self._ocp_initialisation_time = (ocp_initialisation_time_stop
+    #       - ocp_initialisation_time_start)
+    #   self._is_initialised = True
 
     # def solve_old(self, display_progress=False):
-    # 	"""Solve the optimal control problem.
+    #   """Solve the optimal control problem.
 
-    # 	If the initialisation flag is not set to True then the initialisation
-    # 	method is called to initialise the optimal control problem.
+    #   If the initialisation flag is not set to True then the initialisation
+    #   method is called to initialise the optimal control problem.
 
-    # 	Parameters:
-    # 	-----------
-    # 	display_progress : bool
-    # 		Option for whether progress updates should be outputted to the
-    # 		console during solving. Defaults to False.
-    # 	"""
+    #   Parameters:
+    #   -----------
+    #   display_progress : bool
+    #       Option for whether progress updates should be outputted to the
+    #       console during solving. Defaults to False.
+    #   """
 
-    # 	self._set_solve_options(display_progress)
-    # 	self._check_if_initialisation_required_before_solve()
+    #   self._set_solve_options(display_progress)
+    #   self._check_if_initialisation_required_before_solve()
 
-    # 	# Solve the transcribed NLP on the initial mesh
-    # 	new_iteration_mesh, new_iteration_guess = self._mesh_iterations[0]._solve()
+    #   # Solve the transcribed NLP on the initial mesh
+    #   new_iteration_mesh, new_iteration_guess = self._mesh_iterations[0]._solve()
 
-    # 	mesh_iterations_met = self._settings.max_mesh_iterations == 1
-    # 	if new_iteration_mesh is None:
-    # 			mesh_tolerance_met = True
-    # 	else:
-    # 		mesh_tolerance_met = False
+    #   mesh_iterations_met = self._settings.max_mesh_iterations == 1
+    #   if new_iteration_mesh is None:
+    #           mesh_tolerance_met = True
+    #   else:
+    #       mesh_tolerance_met = False
 
-    # 	while not mesh_iterations_met and not mesh_tolerance_met:
-    # 		new_iteration = Iteration(optimal_control_problem=self, iteration_number=self.num_mesh_iterations+1, mesh=new_iteration_mesh)
-    # 		self._mesh_iterations.append(new_iteration)
-    # 		self._mesh_iterations[-1]._initialise_iteration(new_iteration_guess)
-    # 		new_iteration_mesh, new_iteration_guess = self._mesh_iterations[-1]._solve()
-    # 		if new_iteration_mesh is None:
-    # 			mesh_tolerance_met = True
-    # 			print(f'Mesh tolerance met in mesh iteration {len(self._mesh_iterations)}.\n')
-    # 		elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
-    # 			mesh_iterations_met = True
-    # 			print(f'Maximum number of mesh iterations reached. pycollo exiting before mesh tolerance met.\n')
+    #   while not mesh_iterations_met and not mesh_tolerance_met:
+    #       new_iteration = Iteration(optimal_control_problem=self, iteration_number=self.num_mesh_iterations+1, mesh=new_iteration_mesh)
+    #       self._mesh_iterations.append(new_iteration)
+    #       self._mesh_iterations[-1]._initialise_iteration(new_iteration_guess)
+    #       new_iteration_mesh, new_iteration_guess = self._mesh_iterations[-1]._solve()
+    #       if new_iteration_mesh is None:
+    #           mesh_tolerance_met = True
+    #           print(f'Mesh tolerance met in mesh iteration {len(self._mesh_iterations)}.\n')
+    #       elif self.num_mesh_iterations >= self._settings.max_mesh_iterations:
+    #           mesh_iterations_met = True
+    #           print(f'Maximum number of mesh iterations reached. pycollo exiting before mesh tolerance met.\n')
 
-    # 	_ = self._final_output()
+    #   _ = self._final_output()
 
     def _set_solve_options(self, display_progress):
         self._display_progress = display_progress

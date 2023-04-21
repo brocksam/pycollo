@@ -276,6 +276,11 @@ def format_as_data_container(
 ) -> TupleSymsType:
     """Formats user supplied arguments as a custom data container."""
 
+    def remove_prefix(string: str, prefix: str) -> str:
+        if string.startswith(prefix):
+            return string[len(prefix):]
+        return string
+
     def convert_to_valid_identifier(entry: str) -> str:
         identifier = str(entry)
         if not identifier.isidentifier() and identifier[-3:] == "(t)":
@@ -287,7 +292,7 @@ def format_as_data_container(
         ):
             identifier = (
                 "d" * entry.derivative_count
-                + identifier.removeprefix("Derivative(").rpartition("(t)")[0]
+                + remove_prefix(identifier, "Derivative(").rpartition("(t)")[0]
             )
         return identifier
 

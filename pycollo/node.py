@@ -499,14 +499,14 @@ class IntermediateNode(ExpressionNodeABC):
 
     @staticmethod
     def is_precomputable(node_instance):
-        is_precomputable = all([parent.is_precomputable
-            for parent in node_instance.parent_nodes])
+        is_precomputable = all(parent.is_precomputable
+            for parent in node_instance.parent_nodes)
         return is_precomputable
 
     @staticmethod
     def is_vector(node_instance):
-        return any([parent.is_vector
-            for parent in node_instance.parent_nodes])
+        return any(parent.is_vector
+            for parent in node_instance.parent_nodes)
 
     @staticmethod
     def _str(node_instance):

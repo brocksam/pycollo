@@ -266,7 +266,7 @@ class ExpressionGraph:
             if node in L_nodes:
                 return True
             try:
-                if any([requires_summing(node) for node in node.parent_nodes]):
+                if any(requires_summing(node) for node in node.parent_nodes):
                     nodes_requiring_summing.add(node)
                     return True
                 else:

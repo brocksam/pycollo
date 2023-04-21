@@ -142,7 +142,7 @@ def needed_to_tuple(var_full, needed):
     return tuple(var for var, n in zip(var_full, needed) if n)
 
 
-def create_data_container(type_name, field_names: Sequence[str]) -> cls:
+def create_data_container(type_name, field_names: Sequence[str]) -> type:
     """Create an immutable, indexible data type."""
 
     type_name = str(type_name)

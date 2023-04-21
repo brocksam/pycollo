@@ -220,7 +220,8 @@ def create_data_container(type_name, field_names: Sequence[str]) -> cls:
             index = key
         return self._values[index]
 
-    __len__ = lambda _: len(field_names)
+    def __len__(self) -> int:
+        return len(field_names)
 
     def __str__(self) -> str:
         if self._keys == self._values:

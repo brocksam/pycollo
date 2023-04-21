@@ -172,3 +172,10 @@ max-complexity = 10
 
 [tool.mypy]
 ignore_missing_imports = true
+exclude = [
+    "^docs/source/conf.py$",
+    "^examples",
+    "^pycollo",
+    "^tests",
+    "^tests/conftest.py$",
+]

@@ -1,10 +1,10 @@
 import abc
+import functools
 import weakref
 
 import sympy as sym
 
-from .operations import PycolloUnsetOp, determine_operation
-from .utils import cachedproperty
+from pycollo.operations import PycolloUnsetOp, determine_operation
 
 
 class Cached(type):
@@ -120,15 +120,15 @@ class Node(metaclass=Cached):
     def derivative_as_node(self, wrt):
         return self._type._get_derivative_wrt(self, wrt)
 
-    @cachedproperty
+    @functools.cached_property
     def differentiable_by(self):
         return self._type._differentiable_by(self)
 
-    @cachedproperty
+    @functools.cached_property
     def is_root(self):
         return self._type.is_root()
 
-    @cachedproperty
+    @functools.cached_property
     def is_precomputable(self):
         is_precomputable = self._type.is_precomputable(self)
         if is_precomputable:
@@ -139,11 +139,11 @@ class Node(metaclass=Cached):
                     for parent in self.parent_nodes]))
         return is_precomputable
 
-    @cachedproperty
+    @functools.cached_property
     def is_vector(self):
         return self._type.is_vector(self)
 
-    @cachedproperty
+    @functools.cached_property
     def dependent_nodes(self):
         if self.is_root:
             return set()
@@ -161,7 +161,7 @@ class Node(metaclass=Cached):
         else:
             return f'{self.symbol} = {self.expression}'
 
-    @cachedproperty
+    @functools.cached_property
     def tier(self):
         return self._type.tier(self)
 

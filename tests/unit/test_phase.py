@@ -46,6 +46,8 @@ class TestPhaseStateVariables:
         self.phase = self.problem.new_phase(name="A")
         self.sm_x, self.sm_y, self.sm_v, self.sm_u = sm.symbols("x, y, v, u")
         self.me_x, self.me_y, self.me_v, self.me_u = me.dynamicsymbols("x, y, v, u")
+        self.me_dx, self.me_dy, self.me_dv, self.me_du = me.dynamicsymbols("x, y, v, u", 1)
+        self.me_ddx, self.me_ddy, self.me_ddv, self.me_ddu = me.dynamicsymbols("x, y, v, u", 2)
 
     def test_single_sympy_symbol(self):
         """A single `sm.Symbol` can be set."""
@@ -53,6 +55,8 @@ class TestPhaseStateVariables:
         assert len(self.phase.state_variables) == 1
         assert hasattr(self.phase.state_variables, "x")
         assert self.phase.state_variables.x == self.sm_x
+        assert self.phase.state_variables[0] == self.sm_x
+        assert self.phase.state_variables[self.sm_x] == self.sm_x
 
     def test_many_sympy_symbols(self):
         """Multiple `sm.Symbol`s can be set."""
@@ -64,6 +68,12 @@ class TestPhaseStateVariables:
         assert self.phase.state_variables.x == self.sm_x
         assert self.phase.state_variables.y == self.sm_y
         assert self.phase.state_variables.v == self.sm_v
+        assert self.phase.state_variables[0] == self.sm_x
+        assert self.phase.state_variables[1] == self.sm_y
+        assert self.phase.state_variables[2] == self.sm_v
+        assert self.phase.state_variables[self.sm_x] == self.sm_x
+        assert self.phase.state_variables[self.sm_y] == self.sm_y
+        assert self.phase.state_variables[self.sm_v] == self.sm_v
 
     def test_single_sympy_dynamics_symbol(self):
         """A single `me.dynamicsymbols` can be set."""
@@ -71,6 +81,8 @@ class TestPhaseStateVariables:
         assert len(self.phase.state_variables) == 1
         assert hasattr(self.phase.state_variables, "x")
         assert self.phase.state_variables.x == self.me_x
+        assert self.phase.state_variables[0] == self.me_x
+        assert self.phase.state_variables[self.me_x] == self.me_x
 
     def test_many_sympy_dynamics_symbols(self):
         """Multiple `me.dynamicsymbols` can be set."""
@@ -82,20 +94,58 @@ class TestPhaseStateVariables:
         assert self.phase.state_variables.x == self.me_x
         assert self.phase.state_variables.y == self.me_y
         assert self.phase.state_variables.v == self.me_v
+        assert self.phase.state_variables[0] == self.me_x
+        assert self.phase.state_variables[1] == self.me_y
+        assert self.phase.state_variables[2] == self.me_v
+        assert self.phase.state_variables[self.me_x] == self.me_x
+        assert self.phase.state_variables[self.me_y] == self.me_y
+        assert self.phase.state_variables[self.me_v] == self.me_v
+
+    def test_single_sympy_dynamics_symbol_derivative(self):
+        """A single `me.dynamicsymbols` derivative can be set."""
+        self.phase.state_variables = self.me_dx
+        assert len(self.phase.state_variables) == 1
+        assert hasattr(self.phase.state_variables, "dx")
+        assert self.phase.state_variables.dx == self.me_dx
+        assert self.phase.state_variables[0] == self.me_dx
+        assert self.phase.state_variables[self.me_dx] == self.me_dx
+
+    def test_many_sympy_dynamics_symbol_derivative(self):
+        """Multiple `me.dynamicsymbols` derivative can be set."""
+        self.phase.state_variables = [self.me_dx, self.me_dy, self.me_dv]
+        assert len(self.phase.state_variables) == 3
+        assert hasattr(self.phase.state_variables, "dx")
+        assert hasattr(self.phase.state_variables, "dy")
+        assert hasattr(self.phase.state_variables, "dv")
+        assert self.phase.state_variables.dx == self.me_dx
+        assert self.phase.state_variables.dy == self.me_dy
+        assert self.phase.state_variables.dv == self.me_dv
+        assert self.phase.state_variables[0] == self.me_dx
+        assert self.phase.state_variables[1] == self.me_dy
+        assert self.phase.state_variables[2] == self.me_dv
+        assert self.phase.state_variables[self.me_dx] == self.me_dx
+        assert self.phase.state_variables[self.me_dy] == self.me_dy
+        assert self.phase.state_variables[self.me_dv] == self.me_dv
 
     def test_many_mixed_sympy_symbols_and_sympy_dynamics_symbols(self):
         """`sm.Symbol`s and `me.dynamicsymbols` can be mixed."""
-        self.phase.state_variables = [self.me_x, self.sm_y, self.me_v]
+        self.phase.state_variables = [self.me_dx, self.sm_y, self.me_v]
         assert len(self.phase.state_variables) == 3
-        assert hasattr(self.phase.state_variables, "x")
+        assert hasattr(self.phase.state_variables, "dx")
         assert hasattr(self.phase.state_variables, "y")
         assert hasattr(self.phase.state_variables, "v")
-        assert self.phase.state_variables.x == self.me_x
+        assert self.phase.state_variables.dx == self.me_dx
         assert self.phase.state_variables.y == self.sm_y
         assert self.phase.state_variables.v == self.me_v
+        assert self.phase.state_variables[0] == self.me_dx
+        assert self.phase.state_variables[1] == self.sm_y
+        assert self.phase.state_variables[2] == self.me_v
+        assert self.phase.state_variables[self.me_dx] == self.me_dx
+        assert self.phase.state_variables[self.sm_y] == self.sm_y
+        assert self.phase.state_variables[self.me_v] == self.me_v
 
     def test_none(self):
-        """`None` causes the property attribute to be set as an empty `tuple`."""
+        """`None` causes the property attribute to be set as empty."""
         self.phase.state_variables = None
         assert self.phase.state_variables == ()
 
@@ -136,6 +186,8 @@ class TestPhaseControlVariables:
         self.phase = self.problem.new_phase(name="A")
         self.sm_x, self.sm_y, self.sm_v, self.sm_u = sm.symbols("x, y, v, u")
         self.me_x, self.me_y, self.me_v, self.me_u = me.dynamicsymbols("x, y, v, u")
+        self.me_dx, self.me_dy, self.me_dv, self.me_du = me.dynamicsymbols("x, y, v, u", 1)
+        self.me_ddx, self.me_ddy, self.me_ddv, self.me_ddu = me.dynamicsymbols("x, y, v, u", 2)
 
     def test_single_sympy_symbol(self):
         """A single `sm.Symbol` can be set."""
@@ -143,6 +195,8 @@ class TestPhaseControlVariables:
         assert len(self.phase.control_variables) == 1
         assert hasattr(self.phase.control_variables, "x")
         assert self.phase.control_variables.x == self.sm_x
+        assert self.phase.control_variables[0] == self.sm_x
+        assert self.phase.control_variables[self.sm_x] == self.sm_x
 
     def test_many_sympy_symbols(self):
         """Multiple `sm.Symbol`s can be set."""
@@ -154,6 +208,12 @@ class TestPhaseControlVariables:
         assert self.phase.control_variables.x == self.sm_x
         assert self.phase.control_variables.y == self.sm_y
         assert self.phase.control_variables.v == self.sm_v
+        assert self.phase.control_variables[0] == self.sm_x
+        assert self.phase.control_variables[1] == self.sm_y
+        assert self.phase.control_variables[2] == self.sm_v
+        assert self.phase.control_variables[self.sm_x] == self.sm_x
+        assert self.phase.control_variables[self.sm_y] == self.sm_y
+        assert self.phase.control_variables[self.sm_v] == self.sm_v
 
     def test_single_sympy_dynamics_symbol(self):
         """A single `me.dynamicsymbols` can be set."""
@@ -161,6 +221,8 @@ class TestPhaseControlVariables:
         assert len(self.phase.control_variables) == 1
         assert hasattr(self.phase.control_variables, "x")
         assert self.phase.control_variables.x == self.me_x
+        assert self.phase.control_variables[0] == self.me_x
+        assert self.phase.control_variables[self.me_x] == self.me_x
 
     def test_many_sympy_dynamics_symbols(self):
         """Multiple `me.dynamicsymbols` can be set."""
@@ -172,17 +234,29 @@ class TestPhaseControlVariables:
         assert self.phase.control_variables.x == self.me_x
         assert self.phase.control_variables.y == self.me_y
         assert self.phase.control_variables.v == self.me_v
+        assert self.phase.control_variables[0] == self.me_x
+        assert self.phase.control_variables[1] == self.me_y
+        assert self.phase.control_variables[2] == self.me_v
+        assert self.phase.control_variables[self.me_x] == self.me_x
+        assert self.phase.control_variables[self.me_y] == self.me_y
+        assert self.phase.control_variables[self.me_v] == self.me_v
 
     def test_many_mixed_sympy_symbols_and_sympy_dynamics_symbols(self):
         """`sm.Symbol`s and `me.dynamicsymbols` can be mixed."""
-        self.phase.control_variables = [self.me_x, self.sm_y, self.me_v]
+        self.phase.control_variables = [self.me_dx, self.sm_y, self.me_v]
         assert len(self.phase.control_variables) == 3
-        assert hasattr(self.phase.control_variables, "x")
+        assert hasattr(self.phase.control_variables, "dx")
         assert hasattr(self.phase.control_variables, "y")
         assert hasattr(self.phase.control_variables, "v")
-        assert self.phase.control_variables.x == self.me_x
+        assert self.phase.control_variables.dx == self.me_dx
         assert self.phase.control_variables.y == self.sm_y
         assert self.phase.control_variables.v == self.me_v
+        assert self.phase.control_variables[0] == self.me_dx
+        assert self.phase.control_variables[1] == self.sm_y
+        assert self.phase.control_variables[2] == self.me_v
+        assert self.phase.control_variables[self.me_dx] == self.me_dx
+        assert self.phase.control_variables[self.sm_y] == self.sm_y
+        assert self.phase.control_variables[self.me_v] == self.me_v
 
     def test_none(self):
         """`None` causes the property attribute to be set as an empty `tuple`."""
@@ -214,3 +288,52 @@ class TestPhaseControlVariables:
         """A `ValueError` is raised for repeated control variables."""
         with pytest.raises(ValueError):
             self.phase.control_variables = control_variables
+
+
+class TestStateEquations:
+    """Tests for the `Phase.state_equations` property attribute."""
+
+    @pytest.fixture(autouse=True)
+    def _ocp_with_phase_fixture(self) -> None:
+        """Simple fixture setting up an :obj:`OptimalControlProblem`."""
+        self.problem = pycollo.OptimalControlProblem(name="Fixture")
+        self.phase = self.problem.new_phase(name="A")
+        self.sm_x, self.sm_y, self.sm_z, self.sm_v, self.sm_u = sm.symbols("x, y, z, v, u")
+        self.me_x, self.me_y, self.me_v, self.me_u = me.dynamicsymbols("x, y, v, u")
+        self.me_dx, self.me_dy, self.me_dv, self.me_du = me.dynamicsymbols("x, y, v, u", 1)
+        self.me_ddx, self.me_ddy, self.me_ddv, self.me_ddu = me.dynamicsymbols("x, y, v, u", 2)
+
+    def test_single_sympy_symbol(self):
+        """A single `sm.Symbol` can be set."""
+        self.phase.state_equations = {self.sm_x: self.sm_u}
+        assert len(self.phase.state_equations) == 1
+        assert hasattr(self.phase.state_equations, "x")
+        assert self.phase.state_equations.x == self.sm_u
+        assert self.phase.state_equations[0] == self.sm_u
+        assert self.phase.state_equations[self.sm_x] == self.sm_u
+
+    def test_many_mixed_sympy_symbols_and_sympy_dynamics_symbols_mapping(self):
+        """`sm.Symbol`s and `me.dynamicsymbols` can be mixed."""
+        self.phase.state_equations = {
+            self.sm_y: self.sm_v - self.sm_z,
+            self.me_x: self.me_dx,
+            self.me_dx: self.me_ddx,
+            self.me_ddx: self.sm_v - self.me_u,
+        }
+        assert len(self.phase.state_equations) == 4
+        assert hasattr(self.phase.state_equations, "y")
+        assert hasattr(self.phase.state_equations, "x")
+        assert hasattr(self.phase.state_equations, "dx")
+        assert hasattr(self.phase.state_equations, "ddx")
+        assert self.phase.state_equations.y == self.sm_v - self.sm_z
+        assert self.phase.state_equations.x == self.me_dx
+        assert self.phase.state_equations.dx == self.me_ddx
+        assert self.phase.state_equations.ddx == self.sm_v - self.me_u
+        assert self.phase.state_equations[0] == self.sm_v - self.sm_z
+        assert self.phase.state_equations[1] == self.me_dx
+        assert self.phase.state_equations[2] == self.me_ddx
+        assert self.phase.state_equations[3] == self.sm_v - self.me_u
+        assert self.phase.state_equations[self.sm_y] == self.sm_v - self.sm_z
+        assert self.phase.state_equations[self.me_x] == self.me_dx
+        assert self.phase.state_equations[self.me_dx] == self.me_ddx
+        assert self.phase.state_equations[self.me_ddx] == self.sm_v - self.me_u

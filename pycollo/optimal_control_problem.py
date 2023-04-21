@@ -48,7 +48,7 @@ from .phase import Phase
 from .scaling import EndpointScaling
 from .settings import Settings
 from .typing import OptionalSymsType
-from .utils import check_sym_name_clash, console_out, format_as_named_tuple
+from .utils import check_sym_name_clash, console_out, format_as_data_container
 
 __all__ = ["OptimalControlProblem"]
 
@@ -216,7 +216,7 @@ class OptimalControlProblem():
 
     @parameter_variables.setter
     def parameter_variables(self, s_vars):
-        self._s_var_user = format_as_named_tuple(s_vars)
+        self._s_var_user = format_as_data_container("ParameterVariables", s_vars)
         _ = check_sym_name_clash(self._s_var_user)
 
     @property
@@ -229,7 +229,11 @@ class OptimalControlProblem():
 
     @endpoint_constraints.setter
     def endpoint_constraints(self, b_cons):
-        self._b_con_user = format_as_named_tuple(b_cons, use_named=False)
+        self._b_con_user = format_as_data_container(
+            "EndpointConstraints",
+            b_cons,
+            use_named=False,
+        )
 
     @property
     def number_endpoint_constraints(self):

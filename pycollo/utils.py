@@ -1,17 +1,14 @@
-import collections
-from typing import Iterable, Mapping, NamedTuple, Optional
+from __future__ import annotations
+
+from keyword import iskeyword
+from typing import Any, Iterable, Mapping, NamedTuple, Optional, Sequence
 
 import casadi as ca
 import numpy as np
-import sympy as sym
+import sympy as sm
 from sympy.core.backend import AppliedUndef
 
-from .typing import OptionalSymsType, TupleSymsType
-
-dcdx_info_fields = ["zeta_y", "zeta_u", "zeta_s", "gamma_y", "gamma_u",
-                    "gamma_s", "rho_y", "rho_u", "rho_s"]
-dcdxInfo = collections.namedtuple("dcdxInfo", dcdx_info_fields)
-
+from pycollo.typing import OptionalSymsType, TupleSymsType
 
 SUPPORTED_ITER_TYPES = (tuple, list, np.ndarray)
 SYMPY_TO_CASADI_API_MAPPING = {"ImmutableDenseMatrix": ca.blockcat,
@@ -20,20 +17,6 @@ SYMPY_TO_CASADI_API_MAPPING = {"ImmutableDenseMatrix": ca.blockcat,
                                "sec": lambda x: (1 / ca.cos(x)),
                                "cosec": lambda x: (1 / ca.sin(x)),
                                }
-
-
-class cachedproperty:
-
-    def __init__(self, func):
-        self.func = func
-
-    def __get__(self, instance, cls):
-        if instance is None:
-            return self
-        else:
-            value = self.func(instance)
-            setattr(instance, self.func.__name__, value)
-            return value
 
 
 def symbol_name(symbol):
@@ -45,7 +28,7 @@ def symbol_name(symbol):
 
     Args
     ----
-    symbol : Union[ca.SX, sym.Symbol]
+    symbol : Union[ca.SX, sm.Symbol]
         Symbol to get name of.
 
     Raises
@@ -56,7 +39,7 @@ def symbol_name(symbol):
     """
     if isinstance(symbol, ca.SX):
         return symbol.name()
-    elif isinstance(symbol, (sym.Symbol, AppliedUndef)):
+    elif isinstance(symbol, (sm.Symbol, AppliedUndef)):
         return symbol.name
     msg = f"Cannot get name for symbol of type {type(symbol)}."
     raise NotImplementedError(msg)
@@ -71,7 +54,7 @@ def symbol_primitives(eqn):
         If an equation of an unsupported type is passed.
 
     """
-    if isinstance(eqn, sym.Expr):
+    if isinstance(eqn, sm.Expr):
         return eqn.free_symbols
     elif isinstance(eqn, (ca.DM, float, int)):
         return set()
@@ -91,16 +74,16 @@ def sympy_to_casadi(sympy_expr, sympy_to_casadi_sym_mapping, *, phase=None):
     -------
     This example creates some primitive symbols using both Sympy and CasADi.
 
-    >>> x, y = sym.symbols("x, y")
+    >>> x, y = sm.symbols("x, y")
     >>> X = ca.SX.sym("x")
     >>> Y = ca.SX.sym("y")
-    >>> xy = sym.Matrix([x, y])
+    >>> xy = sm.Matrix([x, y])
 
     A matrix consisting of some arbitrary expressions is created to showcase
     the differences in syntax between Sympy's and CasADi's internal
     mathematical functions.
 
-    >>> e = sym.Matrix([x * sym.sqrt(y), sym.sin(x + y), abs(x - y)])
+    >>> e = sm.Matrix([x * sm.sqrt(y), sm.sin(x + y), abs(x - y)])
     >>> XY = ca.vertcat(X, Y)
     >>> E = sympy_to_casadi(e, xy, XY)
 
@@ -116,7 +99,7 @@ def sympy_to_casadi(sympy_expr, sympy_to_casadi_sym_mapping, *, phase=None):
     [(x*sqrt(y)), sin((x+y)), fabs((x-y))]
 
     """
-    sympy_vars = sym.Matrix(list(sympy_to_casadi_sym_mapping.keys()))
+    sympy_vars = sm.Matrix(list(sympy_to_casadi_sym_mapping.keys()))
     casadi_vars = ca.vertcat(*sympy_to_casadi_sym_mapping.values())
     if casadi_vars.shape[1] > 1:
         casadi_vars = casadi_vars.T
@@ -125,9 +108,9 @@ def sympy_to_casadi(sympy_expr, sympy_to_casadi_sym_mapping, *, phase=None):
         casadi_var_name_suffix = f"_P{phase}" if phase is not None else ""
         casadi_var = ca.SX.sym(f"{str(sympy_var)}{casadi_var_name_suffix}")
         sympy_to_casadi_sym_mapping.update({sympy_var: casadi_var})
-        sympy_vars = sym.Matrix.vstack(sympy_vars, sym.Matrix([[sympy_var]]))
+        sympy_vars = sm.Matrix.vstack(sympy_vars, sm.Matrix([[sympy_var]]))
         casadi_vars = ca.vertcat(casadi_vars, casadi_var)
-    f = sym.lambdify(sympy_vars, sympy_expr,
+    f = sm.lambdify(sympy_vars, sympy_expr,
                      modules=[SYMPY_TO_CASADI_API_MAPPING, ca])
     return f(*ca.vertsplit(casadi_vars)), sympy_to_casadi_sym_mapping
 
@@ -159,41 +142,171 @@ def needed_to_tuple(var_full, needed):
     return tuple(var for var, n in zip(var_full, needed) if n)
 
 
-def format_as_named_tuple(
-        iterable: OptionalSymsType,
-        use_named: bool = True,
-        named_keys: Optional[NamedTuple] = None,
-        sympify: bool = True) -> TupleSymsType:
-    """Formats user supplied arguments as a named tuple."""
+def create_data_container(type_name, field_names: Sequence[str]) -> type:
+    """Create an immutable, indexible data type."""
 
+    type_name = str(type_name)
+    if isinstance(field_names, str):
+        field_names = field_names.replace(",", " ").split()
+    field_names = tuple(map(str, field_names))
+
+    for name in (type_name, ) + field_names:
+        if type(name) is not str:
+            msg = f"Type and field names must be strings: {name!r}."
+            raise TypeError(msg)
+        if not name.isidentifier():
+            msg = f"Type and field names must be valid identifiers: {name!r}."
+            raise ValueError(msg)
+        if  iskeyword(name):
+            msg = f"Type names and field names cannot be a keyword: {name!r}."
+            raise ValueError(msg)
+
+    seen = set()
+    for name in field_names:
+        if name.startswith("_"):
+            msg = f"Field names cannot start with an underscore: {name!r}."
+            raise ValueError(msg)
+        if name in seen:
+            msg = f"Encountered duplicate field name: {name!r}."
+            raise ValueError(msg)
+        seen.add(name)
+
+    def __init__(self, *data: tuple[Any]) -> None:
+        if len(data) == 1 and isinstance(data[0], dict):
+            mapping = data[0]
+            data = ()
+        else:
+            mapping = {}
+        if data:
+            self._keys = data
+            self._values = data
+        elif mapping:
+            self._keys = tuple(mapping.keys())
+            self._values = tuple(mapping.values())
+        else:
+            self._keys = ()
+            self._values = ()
+        for field_name, value in zip(self._field_names, self._values):
+            setattr(self, field_name, value)
+
+    def __getitem__(self, key: Any) -> Any:
+        if key in self._keys:
+            index = self._keys.index(key)
+        elif key in self._values:
+            return key
+        elif not isinstance(key, (int, slice)):
+            index = self._field_names.index(key)
+        else:
+            index = key
+        return self._values[index]
+
+    def __len__(self) -> int:
+        return len(field_names)
+
+    def __str__(self) -> str:
+        if self._keys == self._values:
+            return str(self._values)
+        return str(self.as_dict())
+
+    def __repr__(self) -> str:
+        if self._keys == self._values:
+            pairs = (f"{f}={d}" for f, d in zip(self._field_names, self._values))
+        else:
+            pairs = (
+                f"{f}={{{k}: {v}}}"
+                for f, k, v in zip(self._field_names, self._keys, self._values)
+            )
+        kwargs = ", ".join(pairs)
+        return f"{self.__class__.__name__}({kwargs})"
+
+    def __iter__(self) -> Any:
+        for item in self._values:
+            yield item
+
+    def __eq__(self, other) -> bool:
+        return self._values == other
+
+    def as_dict(self) -> dict[Any, Any]:
+        return dict(zip(self._keys, self._values))
+
+    class_namespace = {
+        "__slots__": ("_keys", "_values", *tuple(field_names)),
+        "__init__": __init__,
+        "__getitem__": __getitem__,
+        "__len__": __len__,
+        "__str__": __str__,
+        "__repr__": __repr__,
+        "__iter__": __iter__,
+        "__eq__": __eq__,
+        "_field_names": tuple(field_names),
+        "as_dict": as_dict,
+    }
+
+    DataContainer = type(type_name, (), class_namespace)
+
+    return DataContainer
+
+
+def format_as_data_container(
+    type_name: str,
+    iterable: OptionalSymsType,
+    use_named: bool = True,
+    identifiers: Optional[NamedTuple] = None,
+    sympify: bool = True
+) -> TupleSymsType:
+    """Formats user supplied arguments as a custom data container."""
+
+    def remove_prefix(string: str, prefix: str) -> str:
+        if string.startswith(prefix):
+            return string[len(prefix):]
+        return string
+
+    def convert_to_valid_identifier(entry: str) -> str:
+        identifier = str(entry)
+        if not identifier.isidentifier() and identifier[-3:] == "(t)":
+            identifier = identifier[:-3]
+        elif (
+            not identifier.isidentifier()
+            and identifier.startswith("Derivative(")
+            and identifier.endswith(("(t), t)", "(t), (t, 2))"))
+        ):
+            identifier = (
+                "d" * entry.derivative_count
+                + remove_prefix(identifier, "Derivative(").rpartition("(t)")[0]
+            )
+        return identifier
+
+    symbols = None
     if not iterable:
-        return ()
+        return create_data_container(type_name, ())()
     try:
         iter(iterable)
     except TypeError:
         iterable = (iterable, )
     else:
         if isinstance(iterable, dict):
-            named_keys = iterable.keys()
-            iterable = iterable.values()
+            if not identifiers:
+                identifiers = [convert_to_valid_identifier(k) for k in iterable.keys()]
+            symbols = tuple(iterable.keys())
+            iterable = tuple(iterable.values())
 
-    if sympify:
-        entries = [sym.sympify(entry) for entry in iterable]
-    else:
-        entries = iterable
+    entries = [sm.sympify(entry) for entry in iterable] if sympify else iterable
+    if symbols is None:
+        symbols = identifiers if identifiers is not None else entries
+
     if use_named:
-        if named_keys is None:
-            named_keys = []
+        if identifiers is None:
+            identifiers = []
             for entry in entries:
-                identifier = str(entry)
-                if not identifier.isidentifier() and identifier[-3:] == "(t)":
-                    identifier = identifier[:-3]
-                named_keys.append(identifier)
-        NamedTuple = collections.namedtuple('NamedTuple', named_keys)
-        formatted_entries = NamedTuple(*entries)
+                identifier = convert_to_valid_identifier(entry)
+                identifiers.append(identifier)
+        DataContainer = create_data_container(type_name, identifiers)
+        if identifiers == entries:
+            formatted_entries = DataContainer(*entries)
+        else:
+            formatted_entries = DataContainer(dict(zip(symbols, entries)))
     else:
         formatted_entries = tuple(entries)
-
     return formatted_entries
 
 
@@ -259,14 +372,17 @@ def console_out(msg, heading=False, subheading=False, prefix="", suffix="", *,
 
 
 def fast_sympify(arg):
-    if not isinstance(arg, sym.Expr):
-        return sym.sympify(arg)
+    if not isinstance(arg, sm.Expr):
+        return sm.sympify(arg)
     return arg
 
 
 def parse_arg_type(arg, arg_name_str, arg_type):
     if not isinstance(arg, arg_type):
-        msg = (f"`{arg_name_str}` must be a {arg_type}. {arg} of type {type(arg)} is not a valid argument.")
+        msg = (
+            f"`{arg_name_str}` must be a {arg_type}. {arg} of type {type(arg)} "
+            f"is not a valid argument."
+        )
         raise TypeError(msg)
     return arg
 
@@ -280,10 +396,18 @@ def parse_parameter_var(var, var_name_str, var_type):
     else:
         var = list(var)
         if len(var) != 2:
-            msg = (f"If an iterable of values in being passed for `{var_name_str}` then this must be of length 2. {var} of length {len(var)} is not a valid argument.")
+            msg = (
+                f"If an iterable of values in being passed for `{var_name_str}` "
+                f"then this must be of length 2. {var} of length {len(var)} is "
+                f"not a valid argument."
+            )
             raise TypeError(msg)
         if not isinstance(var[0], var_type) or not isinstance(var[1], var_type):
-            msg = (f"Both items in `{var_name_str}` must be {var_type} objects. {var[0]} at index 0 is of type {type(var[0])} and {var[1]} at index 1 is of type {type(var[1])}.")
+            msg = (
+                f"Both items in `{var_name_str}` must be {var_type} objects. "
+                f"{var[0]} at index 0 is of type {type(var[0])} and {var[1]} at "
+                f"index 1 is of type {type(var[1])}."
+            )
             raise TypeError(msg)
         return tuple(var)
 

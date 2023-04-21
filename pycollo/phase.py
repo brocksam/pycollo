@@ -15,7 +15,7 @@ from .guess import PhaseGuess
 from .mesh import PhaseMesh
 from .scaling import PhaseScaling
 from .typing import OptionalExprsType, OptionalSymsType, TupleSymsType
-from .utils import check_sym_name_clash, format_as_named_tuple
+from .utils import check_sym_name_clash, format_as_data_container
 
 __all__ = ["Phase"]
 
@@ -268,12 +268,16 @@ class Phase:
             raise AttributeError(msg)
 
         try:
-            previous_phase_names = ocp._phases._fields
+            previous_phase_names = ocp._phases._field_names
         except AttributeError:
             previous_phase_names = ()
         phase_names = (*previous_phase_names, self.name)
-        ocp._phases = format_as_named_tuple([*ocp._phases, self],
-                                            named_keys=phase_names, sympify=False)
+        ocp._phases = format_as_data_container(
+            "Phases",
+            [*ocp._phases, self],
+            identifiers=phase_names,
+            sympify=False,
+        )
 
         self._ocp = ocp
         self._phase_number = self._ocp.number_phases - 1
@@ -365,7 +369,7 @@ class Phase:
     @state_variables.setter
     def state_variables(self, y_vars: OptionalSymsType):
 
-        self._y_var_user = format_as_named_tuple(y_vars)
+        self._y_var_user = format_as_data_container("StateVariables", y_vars)
         check_sym_name_clash(self._y_var_user)
 
         # Generate the state endpoint variable symbols only if phase has number
@@ -379,18 +383,26 @@ class Phase:
             self._t_var_user = (self._t0_USER, self._tF_USER)
 
             try:
-                named_keys = self._y_var_user._fields
+                identifiers = self._y_var_user._field_names
             except AttributeError:
-                named_keys = ()
+                identifiers = ()
 
-            self._y_t0_user = format_as_named_tuple(
-                (sym.Symbol(f'{y}_P{self._phase_suffix}(t0)')
-                 for y in self._y_var_user),
-                named_keys=named_keys)
-            self._y_tF_user = format_as_named_tuple(
-                (sym.Symbol(f'{y}_P{self._phase_suffix}(tF)')
-                 for y in self._y_var_user),
-                named_keys=named_keys)
+            self._y_t0_user = format_as_data_container(
+                "InitialStateVariables",
+                (
+                    sym.Symbol(f'{y}_P{self._phase_suffix}(t0)')
+                    for y in self._y_var_user
+                ),
+                identifiers=identifiers,
+            )
+            self._y_tF_user = format_as_data_container(
+                "FinalStateVariables",
+                (
+                    sym.Symbol(f'{y}_P{self._phase_suffix}(tF)')
+                    for y in self._y_var_user
+                ),
+                identifiers=identifiers,
+            )
 
     @property
     def number_state_variables(self) -> int:
@@ -409,7 +421,7 @@ class Phase:
 
     @control_variables.setter
     def control_variables(self, u_vars: OptionalSymsType):
-        self._u_var_user = format_as_named_tuple(u_vars)
+        self._u_var_user = format_as_data_container("ControlVariables", u_vars)
         check_sym_name_clash(self._u_var_user)
 
     @property
@@ -451,11 +463,15 @@ class Phase:
     @state_equations.setter
     def state_equations(self, y_eqns: OptionalExprsType):
         try:
-            named_keys = self._y_var_user._fields
+            identifiers = self._y_var_user._field_names
         except AttributeError:
-            named_keys = ()
-        self._y_eqn_user = format_as_named_tuple(y_eqns, use_named=True,
-                                                  named_keys=named_keys)
+            identifiers = ()
+        self._y_eqn_user = format_as_data_container(
+            "StateEquations",
+            y_eqns,
+            use_named=True,
+            identifiers=identifiers,
+        )
 
     @property
     def number_state_equations(self) -> int:
@@ -472,7 +488,11 @@ class Phase:
 
     @path_constraints.setter
     def path_constraints(self, c_cons):
-        self._c_con_user = format_as_named_tuple(c_cons, use_named=False)
+        self._c_con_user = format_as_data_container(
+            "PathConstraints",
+            c_cons,
+            use_named=False,
+        )
 
     @property
     def number_path_constraints(self):
@@ -484,7 +504,11 @@ class Phase:
 
     @integrand_functions.setter
     def integrand_functions(self, integrands):
-        self._q_fnc_user = format_as_named_tuple(integrands, use_named=False)
+        self._q_fnc_user = format_as_data_container(
+            "IntegrandFunctions",
+            integrands,
+            use_named=False,
+        )
         self._q_var_user = tuple(sym.Symbol(f'q{i_q}_P{self._phase_suffix}')
                                   for i_q, _ in enumerate(self._q_fnc_user))
 
@@ -556,12 +580,12 @@ class Phase:
 
         """
         try:
-            set_state_variables_keys = set(self.state_variables._fields)
+            set_state_variables_keys = set(self.state_variables._field_names)
         except AttributeError:
             set_state_variables_keys = set()
 
         try:
-            set_state_equations_keys = set(self.state_equations._fields)
+            set_state_equations_keys = set(self.state_equations._field_names)
         except AttributeError:
             set_state_equations_keys = set()
 

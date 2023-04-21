@@ -1,8 +1,7 @@
 import abc
+import functools
 
 import sympy as sym
-
-from .utils import cachedproperty
 
 SYMPY_ZERO = sym.core.numbers.Zero()
 SYMPY_ONE = sym.core.numbers.One()
@@ -29,12 +28,12 @@ class PycolloOp(abc.ABC):
     def SYMPY_OP(cls):
         pass
 
-    @cachedproperty
+    @functools.cached_property
     def expression(self):
         return self.SYMPY_OP(*[parent_node.symbol
             for parent_node in self.node.parent_nodes])
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         return {}
 
@@ -43,11 +42,11 @@ class PycolloUnsetOp(PycolloOp):
 
     SYMPY_OP = None
 
-    @cachedproperty
+    @functools.cached_property
     def expression(self):
         return None
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         return None
 
@@ -58,11 +57,11 @@ class PycolloNullOp(PycolloOp):
     def SYMPY_OP(arg):
         return arg
 
-    @cachedproperty
+    @functools.cached_property
     def expression(self):
         return self.node.parent_nodes[0].symbol
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -73,7 +72,7 @@ class PycolloMul(PycolloOp):
 
     SYMPY_OP = sym.Mul
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -90,7 +89,7 @@ class PycolloBinaryMul(PycolloOp):
 
     SYMPY_OP = sym.Mul
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -106,7 +105,7 @@ class PycolloTernaryMul(PycolloOp):
 
     SYMPY_OP = sym.Mul
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -130,7 +129,7 @@ class PycolloAdd(PycolloOp):
 
     SYMPY_OP = sym.Add
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -145,7 +144,7 @@ class PycolloPow(PycolloOp):
 
     SYMPY_OP = sym.Pow
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -161,7 +160,7 @@ class PycolloSquare(PycolloOp):
 
     SYMPY_OP = sym.Pow
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -175,7 +174,7 @@ class PycolloCube(PycolloOp):
 
     SYMPY_OP = sym.Pow
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -190,7 +189,7 @@ class PycolloSquareroot(PycolloOp):
 
     SYMPY_OP = sym.Pow
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -205,7 +204,7 @@ class PycolloCuberoot(PycolloOp):
 
     SYMPY_OP = sym.Pow
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -220,7 +219,7 @@ class PycolloReciprocal(PycolloOp):
 
     SYMPY_OP = sym.Pow
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -235,7 +234,7 @@ class PycolloSquareReciprocal(PycolloOp):
 
     SYMPY_OP = sym.Pow
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -250,7 +249,7 @@ class PycolloExp(PycolloOp):
 
     SYMPY_OP = sym.exp
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -262,7 +261,7 @@ class PycolloLn(PycolloOp):
 
     SYMPY_OP = sym.log
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -276,7 +275,7 @@ class PycolloLog(PycolloOp):
 
     SYMPY_OP = sym.log
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -290,7 +289,7 @@ class PycolloSin(PycolloOp):
 
     SYMPY_OP = sym.sin
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -304,7 +303,7 @@ class PycolloCos(PycolloOp):
 
     SYMPY_OP = sym.cos
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -319,7 +318,7 @@ class PycolloTan(PycolloOp):
 
     SYMPY_OP = sym.tan
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -334,7 +333,7 @@ class PycolloCot(PycolloOp):
 
     SYMPY_OP = sym.cot
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -350,7 +349,7 @@ class PycolloSec(PycolloOp):
 
     SYMPY_OP = sym.sec
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -366,7 +365,7 @@ class PycolloCosec(PycolloOp):
 
     SYMPY_OP = sym.csc
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -383,7 +382,7 @@ class PycolloArcsin(PycolloOp):
 
     SYMPY_OP = sym.asin
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -400,7 +399,7 @@ class PycolloArccos(PycolloOp):
 
     SYMPY_OP = sym.acos
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -418,7 +417,7 @@ class PycolloArctan(PycolloOp):
 
     SYMPY_OP = sym.atan
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -434,7 +433,7 @@ class PycolloArccot(PycolloOp):
 
     SYMPY_OP = sym.acot
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -451,7 +450,7 @@ class PycolloArcsec(PycolloOp):
 
     SYMPY_OP = sym.asec
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -464,7 +463,7 @@ class PycolloArccosec(PycolloOp):
 
     SYMPY_OP = sym.acsc
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -477,7 +476,7 @@ class PycolloSinh(PycolloOp):
 
     SYMPY_OP = sym.sinh
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -491,7 +490,7 @@ class PycolloCosh(PycolloOp):
 
     SYMPY_OP = sym.cosh
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -506,7 +505,7 @@ class PycolloTanh(PycolloOp):
 
     SYMPY_OP = sym.tanh
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -523,7 +522,7 @@ class PycolloCoth(PycolloOp):
 
     SYMPY_OP = sym.coth
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -540,7 +539,7 @@ class PycolloSech(PycolloOp):
 
     SYMPY_OP = sym.sech
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -555,7 +554,7 @@ class PycolloCosech(PycolloOp):
 
     SYMPY_OP = sym.csch
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -570,7 +569,7 @@ class PycolloArcsinh(PycolloOp):
 
     SYMPY_OP = sym.asinh
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -586,7 +585,7 @@ class PycolloArccosh(PycolloOp):
 
     SYMPY_OP = sym.acosh
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -602,7 +601,7 @@ class PycolloArctanh(PycolloOp):
 
     SYMPY_OP = sym.atanh
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -615,7 +614,7 @@ class PycolloArccoth(PycolloOp):
 
     SYMPY_OP = sym.acoth
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -628,7 +627,7 @@ class PycolloArcsech(PycolloOp):
 
     SYMPY_OP = sym.asech
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}
@@ -648,7 +647,7 @@ class PycolloArccosech(PycolloOp):
 
     SYMPY_OP = sym.acsch
 
-    @cachedproperty
+    @functools.cached_property
     def derivatives(self):
         if self.node.is_precomputable:
             return {}

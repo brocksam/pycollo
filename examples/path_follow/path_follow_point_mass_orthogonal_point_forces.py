@@ -62,7 +62,7 @@ phase.bounds.control_variables = {
     Fx: [-50, 50],
     Fy: [-50, 50],
 }
-phase.bounds.integral_variables = [[0, 1000], [0, 10_000]]
+phase.bounds.integral_variables = [[0, 0.1], [0, 10_000]]
 phase.bounds.initial_state_constraints = {x: 0.0}
 phase.bounds.final_state_constraints = {x: 2*sm.pi}
 
@@ -85,8 +85,8 @@ phase.guess.control_variables = np.array(
 phase.guess.integral_variables = np.array([0, 0])
 
 # Problem definitions
-TRACKING_WEIGHTING = 0.99
-CONTROL_WEIGHTING = 0.01
+TRACKING_WEIGHTING = 0.999999
+CONTROL_WEIGHTING = 0.000001
 problem.objective_function = (
     TRACKING_WEIGHTING * phase.integral_variables[0]
     + CONTROL_WEIGHTING * phase.integral_variables[1]

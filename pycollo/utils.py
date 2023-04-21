@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import collections
 from keyword import iskeyword
 from typing import Any, Iterable, Mapping, NamedTuple, Optional, Sequence
 
@@ -9,12 +8,7 @@ import numpy as np
 import sympy as sm
 from sympy.core.backend import AppliedUndef
 
-from .typing import OptionalSymsType, TupleSymsType
-
-dcdx_info_fields = ["zeta_y", "zeta_u", "zeta_s", "gamma_y", "gamma_u",
-                    "gamma_s", "rho_y", "rho_u", "rho_s"]
-dcdxInfo = collections.namedtuple("dcdxInfo", dcdx_info_fields)
-
+from pycollo.typing import OptionalSymsType, TupleSymsType
 
 SUPPORTED_ITER_TYPES = (tuple, list, np.ndarray)
 SYMPY_TO_CASADI_API_MAPPING = {"ImmutableDenseMatrix": ca.blockcat,

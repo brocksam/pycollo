@@ -8,6 +8,24 @@ sinusoidal path.
 The point mass is controllable by a single point force whose
 direction can be directly controlled.
 
+This problem is for illustration purposes only. In order to
+keep it simple it ends up not being a well-defined optimal
+control problem. This is because there is sufficient freedom
+in the controls to "perfectly" match the trajectory in theory.
+However, in practice it is not possible to do so due to slight
+numerical errors between the "true" trajectory and the
+simulated trajectory. The optimizer will always think that
+it's possible to improve the solution accuracy and so it's
+both difficult to meet the mesh tolerance and the optimal
+control found ends up being very noisy.
+
+To allow for the problem to be solved, a second term is
+introduced to the objective function: the minimization of the
+sum of squared forces. This introduces another challenge as
+the two terms in the objective function now need to be
+carefully weighted against one another. However, it does at
+least allow for a non-noisy solution to be obtained.
+
 """
 
 

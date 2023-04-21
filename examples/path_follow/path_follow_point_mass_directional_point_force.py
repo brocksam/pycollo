@@ -59,10 +59,10 @@ phase.bounds.state_variables = {
     dy: [-50, 50],
 }
 phase.bounds.control_variables = {
-    F: [-50, 50],
-    theta: [-50, 50],
+    F: [0, 100],
+    theta: [-sm.pi, sm.pi],
 }
-phase.bounds.integral_variables = [[0, 1000], [0, 10_000]]
+phase.bounds.integral_variables = [[0, 0.01], [0, 1_000_000]]
 phase.bounds.initial_state_constraints = {x: 0.0}
 phase.bounds.final_state_constraints = {x: 2*sm.pi}
 
@@ -85,8 +85,8 @@ phase.guess.control_variables = np.array(
 phase.guess.integral_variables = np.array([0, 0])
 
 # Problem definitions
-TRACKING_WEIGHTING = 0.5
-CONTROL_WEIGHTING = 0.5
+TRACKING_WEIGHTING = 0.99999
+CONTROL_WEIGHTING = 0.00001
 problem.objective_function = (
     TRACKING_WEIGHTING * phase.integral_variables[0]
     + CONTROL_WEIGHTING * phase.integral_variables[1]
@@ -108,8 +108,7 @@ problem.endpoint_constraints = [
 problem.bounds.endpoint_constraints = [0, 0, 0]
 
 # Problem settings
-problem.settings.mesh_tolerance = 1e-3
-problem.settings.max_mesh_iterations = 10
+problem.settings.mesh_tolerance = 1e-5
 
 # Solve
 problem.initialise()
@@ -126,7 +125,6 @@ plt.figure()
 plt.plot(x_path, y_path, color="#000000")
 plt.plot(x, y)
 plt.gca().set_aspect("equal", adjustable="box")
-plt.show()
 
 # Plot control solution
 t = problem.solution._time_[0]

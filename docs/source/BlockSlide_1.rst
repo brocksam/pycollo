@@ -1,25 +1,6 @@
 Blockslide 1
 ------------
 
-Table of Contents
-~~~~~~~~~~~~~~~~~
-
--  OCP Description
--  Parameter variables
--  Problem specific auxiliary data
--  Phases
--  Time
--  State variables, initialisation and bounds
--  Guess
--  State equations
--  Phase specific auxiliary data
--  Path constraints
--  Integrand functions
--  Objective function
--  Settings
--  Solve
--  Solution
-
 OCP Description
 ~~~~~~~~~~~~~~~
 

@@ -33,7 +33,7 @@ describe friction (gravitation g, mass m, and coefficient of friction
 mu). We will introduce a second order differential to be able to solve
 the differential equations for the equations of motion.
 
-.. code:: ipython3
+.. code:: 
 
     # 1D Blockslide
     import matplotlib.pyplot as plt
@@ -60,11 +60,6 @@ the differential equations for the equations of motion.
     ddx = sym.Symbol("ddx")  # Acceleration (m/s^2) of the point horizontal (x-axis)
 
 
-.. parsed-literal::
-
-    /Users/j.t.heinen/miniconda3/envs/rosetta/lib/python3.10/site-packages/ipopt/__init__.py:13: FutureWarning: The module has been renamed to 'cyipopt' from 'ipopt'. Please import using 'import cyipopt' and remove all uses of 'import ipopt' in your code as this will be deprecated in a future release.
-      warnings.warn(msg, FutureWarning)
-
 
 Parameter variables
 ~~~~~~~~~~~~~~~~~~~
@@ -77,7 +72,7 @@ want anything to be optimised, make sure bounds and guesses are
 supplied, otherwise Pycollo cannot run. Bounds can be assigned with list
 of list, tuples, array, or dictionary.
 
-.. code:: ipython3
+.. code:: 
 
     # Problem instantiation
     problem = pycollo.OptimalControlProblem(
@@ -98,7 +93,7 @@ variables from all equations in the OCP, you can make sure the variables
 are numerical before introducing them into the
 pycollo.OptimalControlProblem
 
-.. code:: ipython3
+.. code:: 
 
     problem.auxiliary_data = {g: 9.81}
 
@@ -109,7 +104,7 @@ The OCP is introduced, now we should start by introducing the phases.
 Eventhough we are only using a single phase for this OCP, the nature of
 Pycollo is multiphase, so phases should always be declared.
 
-.. code:: ipython3
+.. code:: 
 
     phase_A = problem.new_phase(name="A")
 
@@ -127,7 +122,7 @@ initial time and final time, but can expand to as many points as needed
 by providing a list of n numbers. Make sure to match length n with all
 other guesses (except for problem.guess.parameter_variables)
 
-.. code:: ipython3
+.. code:: 
 
     phase_A.bounds.initial_time = 0
     phase_A.bounds.final_time = [0, 5]
@@ -147,7 +142,7 @@ outside around the objective with a reasonable amount of play such that
 the optimisation will not operate at it’s bound (unless there is an
 actual bound in the problem).
 
-.. code:: ipython3
+.. code:: 
 
     phase_A.state_variables = [x, dx]
     phase_A.bounds.state_variables = [[-3,3],[-50,50]]
@@ -155,7 +150,7 @@ actual bound in the problem).
 The dictionary is implemented by coupling a lower and upper bound
 through a list to the variables:
 
-.. code:: ipython3
+.. code:: 
 
     phase_A.bounds.state_variables = {
         x: [-3, 3],
@@ -168,7 +163,7 @@ optimised, you can assign a bound to these values, just like the
 parameter variables. Initial and final state constraints can also be
 assigned by a list, array or tuple
 
-.. code:: ipython3
+.. code:: 
 
     phase_A.bounds.initial_state_constraints = {
         x: 0,
@@ -192,7 +187,7 @@ or array. Usually a zero guess seed is sufficient in this method. To
 converge quicker or make sure no local minima is found, proper guessing
 is needed.
 
-.. code:: ipython3
+.. code:: 
 
     phase_A.guess.state_variables = [[0, 0], [0, 0]]
 
@@ -202,7 +197,7 @@ Control variables
 The control variables are handeled the same as state variables, but
 don’t need initial and final state constraints:
 
-.. code:: ipython3
+.. code:: 
 
     phase_A.control_variables = [Fx]
     phase_A.bounds.control_variables = {
@@ -221,7 +216,7 @@ equations of the blockslide are provided to Pycollo. The differential
 equations can be provided to Pycollo in three ways. First you can
 provide the equations directly:
 
-.. code:: ipython3
+.. code:: 
 
     phase_A.state_equations = {
         x: dx,
@@ -238,7 +233,7 @@ auxiliary data: 1. Auxiliary data valid for all phases
 (problem.auxiliary_data) or specific per phase (phase_A.auxiliary_data).
 This can be helpful because constants can be different per phase.
 
-.. code:: ipython3
+.. code:: 
 
     phase_A.state_equations = {
         x: dx,
@@ -263,7 +258,7 @@ example in bang bang control. We will not use this for now because this
 is not necessary. Later expansion of this example will elaborate on path
 constraints
 
-.. code:: ipython3
+.. code:: 
 
     # phase_A.path_constraints = [ddx - (Fx / m - m*mu)]
     # phase_A.bounds.path_constraints = [0]
@@ -279,7 +274,7 @@ should be given for initial and final time, and the guess is a single
 number, since the output of the function will always result in a single
 number.
 
-.. code:: ipython3
+.. code:: 
 
     phase_A.integrand_functions = [Fx ** 2]
     phase_A.bounds.integral_variables = [[0, 1000]]
@@ -292,7 +287,7 @@ Objective function
 Objective functions should always be a function of initial or final
 state variables.
 
-.. code:: ipython3
+.. code:: 
 
     problem.objective_function = (
         phase_A.integral_variables[0])
@@ -306,7 +301,7 @@ see al options in [INSERT_LINK_TO_SETTINGS]. For now we will use
 Pycollo’s default sttings and will use it’s internal plotting method to
 show the results. Then we will solve the OCP with:
 
-.. code:: ipython3
+.. code:: 
 
     # Settings
     problem.settings.display_mesh_result_graph = True
@@ -314,7 +309,7 @@ show the results. Then we will solve the OCP with:
 Solve
 ~~~~~
 
-.. code:: ipython3
+.. code:: 
 
     # Solve
     problem.initialise()
@@ -342,14 +337,14 @@ Solve
     Initialising mesh iteration #1.
     ===============================
     
-    Guess interpolated to iteration mesh in 759.67us.
-    Scaling initialised in 49.37us.
-    Initial guess scaled in 5.71us.
-    Scaling generated in 2.28ms.
-    NLP generated in 48.49ms.
-    Mesh-specific bounds generated in 178.83us.
+    Guess interpolated to iteration mesh in 952.96us.
+    Scaling initialised in 54.96us.
+    Initial guess scaled in 4.13us.
+    Scaling generated in 2.35ms.
+    NLP generated in 70.66ms.
+    Mesh-specific bounds generated in 207.33us.
     
-    Mesh iteration #1 initialised in 51.77ms.
+    Mesh iteration #1 initialised in 74.23ms.
     
     
     ==========================
@@ -417,19 +412,19 @@ Solve
     
     EXIT: Optimal Solution Found.
           solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
-           nlp_f  |  16.00us (  1.23us)  12.21us (938.92ns)        13
-           nlp_g  |  69.00us (  5.31us)  65.25us (  5.02us)        13
-      nlp_grad_f  |  31.00us (  2.07us)  26.42us (  1.76us)        15
-      nlp_hess_l  |  96.00us (  8.00us)  92.46us (  7.70us)        12
-       nlp_jac_g  | 152.00us ( 10.86us) 148.50us ( 10.61us)        14
-           total  |  21.74ms ( 21.74ms)  31.78ms ( 31.78ms)         1
+           nlp_f  |  15.00us (  1.15us)  12.79us (984.15ns)        13
+           nlp_g  |  97.00us (  7.46us)  79.54us (  6.12us)        13
+      nlp_grad_f  |  35.00us (  2.33us)  31.00us (  2.07us)        15
+      nlp_hess_l  | 104.00us (  8.67us) 102.71us (  8.56us)        12
+       nlp_jac_g  | 168.00us ( 12.00us) 165.54us ( 11.82us)        14
+           total  |  23.59ms ( 23.59ms)  32.25ms ( 32.25ms)         1
     
     ==================================
     Post-processing mesh iteration #1.
     ==================================
     
-    Mesh iteration #1 solved in 32.44ms.
-    Mesh iteration #1 post-processed in 21.46ms.
+    Mesh iteration #1 solved in 32.80ms.
+    Mesh iteration #1 post-processed in 23.34ms.
     
     
     ============================
@@ -442,7 +437,7 @@ Solve
     
     Adjusting Collocation Mesh: [10] mesh sections
     
-    Mesh iteration #1 completed in 105.67ms.
+    Mesh iteration #1 completed in 130.37ms.
     
 
 

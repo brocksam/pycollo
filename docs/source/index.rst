@@ -13,6 +13,7 @@ Welcome to Pycollo's documentation!
    
    BlockSlide_1
    BlockSlide_2
+   BlockSlide_3
 
 Indices and tables
 ==================

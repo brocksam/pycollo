@@ -1,5 +1,5 @@
-Blockslide 3
-============
+Block Slide 3
+=============
 
 OCP Description
 ---------------
@@ -12,7 +12,7 @@ reach the mid position (0,2) with any given speed, and final position
 (-1,-2) with zero speed, while dodging an circular object with a radius
 of 1[m] at (0,0) while minimizing input force.
 
-.. code:: 
+.. code:: ipython3
 
     # 2D Blockslide
     import matplotlib.pyplot as plt
@@ -49,20 +49,13 @@ of 1[m] at (0,0) while minimizing input force.
     phase_A.bounds.final_time = [0, 10]
     phase_A.guess.time = [0, 1]
 
-
-.. parsed-literal::
-
-    /Users/j.t.heinen/miniconda3/envs/rosetta/lib/python3.10/site-packages/ipopt/__init__.py:13: FutureWarning: The module has been renamed to 'cyipopt' from 'ipopt'. Please import using 'import cyipopt' and remove all uses of 'import ipopt' in your code as this will be deprecated in a future release.
-      warnings.warn(msg, FutureWarning)
-
-
 States and Control
 ------------------
 
 State bounds, control, and integrand functions will be the same as the
 previous example but with an added dimension.
 
-.. code:: 
+.. code:: ipython3
 
     
     phase_A.state_variables = [x, y, dx, dy]
@@ -89,7 +82,7 @@ The first phase will stop at the midpoint. Final state of dx and dy
 should be unconstrained and are set at the same limit as the
 statebounds.
 
-.. code:: 
+.. code:: ipython3
 
     phase_A.bounds.initial_state_constraints = {
         x: 1,
@@ -106,7 +99,7 @@ statebounds.
 The state equations will be the same with an extra dimension and linear
 drag added to the equation.
 
-.. code:: 
+.. code:: ipython3
 
     phase_A.state_equations = {
         x: dx,
@@ -127,7 +120,7 @@ an inequality constraint. With the circle equation we can make sure x
 and y will be out of the circle at any time within phase A with a
 maximum of 10[m] distance.
 
-.. code:: 
+.. code:: ipython3
 
     phase_A.path_constraints = [sym.sqrt(x ** 2 + y ** 2) - r]
     phase_A.bounds.path_constraints = [[0, 10]]
@@ -138,7 +131,7 @@ New phase
 Now we can copy the previous phase completely to initiate a new phase
 completely the same.
 
-.. code:: 
+.. code:: ipython3
 
     phase_B = problem.new_phase_like(
         phase_for_copying=phase_A,
@@ -152,7 +145,7 @@ Now we overwrite everything that will be different from the last phase
    should be the same as the final state as phase A. The final location
    and speeds are implemented as described in the OCP
 
-.. code:: 
+.. code:: ipython3
 
     # Time 
     phase_B.bounds.initial_time = [0, 10]
@@ -184,7 +177,7 @@ initial and final state constraints of both phases. The only constraint
 we’d like to implement to dx and dy is that the endpoints are
 corresponding and thus continious. This is done similarly as time.
 
-.. code:: 
+.. code:: ipython3
 
     problem.endpoint_constraints = [
         phase_A.final_time_variable - phase_B.initial_time_variable,
@@ -201,25 +194,19 @@ Objective function
 Minimizing input forces is realised with the integrated functions of
 phase A and phase B
 
-.. code:: 
+.. code:: ipython3
 
     problem.objective_function = (
         phase_A.integral_variables[0] +phase_A.integral_variables[1] + phase_B.integral_variables[0] + phase_B.integral_variables[1])
-
-.. code:: 
-
     # Bug
     phase_B.guess.integral_variables = [[0],[0]]
 
-Settings
---------
+.. code:: ipython3
 
-To converge quicker in this relatively simple OCP, lets reduce the NLP
-tolerance and mesh tolerance. And lets add more collocations points by
-increasing the number of mesh sections to account for the lower
-tolerances.
+    ## Settings
+    To converge quicker in this relatively simple OCP, lets reduce the NLP tolerance and mesh tolerance. And lets add more collocations points by increasing the number of mesh sections to account for the lower tolerances.
 
-.. code:: 
+.. code:: ipython3
 
     problem.settings.display_mesh_result_graph = True
     problem.settings.nlp_tolerance  = 1e-8
@@ -231,7 +218,7 @@ tolerances.
 Solve and Plot
 --------------
 
-.. code:: 
+.. code:: ipython3
 
     problem.initialise()
     problem.solve()
@@ -275,28 +262,21 @@ Solve and Plot
     Initialising mesh iteration #1.
     ===============================
     
-    Guess interpolated to iteration mesh in 1.26ms.
-    Scaling initialised in 64.00us.
-    Initial guess scaled in 8.67us.
-    Scaling generated in 96.51ms.
-    NLP generated in 642.36ms.
-    Mesh-specific bounds generated in 844.25us.
+    Guess interpolated to iteration mesh in 1.46ms.
+    Scaling initialised in 108.67us.
+    Initial guess scaled in 10.62us.
+    Scaling generated in 97.59ms.
+    NLP generated in 740.12ms.
+    Mesh-specific bounds generated in 802.12us.
     
-    Mesh iteration #1 initialised in 741.05ms.
+    Mesh iteration #1 initialised in 840.10ms.
     
     
     ==========================
     Solving mesh iteration #1.
     ==========================
     
-    
-    ******************************************************************************
-    This program contains Ipopt, a library for large-scale nonlinear optimization.
-     Ipopt is released as open source code under the Eclipse Public License (EPL).
-             For more information visit https://github.com/coin-or/Ipopt
-    ******************************************************************************
-    
-    This is Ipopt version 3.14.9, running with linear solver MUMPS 5.2.1.
+    This is Ipopt version 3.14.11, running with linear solver MUMPS 5.2.1.
     
     Number of nonzeros in equality constraint Jacobian...:     6820
     Number of nonzeros in inequality constraint Jacobian.:      356
@@ -437,23 +417,23 @@ Solve and Plot
     Number of equality constraint Jacobian evaluations   = 97
     Number of inequality constraint Jacobian evaluations = 97
     Number of Lagrangian Hessian evaluations             = 95
-    Total seconds in IPOPT                               = 0.451
+    Total seconds in IPOPT                               = 0.460
     
     EXIT: Optimal Solution Found.
           solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
-           nlp_f  | 146.00us (  1.02us) 128.92us (901.52ns)       143
-           nlp_g  |   9.52ms ( 66.56us)   9.45ms ( 66.06us)       143
-      nlp_grad_f  | 343.00us (  3.50us) 318.67us (  3.25us)        98
-      nlp_hess_l  |  15.32ms (163.01us)  15.33ms (163.12us)        94
-       nlp_jac_g  |  18.75ms (191.30us)  18.78ms (191.58us)        98
-           total  | 452.34ms (452.34ms) 460.49ms (460.49ms)         1
+           nlp_f  | 173.00us (  1.21us) 152.79us (  1.07us)       143
+           nlp_g  |   7.64ms ( 53.40us)   7.42ms ( 51.87us)       143
+      nlp_grad_f  | 381.00us (  3.89us) 349.25us (  3.56us)        98
+      nlp_hess_l  |  12.72ms (135.29us)  12.70ms (135.13us)        94
+       nlp_jac_g  |  12.89ms (131.51us)  12.90ms (131.60us)        98
+           total  | 460.76ms (460.76ms) 460.61ms (460.61ms)         1
     
     ==================================
     Post-processing mesh iteration #1.
     ==================================
     
-    Mesh iteration #1 solved in 461.48ms.
-    Mesh iteration #1 post-processed in 244.12ms.
+    Mesh iteration #1 solved in 461.23ms.
+    Mesh iteration #1 post-processed in 249.48ms.
     
     
     ============================
@@ -466,20 +446,20 @@ Solve and Plot
     
     Adjusting Collocation Mesh: [30, 30] mesh sections
     
-    Mesh iteration #1 completed in 1.45s.
+    Mesh iteration #1 completed in 1.55s.
     
 
 
 
-.. image:: output_22_1.png
+.. image:: BlockSlide_3_files/BlockSlide_3_21_1.png
 
 
 
-.. image:: output_22_2.png
+.. image:: BlockSlide_3_files/BlockSlide_3_21_2.png
 
 
 
-.. image:: output_22_3.png
+.. image:: BlockSlide_3_files/BlockSlide_3_21_3.png
 
 
 .. parsed-literal::
@@ -496,7 +476,7 @@ Solve and Plot
 
 
 
-.. image:: output_22_5.png
+.. image:: BlockSlide_3_files/BlockSlide_3_21_5.png
 
 
 Solution

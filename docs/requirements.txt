@@ -1,2 +1,3 @@
 sphinx>=6.1.3
 sphinx-material>=0.0.35
+ipython>=8.14.0

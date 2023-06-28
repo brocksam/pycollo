@@ -27,7 +27,7 @@ extensions = [
 ]
 
 templates_path = ["source/_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store","_templates"]
 
 napoleon_numpy_docstring = True
 
@@ -44,20 +44,6 @@ intersphinx_mapping = {
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_material"
-html_theme_options = {
-    "base_url": "https://brocksam.github.io/pycollo/",
-    "color_primary": "teal",
-    "color_accent": "deep-orange",  # hover color of hyperlinks
-    "repo_name": "Pycollo",
-    "repo_url": "https://github.com/brocksam/pycollo/",
-    "logo_icon": "&#xe52f",
-    "master_doc": False,  # Doesn't show duplicate title
-    "nav_links": [{"href": "index", "internal": True, "title": "Home"}],
-}
-
-html_sidebars = {
-    "**": ["logo-text.html", "globaltoc.html", "localtoc.html", "searchbox.html"]
-}
+html_theme = "furo"
 
 html_static_path = ["_static"]

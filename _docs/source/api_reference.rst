@@ -8,6 +8,6 @@ API Reference
    :toctree: _autosummary
    :recursive:
 
-   pycollo.optimal_control_problem
+   ../pycollo
    
 

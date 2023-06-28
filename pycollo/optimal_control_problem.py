@@ -7,7 +7,6 @@ Optimal Control and Estimiation Using Nonlinear Programming (Second Edition)".
 See the ``Notes`` section for a full list of symbols used.
 
 Notes:
-------
     * t: independent parameter (time).
     * x = [y, u, q, t0, tf, s]: vector of problem variables.
     * y: vector state variables (which are functions of time).
@@ -71,9 +70,7 @@ class OptimalControlProblem():
         """Initialise the optimal control problem with user-passed objects.
 
         Args:
-                phases (:obj:`Iterable` of :class:`~.Phase`, optional): Phases to be
-                        associated with the optimal control problem at initialisation.
-                        Defaults to None.
+                phases (``Iterable`` of :class:`~.Phase`, optional): Phases to be associated with the optimal control problem at initialisation. Defaults to None.
                 parameter_variables ()
         """
 
@@ -95,14 +92,13 @@ class OptimalControlProblem():
     @property
     def name(self) -> str:
         """The name associated with the optimal control problem. For setter
-        behaviour, the supplied `name` is cast to a str.
+        behaviour, the supplied `name` is cast to a :class:`str`.
 
         The name is not strictly needed, however it improves the usefulness of
         Pycollo console output. This is particularly useful in cases where the
         user may wish to instantiate multiple :obj:`OptimalControlProblem`
         objects within a single script, or instantiates other Pycollo objects
-        without providing a valid :class:`~.optimal_control_problem` argument for them
-        to be linked to at initialisation.
+        without providing a valid :class:`~.optimal_control_problem` argument for them to be linked to at initialisation.
         """
         return self._name
 
@@ -112,12 +108,12 @@ class OptimalControlProblem():
 
     @property
     def phases(self) -> Tuple[Phase, ...]:
-        """A tuple of all phases associated with the optimal control problem.
+        """A :class:`tuple` of all phases associated with the optimal control problem.
 
         :meth:`~.phase_number` are integers beginning at 1 and are
         ordered corresponding to the order that they were added to the optimal
         control problem. As Python uses zero-based indexing the phase numbers
-        do not directly map to the indexes of phases within :class:`~.phases`.
+        do not directly map to the indexes of phases within :attr:`~.phases`.
         Phases are however ordered sequentially corresponding to the
         cronological order they were added to the optimal control problem.
         """
@@ -126,9 +122,9 @@ class OptimalControlProblem():
     def add_phase(self, phase: Iterable[Phase]) -> Phase:
         """Add an already instantiated :class:`~.Phase` to this optimal control problem.
 
-        This method is needed as :class:`~.phases` is read only ("private") and
+        This method is needed as :attr:`~.phases` is read only ("private") and
         therefore users cannot manually add :class:`~.Phase` objects to an optimal
-        control problem. :class:`~.phases` is required to be read only as it is an
+        control problem. :attr:`~.phases` is required to be read only as it is an
         iterable of :class:`~.Phase` objects and must be protected from accidental errors
         introduced by user interacting with it incorrectly.
 
@@ -155,7 +151,7 @@ class OptimalControlProblem():
                   control_variables: OptionalSymsType = None) -> Phase:
         """Create a new :obj:`~.Phase` and add to this optimal control problem.
 
-        Provides the same behaviour as manually creating a :obj:`.~Phase` called
+        Provides the same behaviour as manually creating a :obj:`~.Phase` called
         `phase` and calling :meth:`~.add_phase`.
         """
         new_phase = Phase(name, optimal_control_problem=self,
@@ -164,6 +160,8 @@ class OptimalControlProblem():
         return new_phase
 
     def new_phase_like(self, phase_for_copying: Phase, name: str, **kwargs):
+        """Creates new phase while copying all implemented values from `phase_for_copying`
+        """
         return phase_for_copying.create_new_copy(name, **kwargs)
 
     def new_phases_like(self,
@@ -174,7 +172,7 @@ class OptimalControlProblem():
         """Creates multiple new phases like an already instantiated phase.
 
         For a list of key word arguments and default values see the docstring
-        for the :meth:`~.new_phase_like` method.
+        for the :func:`new_phase_like` method.
 
         Returns:
                 The newly instantiated and associated phases.
@@ -198,10 +196,10 @@ class OptimalControlProblem():
     @property
     def time_symbol(self):
         """
-
+        Symbol for time
+        
         Raises:
-                NotImplementedError: Whenever called to inform the user that these
-                        types of problem are not currently supported.
+                NotImplementedError: Whenever called to inform the user that these types of problem are not currently supported.
         """
         msg = ("Pycollo do not currently support dynamic, path or integral "
                "constraints that are explicit functions of continuous time.")
@@ -209,6 +207,11 @@ class OptimalControlProblem():
 
     @property
     def parameter_variables(self):
+        """Static parameter variables which are optimized within given bounds.
+
+        As described in Betts, JT (2010). Bounds and guesses are implemented with :func:`~.bounds` and :func:`~.guess`.
+        
+        """
         return self._s_var_user
 
     @parameter_variables.setter

@@ -1,9 +1,4 @@
-"""Everything needed for defining phases within an optimal control problem.
-
-Classes:
-    Phase
-"""
-
+"""Everything needed for defining phases within an optimal control problem."""
 
 import copy
 from typing import Optional, Tuple
@@ -22,26 +17,8 @@ __all__ = ["Phase"]
 
 class Phase:
     """A single continuous time phase as part of an optimal control problem.
-
-    Attributes:
-            name: The name associated with a problem. Should be something short
-                    like 'A'.
-            optimal_control_problem: The :obj:`OptimalControlProblem` with which
-                    this phase is to be associated.
-            state_variables: The continuous time state variables in this phase.
-            control_variables: The continuous time control variables in this phase.
-            state_equations: The dynamical state equations associated with this
-                    state variables in this phase.
-            integrand_functions: The integrand functions corresponding to the
-                    integral variables in this phase.
-            path_constraints: The continuous time path constraints associated with
-                    this phase.
-            bounds: The phase bounds on this phase. See :obj:PhaseBounds for more
-                    details.
-            scaling: The phase scaling on this phase. See :obj:PhaseScaling for
-                    more details.
-            guess: The initial guess at which this phase is to be solved.
-            mesh: This initial mesh on which this phase is to be solved.
+    
+        Attributes:
             _name: Protected version of :attr:`name`.
             _ocp: Protected version of :attr:`optimal_control_problem`.
             _phase_number: Protected integer number associated with this phase. If
@@ -85,7 +62,7 @@ class Phase:
         Args:
                 name: The name associated with a problem. Should be something short
                         like 'A'.
-                optimal_control_problem: The :obj:`OptimalControlProblem` with
+                optimal_control_problem: The OptimalControlProblem with
                         which this phase is to be associated. Default value is None in
                         which case the phase remain uninitialised to an optimal control
                         problem.
@@ -218,12 +195,12 @@ class Phase:
 
     @property
     def name(self):
-        """Name of the phase."""
+        """The name associated with a problem. Should be something short like 'A'."""
         return self._name
 
     @property
     def optimal_control_problem(self) -> Optional["OptimalControlProblem"]:
-        """The optimal control problem with which this phase is associated.
+        """The :obj:`~.OptimalControlProblem` with which this phase is associated.
 
         There are two allowable scenarios. In the first scenario a phase may be
         instantiated without being associated with an optimal control problem.
@@ -234,7 +211,7 @@ class Phase:
         optimal control problem or is associated with an optimal control
         problem after the first type of instantiation. In this case the phase
         is appended to the protected `_phases` attribute of the
-        :obj:`OptimalControlProblem`, the phase number is set according to its
+        :obj:`~.OptimalControlProblem`, the phase number is set according to its
         position in the order of addition to the optimal controls problem's
         phases, and its phase suffix is set as a string version of the phase
         number. Finally a replacement of any symbols that may have been used in
@@ -247,16 +224,16 @@ class Phase:
         accessed after having already been set then an `AttributeError` is
         raised (see below). The reason this class works like that is to avoid
         having to allow phases to be disassociated from an
-        :obj:`OptimalControlProblem` and thus having to handled the complexities
+        :obj:`~.OptimalControlProblem` and thus having to handled the complexities
         that would come with the phase renumbering and substitution of any
         phase-related information that has already been given to the optimal
         control problem.
 
         Raises:
-                AttributeError: If an :obj:`OptimalControlProblem` has already been
+                AttributeError: If an :obj:`~.OptimalControlProblem` has already been
                         associated with `self`. If a argument of any type other than
-                        :obj:`OptimalControlProblem` is passed to the
-                        `optimal_control_problem` property setter.
+                        :obj:`~.OptimalControlProblem` is passed to the
+                        :mod:`~.optimal_control_problem` property setter.
         """
         return self._ocp
 
@@ -325,7 +302,7 @@ class Phase:
         Raises:
                 AttributeError: If `optimal_control_problem` property has not yet
                         been set to a not None value. See docstring for
-                        `state_variables` for details about why.
+                        :attr:`~.state_variables` for details about why.
         """
         try:
             return self._y_t0_user
@@ -341,7 +318,7 @@ class Phase:
         Raises:
                 AttributeError: If `optimal_control_problem` property has not yet
                         been set to a not None value. See docstring for
-                        `state_variables` for details about why.
+                        :attr:`~.state_variables` for details about why.
         """
         try:
             return self._y_tF_user
@@ -352,11 +329,13 @@ class Phase:
 
     @property
     def state_variables(self) -> TupleSymsType:
-        """Symbols for this phase's state variables in order added by user.
+        """ :class:`Symbol<sympy.core.symbol.Symbol>` for this phase's state variables in order added by user.
+        
+        The continuous time state variables in this phase.
 
         The user may supply either a single symbol or an iterable of symbols.
         The supplied argument is handled by the `format_as_tuple` method from
-        the `utils` module. Additional protected attributes `_y_t0_user` and
+        the :mod:`.~utils` module. Additional protected attributes `_y_t0_user` and
         `_y_tF_user` are set by post-appending either '_PX(t0)' or '_PX(tF)' to
         the user supplied symbols where the X is replaced by the phase suffix.
         As such if this phase has not yet been associated with an optimal
@@ -411,11 +390,11 @@ class Phase:
 
     @property
     def control_variables(self) -> TupleSymsType:
-        """Symbols for this phase's control variables in order added by user.
+        """:class:`Symbols<sympy.core.symbol.Symbol>` for this phase's continious time control variables in order added by user.
 
         The user may supply either a single symbol or an iterable of symbols.
         The supplied argument is handled by the `format_as_tuple` method from
-        the `utils` module.
+        the :mod:`.~utils` module.
         """
         return self._u_var_user
 
@@ -484,6 +463,7 @@ class Phase:
 
     @property
     def path_constraints(self):
+        """The continuous time path constraints associated with this phase."""
         return self._c_con_user
 
     @path_constraints.setter
@@ -500,6 +480,7 @@ class Phase:
 
     @property
     def integrand_functions(self):
+        """The integrand functions corresponding to the integral variables in this phase."""
         return self._q_fnc_user
 
     @integrand_functions.setter
@@ -518,6 +499,7 @@ class Phase:
 
     @property
     def bounds(self):
+        """The phase bounds on this phase. See :obj:`~.PhaseBounds` for more details."""
         return self._bounds
 
     @bounds.setter
@@ -529,6 +511,7 @@ class Phase:
 
     @property
     def scaling(self):
+        """The phase scaling on this phase. See :obj:`~.PhaseScaling` for more details."""
         return self._scaling
 
     @scaling.setter
@@ -540,6 +523,7 @@ class Phase:
 
     @property
     def mesh(self):
+        """This initial mesh on which this phase is to be solved."""
         return self._mesh
 
     @mesh.setter
@@ -551,6 +535,7 @@ class Phase:
 
     @property
     def guess(self):
+        """The initial guess at which this phase is to be solved."""
         return self._guess
 
     @guess.setter
@@ -572,11 +557,8 @@ class Phase:
               warning to the user describing what is wrong about the supplied
               state variables and state equations.
 
-        Raises
-        ------
-        ValueError
-            If the state variables and symbols associated with the state
-            equations are not the same.
+        Raises:
+                ValueError: If the state variables and symbols associated with the state equations are not the same.
 
         """
         try:

@@ -24,7 +24,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
-    
+    "nbsphinx"
     
 ]
 

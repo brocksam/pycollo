@@ -33,7 +33,7 @@ Notes:
 """
 
 
-from typing import AnyStr, Iterable, Tuple
+from typing import AnyStr, Iterable, Tuple, Optional
 
 import numpy as np
 
@@ -56,23 +56,29 @@ class OptimalControlProblem():
     """The main class for Pycollo optimal control problems"""
 
     def __init__(self,
-                 name,
+                 name: str,
                  parameter_variables=None,
                  *,
-                 bounds=None,
-                 guess=None,
-                 scaling=None,
-                 endpoint_constraints=None,
-                 objective_function=None,
-                 settings=None,
-                 auxiliary_data=None,
-                 ):
+                 bounds: Optional[EndpointBounds]=None,
+                 guess: Optional[EndpointGuess]=None,
+                 scaling: Optional[EndpointScaling]=None,
+                 endpoint_constraints: Optional=None,
+                 objective_function: Optional[sym.Expr]=None,
+                 settings: Optional[Settings]=None,
+                 auxiliary_data: Optional[dict]=None,
+                 ) -> None:
         """Initialise the optimal control problem with user-passed objects.
 
         Args:
-                phases (``Iterable`` of :class:`~.Phase`, optional): Phases to be associated with the optimal control problem at initialisation. Defaults to None.
-
-                parameter_variables ()
+            name: Minimally required to initialise
+            parameter_variables: 
+            bounds: 
+            guess: 
+            scaling: 
+            endpoint_constraints: 
+            objective_function: 
+            settings: 
+            auxiliary_data: 
         """
 
         self.name = name
@@ -100,7 +106,7 @@ class OptimalControlProblem():
         user may wish to instantiate multiple :obj:`OptimalControlProblem`
         objects within a single script, or instantiates other Pycollo objects
 
-        without providing a valid :class:`~.optimal_control_problem` argument for them to be linked to at initialisation.
+        without providing a valid :mod:`~.optimal_control_problem` argument for them to be linked to at initialisation.
         """
         return self._name
 
@@ -117,7 +123,7 @@ class OptimalControlProblem():
         control problem. As Python uses zero-based indexing the phase numbers
         do not directly map to the indexes of phases within :attr:`~.phases`.
         Phases are however ordered sequentially corresponding to the
-        cronological order they were added to the optimal control problem.
+        chronological order they were added to the optimal control problem.
         """
         return self._phases
 
@@ -131,10 +137,10 @@ class OptimalControlProblem():
         introduced by user interacting with it incorrectly.
 
         Args:
-                phase (Phase): The phase to be added to the optimal control problem
+            phase (:class:`~.Phase`): The phase to be added to the optimal control problem
 
         Returns:
-                the phase that has been added. It is the same
+            the phase that has been added. It is the same
         """
         phase.optimal_control_problem = self
         return self.phases[-1]
@@ -177,11 +183,11 @@ class OptimalControlProblem():
         for the :func:`new_phase_like` method.
 
         Returns:
-                The newly instantiated and associated phases.
+            The newly instantiated and associated phases.
 
         Raises:
-                ValueError: If the same number of names are not supplied as the
-                        number of specified new phases.
+            ValueError: If the same number of names are not supplied as the
+                number of specified new phases.
         """
         if len(names) != int(number):
             msg = ("Must supply a name for each new phase.")
@@ -197,11 +203,11 @@ class OptimalControlProblem():
 
     @property
     def time_symbol(self):
-        """
-        Symbol for time
+        """Dynamic time symbol, not yet supported
         
         Raises:
-                NotImplementedError: Whenever called to inform the user that these types of problem are not currently supported.
+            NotImplementedError: Whenever called to inform the user that these
+                types of problem are not currently supported.
         """
         msg = ("Pycollo do not currently support dynamic, path or integral "
                "constraints that are explicit functions of continuous time.")
@@ -211,7 +217,10 @@ class OptimalControlProblem():
     def parameter_variables(self):
         """Static parameter variables which are optimized within given bounds.
 
-        As described in Betts, JT (2010). Bounds and guesses are implemented with :func:`~.bounds` and :func:`~.guess`.
+        When the instance OCP is created you can supply the parameter variables by OCP_instance.parameter_variables = :class:`tuple` [:class:`Symbol<sympy.core.symbol.Symbol>`,...] | :class:`list` [:class:`Symbol<sympy.core.symbol.Symbol>`,..] | :obj:`numpy.array` [:class:`Symbol<sympy.core.symbol.Symbol>`,...]
+
+        As described in Betts, JT (2010). Bounds and guesses need to be implemented. See :obj:`~.EndPointBounds` and :class:`~.EndPointGuess` how to implement them. 
+
         
         """
         return self._s_var_user
@@ -227,6 +236,9 @@ class OptimalControlProblem():
 
     @property
     def endpoint_constraints(self):
+        """Constraints that are implemented at the initial or final time of phases
+        
+        """
         return self._b_con_user
 
     @endpoint_constraints.setter

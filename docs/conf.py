@@ -8,7 +8,7 @@ import sys
 
 # Add source folder to path for autodoc
 path = pathlib.Path(__file__).parent.parent.absolute()
-sys.path.insert(0, path)
+sys.path.insert(0, str(path))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

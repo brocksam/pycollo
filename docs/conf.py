@@ -43,7 +43,6 @@ intersphinx_mapping = {
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
     "python3": ("http://docs.python.org/3", None),
-
 }
 
 

@@ -71,6 +71,7 @@ class OptimalControlProblem():
 
         Args:
                 phases (``Iterable`` of :class:`~.Phase`, optional): Phases to be associated with the optimal control problem at initialisation. Defaults to None.
+
                 parameter_variables ()
         """
 
@@ -98,6 +99,7 @@ class OptimalControlProblem():
         Pycollo console output. This is particularly useful in cases where the
         user may wish to instantiate multiple :obj:`OptimalControlProblem`
         objects within a single script, or instantiates other Pycollo objects
+
         without providing a valid :class:`~.optimal_control_problem` argument for them to be linked to at initialisation.
         """
         return self._name

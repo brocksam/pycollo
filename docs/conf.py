@@ -3,11 +3,12 @@
 For the full list of built-in configuration values, see the documentation:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
-import os
+import pathlib
 import sys
 
 # Add source folder to path for autodoc
-sys.path.insert(0, os.path.abspath(".."))
+path = pathlib.Path(__file__).parent.parent.absolute()
+sys.path.insert(0, str(path))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -32,6 +33,7 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 napoleon_google_docstring = True
+napoleon_custom_sections = [("Explanation", "notes_style")]
 
 intersphinx_mapping = {
     "cyipopt": ("https://cyipopt.readthedocs.io/en/stable/", None),
@@ -48,6 +50,8 @@ intersphinx_mapping = {
 
 html_theme = "furo"
 
-html_static_path = ["_static"]
+html_theme_options = {
+    "source_edit_link": "https://github.com/brocksam/pycollo/",
+}
 
-napoleon_include_private_with_doc = True
+html_static_path = ["_static"]

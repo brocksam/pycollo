@@ -3,11 +3,12 @@
 For the full list of built-in configuration values, see the documentation:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
-import os
+import pathlib
 import sys
 
 # Add source folder to path for autodoc
-sys.path.insert(0, os.path.abspath(".."))
+path = pathlib.Path(__file__).parent.parent.absolute()
+sys.path.insert(0, path)
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

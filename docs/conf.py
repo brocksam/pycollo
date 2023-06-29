@@ -3,11 +3,12 @@
 For the full list of built-in configuration values, see the documentation:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
-import os
+import pathlib
 import sys
 
 # Add source folder to path for autodoc
-sys.path.insert(0, os.path.abspath(".."))
+path = pathlib.Path(__file__).parent.parent.absolute()
+sys.path.insert(0, str(path))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -27,6 +28,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "nbsphinx",
+
 ]
 
 templates_path = ["_templates"]
@@ -42,6 +44,7 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
+    "py3": ("https://docs.python.org/3/",None),
 }
 
 

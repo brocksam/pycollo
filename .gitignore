@@ -67,6 +67,7 @@ instance/
 .scrapy
 
 # Sphinx documentation
+docs/_autosummary/
 docs/_build/
 docs/source/auto/
 

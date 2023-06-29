@@ -27,7 +27,7 @@ jobs:
           make -C docs html
       - name: Init new repo in dist folder and commit generated files
         run: |
-          cd docs/build/html/
+          cd docs/_build/html/
           git init
           touch .nojekyll
           git add -A
@@ -40,4 +40,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: gh-pages
           force: true
-          directory: ./docs/build/html
+          directory: ./docs/_build/html

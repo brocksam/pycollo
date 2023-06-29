@@ -22,4 +22,4 @@ jobs:
       - name: Build documentation with Sphinx
         run: |
             make -C docs clean
-            make -C docs -nWT -b dummy
+            make -C docs html

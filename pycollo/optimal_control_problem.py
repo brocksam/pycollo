@@ -1,10 +1,10 @@
 """The main way to define and interact with a Pycollo optimal control problem.
 
-This module contains the main class that the user will interact with to define
-and run their optimal control problem when working with Pycollo. Terminolgy is
-loosely defined in accordance with "Betts, JT (2010). Practical Methods for
-Optimal Control and Estimiation Using Nonlinear Programming (Second Edition)".
-See the ``Notes`` section for a full list of symbols used.
+Method is used to define the objective function, endpoint constraints, and parameter variables. Each :class:`~.OptimalControlProblem` instance is associated with one or more :class:`~.Phase` instance.
+
+OCP require bounds and initial guesses to be prescribed before they can numerically be solved, handeled in :mod:`~.bounds` and :mod:`~.guess`.
+
+Terminolgy is loosely defined in accordance with "Betts, JT (2010). Practical Methods for Optimal Control and Estimiation Using Nonlinear Programming (Second Edition)":
 
 Notes:
     * t: independent parameter (time).
@@ -198,7 +198,7 @@ class OptimalControlProblem():
 
     @property
     def number_phases(self) -> int:
-        """Number of phases associated with this optimal control problem."""
+        """Returns number of phases associated with this optimal control problem."""
         return len(self.phases)
 
     @property
@@ -220,8 +220,6 @@ class OptimalControlProblem():
         When the instance OCP is created you can supply the parameter variables by OCP_instance.parameter_variables = :class:`tuple` [:class:`Symbol<sympy.core.symbol.Symbol>`,...] | :class:`list` [:class:`Symbol<sympy.core.symbol.Symbol>`,..] | :obj:`numpy.array` [:class:`Symbol<sympy.core.symbol.Symbol>`,...]
 
         As described in Betts, JT (2010). Bounds and guesses need to be implemented. See :obj:`~.EndPointBounds` and :class:`~.EndPointGuess` how to implement them. 
-
-        
         """
         return self._s_var_user
 
@@ -236,8 +234,11 @@ class OptimalControlProblem():
 
     @property
     def endpoint_constraints(self):
-        """Constraints that are implemented at the initial or final time of phases
+        """Inequality constraints consisting of endpoint variables.
+
+        These constraints are the glue in between the phases. For example, when variables need to be continious throughout multiple phases you can set the y_F of phase A equal to y_0 of phase B. More complex formulations are allowed for example for handeling discontinuities. They are formulated as inequality constraint, but by clever formulating can be handeled as equality constraints (A-B > [0,0])
         
+        Bounds should be implemented. See :obj:`~.EndPointBounds` how to implement them.
         """
         return self._b_con_user
 
@@ -250,11 +251,16 @@ class OptimalControlProblem():
         )
 
     @property
-    def number_endpoint_constraints(self):
+    def number_endpoint_constraints(self) -> int:
+        """Returns number of endpoint constraints"""
         return len(self._b_con_user)
 
     @property
     def objective_function(self):
+        """Formula to be minimised during the optimization.
+        
+        It is a `Bolza` objective function which may be a function of endpoint variables or parameter variables (:attr:`~.integral_variables`, :attr:`~.initial_time_variable`, :attr:`~.final_time_variable`, :attr:`~.initial_state_variable, and :attr:`~.final_state_variable or :attr:`~.parameter_variables` ).
+        """
         return self._J_user
 
     @objective_function.setter
@@ -264,6 +270,9 @@ class OptimalControlProblem():
 
     @property
     def auxiliary_data(self):
+        """:class:`dict` containing extra provided data.
+         
+        When a symbolic variable (:class:`Symbol<sympy.core.symbol.Symbol>`) is indetermined, make sure to assign it to a numerical value or symbolic formulation with this function """
         return self._aux_data_user
 
     @auxiliary_data.setter
@@ -271,7 +280,8 @@ class OptimalControlProblem():
         self._aux_data_user = dict(aux_data)
 
     @property
-    def bounds(self):
+    def bounds(self) -> EndpointBounds:
+        """Attribute to provide bounds to :attr:`~.parameter_variables`, and :attr:`~.endpoint_constraints`"""
         return self._bounds
 
     @bounds.setter
@@ -283,7 +293,8 @@ class OptimalControlProblem():
             self._bounds._ocp = self
 
     @property
-    def guess(self):
+    def guess(self) -> EndpointGuess:
+        """Attribute to provide initial guess to :attr:`~.parameter_variables`, and :attr:`~.endpoint_constraints`"""
         return self._guess
 
     @guess.setter
@@ -311,11 +322,15 @@ class OptimalControlProblem():
         return self._mesh_iterations
 
     @property
-    def num_mesh_iterations(self):
+    def num_mesh_iterations(self) -> int:
+        """Returns number of mesh iterations"""
         return len(self._backend.mesh_iterations)
 
     @property
-    def settings(self):
+    def settings(self) -> Settings:
+        """Attribute to overwrite default settings.
+        
+        See :mod:`~.settings` for all settings options"""
         return self._settings
 
     @settings.setter
@@ -328,6 +343,21 @@ class OptimalControlProblem():
 
     @property
     def solution(self):
+        """ Attribute where all solutions are found after solving the OCP (:func:`~.solve`).
+
+        Solutions are provided by indexing. OCP_instance.solution.attribute[x][y] refers to the y`th attribute in phase x
+         
+         Attributes:
+            objective: Numerical solution of :attr:`~.objective_function`
+            initial_time: Initial times of phases of solved OCP
+            final_time: Final times of phases of solved OCP
+            state: Numerical solution of state_variables`
+            state_derivative: Numerical solution of :attr:`~.state_equations`
+            control: Numerical solution of :attr:`~.control`
+            integral: Numerical solution of :attr:`~.integrand_function`
+            time: Numerical solution of time
+            parameter: Numerical solution of :attr:`~.parameter_variables`
+           """
         return self._backend.mesh_iterations[-1].solution
 
     def initialise(self):

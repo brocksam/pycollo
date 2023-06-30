@@ -1,7 +1,7 @@
 """Everything needed for defining phases within an optimal control problem."""
 
 import copy
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Iterable
 
 import sympy as sym
 
@@ -9,7 +9,7 @@ from .bounds import PhaseBounds
 from .guess import PhaseGuess
 from .mesh import PhaseMesh
 from .scaling import PhaseScaling
-from .typing import OptionalExprsType, OptionalSymsType, TupleSymsType
+from .typing import OptionalExprsType, OptionalSymsType, TupleSymsType, OptionalBoundsType
 from .utils import check_sym_name_clash, format_as_data_container
 
 __all__ = ["Phase"]
@@ -18,30 +18,8 @@ __all__ = ["Phase"]
 class Phase:
     """A single continuous time phase as part of an optimal control problem.
     
-        Attributes:
-            _name: Protected version of :attr:`name`.
-            _ocp: Protected version of :attr:`optimal_control_problem`.
-            _phase_number: Protected integer number associated with this phase. If
-                    not associated with any optimal control problem then defaults to
-                    None until one is associated. These are ordered sequentially
-                    starting at '0' in the order with which phases are added to an
-                    optimal control problem.
-            _phase_suffix: Protected str which is used in the naming of auto-
-                    generated Pycollo variables such as the endpoint state variables.
-            _y_var_user: Protected version of :attr:`state_variables`.
-            _u_var_user: Protected version of :attr:`control_variables`.
-            _q_var_user: Protected version of :attr:`integral_variables`.
-            _t_var_user: Protected version of :attr:`time_variables`.
-            _y_eqn_user: Protected version of :attr:`state_equations`.
-            _c_con_user: Protected version of :attr:`path_constraints`.
-            _q_fnc_user: Protected version of :attr:`integrand_functions`.
-            _t0_USER: Protected version of :attr:`initial_time_variable`.
-            _tF_USER: Protected version of :attr:`final_time_variable`.
-            _t0: Internal Pycollo symbol for phase initial time.
-            _tF: Internal Pycollo symbol for phase final time.
-            _STRETCH: Convenience expression for phase time scaling stretch.
-            _SHIFT: Convenience expression for phase time scaling shift.
-    """
+    State, control, integral and time variables are defined per phase. 
+    Also state equations, path constraints, integrand functions and state endpoint constraints are defined here."""
 
     def __init__(self,
                  name: str,
@@ -56,47 +34,47 @@ class Phase:
                  scaling: Optional[PhaseScaling] = None,
                  guess: Optional[PhaseGuess] = None,
                  mesh: Optional[PhaseMesh] = None,
-                 ):
+                 ) -> None:
         """Initialise the Phase object with minimum a name.
 
         Args:
-                name: The name associated with a problem. Should be something short
-                        like 'A'.
-                optimal_control_problem: The OptimalControlProblem with
-                        which this phase is to be associated. Default value is None in
-                        which case the phase remain uninitialised to an optimal control
-                        problem.
-                state_variables: The continuous time state variables in this phase.
-                        Default value is None in which case the phase has no associated
-                        state variables and no phase-specific endpoint time or state
-                        variables are created.
-                control_variables: The continuous time control variables in this
-                        phase. Default value is None in which case the phase has no
-                        associated control variables.
-                state_equations: The dynamical state equations associated with this
-                        state variables in this phase. Default value is None in which
-                        case no dynamical equations have been added to the phase yet.
-                integrand_functions: The integrand functions corresponding to the
-                        integral variables in this phase. Default value is None in
-                        which case the phase has no integrand functions associated with
-                        it and no phase-specific integral variables are created.
-                path_constraints: The continuous time path constraints associated
-                        with this phase. Default value is None in which case the phase
-                        has no path constraints associated with it.
-                bounds: The phase bounds on this phase. See :obj:PhaseBounds for
-                        more details. Default value is None in which case an empty
-                        :obj:`PhaseBounds` object is instantiated and associated with
-                        the phase.
-                scaling: The phase scaling on this phase. See :obj:PhaseScaling for
-                        more details. Default value is None in which case an empty
-                        :obj:`PhaseScaling` object is instantiated and associated with
-                        the phase.
-                guess: The initial guess at which this phase is to be solved.
-                        Default value is None in which case an empty :obj:`PhaseGuess`
-                        object is instantiated and associated with the phase.
-                mesh: This initial mesh on which this phase is to be solved.
-                        Default value is None in which case an empty :obj:`PhaseMesh`
-                        object is instantiated and associated with the phase.
+            name: The name associated with a problem. Should be something short
+                like 'A'.
+            optimal_control_problem: The OptimalControlProblem with
+                which this phase is to be associated. Default value is None in
+                which case the phase remain uninitialised to an optimal control
+                problem.
+            state_variables: The continuous time state variables in this phase.
+                Default value is None in which case the phase has no associated
+                state variables and no phase-specific endpoint time or state
+                variables are created.
+            control_variables: The continuous time control variables in this
+                phase. Default value is None in which case the phase has no
+                associated control variables.
+            state_equations: The dynamical state equations associated with this
+                state variables in this phase. Default value is None in which
+                case no dynamical equations have been added to the phase yet.
+            integrand_functions: The integrand functions corresponding to the
+                integral variables in this phase. Default value is None in
+                which case the phase has no integrand functions associated with
+                it and no phase-specific integral variables are created.
+            path_constraints: The continuous time path constraints associated
+                with this phase. Default value is None in which case the phase
+                has no path constraints associated with it.
+            bounds: The phase bounds on this phase. See :obj:`.~PhaseBounds` for
+                more details. Default value is None in which case an empty
+                :obj:`.~PhaseBounds` object is instantiated and associated with
+                the phase.
+            scaling: The phase scaling on this phase. See :obj:PhaseScaling for
+                more details. Default value is None in which case an empty
+                :obj:`~.PhaseScaling` object is instantiated and associated with
+                the phase.
+            guess: The initial guess at which this phase is to be solved.
+                Default value is None in which case an empty :obj:`PhaseGuess`
+                object is instantiated and associated with the phase.
+            mesh: This initial mesh on which this phase is to be solved.
+                Default value is None in which case an empty :obj:`PhaseMesh`
+                object is instantiated and associated with the phase.
         """
 
         self._name = str(name)
@@ -143,8 +121,8 @@ class Phase:
                         copy_mesh: bool = True,
                         copy_scaling: bool = True,
                         copy_guess: bool = True,
-                        ):
-
+                        ) -> "Phase":
+        """Creates copy of a Phase instance. Use :meth:`~.create_new_copy_like` to automatically add Phase to OCP instance"""
         self._check_variables_and_equations()
         new_phase = Phase(name,
                           optimal_control_problem=self.optimal_control_problem)
@@ -194,7 +172,7 @@ class Phase:
         return phase_for_copying.create_new_copy(name, **kwargs)
 
     @property
-    def name(self):
+    def name(self) -> str:
         """The name associated with a problem. Should be something short like 'A'."""
         return self._name
 
@@ -230,15 +208,13 @@ class Phase:
         control problem.
 
         Raises:
-                AttributeError: If an :obj:`~.OptimalControlProblem` has already been
-                        associated with `self`. If a argument of any type other than
-                        :obj:`~.OptimalControlProblem` is passed to the
-                        :mod:`~.optimal_control_problem` property setter.
+            AttributeError: If an :obj:`~.OptimalControlProblem` has already
+                been associated with `self`. If a argument of any type other than :obj:`~.OptimalControlProblem` is passed to the :mod:`~.optimal_control_problem` property setter.
         """
         return self._ocp
 
     @optimal_control_problem.setter
-    def optimal_control_problem(self, ocp):
+    def optimal_control_problem(self, ocp) -> None:
         if self._ocp is not None:
             msg = ('Optimal control problem is already set for this phase and '
                    'cannot be reset.')
@@ -300,9 +276,7 @@ class Phase:
         """Symbols for this phase's state variables at the initial time.
 
         Raises:
-                AttributeError: If `optimal_control_problem` property has not yet
-                        been set to a not None value. See docstring for
-                        :attr:`~.state_variables` for details about why.
+            AttributeError: If :attr:`~.optimal_control_problem` property has not yet been set to a not None value. See docstring for :attr:`~.state_variables` for details about why.
         """
         try:
             return self._y_t0_user
@@ -316,9 +290,8 @@ class Phase:
         """Symbols for this phase's state variables at the final time.
 
         Raises:
-                AttributeError: If `optimal_control_problem` property has not yet
-                        been set to a not None value. See docstring for
-                        :attr:`~.state_variables` for details about why.
+            AttributeError: If `optimal_control_problem` property has not yet
+                been set to a not None value. See docstring for :attr:`~.state_variables` for details about why.
         """
         try:
             return self._y_tF_user
@@ -329,24 +302,16 @@ class Phase:
 
     @property
     def state_variables(self) -> TupleSymsType:
-        """ :class:`Symbol<sympy.core.symbol.Symbol>` for this phase's state variables in order added by user.
+        """:class:`Symbols<sympy.core.symbol.Symbol>` for this phase's continuous time state variables in order added by user.
         
-        The continuous time state variables in this phase.
-
         The user may supply either a single symbol or an iterable of symbols.
         The supplied argument is handled by the `format_as_tuple` method from
-        the :mod:`.~utils` module. Additional protected attributes `_y_t0_user` and
-        `_y_tF_user` are set by post-appending either '_PX(t0)' or '_PX(tF)' to
-        the user supplied symbols where the X is replaced by the phase suffix.
-        As such if this phase has not yet been associated with an optimal
-        control problem yet then `self` will not have attributes `_y_t0_user`
-        and `_y_tF_user` and accessing either the `initial_state` or
-        `final_state` property will raise an AttributeError.
+        the :mod:`.~utils` module. Additional protected attributes `_y_t0_user` and `_y_tF_user` are set by post-appending either '_PX(t0)' or '_PX(tF)' to the user supplied symbols where the X is replaced by the phase suffix. As such if this phase has not yet been associated with an optimal control problem yet then `self` will not have attributes `_y_t0_user` and `_y_tF_user` and accessing either the `initial_state` or `final_state` property will raise an AttributeError.
         """
         return self._y_var_user
 
     @state_variables.setter
-    def state_variables(self, y_vars: OptionalSymsType):
+    def state_variables(self, y_vars: OptionalSymsType) -> None:
 
         self._y_var_user = format_as_data_container("StateVariables", y_vars)
         check_sym_name_clash(self._y_var_user)
@@ -385,7 +350,7 @@ class Phase:
 
     @property
     def number_state_variables(self) -> int:
-        """Integer number of state variables in the phase."""
+        """Returns number of state variables in the phase."""
         return len(self._y_var_user)
 
     @property
@@ -399,21 +364,18 @@ class Phase:
         return self._u_var_user
 
     @control_variables.setter
-    def control_variables(self, u_vars: OptionalSymsType):
+    def control_variables(self, u_vars: OptionalSymsType) -> None:
         self._u_var_user = format_as_data_container("ControlVariables", u_vars)
         check_sym_name_clash(self._u_var_user)
 
     @property
     def number_control_variables(self) -> int:
-        """Integer number of control variables in the phase."""
+        """Returns number of control variables in the phase."""
         return len(self._u_var_user)
 
     @property
     def integral_variables(self) -> TupleSymsType:
-        """Symbols for this phase's integral variables.
-
-        These symbols are auto generated as required by the user-supplied
-        integrand functions.
+        """Auto generated integral_variablessymbols as required by the user-supplied integrand functions.
         """
         return self._q_var_user
 
@@ -424,23 +386,23 @@ class Phase:
 
     @property
     def number_integral_variables(self) -> int:
-        """Integer number of integral variables in the phase."""
+        """Returns number of integral variables in this phase."""
         return len(self._q_var_user)
 
     @property
     def state_equations(self) -> Tuple[sym.Expr, ...]:
         """User-supplied dynamical equations in the phase.
-
-        These equations are the dynamical equations associated with each of the
+        
+        These dynamical equations are associated with each of the
         state variables in the phase. There should therefore be exactly one
-        state equation for each dynamics symbol.
+        state equation for each state variable.
 
-        State equations can be supplied in a compact form by the user defining additional auxiliary symbols and
+        State equations can be supplied in a compact form by the user defining additional auxiliary symbols.
         """
         return self._y_eqn_user
 
     @state_equations.setter
-    def state_equations(self, y_eqns: OptionalExprsType):
+    def state_equations(self, y_eqns: OptionalExprsType) -> None:
         try:
             identifiers = self._y_var_user._field_names
         except AttributeError:
@@ -454,7 +416,7 @@ class Phase:
 
     @property
     def number_state_equations(self) -> int:
-        """Integer number of state equations in the phase.
+        """Returns number of state equations in the phase.
 
         Should be the same as the number of state variables, i.e. there should
         be a direct mapping between the two.
@@ -462,12 +424,17 @@ class Phase:
         return len(self._y_eqn_user)
 
     @property
-    def path_constraints(self):
-        """The continuous time path constraints associated with this phase."""
+    def path_constraints(self) -> TupleSymsType:
+        """The continuous time path constraints associated with this phase.
+        
+        Path constraints are inequality constraints as a function of continious time variables (i.e. state variables, control variables). Bounds need to be applied. 
+        The introduction of additional path constraints is not ideal as these increase the complexity of the NLP and its di culty to solve, and should be avoided if possible. 
+        They are formulated as inequality constraint, but by clever formulating can be handeled as equality constraints (A-B > [0,0])
+        """
         return self._c_con_user
 
     @path_constraints.setter
-    def path_constraints(self, c_cons):
+    def path_constraints(self, c_con: OptionalExprsType) -> None:
         self._c_con_user = format_as_data_container(
             "PathConstraints",
             c_cons,
@@ -475,16 +442,17 @@ class Phase:
         )
 
     @property
-    def number_path_constraints(self):
+    def number_path_constraints(self) -> int:
+        """Returns number of path constraints"""
         return len(self._c_con_user)
 
     @property
-    def integrand_functions(self):
+    def integrand_functions(self) -> TupleSymsType:
         """The integrand functions corresponding to the integral variables in this phase."""
         return self._q_fnc_user
 
     @integrand_functions.setter
-    def integrand_functions(self, integrands):
+    def integrand_functions(self, integrands: OptionalExprsType) -> None:
         self._q_fnc_user = format_as_data_container(
             "IntegrandFunctions",
             integrands,
@@ -494,52 +462,52 @@ class Phase:
                                   for i_q, _ in enumerate(self._q_fnc_user))
 
     @property
-    def number_integrand_functions(self):
+    def number_integrand_functions(self) -> int:
         return len(self._q_fnc_user)
 
     @property
-    def bounds(self):
+    def bounds(self) -> PhaseBounds:
         """The phase bounds on this phase. See :obj:`~.PhaseBounds` for more details."""
         return self._bounds
 
     @bounds.setter
-    def bounds(self, bounds):
+    def bounds(self, bounds: OptionalBoundsType) -> None:
         if bounds is None:
             self._bounds = PhaseBounds(phase=self)
         else:
             self._bounds = bounds
 
     @property
-    def scaling(self):
+    def scaling(self) -> PhaseScaling:
         """The phase scaling on this phase. See :obj:`~.PhaseScaling` for more details."""
         return self._scaling
 
     @scaling.setter
-    def scaling(self, scaling):
+    def scaling(self, scaling: PhaseScaling) -> None:
         if scaling is None:
             self._scaling = PhaseScaling(phase=self)
         else:
             self._scaling = scaling
 
     @property
-    def mesh(self):
+    def mesh(self) -> PhaseMesh:
         """This initial mesh on which this phase is to be solved."""
         return self._mesh
 
     @mesh.setter
-    def mesh(self, mesh):
+    def mesh(self, mesh: PhaseMesh) -> None:
         if mesh is None:
             self._mesh = PhaseMesh(phase=self)
         else:
             self._mesh = mesh
 
     @property
-    def guess(self):
+    def guess(self) -> PhaseGuess:
         """The initial guess at which this phase is to be solved."""
         return self._guess
 
     @guess.setter
-    def guess(self, guess):
+    def guess(self, guess: PhaseGuess) -> None:
         if guess is None:
             self._guess = PhaseGuess(phase=self)
         else:

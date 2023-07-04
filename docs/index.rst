@@ -12,3 +12,4 @@ Pycollo: an Open-Source Package for Multi Phase Direct Collocation.
     BlockSlide_3
     api_reference
 
+

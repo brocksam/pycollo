@@ -1,6 +1,9 @@
+================
 What is Pycollo?
 ================
 
+Pycollo, a combination of Python and collocation, is a Python package for solving multiphase optimal control problems using direct orthogonal collocation.  
+  
 In optimization there are shooting methods and simultaneous methods. A shooting method uses a simulation to enforce the system dynamics, while the collocation method enforces the dynamics at given points along the trajectory. Shooting methods are more prone to find a global solution, but are computationally heavy. Collocation methods tend to converge better and faster but are prone to find local minima. Direct methods are generally best for problems where dynamics and control must be computed to a similar accuracy, and the structure of the control trajectory is not known a priori :cite:p:`kelly_introduction_2017`.
 
 Pycollo is a direct orthogonal collocation transcription tool for Python :cite:p:`brockie_predictive_2021`. The dynamics and constraints are enforced over a discretization. The discretization exists of N collocation points. The collocation points are either mesh points or polynomial points, but all collocation points are enforced to the constraints and dynamics. After transcription the problem is passed to the solver IPOPT (Interior Point OPTimizer). When the found IPOPT solution does not meet the error-tolerance set in PyCollo, the discretization is refined and a new itera- tion is solved in IPOPT. Mesh points, polynomial points, mesh sections and mesh refinement are explained in figure 5. The polynomials are of the Legendre-Gauss-Lobatto (LGL) nature. More information on the mesh can be found in appendix A. The integration scheme is an implicit Runge-Kutta Kth method :cite:p:`brockie_predictive_2021`. This high order method will have a high accuracy with the disadvantage that all states and constraints need to be differentiable.

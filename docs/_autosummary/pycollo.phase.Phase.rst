@@ -1,4 +1,4 @@
-..
+﻿..
   class.rst
 
 pycollo.phase.Phase
@@ -11,6 +11,7 @@ pycollo.phase.Phase
     :show-inheritance:
     :inherited-members:
     :special-members:
+    :exclude-members: __weakref__
 
     
         

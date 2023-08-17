@@ -1,4 +1,4 @@
-..
+﻿..
   class.rst
 
 pycollo.optimal\_control\_problem.OptimalControlProblem
@@ -11,6 +11,7 @@ pycollo.optimal\_control\_problem.OptimalControlProblem
     :show-inheritance:
     :inherited-members:
     :special-members:
+    :exclude-members: __weakref__
 
     
         

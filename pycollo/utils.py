@@ -151,7 +151,7 @@ def create_data_container(type_name, field_names: Sequence[str]) -> type:
     field_names = tuple(map(str, field_names))
 
     for name in (type_name, ) + field_names:
-        if type(name) is not str:
+        if not isinstance(name, str):
             msg = f"Type and field names must be strings: {name!r}."
             raise TypeError(msg)
         if not name.isidentifier():

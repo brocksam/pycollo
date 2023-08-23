@@ -300,6 +300,8 @@ def format_as_data_container(
             for entry in entries:
                 identifier = convert_to_valid_identifier(entry)
                 identifiers.append(identifier)
+        else:
+            identifiers = [convert_to_valid_identifier(i) for i in identifiers]
         DataContainer = create_data_container(type_name, identifiers)
         if identifiers == entries:
             formatted_entries = DataContainer(*entries)

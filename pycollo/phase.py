@@ -389,18 +389,24 @@ class Phase:
 
             self._y_t0_user = format_as_data_container(
                 "InitialStateVariables",
-                (
-                    sym.Symbol(f'{y}_P{self._phase_suffix}(t0)')
-                    for y in self._y_var_user
-                ),
+                dict(zip(
+                    self._y_var_user,
+                    (
+                        sym.Symbol(f'{y}_P{self._phase_suffix}(t0)')
+                        for y in self._y_var_user._field_names
+                    ),
+                )),
                 identifiers=identifiers,
             )
             self._y_tF_user = format_as_data_container(
                 "FinalStateVariables",
-                (
-                    sym.Symbol(f'{y}_P{self._phase_suffix}(tF)')
-                    for y in self._y_var_user
-                ),
+                dict(zip(
+                    self._y_var_user,
+                    (
+                        sym.Symbol(f'{y}_P{self._phase_suffix}(tF)')
+                        for y in self._y_var_user._field_names
+                    ),
+                )),
                 identifiers=identifiers,
             )
 

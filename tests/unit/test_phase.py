@@ -176,6 +176,236 @@ class TestPhaseStateVariables:
             self.phase.state_variables = state_variables
 
 
+class TestPhaseInitialStateVariables:
+    """Tests for the `Phase.initial_state_variables` property attribute."""
+
+    @pytest.fixture(autouse=True)
+    def _ocp_with_phase_fixture(self) -> None:
+        """Simple fixture setting up an :obj:`OptimalControlProblem`."""
+        self.problem = pycollo.OptimalControlProblem(name="Fixture")
+        self.phase = self.problem.new_phase(name="A")
+        self.sm_x, self.sm_y, self.sm_v, self.sm_u = sm.symbols("x, y, v, u")
+        self.me_x, self.me_y, self.me_v, self.me_u = me.dynamicsymbols("x, y, v, u")
+        self.x_t0, self.y_t0, self.v_t0, self.u_t0 = sm.symbols("x_P0(t0), y_P0(t0), v_P0(t0), u_P0(t0)")
+        self.me_dx, self.me_dy, self.me_dv, self.me_du = me.dynamicsymbols("x, y, v, u", 1)
+        self.dx_t0, self.dy_t0, self.dv_t0, self.du_t0 = sm.symbols('dx_P0(t0), dy_P0(t0), dv_P0(t0), du_P0(t0)')
+
+    def test_single_sympy_symbol(self):
+        """A single `sm.Symbol` can be set."""
+        self.phase.state_variables = self.sm_x
+        assert len(self.phase.initial_state_variables) == 1
+        assert hasattr(self.phase.initial_state_variables, "x")
+        assert self.phase.initial_state_variables.x == self.x_t0
+        assert self.phase.initial_state_variables[0] == self.x_t0
+        assert self.phase.initial_state_variables[self.sm_x] == self.x_t0
+
+    def test_many_sympy_symbols(self):
+        """Multiple `sm.Symbol`s can be set."""
+        self.phase.state_variables = [self.sm_x, self.sm_y, self.sm_v]
+        assert len(self.phase.initial_state_variables) == 3
+        assert hasattr(self.phase.initial_state_variables, "x")
+        assert hasattr(self.phase.initial_state_variables, "y")
+        assert hasattr(self.phase.initial_state_variables, "v")
+        assert self.phase.initial_state_variables.x == self.x_t0
+        assert self.phase.initial_state_variables.y == self.y_t0
+        assert self.phase.initial_state_variables.v == self.v_t0
+        assert self.phase.initial_state_variables[0] == self.x_t0
+        assert self.phase.initial_state_variables[1] == self.y_t0
+        assert self.phase.initial_state_variables[2] == self.v_t0
+        assert self.phase.initial_state_variables[self.sm_x] == self.x_t0
+        assert self.phase.initial_state_variables[self.sm_y] == self.y_t0
+        assert self.phase.initial_state_variables[self.sm_v] == self.v_t0
+
+    def test_single_sympy_dynamics_symbol(self):
+        """A single `me.dynamicsymbols` can be set."""
+        self.phase.state_variables = self.me_x
+        assert len(self.phase.initial_state_variables) == 1
+        assert hasattr(self.phase.initial_state_variables, "x")
+        assert self.phase.initial_state_variables.x == self.x_t0
+        assert self.phase.initial_state_variables[0] == self.x_t0
+        assert self.phase.initial_state_variables[self.me_x] == self.x_t0
+
+    def test_many_sympy_dynamics_symbols(self):
+        """Multiple `me.dynamicsymbols` can be set."""
+        self.phase.state_variables = [self.me_x, self.me_y, self.me_v]
+        assert len(self.phase.initial_state_variables) == 3
+        assert hasattr(self.phase.initial_state_variables, "x")
+        assert hasattr(self.phase.initial_state_variables, "y")
+        assert hasattr(self.phase.initial_state_variables, "v")
+        assert self.phase.initial_state_variables.x == self.x_t0
+        assert self.phase.initial_state_variables.y == self.y_t0
+        assert self.phase.initial_state_variables.v == self.v_t0
+        assert self.phase.initial_state_variables[0] == self.x_t0
+        assert self.phase.initial_state_variables[1] == self.y_t0
+        assert self.phase.initial_state_variables[2] == self.v_t0
+        assert self.phase.initial_state_variables[self.me_x] == self.x_t0
+        assert self.phase.initial_state_variables[self.me_y] == self.y_t0
+        assert self.phase.initial_state_variables[self.me_v] == self.v_t0
+
+    def test_single_sympy_dynamics_symbol_derivative(self):
+        """A single `me.dynamicsymbols` derivative can be set."""
+        self.phase.state_variables = self.me_dx
+        assert len(self.phase.initial_state_variables) == 1
+        assert hasattr(self.phase.initial_state_variables, "dx")
+        assert self.phase.initial_state_variables.dx == self.dx_t0
+        assert self.phase.initial_state_variables[0] == self.dx_t0
+        assert self.phase.initial_state_variables[self.me_dx] == self.dx_t0
+
+    def test_many_sympy_dynamics_symbol_derivative(self):
+        """Multiple `me.dynamicsymbols` derivative can be set."""
+        self.phase.state_variables = [self.me_dx, self.me_dy, self.me_dv]
+        assert len(self.phase.initial_state_variables) == 3
+        assert hasattr(self.phase.initial_state_variables, "dx")
+        assert hasattr(self.phase.initial_state_variables, "dy")
+        assert hasattr(self.phase.initial_state_variables, "dv")
+        assert self.phase.initial_state_variables.dx == self.dx_t0
+        assert self.phase.initial_state_variables.dy == self.dy_t0
+        assert self.phase.initial_state_variables.dv == self.dv_t0
+        assert self.phase.initial_state_variables[0] == self.dx_t0
+        assert self.phase.initial_state_variables[1] == self.dy_t0
+        assert self.phase.initial_state_variables[2] == self.dv_t0
+        assert self.phase.initial_state_variables[self.me_dx] == self.dx_t0
+        assert self.phase.initial_state_variables[self.me_dy] == self.dy_t0
+        assert self.phase.initial_state_variables[self.me_dv] == self.dv_t0
+
+    def test_many_mixed_sympy_symbols_and_sympy_dynamics_symbols(self):
+        """`sm.Symbol`s and `me.dynamicsymbols` can be mixed."""
+        self.phase.state_variables = [self.me_dx, self.sm_y, self.me_v]
+        assert len(self.phase.initial_state_variables) == 3
+        assert hasattr(self.phase.initial_state_variables, "dx")
+        assert hasattr(self.phase.initial_state_variables, "y")
+        assert hasattr(self.phase.initial_state_variables, "v")
+        assert self.phase.initial_state_variables.dx == self.dx_t0
+        assert self.phase.initial_state_variables.y == self.y_t0
+        assert self.phase.initial_state_variables.v == self.v_t0
+        assert self.phase.initial_state_variables[0] == self.dx_t0
+        assert self.phase.initial_state_variables[1] == self.y_t0
+        assert self.phase.initial_state_variables[2] == self.v_t0
+        assert self.phase.initial_state_variables[self.me_dx] == self.dx_t0
+        assert self.phase.initial_state_variables[self.sm_y] == self.y_t0
+        assert self.phase.initial_state_variables[self.me_v] == self.v_t0
+
+    def test_none(self):
+        """`None` causes the property attribute to be set as empty."""
+        self.phase.state_variables = None
+        assert self.phase.initial_state_variables == ()
+
+
+class TestPhaseFinalStateVariables:
+    """Tests for the `Phase.final_state_variables` property attribute."""
+
+    @pytest.fixture(autouse=True)
+    def _ocp_with_phase_fixture(self) -> None:
+        """Simple fixture setting up an :obj:`OptimalControlProblem`."""
+        self.problem = pycollo.OptimalControlProblem(name="Fixture")
+        self.phase = self.problem.new_phase(name="A")
+        self.sm_x, self.sm_y, self.sm_v, self.sm_u = sm.symbols("x, y, v, u")
+        self.me_x, self.me_y, self.me_v, self.me_u = me.dynamicsymbols("x, y, v, u")
+        self.x_tF, self.y_tF, self.v_tF, self.u_tF = sm.symbols("x_P0(tF), y_P0(tF), v_P0(tF), u_P0(tF)")
+        self.me_dx, self.me_dy, self.me_dv, self.me_du = me.dynamicsymbols("x, y, v, u", 1)
+        self.dx_tF, self.dy_tF, self.dv_tF, self.du_tF = sm.symbols('dx_P0(tF), dy_P0(tF), dv_P0(tF), du_P0(tF)')
+
+    def test_single_sympy_symbol(self):
+        """A single `sm.Symbol` can be set."""
+        self.phase.state_variables = self.sm_x
+        assert len(self.phase.final_state_variables) == 1
+        assert hasattr(self.phase.final_state_variables, "x")
+        assert self.phase.final_state_variables.x == self.x_tF
+        assert self.phase.final_state_variables[0] == self.x_tF
+        assert self.phase.final_state_variables[self.sm_x] == self.x_tF
+
+    def test_many_sympy_symbols(self):
+        """Multiple `sm.Symbol`s can be set."""
+        self.phase.state_variables = [self.sm_x, self.sm_y, self.sm_v]
+        assert len(self.phase.final_state_variables) == 3
+        assert hasattr(self.phase.final_state_variables, "x")
+        assert hasattr(self.phase.final_state_variables, "y")
+        assert hasattr(self.phase.final_state_variables, "v")
+        assert self.phase.final_state_variables.x == self.x_tF
+        assert self.phase.final_state_variables.y == self.y_tF
+        assert self.phase.final_state_variables.v == self.v_tF
+        assert self.phase.final_state_variables[0] == self.x_tF
+        assert self.phase.final_state_variables[1] == self.y_tF
+        assert self.phase.final_state_variables[2] == self.v_tF
+        assert self.phase.final_state_variables[self.sm_x] == self.x_tF
+        assert self.phase.final_state_variables[self.sm_y] == self.y_tF
+        assert self.phase.final_state_variables[self.sm_v] == self.v_tF
+
+    def test_single_sympy_dynamics_symbol(self):
+        """A single `me.dynamicsymbols` can be set."""
+        self.phase.state_variables = self.me_x
+        assert len(self.phase.final_state_variables) == 1
+        assert hasattr(self.phase.final_state_variables, "x")
+        assert self.phase.final_state_variables.x == self.x_tF
+        assert self.phase.final_state_variables[0] == self.x_tF
+        assert self.phase.final_state_variables[self.me_x] == self.x_tF
+
+    def test_many_sympy_dynamics_symbols(self):
+        """Multiple `me.dynamicsymbols` can be set."""
+        self.phase.state_variables = [self.me_x, self.me_y, self.me_v]
+        assert len(self.phase.final_state_variables) == 3
+        assert hasattr(self.phase.final_state_variables, "x")
+        assert hasattr(self.phase.final_state_variables, "y")
+        assert hasattr(self.phase.final_state_variables, "v")
+        assert self.phase.final_state_variables.x == self.x_tF
+        assert self.phase.final_state_variables.y == self.y_tF
+        assert self.phase.final_state_variables.v == self.v_tF
+        assert self.phase.final_state_variables[0] == self.x_tF
+        assert self.phase.final_state_variables[1] == self.y_tF
+        assert self.phase.final_state_variables[2] == self.v_tF
+        assert self.phase.final_state_variables[self.me_x] == self.x_tF
+        assert self.phase.final_state_variables[self.me_y] == self.y_tF
+        assert self.phase.final_state_variables[self.me_v] == self.v_tF
+
+    def test_single_sympy_dynamics_symbol_derivative(self):
+        """A single `me.dynamicsymbols` derivative can be set."""
+        self.phase.state_variables = self.me_dx
+        assert len(self.phase.final_state_variables) == 1
+        assert hasattr(self.phase.final_state_variables, "dx")
+        assert self.phase.final_state_variables.dx == self.dx_tF
+        assert self.phase.final_state_variables[0] == self.dx_tF
+        assert self.phase.final_state_variables[self.me_dx] == self.dx_tF
+
+    def test_many_sympy_dynamics_symbol_derivative(self):
+        """Multiple `me.dynamicsymbols` derivative can be set."""
+        self.phase.state_variables = [self.me_dx, self.me_dy, self.me_dv]
+        assert len(self.phase.final_state_variables) == 3
+        assert hasattr(self.phase.final_state_variables, "dx")
+        assert hasattr(self.phase.final_state_variables, "dy")
+        assert hasattr(self.phase.final_state_variables, "dv")
+        assert self.phase.final_state_variables.dx == self.dx_tF
+        assert self.phase.final_state_variables.dy == self.dy_tF
+        assert self.phase.final_state_variables.dv == self.dv_tF
+        assert self.phase.final_state_variables[0] == self.dx_tF
+        assert self.phase.final_state_variables[1] == self.dy_tF
+        assert self.phase.final_state_variables[2] == self.dv_tF
+        assert self.phase.final_state_variables[self.me_dx] == self.dx_tF
+        assert self.phase.final_state_variables[self.me_dy] == self.dy_tF
+        assert self.phase.final_state_variables[self.me_dv] == self.dv_tF
+
+    def test_many_mixed_sympy_symbols_and_sympy_dynamics_symbols(self):
+        """`sm.Symbol`s and `me.dynamicsymbols` can be mixed."""
+        self.phase.state_variables = [self.me_dx, self.sm_y, self.me_v]
+        assert len(self.phase.final_state_variables) == 3
+        assert hasattr(self.phase.final_state_variables, "dx")
+        assert hasattr(self.phase.final_state_variables, "y")
+        assert hasattr(self.phase.final_state_variables, "v")
+        assert self.phase.final_state_variables.dx == self.dx_tF
+        assert self.phase.final_state_variables.y == self.y_tF
+        assert self.phase.final_state_variables.v == self.v_tF
+        assert self.phase.final_state_variables[0] == self.dx_tF
+        assert self.phase.final_state_variables[1] == self.y_tF
+        assert self.phase.final_state_variables[2] == self.v_tF
+        assert self.phase.final_state_variables[self.me_dx] == self.dx_tF
+        assert self.phase.final_state_variables[self.sm_y] == self.y_tF
+        assert self.phase.final_state_variables[self.me_v] == self.v_tF
+
+    def test_none(self):
+        """`None` causes the property attribute to be set as empty."""
+        self.phase.state_variables = None
+        assert self.phase.final_state_variables == ()
+
+
 class TestPhaseControlVariables:
     """Tests for the `Phase.control_variables` property attribute."""
 

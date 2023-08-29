@@ -202,6 +202,8 @@ class Phase:
             new_phase.integrand_functions = copy.deepcopy(self.integrand_functions)
             if copy_bounds:
                 new_phase.bounds.integral_variables = copy.deepcopy(self.bounds.integral_variables)
+            if copy_guess:
+                new_phase.guess.integral_variables = copy.deepcopy(self.guess.integral_variables)
 
         if copy_state_endpoint_constraints and copy_bounds:
             new_phase.bounds.state_endpoint_constraints = copy.deepcopy(self.bounds.state_endpoint_constraints)

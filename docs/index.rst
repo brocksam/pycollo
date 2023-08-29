@@ -1,7 +1,8 @@
-=====================
-Pycollo Documentation
-=====================
-Pycollo: an Open-Source Package for Multi Phase Direct Collocation.
+=======
+Pycollo
+=======
+
+General-purpose optimal control, trajectory optimisation and parameter optimisation using direct collocation.
 
 .. toctree::
     :maxdepth: 2

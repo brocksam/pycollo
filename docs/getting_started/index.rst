@@ -5,7 +5,7 @@ Getting Started
     :maxdepth: 2
     :titlesonly:
 
-    Background
-    Installation
-    Quickstart
+    background
+    installation
+    quickstart
 

@@ -8,7 +8,7 @@ General-purpose optimal control, trajectory optimisation and parameter optimisat
     :maxdepth: 2
     :titlesonly:
 
-    gettingstarted/index
+    getting_started/index
     contributing
     faq
     api_reference

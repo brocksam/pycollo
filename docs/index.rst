@@ -3,8 +3,8 @@ Pycollo Documentation
 =====================
 Pycollo: an Open-Source Package for Multi Phase Direct Collocation.
 
-.. toctree::
+.. toctree::    
     :maxdepth: 2
-    :titlesonly:
-
+   
+    Examples/index
     api_reference

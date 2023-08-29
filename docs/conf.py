@@ -27,6 +27,8 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
+    "nbsphinx",
+
 ]
 
 templates_path = ["_templates"]

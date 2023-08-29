@@ -15,4 +15,10 @@ This project is licensed under the terms of the MIT license.
 
 Authors
 -------
+
 Sam Brockie - sambrockie@icloud.com
+
+Acknowledgements
+----------------
+
+Special thanks to Jan Heinen, Jason K. Moore, and the Chan Zuckerberg Initiative for their fantastic contributions to the Pycollo documentation.

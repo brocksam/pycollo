@@ -27,8 +27,8 @@ To install using pip, enter the following command at a command prompt:
 
 For more information, refer to the `installation documentation <https://pycollo.readthedocs.io/en/latest/user/installation.html>`_.
 
-Contribute
-==========
+Contributing
+============
 
 Pycollo is currently under development. Major code refactors, including significant API changes, are likely. As such contributions may not be readily accepted at this time. If you are keen to contribute, please contact the authors by email or file an issue on the issue tracker detailing how you would like to get involved.
 
@@ -44,6 +44,12 @@ Authors
 =======
 
 - Sam Brockie - sgb39@cam.ac.uk
+
+
+Acknowledgements
+================
+
+A special thanks is owed to Jan Heinen, Jason K. Moore, and the Chan Zuckerberg Initiative for their fantastic contributions to the Pycollo documentation.
 
 Citation
 ========

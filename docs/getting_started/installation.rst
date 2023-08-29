@@ -7,7 +7,7 @@ Prerequisites
 
 Before you begin, ensure you have the following prerequisites installed:
 
-- Python (>= 3.7)
+- Python (>= 3.8)
 
 Step 1: Create a Virtual Environment
 ------------------------------------
@@ -37,7 +37,8 @@ It is recommended to install Pycollo in a virtual environment to manage dependen
         source pycollo-env/bin/activate
 
 Step 2: Install Pycollo
-------------------------
+-----------------------
+
 To install with conda-forge enter the following command at a command prompt
 
 .. code-block:: bash

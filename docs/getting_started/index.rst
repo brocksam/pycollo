@@ -7,5 +7,3 @@ Getting Started
 
     background
     installation
-    quickstart
-

@@ -9,5 +9,5 @@ Pycollo: an Open-Source Package for Multi Phase Direct Collocation.
 
     gettingstarted/index
     contribute
-    FAQ
+    fag
     api_reference

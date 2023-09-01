@@ -27,6 +27,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
+    "sphinxcontrib.bibtex",
 ]
 
 templates_path = ["_templates"]
@@ -45,6 +46,7 @@ intersphinx_mapping = {
     "python": ("http://docs.python.org/3", None),
 }
 
+bibtex_bibfiles = ["references.bib"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
@@ -56,3 +58,4 @@ html_theme_options = {
 }
 
 html_static_path = ["_static"]
+

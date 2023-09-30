@@ -1,13 +1,12 @@
 """The main way to define and interact with a Pycollo optimal control problem.
 
-This module contains the main class that the user will interact with to define
-and run their optimal control problem when working with Pycollo. Terminolgy is
-loosely defined in accordance with "Betts, JT (2010). Practical Methods for
-Optimal Control and Estimiation Using Nonlinear Programming (Second Edition)".
-See the ``Notes`` section for a full list of symbols used.
+Method is used to define the objective function, endpoint constraints, and parameter variables. Each :class:`~.OptimalControlProblem` instance is associated with one or more :class:`~.Phase` instance.
+
+OCP require bounds and initial guesses to be prescribed before they can numerically be solved, handeled in :mod:`~.bounds` and :mod:`~.guess`.
+
+Terminolgy is loosely defined in accordance with "Betts, JT (2010). Practical Methods for Optimal Control and Estimiation Using Nonlinear Programming (Second Edition)":
 
 Notes:
-------
     * t: independent parameter (time).
     * x = [y, u, q, t0, tf, s]: vector of problem variables.
     * y: vector state variables (which are functions of time).
@@ -34,7 +33,7 @@ Notes:
 """
 
 
-from typing import AnyStr, Iterable, Tuple
+from typing import AnyStr, Iterable, Tuple, Optional
 
 import numpy as np
 
@@ -47,7 +46,7 @@ from .guess import EndpointGuess
 from .phase import Phase
 from .scaling import EndpointScaling
 from .settings import Settings
-from .typing import OptionalSymsType
+from .typing import OptionalSymsType, OptionalExprsType, OptionalBoundsType, TupleSymsType
 from .utils import check_sym_name_clash, console_out, format_as_data_container
 
 __all__ = ["OptimalControlProblem"]
@@ -57,24 +56,33 @@ class OptimalControlProblem():
     """The main class for Pycollo optimal control problems"""
 
     def __init__(self,
-                 name,
+                 name: str,
                  parameter_variables=None,
                  *,
-                 bounds=None,
-                 guess=None,
-                 scaling=None,
-                 endpoint_constraints=None,
-                 objective_function=None,
-                 settings=None,
-                 auxiliary_data=None,
-                 ):
+                 bounds: Optional[EndpointBounds]=None,
+                 guess: Optional[EndpointGuess]=None,
+                 scaling: Optional[EndpointScaling]=None,
+                 endpoint_constraints: Optional=None,
+                 objective_function: Optional[sym.Expr]=None,
+                 settings: Optional[Settings]=None,
+                 auxiliary_data: Optional[dict]=None,
+                 ) -> None:
         """Initialise the optimal control problem with user-passed objects.
 
         Args:
-                phases (:obj:`Iterable` of :class:`~.Phase`, optional): Phases to be
-                        associated with the optimal control problem at initialisation.
-                        Defaults to None.
-                parameter_variables ()
+            name: Minimally required to initialise
+            parameter_variables: Optimised variables which will solve to single 
+                numerical number over all phases.
+            bounds: Problem specific bounds. See :obj:`.~EndpointBounds` for
+                more details. Default value is None in which case an empty
+                :obj:`.~EndpointBounds` object is instantiated and associated with the OCP.
+            guess: The initial guess at which this OCP is to be solved.
+                Default value is None in which case an empty :obj:`EndpointGuess` object is instantiated.
+            scaling: 
+            endpoint_constraints: Endpoint constraints which bound this OCP. Default to None
+            objective_function: Instance to be minimised. Defaults to None.
+            settings: All OCP settings. Defaults to default settings in :class:`~.Settings`.
+            auxiliary_data: Extra data provided by user. Defaults to empty :class:`dict`.
         """
 
         self.name = name
@@ -95,48 +103,48 @@ class OptimalControlProblem():
     @property
     def name(self) -> str:
         """The name associated with the optimal control problem. For setter
-        behaviour, the supplied `name` is cast to a str.
+        behaviour, the supplied `name` is cast to a :class:`str`.
 
         The name is not strictly needed, however it improves the usefulness of
         Pycollo console output. This is particularly useful in cases where the
         user may wish to instantiate multiple :obj:`OptimalControlProblem`
         objects within a single script, or instantiates other Pycollo objects
-        without providing a valid :class:`~.optimal_control_problem` argument for them
-        to be linked to at initialisation.
+
+        without providing a valid :mod:`~.optimal_control_problem` argument for them to be linked to at initialisation.
         """
         return self._name
 
     @name.setter
-    def name(self, name: AnyStr):
+    def name(self, name: AnyStr) -> None:
         self._name = str(name)
 
     @property
     def phases(self) -> Tuple[Phase, ...]:
-        """A tuple of all phases associated with the optimal control problem.
+        """A :class:`tuple` of all phases associated with the optimal control problem.
 
         :meth:`~.phase_number` are integers beginning at 1 and are
         ordered corresponding to the order that they were added to the optimal
         control problem. As Python uses zero-based indexing the phase numbers
-        do not directly map to the indexes of phases within :class:`~.phases`.
+        do not directly map to the indexes of phases within :attr:`~.phases`.
         Phases are however ordered sequentially corresponding to the
-        cronological order they were added to the optimal control problem.
+        chronological order they were added to the optimal control problem.
         """
         return self._phases
 
     def add_phase(self, phase: Iterable[Phase]) -> Phase:
         """Add an already instantiated :class:`~.Phase` to this optimal control problem.
 
-        This method is needed as :class:`~.phases` is read only ("private") and
+        This method is needed as :attr:`~.phases` is read only ("private") and
         therefore users cannot manually add :class:`~.Phase` objects to an optimal
-        control problem. :class:`~.phases` is required to be read only as it is an
+        control problem. :attr:`~.phases` is required to be read only as it is an
         iterable of :class:`~.Phase` objects and must be protected from accidental errors
         introduced by user interacting with it incorrectly.
 
         Args:
-                phase (Phase): The phase to be added to the optimal control problem
+            phase (:class:`~.Phase`): The phase to be added to the optimal control problem
 
         Returns:
-                the phase that has been added. It is the same
+            the phase that has been added. It is the same
         """
         phase.optimal_control_problem = self
         return self.phases[-1]
@@ -155,7 +163,7 @@ class OptimalControlProblem():
                   control_variables: OptionalSymsType = None) -> Phase:
         """Create a new :obj:`~.Phase` and add to this optimal control problem.
 
-        Provides the same behaviour as manually creating a :obj:`.~Phase` called
+        Provides the same behaviour as manually creating a :obj:`~.Phase` called
         `phase` and calling :meth:`~.add_phase`.
         """
         new_phase = Phase(name, optimal_control_problem=self,
@@ -163,7 +171,9 @@ class OptimalControlProblem():
                           control_variables=control_variables)
         return new_phase
 
-    def new_phase_like(self, phase_for_copying: Phase, name: str, **kwargs):
+    def new_phase_like(self, phase_for_copying: Phase, name: str, **kwargs) -> Phase:
+        """Creates new phase while copying all implemented values from `phase_for_copying`
+        """
         return phase_for_copying.create_new_copy(name, **kwargs)
 
     def new_phases_like(self,
@@ -174,14 +184,14 @@ class OptimalControlProblem():
         """Creates multiple new phases like an already instantiated phase.
 
         For a list of key word arguments and default values see the docstring
-        for the :meth:`~.new_phase_like` method.
+        for the :func:`new_phase_like` method.
 
         Returns:
-                The newly instantiated and associated phases.
+            The newly instantiated and associated phases.
 
         Raises:
-                ValueError: If the same number of names are not supplied as the
-                        number of specified new phases.
+            ValueError: If the same number of names are not supplied as the
+                number of specified new phases.
         """
         if len(names) != int(number):
             msg = ("Must supply a name for each new phase.")
@@ -192,27 +202,33 @@ class OptimalControlProblem():
 
     @property
     def number_phases(self) -> int:
-        """Number of phases associated with this optimal control problem."""
+        """Returns number of phases associated with this optimal control problem."""
         return len(self.phases)
 
     @property
     def time_symbol(self):
-        """
-
+        """Dynamic time symbol, not yet supported
+        
         Raises:
-                NotImplementedError: Whenever called to inform the user that these
-                        types of problem are not currently supported.
+            NotImplementedError: Whenever called to inform the user that these
+                types of problem are not currently supported.
         """
         msg = ("Pycollo do not currently support dynamic, path or integral "
                "constraints that are explicit functions of continuous time.")
         raise NotImplementedError(msg)
 
     @property
-    def parameter_variables(self):
+    def parameter_variables(self) -> TupleSymsType:
+        """Static parameter variables which are optimized within given bounds.
+
+        When the instance OCP is created you can supply the parameter variables by OCP_instance.parameter_variables = :class:`tuple` [:class:`Symbol<sympy.core.symbol.Symbol>`,...] | :class:`list` [:class:`Symbol<sympy.core.symbol.Symbol>`,..] | :obj:`numpy.array` [:class:`Symbol<sympy.core.symbol.Symbol>`,...]
+
+        As described in Betts, JT (2010). Bounds and guesses need to be implemented. See :obj:`~.EndPointBounds` and :class:`~.EndPointGuess` how to implement them. 
+        """
         return self._s_var_user
 
     @parameter_variables.setter
-    def parameter_variables(self, s_vars):
+    def parameter_variables(self, s_vars: OptionalSymsType) -> None:
         self._s_var_user = format_as_data_container("ParameterVariables", s_vars)
         _ = check_sym_name_clash(self._s_var_user)
 
@@ -221,11 +237,17 @@ class OptimalControlProblem():
         len(self._s_var_user)
 
     @property
-    def endpoint_constraints(self):
+    def endpoint_constraints(self) -> OptionalExprsType:
+        """Inequality constraints consisting of endpoint variables.
+
+        These constraints are the glue in between the phases. For example, when variables need to be continious throughout multiple phases you can set the y_F of phase A equal to y_0 of phase B. More complex formulations are allowed for example for handeling discontinuities. They are formulated as inequality constraint, but by clever formulating can be handeled as equality constraints (A-B > [0,0])
+        
+        Bounds should be implemented. See :obj:`~.EndPointBounds` how to implement them.
+        """
         return self._b_con_user
 
     @endpoint_constraints.setter
-    def endpoint_constraints(self, b_cons):
+    def endpoint_constraints(self, b_cons: OptionalExprsType) -> None:
         self._b_con_user = format_as_data_container(
             "EndpointConstraints",
             b_cons,
@@ -233,32 +255,41 @@ class OptimalControlProblem():
         )
 
     @property
-    def number_endpoint_constraints(self):
+    def number_endpoint_constraints(self) -> int:
+        """Returns number of endpoint constraints"""
         return len(self._b_con_user)
 
     @property
-    def objective_function(self):
+    def objective_function(self) -> OptionalExprsType:
+        """Formula to be minimised during the optimization.
+        
+        It is a `Bolza` objective function which may be a function of endpoint variables or parameter variables (:attr:`~.integral_variables`, :attr:`~.initial_time_variable`, :attr:`~.final_time_variable`, :attr:`~.initial_state_variable, and :attr:`~.final_state_variable or :attr:`~.parameter_variables` ).
+        """
         return self._J_user
 
     @objective_function.setter
-    def objective_function(self, J):
+    def objective_function(self, J: OptionalExprsType) -> None:
         self._J_user = sym.sympify(J)
         # self._forward_dynamics = True if self._J_user == 1 else False
 
     @property
-    def auxiliary_data(self):
+    def auxiliary_data(self) -> dict[OptionalSymsType]:
+        """:class:`dict` containing extra provided data.
+         
+        When a symbolic variable (:class:`Symbol<sympy.core.symbol.Symbol>`) is indetermined, make sure to assign it to a numerical value or symbolic formulation with this function """
         return self._aux_data_user
 
     @auxiliary_data.setter
-    def auxiliary_data(self, aux_data):
+    def auxiliary_data(self, aux_data: dict[OptionalSymsType, int]) -> None:
         self._aux_data_user = dict(aux_data)
 
     @property
-    def bounds(self):
+    def bounds(self) -> EndpointBounds:
+        """Attribute to provide bounds to :attr:`~.parameter_variables`, and :attr:`~.endpoint_constraints`"""
         return self._bounds
 
     @bounds.setter
-    def bounds(self, bounds):
+    def bounds(self, bounds: OptionalBoundsType) -> None:
         if bounds is None:
             self._bounds = EndpointBounds(optimal_control_problem=self)
         else:
@@ -266,11 +297,12 @@ class OptimalControlProblem():
             self._bounds._ocp = self
 
     @property
-    def guess(self):
+    def guess(self) -> EndpointGuess:
+        """Attribute to provide initial guess to :attr:`~.parameter_variables`, and :attr:`~.endpoint_constraints`"""
         return self._guess
 
     @guess.setter
-    def guess(self, guess):
+    def guess(self, guess: OptionalBoundsType) -> None:
         if guess is None:
             self._guess = EndpointGuess(optimal_control_problem=self)
         else:
@@ -278,11 +310,11 @@ class OptimalControlProblem():
             self._guess.optimal_control_problem = self
 
     @property
-    def scaling(self):
+    def scaling(self) -> EndpointScaling:
         return self._scaling
 
     @scaling.setter
-    def scaling(self, scaling):
+    def scaling(self, scaling: EndpointScaling) -> None:
         if scaling is None:
             self._scaling = EndpointScaling(optimal_control_problem=self)
         else:
@@ -294,15 +326,19 @@ class OptimalControlProblem():
         return self._mesh_iterations
 
     @property
-    def num_mesh_iterations(self):
+    def num_mesh_iterations(self) -> int:
+        """Returns number of mesh iterations"""
         return len(self._backend.mesh_iterations)
 
     @property
-    def settings(self):
+    def settings(self) -> Settings:
+        """Attribute to overwrite default settings.
+        
+        See :mod:`~.settings` for all settings options"""
         return self._settings
 
     @settings.setter
-    def settings(self, settings):
+    def settings(self, settings: Settings) -> None:
         if settings is None:
             self._settings = Settings(optimal_control_problem=self)
         else:
@@ -311,9 +347,24 @@ class OptimalControlProblem():
 
     @property
     def solution(self):
+        """ Attribute where all solutions are found after solving the OCP (:func:`~.solve`).
+
+        Solutions are provided by indexing. OCP_instance.solution.attribute[x][y] refers to the y`th attribute in phase x
+         
+         Attributes:
+            objective: Numerical solution of :attr:`~.objective_function`
+            initial_time: Initial times of phases of solved OCP
+            final_time: Final times of phases of solved OCP
+            state: Numerical solution of state_variables`
+            state_derivative: Numerical solution of :attr:`~.state_equations`
+            control: Numerical solution of :attr:`~.control`
+            integral: Numerical solution of :attr:`~.integrand_function`
+            time: Numerical solution of time
+            parameter: Numerical solution of :attr:`~.parameter_variables`
+           """
         return self._backend.mesh_iterations[-1].solution
 
-    def initialise(self):
+    def initialise(self) -> None:
         """Initialise the optimal control problem before solving.
 
         The initialisation of the optimal control problem involves the
@@ -384,7 +435,7 @@ class OptimalControlProblem():
     def _initialise_first_mesh_iteration(self):
         self._backend.create_mesh_iterations()
 
-    def solve(self, display_progress=False):
+    def solve(self, display_progress=False) -> None:
         """Solve the optimal control problem.
 
         If the initialisation flag is not set to True then the initialisation
@@ -408,11 +459,10 @@ class OptimalControlProblem():
         if not self._is_initialised:
             self.initialise()
 
-    def _solve_iteration(self):
+    def _solve_iteration(self) -> bool:
         """Solve a single mesh iteration.
 
-        Return:
-        bool
+        Return(bool):
             True is mesh tolerance is met or if maximum number of mesh
             iterations has been reached.
 
@@ -553,7 +603,7 @@ class OptimalControlProblem():
             mesh_results()
             time_results()
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns name of OCP"""
         return self.name
 

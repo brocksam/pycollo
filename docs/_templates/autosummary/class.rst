@@ -10,6 +10,7 @@
     :show-inheritance:
     :inherited-members:
     :special-members:
+    :exclude-members: __weakref__, __repr__, __str__
 
     {% block methods %}
         {% if methods %}
